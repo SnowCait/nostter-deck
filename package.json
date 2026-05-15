@@ -12,6 +12,7 @@
 		"tauri": "tauri",
 		"tauri:dev": "tauri dev",
 		"tauri:build": "tauri build",
+		"tauri:update": "npm update && cd src-tauri && cargo update",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write ."
 	},
