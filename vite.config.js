@@ -1,6 +1,7 @@
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { defineConfig } from 'vite';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { visualizer } from 'rollup-plugin-visualizer';
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -12,7 +13,8 @@ export default defineConfig(async () => ({
 			project: './project.inlang',
 			outdir: './src/lib/paraglide',
 			strategy: ['preferredLanguage', 'baseLocale']
-		})
+		}),
+		visualizer({ template: 'markdown', emitFile: true })
 	],
 
 	// Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
