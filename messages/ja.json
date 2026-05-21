@@ -1,4 +1,25 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"hello_world": "Hello, {name} from ja!"
+	"hello_world": "Hello, {name} from ja!",
+	"app_title": "nostter deck",
+	"nav_home": "ホーム",
+	"nav_search": "検索",
+	"nav_notifications": "通知",
+	"nav_bookmarks": "ブックマーク",
+	"nav_settings": "設定",
+	"action_post": "投稿",
+	"account_role": "メインアカウント",
+	"language_switcher": "言語",
+	"collapse_sidebar": "サイドバーを折りたたむ",
+	"expand_sidebar": "サイドバーを展開",
+	"timeline_home": "ホーム",
+	"timeline_mentions": "メンション",
+	"timeline_search": "検索",
+	"timeline_lists": "リスト",
+	"column_options": "カラム設定",
+	"reply": "返信",
+	"repost": "リポスト",
+	"like": "いいね",
+	"share": "共有",
+	"verified": "認証済み"
 }

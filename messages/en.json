@@ -1,4 +1,25 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"hello_world": "Hello, {name} from en!"
+	"hello_world": "Hello, {name} from en!",
+	"app_title": "nostter deck",
+	"nav_home": "Home",
+	"nav_search": "Search",
+	"nav_notifications": "Notifications",
+	"nav_bookmarks": "Bookmarks",
+	"nav_settings": "Settings",
+	"action_post": "Post",
+	"account_role": "Primary account",
+	"language_switcher": "Language",
+	"collapse_sidebar": "Collapse sidebar",
+	"expand_sidebar": "Expand sidebar",
+	"timeline_home": "Home",
+	"timeline_mentions": "Mentions",
+	"timeline_search": "Search",
+	"timeline_lists": "Lists",
+	"column_options": "Column options",
+	"reply": "Reply",
+	"repost": "Repost",
+	"like": "Like",
+	"share": "Share",
+	"verified": "Verified"
 }

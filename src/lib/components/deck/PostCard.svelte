@@ -1,0 +1,100 @@
+<script lang="ts">
+	import { Heart, MessageCircle, Ellipsis, Repeat2, Share, ShieldCheck } from '@lucide/svelte';
+	import { m } from '$lib/paraglide/messages.js';
+	import type { Post } from '$lib/deck/types';
+
+	type Props = {
+		post: Post;
+	};
+
+	const { post }: Props = $props();
+</script>
+
+<article class="border-b border-slate-200 p-3 transition hover:bg-slate-50/80">
+	<div class="flex gap-3">
+		<div
+			class={`flex size-10 shrink-0 items-center justify-center rounded-md ${post.accent} text-sm font-bold text-white`}
+		>
+			{post.author.slice(0, 1)}
+		</div>
+		<div class="min-w-0 flex-1">
+			<div class="flex items-start justify-between gap-2">
+				<div class="min-w-0">
+					<div class="flex min-w-0 items-center gap-1.5">
+						<p class="truncate text-sm font-bold">{post.author}</p>
+						<ShieldCheck class="size-4 shrink-0 text-sky-500" aria-label={m.verified()} />
+					</div>
+					<p class="truncate text-xs text-slate-500">{post.handle} · {post.time}</p>
+				</div>
+				<button
+					type="button"
+					class="flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+					title={m.column_options()}
+					aria-label={m.column_options()}
+				>
+					<Ellipsis class="size-4" aria-hidden="true" />
+				</button>
+			</div>
+
+			<p class="mt-2 text-sm leading-5 text-slate-800">{post.body}</p>
+
+			<div class="mt-2 flex flex-wrap gap-1.5">
+				{#each post.tags as tag (tag)}
+					<span class="rounded-md bg-sky-50 px-2 py-1 text-xs font-medium text-sky-700">
+						{tag}
+					</span>
+				{/each}
+			</div>
+
+			{#if post.attachment}
+				<div class="mt-3 rounded-md border border-slate-200 bg-white p-3">
+					<p class="text-xs font-semibold text-slate-400 uppercase">
+						{post.attachment.label}
+					</p>
+					<p class="mt-1 truncate text-sm font-bold">{post.attachment.title}</p>
+					<p class="mt-1 text-sm leading-5 text-slate-600">
+						{post.attachment.body}
+					</p>
+				</div>
+			{/if}
+
+			<div class="mt-3 grid grid-cols-4 text-slate-500">
+				<button
+					type="button"
+					class="flex h-8 items-center gap-1 rounded-md text-xs transition hover:bg-sky-50 hover:text-sky-600"
+					title={m.reply()}
+					aria-label={m.reply()}
+				>
+					<MessageCircle class="size-4" aria-hidden="true" />
+					<span>{post.stats.replies}</span>
+				</button>
+				<button
+					type="button"
+					class="flex h-8 items-center gap-1 rounded-md text-xs transition hover:bg-emerald-50 hover:text-emerald-600"
+					title={m.repost()}
+					aria-label={m.repost()}
+				>
+					<Repeat2 class="size-4" aria-hidden="true" />
+					<span>{post.stats.reposts}</span>
+				</button>
+				<button
+					type="button"
+					class="flex h-8 items-center gap-1 rounded-md text-xs transition hover:bg-rose-50 hover:text-rose-600"
+					title={m.like()}
+					aria-label={m.like()}
+				>
+					<Heart class="size-4" aria-hidden="true" />
+					<span>{post.stats.likes}</span>
+				</button>
+				<button
+					type="button"
+					class="flex h-8 items-center justify-center rounded-md transition hover:bg-slate-100 hover:text-slate-800"
+					title={m.share()}
+					aria-label={m.share()}
+				>
+					<Share class="size-4" aria-hidden="true" />
+				</button>
+			</div>
+		</div>
+	</div>
+</article>
