@@ -16,7 +16,9 @@ const sidebarCenterTolerance = 1;
 
 async function openDeck(page: Page) {
 	await page.addInitScript(() => {
-		window.localStorage.setItem('PARAGLIDE_LOCALE', 'en');
+		if (!window.localStorage.getItem('PARAGLIDE_LOCALE')) {
+			window.localStorage.setItem('PARAGLIDE_LOCALE', 'en');
+		}
 	});
 	await page.goto('/');
 }
@@ -155,5 +157,29 @@ test.describe('nostter deck', () => {
 			'false'
 		);
 		await expectSidebarWidth(page, sidebarExpandedWidth);
+	});
+
+	test('changes language from the settings dialog', async ({ page }) => {
+		await openDeck(page);
+
+		await expect(sidebar(page).getByText('Language')).toHaveCount(0);
+
+		await page.getByRole('button', { name: 'Settings' }).click();
+		await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+		await expect(page.getByLabel('Language')).toHaveValue('en');
+
+		await page.getByLabel('Language').selectOption('ja');
+		await expect(sidebar(page).getByRole('button', { name: '設定', exact: true })).toBeVisible();
+
+		await sidebar(page).getByRole('button', { name: '設定', exact: true }).click();
+		await expect(page.getByRole('dialog', { name: '設定' })).toBeVisible();
+		await expect(page.getByLabel('言語')).toHaveValue('ja');
+
+		await page.getByLabel('言語').selectOption('en');
+		await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible();
+
+		await page.getByRole('button', { name: 'Settings' }).click();
+		await page.getByRole('button', { name: 'Close' }).click();
+		await expect(page.getByRole('dialog', { name: 'Settings' })).toBeHidden();
 	});
 });

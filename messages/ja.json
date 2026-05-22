@@ -21,6 +21,7 @@
 	"column_type": "カラム種類",
 	"save": "保存",
 	"cancel": "キャンセル",
+	"close": "閉じる",
 	"delete_column": "カラムを削除",
 	"move_column_left": "カラムを左へ移動",
 	"move_column_right": "カラムを右へ移動",

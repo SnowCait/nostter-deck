@@ -19,6 +19,7 @@ export type MessageKey =
 	| 'column_type'
 	| 'save'
 	| 'cancel'
+	| 'close'
 	| 'delete_column'
 	| 'move_column_left'
 	| 'move_column_right'

@@ -21,6 +21,7 @@
 	"column_type": "Column type",
 	"save": "Save",
 	"cancel": "Cancel",
+	"close": "Close",
 	"delete_column": "Delete column",
 	"move_column_left": "Move column left",
 	"move_column_right": "Move column right",
