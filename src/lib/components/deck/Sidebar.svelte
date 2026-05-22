@@ -13,19 +13,13 @@
 		UserRound
 	} from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
-	import { getLocale, locales } from '$lib/paraglide/runtime.js';
+	import { getLocale, locales, setLocale } from '$lib/paraglide/runtime.js';
 	import type { MessageKey } from '$lib/deck/types';
 
 	type AppLocale = (typeof locales)[number];
 
-	type Props = {
-		isCollapsed: boolean;
-		onSelectLocale: (locale: AppLocale) => void;
-		onToggle: () => void;
-	};
-
-	const { isCollapsed, onSelectLocale, onToggle }: Props = $props();
 	const currentLocale = getLocale();
+	let isCollapsed = $state(false);
 
 	const localeLabels: Record<AppLocale, string> = {
 		en: 'EN',
@@ -56,6 +50,10 @@
 			'overflow-hidden transition-all duration-150 ease-out',
 			isCollapsed ? 'max-w-0 opacity-0' : 'max-w-10 opacity-100'
 		].join(' ');
+
+	function toggleSidebar() {
+		isCollapsed = !isCollapsed;
+	}
 </script>
 
 <aside
@@ -163,7 +161,7 @@
 							? 'border-sky-500 bg-sky-50 text-sky-700'
 							: 'border-slate-200 text-slate-600 hover:bg-slate-50'
 					]}
-					onclick={() => onSelectLocale(locale)}
+					onclick={() => setLocale(locale)}
 					aria-pressed={currentLocale === locale}
 				>
 					{localeLabels[locale]}
@@ -182,7 +180,7 @@
 			title={sidebarToggleLabel()}
 			aria-label={sidebarToggleLabel()}
 			aria-pressed={isCollapsed}
-			onclick={onToggle}
+			onclick={toggleSidebar}
 		>
 			<span
 				class={[
