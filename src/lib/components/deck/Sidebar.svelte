@@ -11,18 +11,22 @@
 		Search,
 		Send,
 		Settings,
+		SlidersHorizontal,
 		SunMoon,
 		UserRound
 	} from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { getLocale, locales, setLocale } from '$lib/paraglide/runtime.js';
 	import type { Column, ColumnSourceKey } from '$lib/deck/types';
+	import { textClassByFontSize } from '$lib/font-size';
 	import { readUiState, updateUiState } from '$lib/ui-state';
 	import {
 		applyThemePreference,
+		fontSizePreferences,
 		readUserSettings,
 		themePreferences,
 		updateUserSettings,
+		type FontSize,
 		type ThemePreference
 	} from '$lib/user-settings';
 
@@ -32,10 +36,20 @@
 		activeColumnId: string;
 		onAddColumn: () => void;
 		onCompose: () => void;
+		fontSize: FontSize;
+		onFontSizeChange: (fontSize: FontSize) => void;
 		onSelectColumn: (columnId: string) => void;
 	};
 
-	const { columns, activeColumnId, onAddColumn, onCompose, onSelectColumn }: Props = $props();
+	const {
+		columns,
+		activeColumnId,
+		onAddColumn,
+		onCompose,
+		fontSize,
+		onFontSizeChange,
+		onSelectColumn
+	}: Props = $props();
 	const currentLocale = getLocale();
 	let isCollapsed = $state(readUiState().sidebarCollapsed);
 	let themePreference = $state(readUserSettings().theme);
@@ -51,6 +65,14 @@
 		light: () => m.theme_light(),
 		dark: () => m.theme_dark()
 	} satisfies Record<ThemePreference, () => string>;
+
+	const fontSizeLabels = {
+		large: () => m.font_size_large(),
+		medium: () => m.font_size_medium(),
+		small: () => m.font_size_small()
+	} satisfies Record<FontSize, () => string>;
+
+	const textClass = $derived(textClassByFontSize[fontSize]);
 
 	const columnIconBySource = {
 		timeline_home: House,
@@ -102,6 +124,15 @@
 		}));
 		applyThemePreference(selectedTheme);
 	}
+
+	function selectFontSize(event: Event) {
+		const selectedFontSize = (event.currentTarget as HTMLSelectElement).value as FontSize;
+		updateUserSettings((currentSettings) => ({
+			...currentSettings,
+			fontSize: selectedFontSize
+		}));
+		onFontSizeChange(selectedFontSize);
+	}
 </script>
 
 <aside
@@ -119,7 +150,7 @@
 			</div>
 		</div>
 		<div class={sidebarLabelClass()}>
-			<h1 class="truncate text-base font-bold">
+			<h1 class={['truncate font-bold', textClass.title]}>
 				{m.app_title()}
 			</h1>
 		</div>
@@ -128,7 +159,8 @@
 	<button
 		type="button"
 		class={[
-			'group mb-4 flex h-11 w-full items-center rounded-md text-sm font-bold text-white transition',
+			'group mb-4 flex h-11 w-full items-center rounded-md font-bold text-white transition',
+			textClass.control,
 			isCollapsed ? '' : 'bg-sky-500 shadow-sm hover:bg-sky-600'
 		]}
 		title={m.action_post()}
@@ -155,7 +187,8 @@
 			<button
 				type="button"
 				class={[
-					'group flex h-11 w-full items-center rounded-md text-sm font-medium transition',
+					'group flex h-11 w-full items-center rounded-md font-medium transition',
+					textClass.control,
 					isActive
 						? 'text-sky-700 dark:text-sky-300'
 						: 'text-slate-700 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white',
@@ -201,7 +234,8 @@
 	<button
 		type="button"
 		class={[
-			'group flex h-11 w-full items-center rounded-md text-sm font-medium text-slate-600 transition hover:text-slate-950 dark:text-slate-400 dark:hover:text-white',
+			'group flex h-11 w-full items-center rounded-md font-medium text-slate-600 transition hover:text-slate-950 dark:text-slate-400 dark:hover:text-white',
+			textClass.control,
 			isCollapsed ? '' : 'hover:bg-slate-100 dark:hover:bg-slate-900'
 		]}
 		title={m.add_column()}
@@ -225,7 +259,8 @@
 		<button
 			type="button"
 			class={[
-				'group flex h-11 w-full items-center rounded-md text-sm font-medium text-slate-600 transition hover:text-slate-950 dark:text-slate-400 dark:hover:text-white',
+				'group flex h-11 w-full items-center rounded-md font-medium text-slate-600 transition hover:text-slate-950 dark:text-slate-400 dark:hover:text-white',
+				textClass.control,
 				isCollapsed ? '' : 'hover:bg-slate-100 dark:hover:bg-slate-900'
 			]}
 			title={m.nav_settings()}
@@ -248,7 +283,8 @@
 		<button
 			type="button"
 			class={[
-				'group flex h-11 w-full items-center rounded-md text-sm font-medium text-slate-600 transition hover:text-slate-950 dark:text-slate-400 dark:hover:text-white',
+				'group flex h-11 w-full items-center rounded-md font-medium text-slate-600 transition hover:text-slate-950 dark:text-slate-400 dark:hover:text-white',
+				textClass.control,
 				isCollapsed ? '' : 'hover:bg-slate-100 dark:hover:bg-slate-900'
 			]}
 			title={sidebarToggleLabel()}
@@ -287,8 +323,8 @@
 				</div>
 			</div>
 			<div class={sidebarLabelClass()}>
-				<p class="truncate text-sm font-semibold">Mika</p>
-				<p class="truncate text-xs text-slate-500 dark:text-slate-400">
+				<p class={['truncate font-semibold', textClass.account]}>Mika</p>
+				<p class={['truncate text-slate-500 dark:text-slate-400', textClass.meta]}>
 					{m.account_role()}
 				</p>
 			</div>
@@ -309,54 +345,121 @@
 			<div class="mb-4 flex items-center justify-between gap-3">
 				<div class="flex min-w-0 items-center gap-2">
 					<Settings class="size-4 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden="true" />
-					<h2 id="settings-dialog-title" class="min-w-0 truncate text-base font-bold">
+					<h2 id="settings-dialog-title" class={['min-w-0 truncate font-bold', textClass.title]}>
 						{m.nav_settings()}
 					</h2>
 				</div>
 				<button
 					type="button"
-					class="h-9 rounded-md px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900"
+					class={[
+						'h-9 rounded-md px-3 font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900',
+						textClass.control
+					]}
 					onclick={closeSettingsDialog}
 				>
 					{m.close()}
 				</button>
 			</div>
 
-			<label
-				class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300"
-				for="locale"
-			>
-				<Languages class="size-4 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden="true" />
-				<span>{m.language_switcher()}</span>
-			</label>
-			<select
-				id="locale"
-				class="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950"
-				value={currentLocale}
-				onchange={selectLocale}
-			>
-				{#each locales as locale (locale)}
-					<option value={locale}>{localeLabels[locale]}</option>
-				{/each}
-			</select>
+			<section aria-labelledby="settings-general-title">
+				<h3
+					id="settings-general-title"
+					class={[
+						'mb-3 font-bold tracking-wide text-slate-500 uppercase dark:text-slate-400',
+						textClass.section
+					]}
+				>
+					{m.settings_general()}
+				</h3>
+				<label
+					class={[
+						'mb-2 flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-300',
+						textClass.label
+					]}
+					for="locale"
+				>
+					<Languages
+						class="size-4 shrink-0 text-slate-500 dark:text-slate-400"
+						aria-hidden="true"
+					/>
+					<span>{m.language_switcher()}</span>
+				</label>
+				<select
+					id="locale"
+					class={[
+						'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+						textClass.control
+					]}
+					value={currentLocale}
+					onchange={selectLocale}
+				>
+					{#each locales as locale (locale)}
+						<option value={locale}>{localeLabels[locale]}</option>
+					{/each}
+				</select>
+			</section>
 
-			<label
-				class="mt-4 mb-2 flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300"
-				for="theme"
-			>
-				<SunMoon class="size-4 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden="true" />
-				<span>{m.theme_switcher()}</span>
-			</label>
-			<select
-				id="theme"
-				class="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950"
-				value={themePreference}
-				onchange={selectTheme}
-			>
-				{#each themePreferences as theme (theme)}
-					<option value={theme}>{themeLabels[theme]()}</option>
-				{/each}
-			</select>
+			<section class="mt-5" aria-labelledby="settings-appearance-title">
+				<h3
+					id="settings-appearance-title"
+					class={[
+						'mb-3 font-bold tracking-wide text-slate-500 uppercase dark:text-slate-400',
+						textClass.section
+					]}
+				>
+					{m.settings_appearance()}
+				</h3>
+				<label
+					class={[
+						'mb-2 flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-300',
+						textClass.label
+					]}
+					for="theme"
+				>
+					<SunMoon class="size-4 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden="true" />
+					<span>{m.theme_switcher()}</span>
+				</label>
+				<select
+					id="theme"
+					class={[
+						'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+						textClass.control
+					]}
+					value={themePreference}
+					onchange={selectTheme}
+				>
+					{#each themePreferences as theme (theme)}
+						<option value={theme}>{themeLabels[theme]()}</option>
+					{/each}
+				</select>
+
+				<label
+					class={[
+						'mt-4 mb-2 flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-300',
+						textClass.label
+					]}
+					for="font-size"
+				>
+					<SlidersHorizontal
+						class="size-4 shrink-0 text-slate-500 dark:text-slate-400"
+						aria-hidden="true"
+					/>
+					<span>{m.font_size_switcher()}</span>
+				</label>
+				<select
+					id="font-size"
+					class={[
+						'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+						textClass.control
+					]}
+					value={fontSize}
+					onchange={selectFontSize}
+				>
+					{#each fontSizePreferences as size (size)}
+						<option value={size}>{fontSizeLabels[size]()}</option>
+					{/each}
+				</select>
+			</section>
 		</div>
 	</div>
 {/if}

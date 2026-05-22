@@ -74,6 +74,17 @@ async function expectStoredThemePreference(page: Page, value: string) {
 		.toBe(value);
 }
 
+async function expectStoredFontSize(page: Page, value: string) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				return storedValue ? JSON.parse(storedValue).fontSize : null;
+			}, userSettingsStorageKey)
+		)
+		.toBe(value);
+}
+
 async function expectThemeNotStoredInUiState(page: Page) {
 	await expect
 		.poll(async () =>
@@ -83,6 +94,25 @@ async function expectThemeNotStoredInUiState(page: Page) {
 			}, uiStateStorageKey)
 		)
 		.toBe(false);
+}
+
+async function expectFontSizeNotStoredInUiState(page: Page) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				return storedValue ? Object.hasOwn(JSON.parse(storedValue), 'fontSize') : false;
+			}, uiStateStorageKey)
+		)
+		.toBe(false);
+}
+
+async function fontSizePx(locator: Locator) {
+	await expect(locator).toBeVisible();
+
+	return Number.parseFloat(
+		await locator.evaluate((element) => window.getComputedStyle(element).fontSize)
+	);
 }
 
 async function expectComposerNextToSidebar(page: Page, composer: Locator) {
@@ -276,7 +306,10 @@ test.describe('nostter deck', () => {
 
 		await page.getByRole('button', { name: 'Settings' }).click();
 		await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+		await expect(page.getByText('General')).toBeVisible();
+		await expect(page.getByText('Appearance')).toBeVisible();
 		await expect(page.getByLabel('Theme')).toHaveValue('system');
+		await expect(page.getByLabel('Font size')).toHaveValue('medium');
 
 		await page.getByLabel('Theme').selectOption('dark');
 		await expect(page.locator('html')).toHaveClass(/dark/);
@@ -295,14 +328,52 @@ test.describe('nostter deck', () => {
 		await expectThemeNotStoredInUiState(page);
 	});
 
+	test('changes and persists the font size from user settings', async ({ page }) => {
+		await openDeck(page);
+
+		const postBody = page.getByText('Shipping a desktop-first deck today.');
+		const mediumFontSize = await fontSizePx(postBody);
+
+		await page.getByRole('button', { name: 'Settings' }).click();
+		const fontSizeSelect = page.getByLabel('Font size');
+		const fontSizeLabel = page.getByText('Font size');
+		const mediumSettingsFontSize = await fontSizePx(fontSizeLabel);
+
+		await expect(fontSizeSelect).toHaveValue('medium');
+		await expect
+			.poll(async () =>
+				fontSizeSelect
+					.locator('option')
+					.evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value))
+			)
+			.toEqual(['large', 'medium', 'small']);
+
+		await fontSizeSelect.selectOption('small');
+		await expectStoredFontSize(page, 'small');
+		await expectFontSizeNotStoredInUiState(page);
+		await expect.poll(() => fontSizePx(postBody)).toBeLessThan(mediumFontSize);
+		await expect.poll(() => fontSizePx(fontSizeLabel)).toBeLessThan(mediumSettingsFontSize);
+
+		await fontSizeSelect.selectOption('large');
+		await expectStoredFontSize(page, 'large');
+		await expect.poll(() => fontSizePx(postBody)).toBeGreaterThan(mediumFontSize);
+		await expect.poll(() => fontSizePx(fontSizeLabel)).toBeGreaterThan(mediumSettingsFontSize);
+
+		await page.reload();
+		await page.getByRole('button', { name: 'Settings' }).click();
+		await expect(page.getByLabel('Font size')).toHaveValue('large');
+		await expectStoredFontSize(page, 'large');
+	});
+
 	test('ignores invalid persisted user settings', async ({ page }) => {
 		await page.addInitScript((key) => {
-			window.localStorage.setItem(key, JSON.stringify({ theme: 'sepia' }));
+			window.localStorage.setItem(key, JSON.stringify({ theme: 'sepia', fontSize: 'giant' }));
 		}, userSettingsStorageKey);
 		await openDeck(page);
 
 		await page.getByRole('button', { name: 'Settings' }).click();
 		await expect(page.getByLabel('Theme')).toHaveValue('system');
+		await expect(page.getByLabel('Font size')).toHaveValue('medium');
 	});
 
 	test('opens the compose panel from the sidebar', async ({ page }) => {

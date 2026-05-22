@@ -5,7 +5,9 @@
 	import Sidebar from '$lib/components/deck/Sidebar.svelte';
 	import { columnSourceKeys, initialColumnConfigs, sourcePosts } from '$lib/deck/data';
 	import type { Column, ColumnConfig, ColumnSourceKey } from '$lib/deck/types';
+	import { textClassByFontSize } from '$lib/font-size';
 	import { m } from '$lib/paraglide/messages.js';
+	import { readUserSettings, type FontSize } from '$lib/user-settings';
 
 	let columnConfigs = $state<ColumnConfig[]>(initialColumnConfigs.map((column) => ({ ...column })));
 	let activeColumnId = $state(initialColumnConfigs[0]?.id ?? '');
@@ -13,12 +15,14 @@
 	let openSettingsColumnId = $state<string | null>(null);
 	let isComposePanelOpen = $state(false);
 	let composeText = $state('');
+	let fontSize = $state<FontSize>(readUserSettings().fontSize);
 	let selectedSourceKey = $state<ColumnSourceKey>('timeline_home');
 	let nextColumnId = $state(initialColumnConfigs.length + 1);
 
 	const composeMaxLength = 280;
 	const composeLength = $derived(composeText.length);
 	const canSubmitPost = $derived(composeLength > 0 && composeLength <= composeMaxLength);
+	const textClass = $derived(textClassByFontSize[fontSize]);
 	const columns = $derived<Column[]>(
 		columnConfigs.map((column) => ({
 			...column,
@@ -114,6 +118,10 @@
 	function toggleColumnSettings(columnId: string) {
 		openSettingsColumnId = openSettingsColumnId === columnId ? null : columnId;
 	}
+
+	function updateFontSize(nextFontSize: FontSize) {
+		fontSize = nextFontSize;
+	}
 </script>
 
 <svelte:head>
@@ -128,6 +136,8 @@
 		{activeColumnId}
 		onAddColumn={openAddColumnDialog}
 		onCompose={toggleComposePanel}
+		{fontSize}
+		onFontSizeChange={updateFontSize}
 		onSelectColumn={focusColumn}
 	/>
 
@@ -141,13 +151,16 @@
 			>
 				<div class="flex min-w-0 items-center gap-2">
 					<Send class="size-4 shrink-0 text-sky-500" aria-hidden="true" />
-					<h2 id="compose-panel-title" class="min-w-0 truncate text-base font-bold">
+					<h2 id="compose-panel-title" class={['min-w-0 truncate font-bold', textClass.heading]}>
 						{m.action_post()}
 					</h2>
 				</div>
 				<button
 					type="button"
-					class="h-9 rounded-md px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900"
+					class={[
+						'h-9 rounded-md px-3 font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900',
+						textClass.control
+					]}
 					onclick={closeComposePanel}
 				>
 					{m.close()}
@@ -164,8 +177,8 @@
 						<UserRound class="size-4" aria-hidden="true" />
 					</div>
 					<div class="min-w-0">
-						<p class="truncate text-sm font-bold">Mika</p>
-						<p class="truncate text-xs text-slate-500 dark:text-slate-400">
+						<p class={['truncate font-bold', textClass.control]}>Mika</p>
+						<p class={['truncate text-slate-500 dark:text-slate-400', textClass.meta]}>
 							@mika · {m.account_role()}
 						</p>
 					</div>
@@ -174,7 +187,10 @@
 				<label class="sr-only" for="compose-text">{m.post_text()}</label>
 				<textarea
 					id="compose-text"
-					class="min-h-[220px] flex-1 resize-none rounded-md border border-slate-200 bg-white p-3 text-base leading-6 text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950"
+					class={[
+						'min-h-[220px] flex-1 resize-none rounded-md border border-slate-200 bg-white p-3 text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+						textClass.textarea
+					]}
 					placeholder={m.compose_placeholder()}
 					bind:value={composeText}
 				></textarea>
@@ -209,7 +225,8 @@
 
 					<p
 						class={[
-							'text-sm font-semibold tabular-nums',
+							'font-semibold tabular-nums',
+							textClass.control,
 							composeLength > composeMaxLength
 								? 'text-rose-600 dark:text-rose-400'
 								: 'text-slate-500 dark:text-slate-400'
@@ -223,7 +240,10 @@
 				<div class="mt-4 flex justify-end">
 					<button
 						type="button"
-						class="h-10 rounded-md bg-sky-500 px-4 text-sm font-bold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300 disabled:dark:bg-slate-800 disabled:dark:text-slate-500"
+						class={[
+							'h-10 rounded-md bg-sky-500 px-4 font-bold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300 disabled:dark:bg-slate-800 disabled:dark:text-slate-500',
+							textClass.control
+						]}
 						disabled={!canSubmitPost}
 					>
 						{m.action_post()}
@@ -245,6 +265,7 @@
 						isSettingsOpen={openSettingsColumnId === column.id}
 						canMoveLeft={columnIndex > 0}
 						canMoveRight={columnIndex >= 0 && columnIndex < columnConfigs.length - 1}
+						{fontSize}
 						onToggleSettings={() => toggleColumnSettings(column.id)}
 						onDelete={() => deleteColumn(column.id)}
 						onMoveLeft={() => moveColumn(column.id, -1)}
@@ -261,7 +282,7 @@
 					>
 						<Plus class="size-5" aria-hidden="true" />
 					</span>
-					<span class="text-sm font-semibold">{m.add_column()}</span>
+					<span class={['font-semibold', textClass.control]}>{m.add_column()}</span>
 				</button>
 			</div>
 		</div>
@@ -279,20 +300,23 @@
 			aria-labelledby="column-dialog-title"
 		>
 			<div class="mb-4 flex items-center justify-between gap-3">
-				<h2 id="column-dialog-title" class="text-base font-bold">
+				<h2 id="column-dialog-title" class={['font-bold', textClass.heading]}>
 					{m.add_column()}
 				</h2>
 			</div>
 
 			<label
-				class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+				class={['mb-2 block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
 				for="column-type"
 			>
 				{m.column_type()}
 			</label>
 			<select
 				id="column-type"
-				class="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950"
+				class={[
+					'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+					textClass.control
+				]}
 				bind:value={selectedSourceKey}
 			>
 				{#each columnSourceKeys as sourceKey (sourceKey)}
@@ -304,14 +328,20 @@
 				<div class="flex gap-2">
 					<button
 						type="button"
-						class="h-9 rounded-md px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900"
+						class={[
+							'h-9 rounded-md px-3 font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900',
+							textClass.control
+						]}
 						onclick={closeColumnDialog}
 					>
 						{m.cancel()}
 					</button>
 					<button
 						type="button"
-						class="h-9 rounded-md bg-sky-500 px-3 text-sm font-semibold text-white transition hover:bg-sky-600 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300"
+						class={[
+							'h-9 rounded-md bg-sky-500 px-3 font-semibold text-white transition hover:bg-sky-600 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300',
+							textClass.control
+						]}
 						onclick={saveColumnDialog}
 					>
 						{m.save()}

@@ -11,6 +11,8 @@
 	} from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Column } from '$lib/deck/types';
+	import { textClassByFontSize } from '$lib/font-size';
+	import type { FontSize } from '$lib/user-settings';
 	import PostCard from './PostCard.svelte';
 
 	type Props = {
@@ -20,6 +22,7 @@
 		isSettingsOpen: boolean;
 		canMoveLeft: boolean;
 		canMoveRight: boolean;
+		fontSize: FontSize;
 		onToggleSettings: () => void;
 		onDelete: () => void;
 		onMoveLeft: () => void;
@@ -33,6 +36,7 @@
 		isSettingsOpen,
 		canMoveLeft,
 		canMoveRight,
+		fontSize,
 		onToggleSettings,
 		onDelete,
 		onMoveLeft,
@@ -44,6 +48,7 @@
 		'flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100';
 	const settingsActionClass =
 		'flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 disabled:dark:hover:bg-transparent';
+	const textClass = $derived(textClassByFontSize[fontSize]);
 </script>
 
 <section
@@ -68,7 +73,7 @@
 				{:else}
 					<List class={columnIconClass} aria-hidden="true" />
 				{/if}
-				<h2 class="min-w-0 truncate text-base font-bold">
+				<h2 class={['min-w-0 truncate font-bold', textClass.title]}>
 					{m[column.sourceKey]()}
 				</h2>
 			</div>
@@ -94,7 +99,7 @@
 			<div class="grid grid-cols-2 gap-2">
 				<button
 					type="button"
-					class={settingsActionClass}
+					class={[settingsActionClass, textClass.control]}
 					title={m.move_column_left()}
 					aria-label={m.move_column_left()}
 					disabled={!canMoveLeft}
@@ -105,7 +110,7 @@
 				</button>
 				<button
 					type="button"
-					class={settingsActionClass}
+					class={[settingsActionClass, textClass.control]}
 					title={m.move_column_right()}
 					aria-label={m.move_column_right()}
 					disabled={!canMoveRight}
@@ -117,7 +122,10 @@
 			</div>
 			<button
 				type="button"
-				class="mt-2 flex h-9 w-full items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40"
+				class={[
+					'mt-2 flex h-9 w-full items-center justify-center gap-2 rounded-md px-3 font-semibold text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40',
+					textClass.control
+				]}
 				onclick={onDelete}
 			>
 				<Trash2 class="size-4 shrink-0" aria-hidden="true" />
@@ -128,7 +136,7 @@
 
 	<div class="min-h-0 flex-1 overflow-y-auto">
 		{#each column.posts as post (`${column.id}-${post.author}-${post.time}`)}
-			<PostCard {post} />
+			<PostCard {post} {fontSize} />
 		{/each}
 	</div>
 </section>

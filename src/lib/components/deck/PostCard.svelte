@@ -2,12 +2,16 @@
 	import { Heart, MessageCircle, Ellipsis, Repeat2, Share, ShieldCheck } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Post } from '$lib/deck/types';
+	import { textClassByFontSize } from '$lib/font-size';
+	import type { FontSize } from '$lib/user-settings';
 
 	type Props = {
 		post: Post;
+		fontSize: FontSize;
 	};
 
-	const { post }: Props = $props();
+	const { post, fontSize }: Props = $props();
+	const textClass = $derived(textClassByFontSize[fontSize]);
 </script>
 
 <article
@@ -23,10 +27,10 @@
 			<div class="flex items-start justify-between gap-2">
 				<div class="min-w-0">
 					<div class="flex min-w-0 items-center gap-1.5">
-						<p class="truncate text-sm font-bold">{post.author}</p>
+						<p class={['truncate font-bold', textClass.account]}>{post.author}</p>
 						<ShieldCheck class="size-4 shrink-0 text-sky-500" aria-label={m.verified()} />
 					</div>
-					<p class="truncate text-xs text-slate-500 dark:text-slate-400">
+					<p class={['truncate text-slate-500 dark:text-slate-400', textClass.meta]}>
 						{post.handle} · {post.time}
 					</p>
 				</div>
@@ -40,12 +44,17 @@
 				</button>
 			</div>
 
-			<p class="mt-2 text-sm leading-5 text-slate-800 dark:text-slate-200">{post.body}</p>
+			<p class={['mt-2 text-slate-800 dark:text-slate-200', textClass.body]}>
+				{post.body}
+			</p>
 
 			<div class="mt-2 flex flex-wrap gap-1.5">
 				{#each post.tags as tag (tag)}
 					<span
-						class="rounded-md bg-sky-50 px-2 py-1 text-xs font-medium text-sky-700 dark:bg-sky-950/60 dark:text-sky-300"
+						class={[
+							'rounded-md bg-sky-50 px-2 py-1 font-medium text-sky-700 dark:bg-sky-950/60 dark:text-sky-300',
+							textClass.tag
+						]}
 					>
 						{tag}
 					</span>
@@ -60,7 +69,7 @@
 						{post.attachment.label}
 					</p>
 					<p class="mt-1 truncate text-sm font-bold">{post.attachment.title}</p>
-					<p class="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
+					<p class={['mt-1 text-slate-600 dark:text-slate-300', textClass.attachment]}>
 						{post.attachment.body}
 					</p>
 				</div>
@@ -69,7 +78,10 @@
 			<div class="mt-3 grid grid-cols-4 text-slate-500 dark:text-slate-400">
 				<button
 					type="button"
-					class="flex h-8 items-center gap-1 rounded-md text-xs transition hover:bg-sky-50 hover:text-sky-600 dark:hover:bg-sky-950/40 dark:hover:text-sky-300"
+					class={[
+						'flex h-8 items-center gap-1 rounded-md transition hover:bg-sky-50 hover:text-sky-600 dark:hover:bg-sky-950/40 dark:hover:text-sky-300',
+						textClass.action
+					]}
 					title={m.reply()}
 					aria-label={m.reply()}
 				>
@@ -78,7 +90,10 @@
 				</button>
 				<button
 					type="button"
-					class="flex h-8 items-center gap-1 rounded-md text-xs transition hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300"
+					class={[
+						'flex h-8 items-center gap-1 rounded-md transition hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300',
+						textClass.action
+					]}
 					title={m.repost()}
 					aria-label={m.repost()}
 				>
@@ -87,7 +102,10 @@
 				</button>
 				<button
 					type="button"
-					class="flex h-8 items-center gap-1 rounded-md text-xs transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
+					class={[
+						'flex h-8 items-center gap-1 rounded-md transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-300',
+						textClass.action
+					]}
 					title={m.like()}
 					aria-label={m.like()}
 				>
