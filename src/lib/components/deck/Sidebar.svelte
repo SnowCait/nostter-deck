@@ -92,6 +92,29 @@
 		</div>
 	</div>
 
+	<button
+		type="button"
+		class={[
+			'group mb-4 flex h-11 w-full items-center rounded-md text-sm font-bold text-white transition',
+			isCollapsed ? '' : 'bg-sky-500 shadow-sm hover:bg-sky-600'
+		]}
+		title={m.action_post()}
+		aria-label={m.action_post()}
+		onclick={onCompose}
+	>
+		<span
+			class={[
+				'flex size-11 shrink-0 items-center justify-center rounded-md transition',
+				isCollapsed ? 'bg-sky-500 shadow-sm group-hover:bg-sky-600' : ''
+			]}
+		>
+			<Send class="size-4" aria-hidden="true" />
+		</span>
+		<span class={`${sidebarLabelClass()} truncate text-left`}>
+			{m.action_post()}
+		</span>
+	</button>
+
 	<nav class="flex w-full flex-col gap-1" aria-label={m.app_title()}>
 		{#each columns as column (column.id)}
 			{@const isActive = activeColumnId === column.id}
@@ -154,29 +177,6 @@
 		</span>
 		<span class={`${sidebarLabelClass()} truncate text-left`}>
 			{m.add_column()}
-		</span>
-	</button>
-
-	<button
-		type="button"
-		class={[
-			'group mt-4 flex h-11 w-full items-center rounded-md text-sm font-bold text-white transition',
-			isCollapsed ? '' : 'bg-sky-500 shadow-sm hover:bg-sky-600'
-		]}
-		title={m.action_post()}
-		aria-label={m.action_post()}
-		onclick={onCompose}
-	>
-		<span
-			class={[
-				'flex size-11 shrink-0 items-center justify-center rounded-md transition',
-				isCollapsed ? 'bg-sky-500 shadow-sm group-hover:bg-sky-600' : ''
-			]}
-		>
-			<Send class="size-4" aria-hidden="true" />
-		</span>
-		<span class={`${sidebarLabelClass()} truncate text-left`}>
-			{m.action_post()}
 		</span>
 	</button>
 

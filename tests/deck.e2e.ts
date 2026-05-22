@@ -61,6 +61,13 @@ async function expectComposerNextToSidebar(page: Page, composer: Locator) {
 	).toBeLessThanOrEqual(sidebarCenterTolerance);
 }
 
+async function expectAbove(upper: Locator, lower: Locator, label: string) {
+	const upperBox = await requiredBox(upper, `${label} upper item`);
+	const lowerBox = await requiredBox(lower, `${label} lower item`);
+
+	expect(upperBox.y + upperBox.height, `${label} should be above`).toBeLessThanOrEqual(lowerBox.y);
+}
+
 async function expectColumnOrder(columns: Locator, names: string[]) {
 	await expect(columns).toHaveCount(names.length);
 	await expect(columns.locator('header h2')).toHaveText(names);
@@ -114,6 +121,11 @@ test.describe('nostter deck', () => {
 
 		await expect(page).toHaveTitle('nostter deck');
 		await expect(page.getByRole('heading', { name: 'nostter deck' })).toBeVisible();
+		await expectAbove(
+			sidebar(page).getByRole('button', { name: 'Post' }),
+			sidebar(page).getByRole('button', { name: 'Home' }),
+			'Post button'
+		);
 		await expectColumnOrder(deckColumns(page), columnNames);
 		await expect(page.getByText('Shipping a desktop-first deck today.')).toBeVisible();
 		await expect(
