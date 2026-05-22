@@ -263,30 +263,6 @@
 				textClass.control,
 				isCollapsed ? '' : 'hover:bg-slate-100 dark:hover:bg-slate-900'
 			]}
-			title={m.nav_settings()}
-			aria-label={m.nav_settings()}
-			onclick={openSettingsDialog}
-		>
-			<span
-				class={[
-					'flex size-11 shrink-0 items-center justify-center rounded-md transition',
-					isCollapsed ? 'group-hover:bg-slate-100 dark:group-hover:bg-slate-900' : ''
-				]}
-			>
-				<Settings class="size-5 shrink-0" aria-hidden="true" />
-			</span>
-			<span class={`${sidebarLabelClass()} truncate text-left`}>
-				{m.nav_settings()}
-			</span>
-		</button>
-
-		<button
-			type="button"
-			class={[
-				'group flex h-11 w-full items-center rounded-md font-medium text-slate-600 transition hover:text-slate-950 dark:text-slate-400 dark:hover:text-white',
-				textClass.control,
-				isCollapsed ? '' : 'hover:bg-slate-100 dark:hover:bg-slate-900'
-			]}
 			title={sidebarToggleLabel()}
 			aria-label={sidebarToggleLabel()}
 			aria-pressed={isCollapsed}
@@ -306,6 +282,30 @@
 			</span>
 			<span class={`${sidebarLabelClass()} truncate text-left`}>
 				{m.collapse_sidebar()}
+			</span>
+		</button>
+
+		<button
+			type="button"
+			class={[
+				'group flex h-11 w-full items-center rounded-md font-medium text-slate-600 transition hover:text-slate-950 dark:text-slate-400 dark:hover:text-white',
+				textClass.control,
+				isCollapsed ? '' : 'hover:bg-slate-100 dark:hover:bg-slate-900'
+			]}
+			title={m.nav_settings()}
+			aria-label={m.nav_settings()}
+			onclick={openSettingsDialog}
+		>
+			<span
+				class={[
+					'flex size-11 shrink-0 items-center justify-center rounded-md transition',
+					isCollapsed ? 'group-hover:bg-slate-100 dark:group-hover:bg-slate-900' : ''
+				]}
+			>
+				<Settings class="size-5 shrink-0" aria-hidden="true" />
+			</span>
+			<span class={`${sidebarLabelClass()} truncate text-left`}>
+				{m.nav_settings()}
 			</span>
 		</button>
 
