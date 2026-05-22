@@ -6,14 +6,23 @@
 
 	type Props = {
 		column: Column;
+		id: string;
+		isFocused: boolean;
 	};
 
-	const { column }: Props = $props();
+	const { column, id, isFocused }: Props = $props();
 
 	const columnIconClass = 'size-4 shrink-0 text-slate-500';
 </script>
 
-<section class="flex h-full w-[342px] flex-col overflow-hidden border-r border-slate-200 bg-white">
+<section
+	{id}
+	tabindex="-1"
+	class={[
+		'flex h-full w-[342px] flex-col overflow-hidden border-r border-slate-200 bg-white transition-shadow outline-none',
+		isFocused ? 'relative z-10 shadow-[inset_0_0_0_2px_rgba(14,165,233,0.45)]' : ''
+	]}
+>
 	<header class="shrink-0 border-b border-slate-200 bg-white px-3 py-2.5">
 		<div class="flex items-center justify-between gap-3">
 			<div class="flex min-w-0 items-center gap-2">
