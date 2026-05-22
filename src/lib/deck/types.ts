@@ -14,6 +14,14 @@ export type MessageKey =
 	| 'timeline_mentions'
 	| 'timeline_search'
 	| 'timeline_lists'
+	| 'add_column'
+	| 'edit_column'
+	| 'column_type'
+	| 'save'
+	| 'cancel'
+	| 'delete_column'
+	| 'move_column_left'
+	| 'move_column_right'
 	| 'column_options'
 	| 'reply'
 	| 'repost'
@@ -25,6 +33,12 @@ export type ColumnTitleKey = Extract<
 	MessageKey,
 	'timeline_home' | 'timeline_mentions' | 'timeline_search' | 'timeline_lists'
 >;
+export type ColumnSourceKey = ColumnTitleKey;
+
+export type ColumnConfig = {
+	id: string;
+	sourceKey: ColumnSourceKey;
+};
 
 export type Post = {
 	author: string;
@@ -45,7 +59,6 @@ export type Post = {
 	};
 };
 
-export type Column = {
-	titleKey: ColumnTitleKey;
+export type Column = ColumnConfig & {
 	posts: Post[];
 };

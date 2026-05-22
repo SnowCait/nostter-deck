@@ -7,6 +7,7 @@
 		PawPrint,
 		PanelLeftClose,
 		PanelLeftOpen,
+		Plus,
 		Search,
 		Send,
 		Settings,
@@ -14,15 +15,17 @@
 	} from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { getLocale, locales, setLocale } from '$lib/paraglide/runtime.js';
-	import type { ColumnTitleKey, MessageKey } from '$lib/deck/types';
+	import type { Column, ColumnSourceKey } from '$lib/deck/types';
 
 	type AppLocale = (typeof locales)[number];
 	type Props = {
-		activeColumn: ColumnTitleKey;
-		onSelectColumn: (columnTitleKey: ColumnTitleKey) => void;
+		columns: Pick<Column, 'id' | 'sourceKey'>[];
+		activeColumnId: string;
+		onAddColumn: () => void;
+		onSelectColumn: (columnId: string) => void;
 	};
 
-	const { activeColumn, onSelectColumn }: Props = $props();
+	const { columns, activeColumnId, onAddColumn, onSelectColumn }: Props = $props();
 	const currentLocale = getLocale();
 	let isCollapsed = $state(false);
 
@@ -31,17 +34,12 @@
 		ja: 'JA'
 	};
 
-	const navItems = [
-		{ labelKey: 'timeline_home', columnTitleKey: 'timeline_home', icon: House },
-		{ labelKey: 'timeline_mentions', columnTitleKey: 'timeline_mentions', icon: Bell, badge: '8' },
-		{ labelKey: 'timeline_search', columnTitleKey: 'timeline_search', icon: Search },
-		{ labelKey: 'timeline_lists', columnTitleKey: 'timeline_lists', icon: List }
-	] satisfies Array<{
-		labelKey: MessageKey;
-		columnTitleKey: ColumnTitleKey;
-		icon: typeof House;
-		badge?: string;
-	}>;
+	const columnIconBySource = {
+		timeline_home: House,
+		timeline_mentions: Bell,
+		timeline_search: Search,
+		timeline_lists: List
+	} satisfies Record<ColumnSourceKey, typeof House>;
 
 	const sidebarToggleLabel = () => (isCollapsed ? m.expand_sidebar() : m.collapse_sidebar());
 	const sidebarLabelClass = () =>
@@ -80,8 +78,9 @@
 	</div>
 
 	<nav class="flex w-full flex-col gap-1" aria-label={m.app_title()}>
-		{#each navItems as item (item.labelKey)}
-			{@const isActive = activeColumn === item.columnTitleKey}
+		{#each columns as column (column.id)}
+			{@const isActive = activeColumnId === column.id}
+			{@const ColumnIcon = columnIconBySource[column.sourceKey]}
 			<button
 				type="button"
 				class={[
@@ -90,10 +89,10 @@
 					!isCollapsed && isActive ? 'bg-sky-50' : '',
 					!isCollapsed && !isActive ? 'hover:bg-slate-100' : ''
 				]}
-				title={m[item.labelKey]()}
-				aria-label={m[item.labelKey]()}
+				title={m[column.sourceKey]()}
+				aria-label={m[column.sourceKey]()}
 				aria-current={isActive ? 'page' : undefined}
-				onclick={() => onSelectColumn(item.columnTitleKey)}
+				onclick={() => onSelectColumn(column.id)}
 			>
 				<span
 					class={[
@@ -102,23 +101,46 @@
 						isCollapsed && !isActive ? 'group-hover:bg-slate-100 group-hover:text-slate-950' : ''
 					]}
 				>
-					<item.icon class="size-5 shrink-0" aria-hidden="true" />
+					<ColumnIcon class="size-5 shrink-0" aria-hidden="true" />
 				</span>
 				<span class={`${sidebarLabelClass()} flex-1 truncate text-left`}>
-					{m[item.labelKey]()}
+					{m[column.sourceKey]()}
 				</span>
-				{#if item.badge}
+				{#if column.sourceKey === 'timeline_mentions'}
 					<span class={sidebarBadgeClass()}>
 						<span
 							class="mr-2 rounded-full bg-sky-500 px-1.5 py-0.5 text-[11px] leading-none font-semibold text-white"
 						>
-							{item.badge}
+							8
 						</span>
 					</span>
 				{/if}
 			</button>
 		{/each}
 	</nav>
+
+	<button
+		type="button"
+		class={[
+			'group mt-3 flex h-11 w-full items-center rounded-md text-sm font-medium text-slate-600 transition hover:text-slate-950',
+			isCollapsed ? '' : 'hover:bg-slate-100'
+		]}
+		title={m.add_column()}
+		aria-label={m.add_column()}
+		onclick={onAddColumn}
+	>
+		<span
+			class={[
+				'flex size-11 shrink-0 items-center justify-center rounded-md transition',
+				isCollapsed ? 'group-hover:bg-slate-100' : ''
+			]}
+		>
+			<Plus class="size-5 shrink-0" aria-hidden="true" />
+		</span>
+		<span class={`${sidebarLabelClass()} truncate text-left`}>
+			{m.add_column()}
+		</span>
+	</button>
 
 	<button
 		type="button"
