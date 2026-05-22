@@ -42,7 +42,7 @@
 		"globals": "^17.3.0",
 		"prettier": "^3.8.1",
 		"prettier-plugin-svelte": "^3.4.1",
-		"prettier-plugin-tailwindcss": "^0.7.2",
+		"prettier-plugin-tailwindcss": "^0.8.0",
 		"rollup-plugin-visualizer": "^7.0.1",
 		"shadcn-svelte": "^1.2.7",
 		"svelte": "^5.0.0",
