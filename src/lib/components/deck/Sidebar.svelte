@@ -157,10 +157,12 @@
 		{/each}
 	</nav>
 
+	<div class="my-3 w-full border-t border-slate-200" aria-hidden="true"></div>
+
 	<button
 		type="button"
 		class={[
-			'group mt-3 flex h-11 w-full items-center rounded-md text-sm font-medium text-slate-600 transition hover:text-slate-950',
+			'group flex h-11 w-full items-center rounded-md text-sm font-medium text-slate-600 transition hover:text-slate-950',
 			isCollapsed ? '' : 'hover:bg-slate-100'
 		]}
 		title={m.add_column()}
