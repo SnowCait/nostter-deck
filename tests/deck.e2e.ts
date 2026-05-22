@@ -14,6 +14,7 @@ const sidebarExpandedWidth = 236;
 const sidebarCollapsedWidth = 60;
 const composerWidth = 360;
 const sidebarCenterTolerance = 1;
+const uiStateStorageKey = 'nostter:ui-state';
 
 async function openDeck(page: Page) {
 	await page.addInitScript(() => {
@@ -48,6 +49,17 @@ async function expectSidebarWidth(page: Page, width: number) {
 	await expect
 		.poll(async () => Math.round((await sidebar(page).boundingBox())?.width ?? 0))
 		.toBe(width);
+}
+
+async function expectStoredSidebarCollapsed(page: Page, value: boolean) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				return storedValue ? JSON.parse(storedValue).sidebarCollapsed : null;
+			}, uiStateStorageKey)
+		)
+		.toBe(value);
 }
 
 async function expectComposerNextToSidebar(page: Page, composer: Locator) {
@@ -170,12 +182,41 @@ test.describe('nostter deck', () => {
 		const expandButton = page.getByRole('button', { name: 'Expand sidebar' });
 		await expect(expandButton).toHaveAttribute('aria-pressed', 'true');
 		await expectSidebarWidth(page, sidebarCollapsedWidth);
+		await expectStoredSidebarCollapsed(page, true);
 		await expectSidebarIconsCentered(page, [...sidebarButtonNames, 'Expand sidebar']);
 		expect(
 			Math.abs((await iconCenterX(page, 'Expand sidebar')) - expandedIconCenterX)
 		).toBeLessThanOrEqual(sidebarCenterTolerance);
 
+		await page.reload();
+		await expect(page.getByRole('button', { name: 'Expand sidebar' })).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
+		await expectSidebarWidth(page, sidebarCollapsedWidth);
+
 		await expandButton.click();
+		await expect(page.getByRole('button', { name: 'Collapse sidebar' })).toHaveAttribute(
+			'aria-pressed',
+			'false'
+		);
+		await expectSidebarWidth(page, sidebarExpandedWidth);
+		await expectStoredSidebarCollapsed(page, false);
+
+		await page.reload();
+		await expect(page.getByRole('button', { name: 'Collapse sidebar' })).toHaveAttribute(
+			'aria-pressed',
+			'false'
+		);
+		await expectSidebarWidth(page, sidebarExpandedWidth);
+	});
+
+	test('ignores invalid persisted sidebar state', async ({ page }) => {
+		await page.addInitScript((key) => {
+			window.localStorage.setItem(key, 'not-json');
+		}, uiStateStorageKey);
+		await openDeck(page);
+
 		await expect(page.getByRole('button', { name: 'Collapse sidebar' })).toHaveAttribute(
 			'aria-pressed',
 			'false'

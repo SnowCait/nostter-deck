@@ -16,6 +16,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import { getLocale, locales, setLocale } from '$lib/paraglide/runtime.js';
 	import type { Column, ColumnSourceKey } from '$lib/deck/types';
+	import { readUiState, updateUiState } from '$lib/ui-state';
 
 	type AppLocale = (typeof locales)[number];
 	type Props = {
@@ -28,7 +29,7 @@
 
 	const { columns, activeColumnId, onAddColumn, onCompose, onSelectColumn }: Props = $props();
 	const currentLocale = getLocale();
-	let isCollapsed = $state(false);
+	let isCollapsed = $state(readUiState().sidebarCollapsed);
 	let isSettingsDialogOpen = $state(false);
 
 	const localeLabels: Record<AppLocale, string> = {
@@ -56,7 +57,12 @@
 		].join(' ');
 
 	function toggleSidebar() {
-		isCollapsed = !isCollapsed;
+		const nextIsCollapsed = !isCollapsed;
+		isCollapsed = nextIsCollapsed;
+		updateUiState((currentState) => ({
+			...currentState,
+			sidebarCollapsed: nextIsCollapsed
+		}));
 	}
 
 	function openSettingsDialog() {
