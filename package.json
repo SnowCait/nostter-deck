@@ -15,7 +15,9 @@
 		"tauri:build": "tauri build",
 		"tauri:update": "npm update && cd src-tauri && cargo update",
 		"lint": "prettier --check . && eslint .",
-		"format": "prettier --write ."
+		"format": "prettier --write .",
+		"test:e2e": "playwright install && playwright test",
+		"test": "npm run test:e2e"
 	},
 	"license": "MIT",
 	"dependencies": {
@@ -29,6 +31,7 @@
 		"@fontsource-variable/inter": "^5.2.8",
 		"@inlang/paraglide-js": "^2.10.0",
 		"@lucide/svelte": "^1.16.0",
+		"@playwright/test": "^1.59.1",
 		"@sveltejs/adapter-static": "^3.0.6",
 		"@sveltejs/kit": "^2.9.0",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
