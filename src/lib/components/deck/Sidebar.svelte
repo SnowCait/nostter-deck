@@ -22,10 +22,11 @@
 		columns: Pick<Column, 'id' | 'sourceKey'>[];
 		activeColumnId: string;
 		onAddColumn: () => void;
+		onCompose: () => void;
 		onSelectColumn: (columnId: string) => void;
 	};
 
-	const { columns, activeColumnId, onAddColumn, onSelectColumn }: Props = $props();
+	const { columns, activeColumnId, onAddColumn, onCompose, onSelectColumn }: Props = $props();
 	const currentLocale = getLocale();
 	let isCollapsed = $state(false);
 	let isSettingsDialogOpen = $state(false);
@@ -74,7 +75,7 @@
 
 <aside
 	class={[
-		'flex shrink-0 flex-col border-r border-slate-200 bg-white/95 px-2 py-4 transition-[width] duration-200 ease-out',
+		'flex min-h-0 shrink-0 flex-col border-r border-slate-200 bg-white/95 px-2 py-4 transition-[width] duration-200 ease-out',
 		isCollapsed ? 'w-[60px]' : 'w-[236px]'
 	]}
 >
@@ -164,6 +165,7 @@
 		]}
 		title={m.action_post()}
 		aria-label={m.action_post()}
+		onclick={onCompose}
 	>
 		<span
 			class={[

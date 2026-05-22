@@ -12,6 +12,7 @@ const sidebarButtonNames = [
 ];
 const sidebarExpandedWidth = 236;
 const sidebarCollapsedWidth = 60;
+const composerWidth = 360;
 const sidebarCenterTolerance = 1;
 
 async function openDeck(page: Page) {
@@ -47,6 +48,17 @@ async function expectSidebarWidth(page: Page, width: number) {
 	await expect
 		.poll(async () => Math.round((await sidebar(page).boundingBox())?.width ?? 0))
 		.toBe(width);
+}
+
+async function expectComposerNextToSidebar(page: Page, composer: Locator) {
+	const sidebarBox = await requiredBox(sidebar(page), 'sidebar');
+	const composerBox = await requiredBox(composer, 'composer');
+
+	expect(Math.round(composerBox.width), 'composer should keep its lane width').toBe(composerWidth);
+	expect(
+		Math.abs(composerBox.x - (sidebarBox.x + sidebarBox.width)),
+		'composer should sit directly next to the sidebar'
+	).toBeLessThanOrEqual(sidebarCenterTolerance);
 }
 
 async function expectColumnOrder(columns: Locator, names: string[]) {
@@ -181,5 +193,51 @@ test.describe('nostter deck', () => {
 		await page.getByRole('button', { name: 'Settings' }).click();
 		await page.getByRole('button', { name: 'Close' }).click();
 		await expect(page.getByRole('dialog', { name: 'Settings' })).toBeHidden();
+	});
+
+	test('opens the compose panel from the sidebar', async ({ page }) => {
+		await openDeck(page);
+
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+		await expectSidebarWidth(page, sidebarExpandedWidth);
+		const composer = page.getByRole('region', { name: 'Post' });
+		await expect(composer).toBeVisible();
+		await expectComposerNextToSidebar(page, composer);
+		await expect(composer.getByText('Mika', { exact: true })).toBeVisible();
+		await expect(composer.getByLabel('Post text')).toHaveValue('');
+		await expect(composer.getByText('0 / 280')).toBeVisible();
+		await expect(composer.getByRole('button', { name: 'Post', exact: true })).toBeDisabled();
+
+		await expect(composer.getByRole('button', { name: 'Add media' })).toBeVisible();
+		await expect(composer.getByRole('button', { name: 'Add emoji' })).toBeVisible();
+		await expect(composer.getByRole('button', { name: 'Schedule post' })).toBeVisible();
+		await expect(composer.getByRole('button', { name: 'Post visibility' })).toHaveCount(0);
+
+		await composer.getByLabel('Post text').fill('Drafting from the deck.');
+		await expect(composer.getByText('23 / 280')).toBeVisible();
+		await expect(composer.getByRole('button', { name: 'Post', exact: true })).toBeEnabled();
+
+		await composer.getByLabel('Post text').fill('x'.repeat(281));
+		await expect(composer.getByText('281 / 280')).toBeVisible();
+		await expect(composer.getByRole('button', { name: 'Post', exact: true })).toBeDisabled();
+
+		await composer.getByRole('button', { name: 'Close' }).click();
+		await expect(composer).toBeHidden();
+		await expectSidebarWidth(page, sidebarExpandedWidth);
+
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+		await expect(composer).toBeVisible();
+		await expect(composer.getByLabel('Post text')).toHaveValue('x'.repeat(281));
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+		await expect(composer).toBeHidden();
+
+		await page.getByRole('button', { name: 'Collapse sidebar' }).click();
+		await expectSidebarWidth(page, sidebarCollapsedWidth);
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+		await expectSidebarWidth(page, sidebarCollapsedWidth);
+		await expect(composer).toBeVisible();
+		await expectComposerNextToSidebar(page, composer);
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+		await expect(composer).toBeHidden();
 	});
 });
