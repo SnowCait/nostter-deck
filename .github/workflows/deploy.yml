@@ -24,6 +24,7 @@ jobs:
           cache: npm
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
       - run: npm ci
+      - run: npm run paraglide:compile
       - run: npm run check
       - run: npm run lint
       - run: npm run build
