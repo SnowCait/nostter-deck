@@ -120,7 +120,9 @@
 	<title>{m.app_title()}</title>
 </svelte:head>
 
-<main class="flex h-screen min-h-0 bg-[#eef3f7] text-slate-950">
+<main
+	class="flex h-screen min-h-0 bg-[#eef3f7] text-slate-950 dark:bg-slate-950 dark:text-slate-50"
+>
 	<Sidebar
 		{columns}
 		{activeColumnId}
@@ -131,11 +133,11 @@
 
 	{#if isComposePanelOpen}
 		<section
-			class="flex h-full w-[360px] shrink-0 flex-col border-r border-slate-200 bg-white"
+			class="flex h-full w-[360px] shrink-0 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
 			aria-labelledby="compose-panel-title"
 		>
 			<header
-				class="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-4 py-3"
+				class="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800"
 			>
 				<div class="flex min-w-0 items-center gap-2">
 					<Send class="size-4 shrink-0 text-sky-500" aria-hidden="true" />
@@ -145,7 +147,7 @@
 				</div>
 				<button
 					type="button"
-					class="h-9 rounded-md px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+					class="h-9 rounded-md px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900"
 					onclick={closeComposePanel}
 				>
 					{m.close()}
@@ -154,23 +156,25 @@
 
 			<div class="flex min-h-0 flex-1 flex-col p-4">
 				<div
-					class="mb-4 flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-3"
+					class="mb-4 flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900"
 				>
 					<div
-						class="flex size-10 shrink-0 items-center justify-center rounded-md bg-slate-900 text-white"
+						class="flex size-10 shrink-0 items-center justify-center rounded-md bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
 					>
 						<UserRound class="size-4" aria-hidden="true" />
 					</div>
 					<div class="min-w-0">
 						<p class="truncate text-sm font-bold">Mika</p>
-						<p class="truncate text-xs text-slate-500">@mika · {m.account_role()}</p>
+						<p class="truncate text-xs text-slate-500 dark:text-slate-400">
+							@mika · {m.account_role()}
+						</p>
 					</div>
 				</div>
 
 				<label class="sr-only" for="compose-text">{m.post_text()}</label>
 				<textarea
 					id="compose-text"
-					class="min-h-[220px] flex-1 resize-none rounded-md border border-slate-200 bg-white p-3 text-base leading-6 text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+					class="min-h-[220px] flex-1 resize-none rounded-md border border-slate-200 bg-white p-3 text-base leading-6 text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950"
 					placeholder={m.compose_placeholder()}
 					bind:value={composeText}
 				></textarea>
@@ -179,7 +183,7 @@
 					<div class="flex items-center gap-1">
 						<button
 							type="button"
-							class="flex size-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-sky-50 hover:text-sky-600"
+							class="flex size-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-sky-50 hover:text-sky-600 dark:text-slate-400 dark:hover:bg-sky-950/40 dark:hover:text-sky-300"
 							title={m.add_media()}
 							aria-label={m.add_media()}
 						>
@@ -187,7 +191,7 @@
 						</button>
 						<button
 							type="button"
-							class="flex size-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-sky-50 hover:text-sky-600"
+							class="flex size-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-sky-50 hover:text-sky-600 dark:text-slate-400 dark:hover:bg-sky-950/40 dark:hover:text-sky-300"
 							title={m.add_emoji()}
 							aria-label={m.add_emoji()}
 						>
@@ -195,7 +199,7 @@
 						</button>
 						<button
 							type="button"
-							class="flex size-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-sky-50 hover:text-sky-600"
+							class="flex size-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-sky-50 hover:text-sky-600 dark:text-slate-400 dark:hover:bg-sky-950/40 dark:hover:text-sky-300"
 							title={m.schedule_post()}
 							aria-label={m.schedule_post()}
 						>
@@ -206,7 +210,9 @@
 					<p
 						class={[
 							'text-sm font-semibold tabular-nums',
-							composeLength > composeMaxLength ? 'text-rose-600' : 'text-slate-500'
+							composeLength > composeMaxLength
+								? 'text-rose-600 dark:text-rose-400'
+								: 'text-slate-500 dark:text-slate-400'
 						]}
 						aria-live="polite"
 					>
@@ -217,7 +223,7 @@
 				<div class="mt-4 flex justify-end">
 					<button
 						type="button"
-						class="h-10 rounded-md bg-sky-500 px-4 text-sm font-bold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+						class="h-10 rounded-md bg-sky-500 px-4 text-sm font-bold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300 disabled:dark:bg-slate-800 disabled:dark:text-slate-500"
 						disabled={!canSubmitPost}
 					>
 						{m.action_post()}
@@ -247,11 +253,11 @@
 				{/each}
 				<button
 					type="button"
-					class="flex h-full w-[342px] shrink-0 flex-col items-center justify-center gap-3 border-r border-dashed border-slate-300 bg-white/60 px-4 text-slate-500 transition hover:bg-white hover:text-slate-950"
+					class="flex h-full w-[342px] shrink-0 flex-col items-center justify-center gap-3 border-r border-dashed border-slate-300 bg-white/60 px-4 text-slate-500 transition hover:bg-white hover:text-slate-950 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-50"
 					onclick={openAddColumnDialog}
 				>
 					<span
-						class="flex size-11 items-center justify-center rounded-md border border-slate-300 bg-white"
+						class="flex size-11 items-center justify-center rounded-md border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900"
 					>
 						<Plus class="size-5" aria-hidden="true" />
 					</span>
@@ -263,9 +269,11 @@
 </main>
 
 {#if isColumnDialogOpen}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4">
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 dark:bg-slate-950/65"
+	>
 		<div
-			class="w-full max-w-sm rounded-md border border-slate-200 bg-white p-4 shadow-xl"
+			class="w-full max-w-sm rounded-md border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-800 dark:bg-slate-950"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="column-dialog-title"
@@ -276,12 +284,15 @@
 				</h2>
 			</div>
 
-			<label class="mb-2 block text-sm font-semibold text-slate-700" for="column-type">
+			<label
+				class="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300"
+				for="column-type"
+			>
 				{m.column_type()}
 			</label>
 			<select
 				id="column-type"
-				class="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+				class="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950"
 				bind:value={selectedSourceKey}
 			>
 				{#each columnSourceKeys as sourceKey (sourceKey)}
@@ -293,14 +304,14 @@
 				<div class="flex gap-2">
 					<button
 						type="button"
-						class="h-9 rounded-md px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+						class="h-9 rounded-md px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900"
 						onclick={closeColumnDialog}
 					>
 						{m.cancel()}
 					</button>
 					<button
 						type="button"
-						class="h-9 rounded-md bg-sky-500 px-3 text-sm font-semibold text-white transition hover:bg-sky-600"
+						class="h-9 rounded-md bg-sky-500 px-3 text-sm font-semibold text-white transition hover:bg-sky-600 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300"
 						onclick={saveColumnDialog}
 					>
 						{m.save()}

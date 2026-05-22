@@ -10,7 +10,9 @@
 	const { post }: Props = $props();
 </script>
 
-<article class="border-b border-slate-200 p-3 transition hover:bg-slate-50/80">
+<article
+	class="border-b border-slate-200 p-3 transition hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/80"
+>
 	<div class="flex gap-3">
 		<div
 			class={`flex size-10 shrink-0 items-center justify-center rounded-md ${post.accent} text-sm font-bold text-white`}
@@ -24,11 +26,13 @@
 						<p class="truncate text-sm font-bold">{post.author}</p>
 						<ShieldCheck class="size-4 shrink-0 text-sky-500" aria-label={m.verified()} />
 					</div>
-					<p class="truncate text-xs text-slate-500">{post.handle} · {post.time}</p>
+					<p class="truncate text-xs text-slate-500 dark:text-slate-400">
+						{post.handle} · {post.time}
+					</p>
 				</div>
 				<button
 					type="button"
-					class="flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+					class="flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
 					title={m.column_options()}
 					aria-label={m.column_options()}
 				>
@@ -36,32 +40,36 @@
 				</button>
 			</div>
 
-			<p class="mt-2 text-sm leading-5 text-slate-800">{post.body}</p>
+			<p class="mt-2 text-sm leading-5 text-slate-800 dark:text-slate-200">{post.body}</p>
 
 			<div class="mt-2 flex flex-wrap gap-1.5">
 				{#each post.tags as tag (tag)}
-					<span class="rounded-md bg-sky-50 px-2 py-1 text-xs font-medium text-sky-700">
+					<span
+						class="rounded-md bg-sky-50 px-2 py-1 text-xs font-medium text-sky-700 dark:bg-sky-950/60 dark:text-sky-300"
+					>
 						{tag}
 					</span>
 				{/each}
 			</div>
 
 			{#if post.attachment}
-				<div class="mt-3 rounded-md border border-slate-200 bg-white p-3">
-					<p class="text-xs font-semibold text-slate-400 uppercase">
+				<div
+					class="mt-3 rounded-md border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"
+				>
+					<p class="text-xs font-semibold text-slate-400 uppercase dark:text-slate-500">
 						{post.attachment.label}
 					</p>
 					<p class="mt-1 truncate text-sm font-bold">{post.attachment.title}</p>
-					<p class="mt-1 text-sm leading-5 text-slate-600">
+					<p class="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
 						{post.attachment.body}
 					</p>
 				</div>
 			{/if}
 
-			<div class="mt-3 grid grid-cols-4 text-slate-500">
+			<div class="mt-3 grid grid-cols-4 text-slate-500 dark:text-slate-400">
 				<button
 					type="button"
-					class="flex h-8 items-center gap-1 rounded-md text-xs transition hover:bg-sky-50 hover:text-sky-600"
+					class="flex h-8 items-center gap-1 rounded-md text-xs transition hover:bg-sky-50 hover:text-sky-600 dark:hover:bg-sky-950/40 dark:hover:text-sky-300"
 					title={m.reply()}
 					aria-label={m.reply()}
 				>
@@ -70,7 +78,7 @@
 				</button>
 				<button
 					type="button"
-					class="flex h-8 items-center gap-1 rounded-md text-xs transition hover:bg-emerald-50 hover:text-emerald-600"
+					class="flex h-8 items-center gap-1 rounded-md text-xs transition hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300"
 					title={m.repost()}
 					aria-label={m.repost()}
 				>
@@ -79,7 +87,7 @@
 				</button>
 				<button
 					type="button"
-					class="flex h-8 items-center gap-1 rounded-md text-xs transition hover:bg-rose-50 hover:text-rose-600"
+					class="flex h-8 items-center gap-1 rounded-md text-xs transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
 					title={m.like()}
 					aria-label={m.like()}
 				>
@@ -88,7 +96,7 @@
 				</button>
 				<button
 					type="button"
-					class="flex h-8 items-center justify-center rounded-md transition hover:bg-slate-100 hover:text-slate-800"
+					class="flex h-8 items-center justify-center rounded-md transition hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
 					title={m.share()}
 					aria-label={m.share()}
 				>

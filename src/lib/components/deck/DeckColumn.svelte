@@ -39,22 +39,24 @@
 		onMoveRight
 	}: Props = $props();
 
-	const columnIconClass = 'size-4 shrink-0 text-slate-500';
+	const columnIconClass = 'size-4 shrink-0 text-slate-500 dark:text-slate-400';
 	const columnActionClass =
-		'flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent';
+		'flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100';
 	const settingsActionClass =
-		'flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent';
+		'flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 disabled:dark:hover:bg-transparent';
 </script>
 
 <section
 	{id}
 	tabindex="-1"
 	class={[
-		'flex h-full w-[342px] flex-col overflow-hidden border-r border-slate-200 bg-white transition-shadow outline-none',
+		'flex h-full w-[342px] flex-col overflow-hidden border-r border-slate-200 bg-white transition-shadow outline-none dark:border-slate-800 dark:bg-slate-950',
 		isFocused ? 'relative z-10 shadow-[inset_0_0_0_2px_rgba(14,165,233,0.45)]' : ''
 	]}
 >
-	<header class="shrink-0 border-b border-slate-200 bg-white px-3 py-2.5">
+	<header
+		class="shrink-0 border-b border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950"
+	>
 		<div class="flex items-center justify-between gap-3">
 			<div class="flex min-w-0 items-center gap-2">
 				{#if column.sourceKey === 'timeline_home'}
@@ -86,7 +88,9 @@
 	</header>
 
 	{#if isSettingsOpen}
-		<div class="shrink-0 border-b border-slate-200 bg-slate-50 px-3 py-3">
+		<div
+			class="shrink-0 border-b border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/70"
+		>
 			<div class="grid grid-cols-2 gap-2">
 				<button
 					type="button"
@@ -113,7 +117,7 @@
 			</div>
 			<button
 				type="button"
-				class="mt-2 flex h-9 w-full items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+				class="mt-2 flex h-9 w-full items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40"
 				onclick={onDelete}
 			>
 				<Trash2 class="size-4 shrink-0" aria-hidden="true" />

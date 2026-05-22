@@ -15,6 +15,7 @@ const sidebarCollapsedWidth = 60;
 const composerWidth = 360;
 const sidebarCenterTolerance = 1;
 const uiStateStorageKey = 'nostter:ui-state';
+const userSettingsStorageKey = 'nostter:user-settings';
 
 async function openDeck(page: Page) {
 	await page.addInitScript(() => {
@@ -60,6 +61,28 @@ async function expectStoredSidebarCollapsed(page: Page, value: boolean) {
 			}, uiStateStorageKey)
 		)
 		.toBe(value);
+}
+
+async function expectStoredThemePreference(page: Page, value: string) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				return storedValue ? JSON.parse(storedValue).theme : null;
+			}, userSettingsStorageKey)
+		)
+		.toBe(value);
+}
+
+async function expectThemeNotStoredInUiState(page: Page) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				return storedValue ? Object.hasOwn(JSON.parse(storedValue), 'theme') : false;
+			}, uiStateStorageKey)
+		)
+		.toBe(false);
 }
 
 async function expectComposerNextToSidebar(page: Page, composer: Locator) {
@@ -246,6 +269,40 @@ test.describe('nostter deck', () => {
 		await page.getByRole('button', { name: 'Settings' }).click();
 		await page.getByRole('button', { name: 'Close' }).click();
 		await expect(page.getByRole('dialog', { name: 'Settings' })).toBeHidden();
+	});
+
+	test('changes and persists the theme from user settings', async ({ page }) => {
+		await openDeck(page);
+
+		await page.getByRole('button', { name: 'Settings' }).click();
+		await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+		await expect(page.getByLabel('Theme')).toHaveValue('system');
+
+		await page.getByLabel('Theme').selectOption('dark');
+		await expect(page.locator('html')).toHaveClass(/dark/);
+		await expectStoredThemePreference(page, 'dark');
+		await expectThemeNotStoredInUiState(page);
+		await expect(page.locator('main')).toHaveCSS('color-scheme', 'dark');
+
+		await page.reload();
+		await expect(page.locator('html')).toHaveClass(/dark/);
+		await page.getByRole('button', { name: 'Settings' }).click();
+		await expect(page.getByLabel('Theme')).toHaveValue('dark');
+
+		await page.getByLabel('Theme').selectOption('light');
+		await expect(page.locator('html')).not.toHaveClass(/dark/);
+		await expectStoredThemePreference(page, 'light');
+		await expectThemeNotStoredInUiState(page);
+	});
+
+	test('ignores invalid persisted user settings', async ({ page }) => {
+		await page.addInitScript((key) => {
+			window.localStorage.setItem(key, JSON.stringify({ theme: 'sepia' }));
+		}, userSettingsStorageKey);
+		await openDeck(page);
+
+		await page.getByRole('button', { name: 'Settings' }).click();
+		await expect(page.getByLabel('Theme')).toHaveValue('system');
 	});
 
 	test('opens the compose panel from the sidebar', async ({ page }) => {
