@@ -1,6 +1,7 @@
 <script lang="ts">
 	import {
 		Bell,
+		CircleUserRound,
 		Globe,
 		House,
 		Languages,
@@ -17,6 +18,7 @@
 		UserRound
 	} from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import { avatarShapeClassByShape } from '$lib/avatar-shape';
 	import { getLocale, locales, setLocale } from '$lib/paraglide/runtime.js';
 	import { getColumnTitle } from '$lib/deck/column-title';
 	import type { Column, ColumnSourceKey } from '$lib/deck/types';
@@ -24,10 +26,12 @@
 	import { readUiState, updateUiState } from '$lib/ui-state';
 	import {
 		applyThemePreference,
+		avatarShapePreferences,
 		fontSizePreferences,
 		readUserSettings,
 		themePreferences,
 		updateUserSettings,
+		type AvatarShape,
 		type FontSize,
 		type ThemePreference
 	} from '$lib/user-settings';
@@ -39,8 +43,10 @@
 		onAddColumn: () => void;
 		onCompose: () => void;
 		fontSize: FontSize;
+		avatarShape: AvatarShape;
 		textClass: FontSizeTextClasses;
 		onFontSizeChange: (fontSize: FontSize) => void;
+		onAvatarShapeChange: (avatarShape: AvatarShape) => void;
 		onSelectColumn: (columnId: string) => void;
 	};
 
@@ -50,8 +56,10 @@
 		onAddColumn,
 		onCompose,
 		fontSize,
+		avatarShape,
 		textClass,
 		onFontSizeChange,
+		onAvatarShapeChange,
 		onSelectColumn
 	}: Props = $props();
 	const currentLocale = getLocale();
@@ -75,6 +83,11 @@
 		medium: () => m.font_size_medium(),
 		small: () => m.font_size_small()
 	} satisfies Record<FontSize, () => string>;
+	const avatarShapeLabels = {
+		circle: () => m.avatar_shape_circle(),
+		square: () => m.avatar_shape_square()
+	} satisfies Record<AvatarShape, () => string>;
+	const avatarShapeClass = $derived(avatarShapeClassByShape[avatarShape]);
 
 	const columnIconBySource = {
 		timeline_home: House,
@@ -134,6 +147,15 @@
 			fontSize: selectedFontSize
 		}));
 		onFontSizeChange(selectedFontSize);
+	}
+
+	function selectAvatarShape(event: Event) {
+		const selectedAvatarShape = (event.currentTarget as HTMLSelectElement).value as AvatarShape;
+		updateUserSettings((currentSettings) => ({
+			...currentSettings,
+			avatarShape: selectedAvatarShape
+		}));
+		onAvatarShapeChange(selectedAvatarShape);
 	}
 </script>
 
@@ -325,7 +347,11 @@
 		>
 			<div class="flex w-11 shrink-0 justify-center">
 				<div
-					class="flex size-9 shrink-0 items-center justify-center rounded-md bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
+					data-testid="account-avatar"
+					class={[
+						'flex size-9 shrink-0 items-center justify-center bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950',
+						avatarShapeClass
+					]}
 				>
 					<UserRound class="size-4" aria-hidden="true" />
 				</div>
@@ -465,6 +491,33 @@
 				>
 					{#each fontSizePreferences as size (size)}
 						<option value={size}>{fontSizeLabels[size]()}</option>
+					{/each}
+				</select>
+
+				<label
+					class={[
+						'mt-4 mb-2 flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-300',
+						textClass.label
+					]}
+					for="avatar-shape"
+				>
+					<CircleUserRound
+						class="size-4 shrink-0 text-slate-500 dark:text-slate-400"
+						aria-hidden="true"
+					/>
+					<span>{m.avatar_shape_switcher()}</span>
+				</label>
+				<select
+					id="avatar-shape"
+					class={[
+						'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+						textClass.control
+					]}
+					value={avatarShape}
+					onchange={selectAvatarShape}
+				>
+					{#each avatarShapePreferences as shape (shape)}
+						<option value={shape}>{avatarShapeLabels[shape]()}</option>
 					{/each}
 				</select>
 			</section>

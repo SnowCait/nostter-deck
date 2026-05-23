@@ -222,6 +222,17 @@ async function expectStoredFontSize(page: Page, value: string) {
 		.toBe(value);
 }
 
+async function expectStoredAvatarShape(page: Page, value: string) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				return storedValue ? JSON.parse(storedValue).avatarShape : null;
+			}, userSettingsStorageKey)
+		)
+		.toBe(value);
+}
+
 async function expectThemeNotStoredInUiState(page: Page) {
 	await expect
 		.poll(async () =>
@@ -239,6 +250,17 @@ async function expectFontSizeNotStoredInUiState(page: Page) {
 			page.evaluate((key) => {
 				const storedValue = window.localStorage.getItem(key);
 				return storedValue ? Object.hasOwn(JSON.parse(storedValue), 'fontSize') : false;
+			}, uiStateStorageKey)
+		)
+		.toBe(false);
+}
+
+async function expectAvatarShapeNotStoredInUiState(page: Page) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				return storedValue ? Object.hasOwn(JSON.parse(storedValue), 'avatarShape') : false;
 			}, uiStateStorageKey)
 		)
 		.toBe(false);
@@ -848,15 +870,57 @@ test.describe('nostter deck', () => {
 		await expectStoredFontSize(page, 'large');
 	});
 
+	test('changes and persists the profile icon shape from user settings', async ({ page }) => {
+		await openDeck(page);
+
+		const postAvatar = page.getByTestId('post-avatar').first();
+		const sidebarAvatar = sidebar(page).getByTestId('account-avatar').first();
+		await expect(postAvatar).toHaveClass(/rounded-full/);
+		await expect(sidebarAvatar).toHaveClass(/rounded-full/);
+
+		await page.getByRole('button', { name: 'Settings' }).click();
+		const avatarShapeSelect = page.getByLabel('Profile icon');
+		await expect(avatarShapeSelect).toHaveValue('circle');
+		await expect
+			.poll(async () =>
+				avatarShapeSelect
+					.locator('option')
+					.evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value))
+			)
+			.toEqual(['circle', 'square']);
+
+		await avatarShapeSelect.selectOption('square');
+		await expectStoredAvatarShape(page, 'square');
+		await expectAvatarShapeNotStoredInUiState(page);
+		await expect(postAvatar).toHaveClass(/rounded-md/);
+		await expect(sidebarAvatar).toHaveClass(/rounded-md/);
+
+		await page.getByRole('button', { name: 'Close' }).click();
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+		await expect(
+			page.getByRole('region', { name: 'Post' }).getByTestId('account-avatar')
+		).toHaveClass(/rounded-md/);
+
+		await page.reload();
+		await expect(page.getByTestId('post-avatar').first()).toHaveClass(/rounded-md/);
+		await page.getByRole('button', { name: 'Settings' }).click();
+		await expect(page.getByLabel('Profile icon')).toHaveValue('square');
+		await expectStoredAvatarShape(page, 'square');
+	});
+
 	test('ignores invalid persisted user settings', async ({ page }) => {
 		await page.addInitScript((key) => {
-			window.localStorage.setItem(key, JSON.stringify({ theme: 'sepia', fontSize: 'giant' }));
+			window.localStorage.setItem(
+				key,
+				JSON.stringify({ theme: 'sepia', fontSize: 'giant', avatarShape: 'triangle' })
+			);
 		}, userSettingsStorageKey);
 		await openDeck(page);
 
 		await page.getByRole('button', { name: 'Settings' }).click();
 		await expect(page.getByLabel('Theme')).toHaveValue('system');
 		await expect(page.getByLabel('Font size')).toHaveValue('medium');
+		await expect(page.getByLabel('Profile icon')).toHaveValue('circle');
 	});
 
 	test('opens the compose panel from the sidebar', async ({ page }) => {

@@ -15,6 +15,7 @@
 	import { columnWidths } from '$lib/deck/column-configs';
 	import type { Column, ColumnWidth, NostrFilter, RelaySelection } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
+	import type { AvatarShape } from '$lib/user-settings';
 	import { parseNostrFilters } from '$lib/nostr/filters';
 	import {
 		defaultRelays,
@@ -33,6 +34,7 @@
 		canMoveLeft: boolean;
 		canMoveRight: boolean;
 		textClass: FontSizeTextClasses;
+		avatarShape: AvatarShape;
 		onToggleSettings: () => void;
 		onDelete: () => void;
 		onMoveLeft: () => void;
@@ -49,6 +51,7 @@
 		canMoveLeft,
 		canMoveRight,
 		textClass,
+		avatarShape,
 		onToggleSettings,
 		onDelete,
 		onMoveLeft,
@@ -339,12 +342,12 @@
 				</div>
 			{:else}
 				{#each column.posts as post (post.id ?? `${column.id}-${post.author}-${post.time}`)}
-					<PostCard {post} {textClass} />
+					<PostCard {post} {textClass} {avatarShape} />
 				{/each}
 			{/if}
 		{:else}
 			{#each column.posts as post (`${column.id}-${post.author}-${post.time}`)}
-				<PostCard {post} {textClass} />
+				<PostCard {post} {textClass} {avatarShape} />
 			{/each}
 		{/if}
 	</div>

@@ -1,15 +1,19 @@
 <script lang="ts">
 	import { Heart, MessageCircle, Ellipsis, Repeat2, Share, ShieldCheck } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import { avatarShapeClassByShape } from '$lib/avatar-shape';
 	import type { Post } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
+	import type { AvatarShape } from '$lib/user-settings';
 
 	type Props = {
 		post: Post;
 		textClass: FontSizeTextClasses;
+		avatarShape: AvatarShape;
 	};
 
-	const { post, textClass }: Props = $props();
+	const { post, textClass, avatarShape }: Props = $props();
+	const avatarShapeClass = $derived(avatarShapeClassByShape[avatarShape]);
 </script>
 
 <article
@@ -18,14 +22,19 @@
 	<div class="flex gap-3">
 		{#if post.avatarUrl}
 			<img
-				class="size-10 shrink-0 rounded-md object-cover"
+				data-testid="post-avatar"
+				class={['size-10 shrink-0 object-cover', avatarShapeClass]}
 				src={post.avatarUrl}
 				alt=""
 				loading="lazy"
 			/>
 		{:else}
 			<div
-				class={`flex size-10 shrink-0 items-center justify-center rounded-md ${post.accent} text-sm font-bold text-white`}
+				data-testid="post-avatar"
+				class={[
+					`flex size-10 shrink-0 items-center justify-center ${post.accent} text-sm font-bold text-white`,
+					avatarShapeClass
+				]}
 			>
 				{post.author.slice(0, 1)}
 			</div>

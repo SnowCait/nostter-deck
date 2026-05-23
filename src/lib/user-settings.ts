@@ -2,20 +2,24 @@ import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
 
 export const themePreferences = ['system', 'light', 'dark'] as const;
 export const fontSizePreferences = ['large', 'medium', 'small'] as const;
+export const avatarShapePreferences = ['circle', 'square'] as const;
 
 export type ThemePreference = (typeof themePreferences)[number];
 export type FontSize = (typeof fontSizePreferences)[number];
+export type AvatarShape = (typeof avatarShapePreferences)[number];
 
 export type UserSettings = {
 	theme: ThemePreference;
 	fontSize: FontSize;
+	avatarShape: AvatarShape;
 };
 
 const userSettingsStorageKey = 'nostter:user-settings';
 
 const defaultUserSettings: UserSettings = {
 	theme: 'system',
-	fontSize: 'medium'
+	fontSize: 'medium',
+	avatarShape: 'circle'
 };
 
 function isThemePreference(value: unknown): value is ThemePreference {
@@ -26,13 +30,20 @@ function isFontSize(value: unknown): value is FontSize {
 	return typeof value === 'string' && fontSizePreferences.includes(value as FontSize);
 }
 
+function isAvatarShape(value: unknown): value is AvatarShape {
+	return typeof value === 'string' && avatarShapePreferences.includes(value as AvatarShape);
+}
+
 function normalizeUserSettings(value: unknown): UserSettings {
 	if (!value || typeof value !== 'object') return { ...defaultUserSettings };
 
 	const candidate = value as Partial<UserSettings>;
 	return {
 		theme: isThemePreference(candidate.theme) ? candidate.theme : defaultUserSettings.theme,
-		fontSize: isFontSize(candidate.fontSize) ? candidate.fontSize : defaultUserSettings.fontSize
+		fontSize: isFontSize(candidate.fontSize) ? candidate.fontSize : defaultUserSettings.fontSize,
+		avatarShape: isAvatarShape(candidate.avatarShape)
+			? candidate.avatarShape
+			: defaultUserSettings.avatarShape
 	};
 }
 

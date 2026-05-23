@@ -3,6 +3,7 @@
 	import { CalendarClock, Image, Plus, Send, Smile, UserRound } from '@lucide/svelte';
 	import DeckColumn from '$lib/components/deck/DeckColumn.svelte';
 	import Sidebar from '$lib/components/deck/Sidebar.svelte';
+	import { avatarShapeClassByShape } from '$lib/avatar-shape';
 	import { readColumnConfigs, writeColumnConfigs } from '$lib/deck/column-configs';
 	import { columnSourceKeys, sourcePosts } from '$lib/deck/data';
 	import type {
@@ -20,7 +21,7 @@
 	import { defaultRelays, resolveRelayDraft } from '$lib/nostr/relays';
 	import { startCustomTimelineSubscription } from '$lib/nostr/timeline';
 	import { m } from '$lib/paraglide/messages.js';
-	import { readUserSettings, type FontSize } from '$lib/user-settings';
+	import { readUserSettings, type AvatarShape, type FontSize } from '$lib/user-settings';
 
 	type CustomTimelineRuntime = {
 		posts: Post[];
@@ -41,7 +42,9 @@
 	let openSettingsColumnId = $state<string | null>(null);
 	let isComposePanelOpen = $state(false);
 	let composeText = $state('');
-	let fontSize = $state<FontSize>(readUserSettings().fontSize);
+	const initialUserSettings = readUserSettings();
+	let fontSize = $state<FontSize>(initialUserSettings.fontSize);
+	let avatarShape = $state<AvatarShape>(initialUserSettings.avatarShape);
 	let selectedColumnType = $state<ColumnSourceKey | 'custom_timeline' | 'website'>('timeline_home');
 	let websiteUrl = $state('');
 	let customTimelineFilters = $state('[{"kinds":[1],"limit":20}]');
@@ -56,6 +59,7 @@
 	const composeLength = $derived(composeText.length);
 	const canSubmitPost = $derived(composeLength > 0 && composeLength <= composeMaxLength);
 	const textClass = $derived(textClassByFontSize[fontSize]);
+	const avatarShapeClass = $derived(avatarShapeClassByShape[avatarShape]);
 	const normalizedWebsiteUrl = $derived(normalizeWebsiteUrl(websiteUrl));
 	const parsedCustomTimelineFilters = $derived(parseNostrFilters(customTimelineFilters));
 	const selectedDefaultRelaySet = $derived(new Set(selectedDefaultRelays));
@@ -325,6 +329,10 @@
 		fontSize = nextFontSize;
 	}
 
+	function updateAvatarShape(nextAvatarShape: AvatarShape) {
+		avatarShape = nextAvatarShape;
+	}
+
 	function toggleDefaultRelay(relay: string, isSelected: boolean) {
 		selectedDefaultRelays = isSelected
 			? [...selectedDefaultRelaySet, relay]
@@ -345,8 +353,10 @@
 		onAddColumn={openAddColumnDialog}
 		onCompose={toggleComposePanel}
 		{fontSize}
+		{avatarShape}
 		{textClass}
 		onFontSizeChange={updateFontSize}
+		onAvatarShapeChange={updateAvatarShape}
 		onSelectColumn={focusColumn}
 	/>
 
@@ -381,7 +391,11 @@
 					class="mb-4 flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900"
 				>
 					<div
-						class="flex size-10 shrink-0 items-center justify-center rounded-md bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
+						data-testid="account-avatar"
+						class={[
+							'flex size-10 shrink-0 items-center justify-center bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950',
+							avatarShapeClass
+						]}
 					>
 						<UserRound class="size-4" aria-hidden="true" />
 					</div>
@@ -475,6 +489,7 @@
 						canMoveLeft={columnIndex > 0}
 						canMoveRight={columnIndex >= 0 && columnIndex < columnConfigs.length - 1}
 						{textClass}
+						{avatarShape}
 						onToggleSettings={() => toggleColumnSettings(column.id)}
 						onDelete={() => deleteColumn(column.id)}
 						onMoveLeft={() => moveColumn(column.id, -1)}
