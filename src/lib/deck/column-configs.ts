@@ -1,5 +1,6 @@
 import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
 import { normalizeNostrFilters } from '$lib/nostr/filters';
+import { normalizeRelaySelection } from '$lib/nostr/relays';
 import { columnSourceKeys, initialColumnConfigs } from './data';
 import type { ColumnConfig, ColumnSourceKey, ColumnWidth } from './types';
 import { normalizeWebsiteUrl } from './website-url';
@@ -48,6 +49,8 @@ function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 			if (candidate.timelineKind === 'custom') {
 				const filters = normalizeNostrFilters(candidate.filters);
 				if (!filters) return [];
+				const relays = normalizeRelaySelection(candidate.relays);
+				if (!relays) return [];
 
 				return [
 					{
@@ -55,6 +58,7 @@ function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 						type: 'timeline',
 						timelineKind: 'custom',
 						filters,
+						relays,
 						width: candidate.width
 					}
 				];

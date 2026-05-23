@@ -40,8 +40,11 @@ export type MessageKey =
 	| 'column_width_wide'
 	| 'website_url'
 	| 'custom_timeline_filters'
+	| 'custom_timeline_relays'
+	| 'custom_timeline_custom_relays'
 	| 'custom_timeline_not_implemented'
 	| 'custom_timeline_filter_count'
+	| 'custom_timeline_relay_count'
 	| 'save'
 	| 'cancel'
 	| 'close'
@@ -62,6 +65,7 @@ export type ColumnTitleKey = Extract<
 export type ColumnSourceKey = ColumnTitleKey;
 export type ColumnWidth = 'narrow' | 'standard' | 'wide';
 export type NostrFilter = Record<string, unknown>;
+export type RelaySelection = { type: 'default' } | { type: 'custom'; urls: string[] };
 
 export type PresetTimelineColumnConfig = {
 	id: string;
@@ -76,6 +80,7 @@ export type CustomTimelineColumnConfig = {
 	type: 'timeline';
 	timelineKind: 'custom';
 	filters: NostrFilter[];
+	relays: RelaySelection;
 	width: ColumnWidth;
 };
 
