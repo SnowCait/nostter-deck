@@ -1,4 +1,5 @@
 import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
+import { normalizeNostrFilters } from '$lib/nostr/filters';
 import { columnSourceKeys, initialColumnConfigs } from './data';
 import type { ColumnConfig, ColumnSourceKey, ColumnWidth } from './types';
 import { normalizeWebsiteUrl } from './website-url';
@@ -30,16 +31,36 @@ function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 		if (!isColumnWidth(candidate.width)) return [];
 
 		if (candidate.type === 'timeline') {
-			if (!isColumnSourceKey(candidate.sourceKey)) return [];
+			if (candidate.timelineKind === 'preset') {
+				if (!isColumnSourceKey(candidate.sourceKey)) return [];
 
-			return [
-				{
-					id: candidate.id,
-					type: 'timeline',
-					sourceKey: candidate.sourceKey,
-					width: candidate.width
-				}
-			];
+				return [
+					{
+						id: candidate.id,
+						type: 'timeline',
+						timelineKind: 'preset',
+						sourceKey: candidate.sourceKey,
+						width: candidate.width
+					}
+				];
+			}
+
+			if (candidate.timelineKind === 'custom') {
+				const filters = normalizeNostrFilters(candidate.filters);
+				if (!filters) return [];
+
+				return [
+					{
+						id: candidate.id,
+						type: 'timeline',
+						timelineKind: 'custom',
+						filters,
+						width: candidate.width
+					}
+				];
+			}
+
+			return [];
 		}
 
 		if (candidate.type === 'website') {

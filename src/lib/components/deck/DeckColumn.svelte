@@ -13,8 +13,9 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import { getColumnTitle } from '$lib/deck/column-title';
 	import { columnWidths } from '$lib/deck/column-configs';
-	import type { Column, ColumnWidth } from '$lib/deck/types';
+	import type { Column, ColumnWidth, NostrFilter } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
+	import { parseNostrFilters } from '$lib/nostr/filters';
 	import PostCard from './PostCard.svelte';
 
 	type Props = {
@@ -30,6 +31,7 @@
 		onMoveLeft: () => void;
 		onMoveRight: () => void;
 		onWidthChange: (width: ColumnWidth) => void;
+		onFiltersSave: (filters: NostrFilter[]) => void;
 	};
 
 	const {
@@ -44,8 +46,13 @@
 		onDelete,
 		onMoveLeft,
 		onMoveRight,
-		onWidthChange
+		onWidthChange,
+		onFiltersSave
 	}: Props = $props();
+
+	let filterDraftColumnId = $state('');
+	let filterDraftSource = $state('');
+	let filterDraft = $state('');
 
 	const columnWidthClassByWidth = {
 		narrow: 'w-[280px]',
@@ -64,9 +71,28 @@
 		'flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100';
 	const settingsActionClass =
 		'flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 disabled:dark:hover:bg-transparent';
+	const parsedFilterDraft = $derived(parseNostrFilters(filterDraft));
+	const canSaveFilterDraft = $derived(parsedFilterDraft !== null);
+
+	$effect(() => {
+		if (column.type !== 'timeline' || column.timelineKind !== 'custom') return;
+
+		const nextFilterDraft = JSON.stringify(column.filters, null, 2);
+		if (filterDraftColumnId === column.id && filterDraftSource === nextFilterDraft) return;
+
+		filterDraftColumnId = column.id;
+		filterDraftSource = nextFilterDraft;
+		filterDraft = nextFilterDraft;
+	});
 
 	function selectColumnWidth(event: Event) {
 		onWidthChange((event.currentTarget as HTMLSelectElement).value as ColumnWidth);
+	}
+
+	function saveFilterDraft() {
+		if (!parsedFilterDraft) return;
+
+		onFiltersSave(parsedFilterDraft);
 	}
 </script>
 
@@ -86,6 +112,8 @@
 			<div class="flex min-w-0 items-center gap-2">
 				{#if column.type === 'website'}
 					<Globe class={columnIconClass} aria-hidden="true" />
+				{:else if column.timelineKind === 'custom'}
+					<List class={columnIconClass} aria-hidden="true" />
 				{:else if column.sourceKey === 'timeline_home'}
 					<House class={columnIconClass} aria-hidden="true" />
 				{:else if column.sourceKey === 'timeline_mentions'}
@@ -118,6 +146,34 @@
 		<div
 			class="shrink-0 border-b border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/70"
 		>
+			{#if column.type === 'timeline' && column.timelineKind === 'custom'}
+				<label
+					class={['mb-2 block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
+					for={`column-filters-${column.id}`}
+				>
+					{m.custom_timeline_filters()}
+				</label>
+				<textarea
+					id={`column-filters-${column.id}`}
+					class={[
+						'mb-3 min-h-32 w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+						textClass.control
+					]}
+					bind:value={filterDraft}
+				></textarea>
+				<button
+					type="button"
+					class={[
+						'mb-3 flex h-9 w-full items-center justify-center rounded-md bg-sky-500 px-3 font-semibold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300 disabled:dark:bg-slate-800 disabled:dark:text-slate-500',
+						textClass.control
+					]}
+					disabled={!canSaveFilterDraft}
+					onclick={saveFilterDraft}
+				>
+					{m.save()}
+				</button>
+			{/if}
+
 			<label
 				class={['mb-2 block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
 				for={`column-width-${column.id}`}
@@ -184,6 +240,18 @@
 				title={getColumnTitle(column)}
 				sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
 			></iframe>
+		{:else if column.timelineKind === 'custom'}
+			<div
+				class={[
+					'flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-slate-500 dark:text-slate-400',
+					textClass.control
+				]}
+			>
+				<p class="font-semibold text-slate-700 dark:text-slate-300">
+					{m.custom_timeline_not_implemented()}
+				</p>
+				<p>{m.custom_timeline_filter_count({ count: column.filters.length })}</p>
+			</div>
 		{:else}
 			{#each column.posts as post (`${column.id}-${post.author}-${post.time}`)}
 				<PostCard {post} {textClass} />

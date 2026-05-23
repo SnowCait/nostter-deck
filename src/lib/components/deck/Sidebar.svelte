@@ -186,7 +186,11 @@
 		{#each columns as column (column.id)}
 			{@const isActive = activeColumnId === column.id}
 			{@const ColumnIcon =
-				column.type === 'timeline' ? columnIconBySource[column.sourceKey] : Globe}
+				column.type === 'website'
+					? Globe
+					: column.timelineKind === 'custom'
+						? List
+						: columnIconBySource[column.sourceKey]}
 			{@const columnTitle = getColumnTitle(column)}
 			<button
 				type="button"
@@ -220,7 +224,7 @@
 				<span class={`${sidebarLabelClass()} flex-1 truncate text-left`}>
 					{columnTitle}
 				</span>
-				{#if column.type === 'timeline' && column.sourceKey === 'timeline_mentions'}
+				{#if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_mentions'}
 					<span class={sidebarBadgeClass()}>
 						<span
 							class="mr-2 rounded-full bg-sky-500 px-1.5 py-0.5 text-[11px] leading-none font-semibold text-white dark:bg-sky-400 dark:text-slate-950"

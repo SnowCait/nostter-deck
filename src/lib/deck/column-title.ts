@@ -3,5 +3,8 @@ import type { Column } from './types';
 import { getWebsiteHostname } from './website-url';
 
 export function getColumnTitle(column: Column) {
-	return column.type === 'timeline' ? m[column.sourceKey]() : getWebsiteHostname(column.url);
+	if (column.type === 'website') return getWebsiteHostname(column.url);
+	if (column.timelineKind === 'custom') return m.column_type_custom_timeline();
+
+	return m[column.sourceKey]();
 }

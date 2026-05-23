@@ -30,6 +30,7 @@ export type MessageKey =
 	| 'timeline_search'
 	| 'timeline_lists'
 	| 'column_type_website'
+	| 'column_type_custom_timeline'
 	| 'add_column'
 	| 'edit_column'
 	| 'column_type'
@@ -38,6 +39,9 @@ export type MessageKey =
 	| 'column_width_standard'
 	| 'column_width_wide'
 	| 'website_url'
+	| 'custom_timeline_filters'
+	| 'custom_timeline_not_implemented'
+	| 'custom_timeline_filter_count'
 	| 'save'
 	| 'cancel'
 	| 'close'
@@ -57,13 +61,25 @@ export type ColumnTitleKey = Extract<
 >;
 export type ColumnSourceKey = ColumnTitleKey;
 export type ColumnWidth = 'narrow' | 'standard' | 'wide';
+export type NostrFilter = Record<string, unknown>;
 
-export type TimelineColumnConfig = {
+export type PresetTimelineColumnConfig = {
 	id: string;
 	type: 'timeline';
+	timelineKind: 'preset';
 	sourceKey: ColumnSourceKey;
 	width: ColumnWidth;
 };
+
+export type CustomTimelineColumnConfig = {
+	id: string;
+	type: 'timeline';
+	timelineKind: 'custom';
+	filters: NostrFilter[];
+	width: ColumnWidth;
+};
+
+export type TimelineColumnConfig = PresetTimelineColumnConfig | CustomTimelineColumnConfig;
 
 export type WebsiteColumnConfig = {
 	id: string;
@@ -93,9 +109,11 @@ export type Post = {
 	};
 };
 
-export type TimelineColumn = TimelineColumnConfig & {
+export type PresetTimelineColumn = PresetTimelineColumnConfig & {
 	posts: Post[];
 };
 
+export type CustomTimelineColumn = CustomTimelineColumnConfig;
+export type TimelineColumn = PresetTimelineColumn | CustomTimelineColumn;
 export type WebsiteColumn = WebsiteColumnConfig;
 export type Column = TimelineColumn | WebsiteColumn;

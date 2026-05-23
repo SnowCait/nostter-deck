@@ -10,6 +10,7 @@ export const columnSourceKeys: ColumnSourceKey[] = [
 export const initialColumnConfigs: ColumnConfig[] = columnSourceKeys.map((sourceKey) => ({
 	id: sourceKey,
 	type: 'timeline',
+	timelineKind: 'preset',
 	sourceKey,
 	width: 'standard'
 }));

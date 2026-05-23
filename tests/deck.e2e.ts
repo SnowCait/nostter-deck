@@ -175,6 +175,34 @@ async function expectStoredWebsiteColumn(page: Page, url: string) {
 		.toEqual({ type: 'website', url, width: 'standard' });
 }
 
+async function expectStoredCustomTimelineColumn(page: Page, filters = [{ kinds: [1], limit: 20 }]) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				if (!storedValue) return null;
+
+				const column = JSON.parse(storedValue).find(
+					(item: { timelineKind?: string }) => item.timelineKind === 'custom'
+				);
+				return column
+					? {
+							type: column.type,
+							timelineKind: column.timelineKind,
+							filters: column.filters,
+							width: column.width
+						}
+					: null;
+			}, columnConfigsStorageKey)
+		)
+		.toEqual({
+			type: 'timeline',
+			timelineKind: 'custom',
+			filters,
+			width: 'standard'
+		});
+}
+
 async function requiredBox(locator: Locator, label: string) {
 	await expect(locator, `${label} should be visible before measuring`).toBeVisible();
 
@@ -289,6 +317,73 @@ test.describe('nostter deck', () => {
 		await page.reload();
 		await expectColumnOrder(columns, [...columnNames, 'example.com']);
 		await expect(columns.nth(4).locator('iframe')).toHaveAttribute('src', 'https://example.com/');
+	});
+
+	test('adds and persists a custom timeline column', async ({ page }) => {
+		await openDeck(page);
+		const columns = deckColumns(page);
+
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		await expect(page.getByLabel('REQ filters')).toHaveCount(0);
+
+		await page.getByLabel('Column type').selectOption('custom_timeline');
+		const saveButton = page.getByRole('button', { name: 'Save' });
+		const filtersInput = page.getByLabel('REQ filters');
+		await expect(filtersInput).toBeVisible();
+		await expect(filtersInput).toHaveValue('[{"kinds":[1],"limit":20}]');
+		await expect(saveButton).toBeEnabled();
+
+		await filtersInput.fill('{"kinds":[1],"limit":20}');
+		await expect(saveButton).toBeDisabled();
+
+		await filtersInput.fill('[]');
+		await expect(saveButton).toBeDisabled();
+
+		await filtersInput.fill('[{"kinds":[1],"limit":20}, 1]');
+		await expect(saveButton).toBeDisabled();
+
+		await filtersInput.fill('[{"kinds":[1],"limit":20}]');
+		await expect(saveButton).toBeEnabled();
+		await saveButton.click();
+
+		const customColumn = columns.nth(4);
+		await expectColumnOrder(columns, [...columnNames, 'Custom timeline']);
+		await expectColumnWidth(customColumn, standardColumnWidth);
+		await expect(customColumn.getByText('Relay fetching is not implemented yet.')).toBeVisible();
+		await expect(customColumn.getByText('Filters: 1')).toBeVisible();
+		await expectStoredCustomTimelineColumn(page);
+
+		await columnOptionsButton(customColumn).click();
+		const savedFilters = [
+			{ kinds: [1], limit: 2 },
+			{ kinds: [6], limit: 2 }
+		];
+		const editedFiltersInput = customColumn.getByLabel('REQ filters');
+		const filterSaveButton = customColumn.getByRole('button', { name: 'Save' });
+		await expect(editedFiltersInput).toHaveValue(
+			JSON.stringify([{ kinds: [1], limit: 20 }], null, 2)
+		);
+
+		await editedFiltersInput.fill('{"kinds":[1],"limit":2}');
+		await expect(filterSaveButton).toBeDisabled();
+		await expect(customColumn.getByText('Filters: 1')).toBeVisible();
+		await expectStoredCustomTimelineColumn(page);
+
+		await editedFiltersInput.fill(JSON.stringify(savedFilters, null, 2));
+		await expect(filterSaveButton).toBeEnabled();
+		await expectStoredCustomTimelineColumn(page);
+
+		await filterSaveButton.click();
+		await expect(customColumn.getByText('Filters: 2')).toBeVisible();
+		await expectStoredCustomTimelineColumn(page, savedFilters);
+
+		await page.reload();
+		await expectColumnOrder(columns, [...columnNames, 'Custom timeline']);
+		await columnOptionsButton(columns.nth(4)).click();
+		await expect(columns.nth(4).getByLabel('REQ filters')).toHaveValue(
+			JSON.stringify(savedFilters, null, 2)
+		);
+		await expect(columns.nth(4).getByText('Filters: 2')).toBeVisible();
 	});
 
 	test('changes and persists column widths', async ({ page }) => {

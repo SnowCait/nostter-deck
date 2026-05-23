@@ -5,9 +5,16 @@
 	import Sidebar from '$lib/components/deck/Sidebar.svelte';
 	import { readColumnConfigs, writeColumnConfigs } from '$lib/deck/column-configs';
 	import { columnSourceKeys, sourcePosts } from '$lib/deck/data';
-	import type { Column, ColumnConfig, ColumnSourceKey, ColumnWidth } from '$lib/deck/types';
+	import type {
+		Column,
+		ColumnConfig,
+		ColumnSourceKey,
+		ColumnWidth,
+		NostrFilter
+	} from '$lib/deck/types';
 	import { normalizeWebsiteUrl } from '$lib/deck/website-url';
 	import { textClassByFontSize } from '$lib/font-size';
+	import { parseNostrFilters } from '$lib/nostr/filters';
 	import { m } from '$lib/paraglide/messages.js';
 	import { readUserSettings, type FontSize } from '$lib/user-settings';
 
@@ -20,8 +27,9 @@
 	let isComposePanelOpen = $state(false);
 	let composeText = $state('');
 	let fontSize = $state<FontSize>(readUserSettings().fontSize);
-	let selectedColumnType = $state<ColumnSourceKey | 'website'>('timeline_home');
+	let selectedColumnType = $state<ColumnSourceKey | 'custom_timeline' | 'website'>('timeline_home');
 	let websiteUrl = $state('');
+	let customTimelineFilters = $state('[{"kinds":[1],"limit":20}]');
 	let nextColumnId = $state(getNextColumnNumber(savedColumnConfigs));
 
 	const composeMaxLength = 280;
@@ -29,10 +37,14 @@
 	const canSubmitPost = $derived(composeLength > 0 && composeLength <= composeMaxLength);
 	const textClass = $derived(textClassByFontSize[fontSize]);
 	const normalizedWebsiteUrl = $derived(normalizeWebsiteUrl(websiteUrl));
-	const canSaveColumn = $derived(selectedColumnType !== 'website' || normalizedWebsiteUrl !== null);
+	const parsedCustomTimelineFilters = $derived(parseNostrFilters(customTimelineFilters));
+	const canSaveColumn = $derived(
+		(selectedColumnType !== 'website' || normalizedWebsiteUrl !== null) &&
+			(selectedColumnType !== 'custom_timeline' || parsedCustomTimelineFilters !== null)
+	);
 	const columns = $derived<Column[]>(
 		columnConfigs.map((column) =>
-			column.type === 'timeline'
+			column.type === 'timeline' && column.timelineKind === 'preset'
 				? {
 						...column,
 						posts: sourcePosts[column.sourceKey]
@@ -57,7 +69,7 @@
 		columnElement?.focus({ preventScroll: true });
 	}
 
-	function createColumnId(columnType: ColumnSourceKey | 'website') {
+	function createColumnId(columnType: ColumnSourceKey | 'custom_timeline' | 'website') {
 		const id = `${columnType}-${nextColumnId}`;
 		nextColumnId += 1;
 		return id;
@@ -80,6 +92,7 @@
 	function openAddColumnDialog() {
 		selectedColumnType = 'timeline_home';
 		websiteUrl = '';
+		customTimelineFilters = '[{"kinds":[1],"limit":20}]';
 		isColumnDialogOpen = true;
 	}
 
@@ -107,12 +120,21 @@
 						url: normalizedWebsiteUrl ?? '',
 						width: 'standard' as const
 					}
-				: {
-						id,
-						type: 'timeline' as const,
-						sourceKey: selectedColumnType,
-						width: 'standard' as const
-					};
+				: selectedColumnType === 'custom_timeline'
+					? {
+							id,
+							type: 'timeline' as const,
+							timelineKind: 'custom' as const,
+							filters: parsedCustomTimelineFilters ?? [],
+							width: 'standard' as const
+						}
+					: {
+							id,
+							type: 'timeline' as const,
+							timelineKind: 'preset' as const,
+							sourceKey: selectedColumnType,
+							width: 'standard' as const
+						};
 
 		setColumnConfigs([...columnConfigs, nextColumn]);
 		closeColumnDialog();
@@ -157,6 +179,16 @@
 	function updateColumnWidth(columnId: string, width: ColumnWidth) {
 		setColumnConfigs(
 			columnConfigs.map((column) => (column.id === columnId ? { ...column, width } : column))
+		);
+	}
+
+	function saveCustomTimelineFilters(columnId: string, filters: NostrFilter[]) {
+		setColumnConfigs(
+			columnConfigs.map((column) =>
+				column.id === columnId && column.type === 'timeline' && column.timelineKind === 'custom'
+					? { ...column, filters }
+					: column
+			)
 		);
 	}
 
@@ -321,6 +353,7 @@
 						onMoveLeft={() => moveColumn(column.id, -1)}
 						onMoveRight={() => moveColumn(column.id, 1)}
 						onWidthChange={(width) => updateColumnWidth(column.id, width)}
+						onFiltersSave={(filters) => saveCustomTimelineFilters(column.id, filters)}
 					/>
 				{/each}
 				<button
@@ -373,10 +406,29 @@
 				{#each columnSourceKeys as sourceKey (sourceKey)}
 					<option value={sourceKey}>{m[sourceKey]()}</option>
 				{/each}
+				<option value="custom_timeline">{m.column_type_custom_timeline()}</option>
 				<option value="website">{m.column_type_website()}</option>
 			</select>
 
-			{#if selectedColumnType === 'website'}
+			{#if selectedColumnType === 'custom_timeline'}
+				<label
+					class={[
+						'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
+						textClass.control
+					]}
+					for="custom-timeline-filters"
+				>
+					{m.custom_timeline_filters()}
+				</label>
+				<textarea
+					id="custom-timeline-filters"
+					class={[
+						'min-h-32 w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+						textClass.control
+					]}
+					bind:value={customTimelineFilters}
+				></textarea>
+			{:else if selectedColumnType === 'website'}
 				<label
 					class={[
 						'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
