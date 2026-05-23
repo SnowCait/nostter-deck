@@ -314,6 +314,7 @@
 					: column
 			)
 		);
+		openSettingsColumnId = null;
 	}
 
 	function getColumnIndex(columnId: string) {

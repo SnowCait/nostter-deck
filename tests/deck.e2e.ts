@@ -591,6 +591,7 @@ test.describe('nostter deck', () => {
 		await editedCustomRelaysInput.fill('wss://relay.example.com');
 		await expect(filterSaveButton).toBeEnabled();
 		await filterSaveButton.click();
+		await expect(editedFiltersInput).toBeHidden();
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expectStoredCustomTimelineColumn(
 			page,
@@ -598,6 +599,7 @@ test.describe('nostter deck', () => {
 			initialRelaySelection
 		);
 
+		await columnOptionsButton(customColumn).click();
 		await expect(customColumn.getByLabel('wss://relay.damus.io/')).toBeChecked();
 		await expect(customColumn.getByLabel('wss://nos.lol/')).not.toBeChecked();
 		await expect(editedCustomRelaysInput).toHaveValue('wss://relay.example.com/');
@@ -633,14 +635,17 @@ test.describe('nostter deck', () => {
 		);
 
 		await filterSaveButton.click();
+		await expect(editedFiltersInput).toBeHidden();
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expectStoredCustomTimelineColumn(page, savedFilters, savedRelaySelection);
 
+		await columnOptionsButton(customColumn).click();
 		await customColumn.getByLabel('wss://relay.damus.io/').setChecked(true);
 		await customColumn.getByLabel('wss://nos.lol/').setChecked(true);
 		await editedCustomRelaysInput.fill('');
 		await expect(filterSaveButton).toBeEnabled();
 		await filterSaveButton.click();
+		await expect(editedFiltersInput).toBeHidden();
 		await expectStoredCustomTimelineColumn(page, savedFilters, defaultRelaySelection);
 
 		await page.reload();
