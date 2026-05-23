@@ -22,15 +22,22 @@
 		children
 	}: Props = $props();
 	const shapeClass = $derived(shape === 'circle' ? 'rounded-full' : 'rounded-md');
+	let failedImageUrl = $state<string | undefined>();
+	const shouldShowImage = $derived(imageUrl && failedImageUrl !== imageUrl);
+
+	function handleImageError() {
+		failedImageUrl = imageUrl;
+	}
 </script>
 
-{#if imageUrl}
+{#if shouldShowImage}
 	<img
 		data-testid={testId}
 		class={[sizeClass, 'shrink-0 object-cover', shapeClass]}
 		src={imageUrl}
 		alt=""
 		loading="lazy"
+		onerror={handleImageError}
 	/>
 {:else}
 	<div

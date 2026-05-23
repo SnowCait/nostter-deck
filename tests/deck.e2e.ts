@@ -531,6 +531,11 @@ test.describe('nostter deck', () => {
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expect(customColumn.getByText('Alice Relay')).toBeVisible();
 		await expect(customColumn.locator('img[src="https://example.com/alice.png"]')).toBeVisible();
+		const profileAvatar = customColumn.getByTestId('post-avatar').first();
+		await profileAvatar.dispatchEvent('error');
+		await expect(customColumn.locator('img[src="https://example.com/alice.png"]')).toHaveCount(0);
+		await expect(profileAvatar).toHaveText('A');
+		await expect(profileAvatar).toHaveClass(/rounded-full/);
 		await expect(customColumn.getByText('#nostter')).toHaveCount(1);
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toHaveCount(1);
 		await expectStoredCustomTimelineColumn(page);
