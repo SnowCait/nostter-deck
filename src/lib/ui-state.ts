@@ -1,3 +1,5 @@
+import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
+
 export type UiState = {
 	sidebarCollapsed: boolean;
 };
@@ -7,10 +9,6 @@ const uiStateStorageKey = 'nostter:ui-state';
 const defaultUiState: UiState = {
 	sidebarCollapsed: false
 };
-
-function canUseLocalStorage() {
-	return typeof localStorage !== 'undefined';
-}
 
 function normalizeUiState(value: unknown): UiState {
 	if (!value || typeof value !== 'object') return { ...defaultUiState };
@@ -25,22 +23,11 @@ function normalizeUiState(value: unknown): UiState {
 }
 
 export function readUiState(): UiState {
-	if (!canUseLocalStorage()) return { ...defaultUiState };
-
-	try {
-		const storedValue = localStorage.getItem(uiStateStorageKey);
-		if (!storedValue) return { ...defaultUiState };
-
-		return normalizeUiState(JSON.parse(storedValue));
-	} catch {
-		return { ...defaultUiState };
-	}
+	return readJsonStorage(uiStateStorageKey, { ...defaultUiState }, normalizeUiState);
 }
 
 export function writeUiState(nextState: UiState) {
-	if (!canUseLocalStorage()) return;
-
-	localStorage.setItem(uiStateStorageKey, JSON.stringify(normalizeUiState(nextState)));
+	writeJsonStorage(uiStateStorageKey, nextState, normalizeUiState);
 }
 
 export function updateUiState(updater: (currentState: UiState) => UiState) {

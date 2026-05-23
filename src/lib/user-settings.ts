@@ -1,3 +1,5 @@
+import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
+
 export const themePreferences = ['system', 'light', 'dark'] as const;
 export const fontSizePreferences = ['large', 'medium', 'small'] as const;
 
@@ -15,10 +17,6 @@ const defaultUserSettings: UserSettings = {
 	theme: 'system',
 	fontSize: 'medium'
 };
-
-function canUseLocalStorage() {
-	return typeof localStorage !== 'undefined';
-}
 
 function isThemePreference(value: unknown): value is ThemePreference {
 	return typeof value === 'string' && themePreferences.includes(value as ThemePreference);
@@ -49,22 +47,11 @@ function shouldUseDarkTheme(theme: ThemePreference) {
 }
 
 export function readUserSettings(): UserSettings {
-	if (!canUseLocalStorage()) return { ...defaultUserSettings };
-
-	try {
-		const storedValue = localStorage.getItem(userSettingsStorageKey);
-		if (!storedValue) return { ...defaultUserSettings };
-
-		return normalizeUserSettings(JSON.parse(storedValue));
-	} catch {
-		return { ...defaultUserSettings };
-	}
+	return readJsonStorage(userSettingsStorageKey, { ...defaultUserSettings }, normalizeUserSettings);
 }
 
 export function writeUserSettings(nextSettings: UserSettings) {
-	if (!canUseLocalStorage()) return;
-
-	localStorage.setItem(userSettingsStorageKey, JSON.stringify(normalizeUserSettings(nextSettings)));
+	writeJsonStorage(userSettingsStorageKey, nextSettings, normalizeUserSettings);
 }
 
 export function updateUserSettings(updater: (currentSettings: UserSettings) => UserSettings) {

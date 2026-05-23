@@ -1,13 +1,10 @@
+import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
 import { columnSourceKeys, initialColumnConfigs } from './data';
 import type { ColumnConfig, ColumnSourceKey, ColumnWidth } from './types';
 
 export const columnWidths = ['wide', 'standard', 'narrow'] as const;
 
 const columnConfigsStorageKey = 'nostter:column-configs';
-
-function canUseLocalStorage() {
-	return typeof localStorage !== 'undefined';
-}
 
 function isColumnSourceKey(value: unknown): value is ColumnSourceKey {
 	return typeof value === 'string' && columnSourceKeys.includes(value as ColumnSourceKey);
@@ -45,25 +42,11 @@ function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 }
 
 export function readColumnConfigs(): ColumnConfig[] {
-	if (!canUseLocalStorage()) return defaultColumnConfigs();
-
-	try {
-		const storedValue = localStorage.getItem(columnConfigsStorageKey);
-		if (!storedValue) return defaultColumnConfigs();
-
-		return normalizeColumnConfigs(JSON.parse(storedValue));
-	} catch {
-		return defaultColumnConfigs();
-	}
+	return readJsonStorage(columnConfigsStorageKey, defaultColumnConfigs(), normalizeColumnConfigs);
 }
 
 export function writeColumnConfigs(nextColumnConfigs: ColumnConfig[]) {
-	if (!canUseLocalStorage()) return;
-
-	localStorage.setItem(
-		columnConfigsStorageKey,
-		JSON.stringify(normalizeColumnConfigs(nextColumnConfigs))
-	);
+	writeJsonStorage(columnConfigsStorageKey, nextColumnConfigs, normalizeColumnConfigs);
 }
 
 export { columnConfigsStorageKey };
