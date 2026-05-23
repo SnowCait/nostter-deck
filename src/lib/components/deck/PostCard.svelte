@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { Heart, MessageCircle, Ellipsis, Repeat2, Share, ShieldCheck } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
-	import { avatarShapeClassByShape } from '$lib/avatar-shape';
 	import type { Post } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { AvatarShape } from '$lib/user-settings';
+	import ProfileAvatar from './ProfileAvatar.svelte';
 
 	type Props = {
 		post: Post;
@@ -13,32 +13,20 @@
 	};
 
 	const { post, textClass, avatarShape }: Props = $props();
-	const avatarShapeClass = $derived(avatarShapeClassByShape[avatarShape]);
 </script>
 
 <article
 	class="border-b border-slate-200 p-3 transition hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/80"
 >
 	<div class="flex gap-3">
-		{#if post.avatarUrl}
-			<img
-				data-testid="post-avatar"
-				class={['size-10 shrink-0 object-cover', avatarShapeClass]}
-				src={post.avatarUrl}
-				alt=""
-				loading="lazy"
-			/>
-		{:else}
-			<div
-				data-testid="post-avatar"
-				class={[
-					`flex size-10 shrink-0 items-center justify-center ${post.accent} text-sm font-bold text-white`,
-					avatarShapeClass
-				]}
-			>
-				{post.author.slice(0, 1)}
-			</div>
-		{/if}
+		<ProfileAvatar
+			shape={avatarShape}
+			sizeClass="size-10"
+			imageUrl={post.avatarUrl}
+			fallbackText={post.author.slice(0, 1)}
+			fallbackClass={`${post.accent} text-sm font-bold text-white`}
+			testId="post-avatar"
+		/>
 		<div class="min-w-0 flex-1">
 			<div class="flex items-start justify-between gap-2">
 				<div class="min-w-0">

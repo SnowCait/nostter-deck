@@ -2,8 +2,8 @@
 	import { onDestroy, tick } from 'svelte';
 	import { CalendarClock, Image, Plus, Send, Smile, UserRound } from '@lucide/svelte';
 	import DeckColumn from '$lib/components/deck/DeckColumn.svelte';
+	import ProfileAvatar from '$lib/components/deck/ProfileAvatar.svelte';
 	import Sidebar from '$lib/components/deck/Sidebar.svelte';
-	import { avatarShapeClassByShape } from '$lib/avatar-shape';
 	import { readColumnConfigs, writeColumnConfigs } from '$lib/deck/column-configs';
 	import { columnSourceKeys, sourcePosts } from '$lib/deck/data';
 	import type {
@@ -59,7 +59,6 @@
 	const composeLength = $derived(composeText.length);
 	const canSubmitPost = $derived(composeLength > 0 && composeLength <= composeMaxLength);
 	const textClass = $derived(textClassByFontSize[fontSize]);
-	const avatarShapeClass = $derived(avatarShapeClassByShape[avatarShape]);
 	const normalizedWebsiteUrl = $derived(normalizeWebsiteUrl(websiteUrl));
 	const parsedCustomTimelineFilters = $derived(parseNostrFilters(customTimelineFilters));
 	const selectedDefaultRelaySet = $derived(new Set(selectedDefaultRelays));
@@ -390,15 +389,14 @@
 				<div
 					class="mb-4 flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900"
 				>
-					<div
-						data-testid="account-avatar"
-						class={[
-							'flex size-10 shrink-0 items-center justify-center bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950',
-							avatarShapeClass
-						]}
+					<ProfileAvatar
+						shape={avatarShape}
+						sizeClass="size-10"
+						fallbackClass="bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
+						testId="account-avatar"
 					>
 						<UserRound class="size-4" aria-hidden="true" />
-					</div>
+					</ProfileAvatar>
 					<div class="min-w-0">
 						<p class={['truncate font-bold', textClass.control]}>Mika</p>
 						<p class={['truncate text-slate-500 dark:text-slate-400', textClass.meta]}>

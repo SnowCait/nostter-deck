@@ -18,7 +18,6 @@
 		UserRound
 	} from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
-	import { avatarShapeClassByShape } from '$lib/avatar-shape';
 	import { getLocale, locales, setLocale } from '$lib/paraglide/runtime.js';
 	import { getColumnTitle } from '$lib/deck/column-title';
 	import type { Column, ColumnSourceKey } from '$lib/deck/types';
@@ -35,6 +34,7 @@
 		type FontSize,
 		type ThemePreference
 	} from '$lib/user-settings';
+	import ProfileAvatar from './ProfileAvatar.svelte';
 
 	type AppLocale = (typeof locales)[number];
 	type Props = {
@@ -87,7 +87,6 @@
 		circle: () => m.avatar_shape_circle(),
 		square: () => m.avatar_shape_square()
 	} satisfies Record<AvatarShape, () => string>;
-	const avatarShapeClass = $derived(avatarShapeClassByShape[avatarShape]);
 
 	const columnIconBySource = {
 		timeline_home: House,
@@ -346,15 +345,14 @@
 			]}
 		>
 			<div class="flex w-11 shrink-0 justify-center">
-				<div
-					data-testid="account-avatar"
-					class={[
-						'flex size-9 shrink-0 items-center justify-center bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950',
-						avatarShapeClass
-					]}
+				<ProfileAvatar
+					shape={avatarShape}
+					sizeClass="size-9"
+					fallbackClass="bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
+					testId="account-avatar"
 				>
 					<UserRound class="size-4" aria-hidden="true" />
-				</div>
+				</ProfileAvatar>
 			</div>
 			<div class={sidebarLabelClass()}>
 				<p class={['truncate font-semibold', textClass.account]}>Mika</p>
