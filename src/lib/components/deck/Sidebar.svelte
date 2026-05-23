@@ -18,7 +18,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import { getLocale, locales, setLocale } from '$lib/paraglide/runtime.js';
 	import type { Column, ColumnSourceKey } from '$lib/deck/types';
-	import { textClassByFontSize } from '$lib/font-size';
+	import type { FontSizeTextClasses } from '$lib/font-size';
 	import { readUiState, updateUiState } from '$lib/ui-state';
 	import {
 		applyThemePreference,
@@ -37,6 +37,7 @@
 		onAddColumn: () => void;
 		onCompose: () => void;
 		fontSize: FontSize;
+		textClass: FontSizeTextClasses;
 		onFontSizeChange: (fontSize: FontSize) => void;
 		onSelectColumn: (columnId: string) => void;
 	};
@@ -47,6 +48,7 @@
 		onAddColumn,
 		onCompose,
 		fontSize,
+		textClass,
 		onFontSizeChange,
 		onSelectColumn
 	}: Props = $props();
@@ -71,8 +73,6 @@
 		medium: () => m.font_size_medium(),
 		small: () => m.font_size_small()
 	} satisfies Record<FontSize, () => string>;
-
-	const textClass = $derived(textClassByFontSize[fontSize]);
 
 	const columnIconBySource = {
 		timeline_home: House,

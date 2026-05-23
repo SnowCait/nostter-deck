@@ -137,6 +137,7 @@
 		onAddColumn={openAddColumnDialog}
 		onCompose={toggleComposePanel}
 		{fontSize}
+		{textClass}
 		onFontSizeChange={updateFontSize}
 		onSelectColumn={focusColumn}
 	/>
@@ -265,7 +266,7 @@
 						isSettingsOpen={openSettingsColumnId === column.id}
 						canMoveLeft={columnIndex > 0}
 						canMoveRight={columnIndex >= 0 && columnIndex < columnConfigs.length - 1}
-						{fontSize}
+						{textClass}
 						onToggleSettings={() => toggleColumnSettings(column.id)}
 						onDelete={() => deleteColumn(column.id)}
 						onMoveLeft={() => moveColumn(column.id, -1)}

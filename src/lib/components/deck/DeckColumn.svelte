@@ -11,8 +11,7 @@
 	} from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Column } from '$lib/deck/types';
-	import { textClassByFontSize } from '$lib/font-size';
-	import type { FontSize } from '$lib/user-settings';
+	import type { FontSizeTextClasses } from '$lib/font-size';
 	import PostCard from './PostCard.svelte';
 
 	type Props = {
@@ -22,7 +21,7 @@
 		isSettingsOpen: boolean;
 		canMoveLeft: boolean;
 		canMoveRight: boolean;
-		fontSize: FontSize;
+		textClass: FontSizeTextClasses;
 		onToggleSettings: () => void;
 		onDelete: () => void;
 		onMoveLeft: () => void;
@@ -36,7 +35,7 @@
 		isSettingsOpen,
 		canMoveLeft,
 		canMoveRight,
-		fontSize,
+		textClass,
 		onToggleSettings,
 		onDelete,
 		onMoveLeft,
@@ -48,7 +47,6 @@
 		'flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100';
 	const settingsActionClass =
 		'flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 disabled:dark:hover:bg-transparent';
-	const textClass = $derived(textClassByFontSize[fontSize]);
 </script>
 
 <section
@@ -136,7 +134,7 @@
 
 	<div class="min-h-0 flex-1 overflow-y-auto">
 		{#each column.posts as post (`${column.id}-${post.author}-${post.time}`)}
-			<PostCard {post} {fontSize} />
+			<PostCard {post} {textClass} />
 		{/each}
 	</div>
 </section>

@@ -2,16 +2,14 @@
 	import { Heart, MessageCircle, Ellipsis, Repeat2, Share, ShieldCheck } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Post } from '$lib/deck/types';
-	import { textClassByFontSize } from '$lib/font-size';
-	import type { FontSize } from '$lib/user-settings';
+	import type { FontSizeTextClasses } from '$lib/font-size';
 
 	type Props = {
 		post: Post;
-		fontSize: FontSize;
+		textClass: FontSizeTextClasses;
 	};
 
-	const { post, fontSize }: Props = $props();
-	const textClass = $derived(textClassByFontSize[fontSize]);
+	const { post, textClass }: Props = $props();
 </script>
 
 <article
