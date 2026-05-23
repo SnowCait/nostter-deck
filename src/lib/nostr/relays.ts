@@ -1,6 +1,11 @@
 import type { RelaySelection } from '$lib/deck/types';
 
 export const defaultRelays = ['wss://relay.damus.io/', 'wss://nos.lol/'] as const;
+export const profileRelays = [
+	'wss://purplepag.es/',
+	'wss://user.kindpag.es/',
+	'wss://directory.yabu.me/'
+] as const;
 
 const defaultRelaySet = new Set<string>(defaultRelays);
 
@@ -17,6 +22,10 @@ function normalizeRelay(value: unknown): string | null {
 
 function uniqueRelays(relays: string[]) {
 	return [...new Set(relays)];
+}
+
+export function combineRelays(...relayGroups: readonly string[][]) {
+	return uniqueRelays(relayGroups.flat());
 }
 
 export function normalizeRelays(value: unknown): string[] | null {

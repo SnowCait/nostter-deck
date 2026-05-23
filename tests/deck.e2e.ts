@@ -158,7 +158,11 @@ async function fakeRelayConnectionCounts(page: Page) {
 
 		return {
 			damus: connections['wss://relay.damus.io/'] ?? connections['wss://relay.damus.io'],
-			nos: connections['wss://nos.lol/'] ?? connections['wss://nos.lol']
+			nos: connections['wss://nos.lol/'] ?? connections['wss://nos.lol'],
+			purplepages: connections['wss://purplepag.es/'] ?? connections['wss://purplepag.es'],
+			userKindpages: connections['wss://user.kindpag.es/'] ?? connections['wss://user.kindpag.es'],
+			yabuDirectory:
+				connections['wss://directory.yabu.me/'] ?? connections['wss://directory.yabu.me']
 		};
 	});
 }
@@ -530,7 +534,15 @@ test.describe('nostter deck', () => {
 		await expect(customColumn.getByText('#nostter')).toHaveCount(1);
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toHaveCount(1);
 		await expectStoredCustomTimelineColumn(page);
-		await expect.poll(async () => fakeRelayConnectionCounts(page)).toEqual({ damus: 1, nos: 1 });
+		await expect
+			.poll(async () => fakeRelayConnectionCounts(page))
+			.toEqual({
+				damus: 1,
+				nos: 1,
+				purplepages: 1,
+				userKindpages: 1,
+				yabuDirectory: 1
+			});
 		await expect
 			.poll(async () =>
 				page.evaluate(
@@ -540,7 +552,7 @@ test.describe('nostter deck', () => {
 						] ?? 0
 				)
 			)
-			.toBe(2);
+			.toBe(5);
 
 		await columnOptionsButton(customColumn).click();
 
@@ -644,7 +656,15 @@ test.describe('nostter deck', () => {
 			.getByRole('button', { name: 'Save' })
 			.click();
 		await expectColumnOrder(columns, [...columnNames, 'Custom timeline', 'Custom timeline']);
-		await expect.poll(async () => fakeRelayConnectionCounts(page)).toEqual({ damus: 1, nos: 1 });
+		await expect
+			.poll(async () => fakeRelayConnectionCounts(page))
+			.toEqual({
+				damus: 1,
+				nos: 1,
+				purplepages: 1,
+				userKindpages: 1,
+				yabuDirectory: 1
+			});
 	});
 
 	test('changes and persists column widths', async ({ page }) => {

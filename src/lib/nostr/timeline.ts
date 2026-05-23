@@ -2,7 +2,7 @@ import { createRxForwardReq, type LazyFilter } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import type { NostrFilter, Post, RelaySelection } from '$lib/deck/types';
 import { getNostrClient } from './client';
-import { resolveRelaySelection } from './relays';
+import { combineRelays, profileRelays, resolveRelaySelection } from './relays';
 
 type CustomTimelineSubscriptionOptions = {
 	filters: NostrFilter[];
@@ -35,6 +35,7 @@ export function startCustomTimelineSubscription({
 	onError
 }: CustomTimelineSubscriptionOptions) {
 	const relayUrls = resolveRelaySelection(relays);
+	const profileRelayUrls = combineRelays(relayUrls, [...profileRelays]);
 	const rxNostr = getNostrClient();
 	const timelineReq = createRxForwardReq();
 	const profileReq = createRxForwardReq();
@@ -83,7 +84,7 @@ export function startCustomTimelineSubscription({
 	);
 
 	subscriptions.push(
-		rxNostr.use(profileReq, { on: { relays: relayUrls } }).subscribe(({ event }) => {
+		rxNostr.use(profileReq, { on: { relays: profileRelayUrls } }).subscribe(({ event }) => {
 			if (event.kind !== 0) return;
 
 			const profile = parseProfile(event.content);
