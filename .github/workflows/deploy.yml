@@ -28,6 +28,27 @@ jobs:
       - run: npm run check
       - run: npm run lint
       - run: npm run build
+      - run: |
+          echo "# Bundle Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Client" >> $GITHUB_STEP_SUMMARY
+          sed -n "2,10p" .svelte-kit/output/client/stats.md >> $GITHUB_STEP_SUMMARY
+          echo "## Server" >> $GITHUB_STEP_SUMMARY
+          sed -n "2,10p" .svelte-kit/output/server/stats.md >> $GITHUB_STEP_SUMMARY
+
+          echo "<details>" >> $GITHUB_STEP_SUMMARY
+          echo "<summary>Client Details</summary>" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat .svelte-kit/output/client/stats.md >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "</details>" >> $GITHUB_STEP_SUMMARY
+
+          echo "<details>" >> $GITHUB_STEP_SUMMARY
+          echo "<summary>Server Details</summary>" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat .svelte-kit/output/server/stats.md >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "</details>" >> $GITHUB_STEP_SUMMARY
       - run: touch build/.nojekyll
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
