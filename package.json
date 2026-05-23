@@ -21,9 +21,11 @@
 	},
 	"license": "MIT",
 	"dependencies": {
+		"@rx-nostr/crypto": "^3.1.6",
 		"@tauri-apps/api": "^2",
 		"@tauri-apps/plugin-opener": "^2",
-		"@tauri-apps/plugin-window-state": "^2.4.1"
+		"@tauri-apps/plugin-window-state": "^2.4.1",
+		"rx-nostr": "^3.7.4"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.2",
@@ -43,6 +45,7 @@
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.14.0",
 		"globals": "^17.3.0",
+		"nostr-typedef": "^0.13.0",
 		"prettier": "^3.8.1",
 		"prettier-plugin-svelte": "^3.4.1",
 		"prettier-plugin-tailwindcss": "^0.8.0",
