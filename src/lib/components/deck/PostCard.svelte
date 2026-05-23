@@ -16,17 +16,28 @@
 	class="border-b border-slate-200 p-3 transition hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/80"
 >
 	<div class="flex gap-3">
-		<div
-			class={`flex size-10 shrink-0 items-center justify-center rounded-md ${post.accent} text-sm font-bold text-white`}
-		>
-			{post.author.slice(0, 1)}
-		</div>
+		{#if post.avatarUrl}
+			<img
+				class="size-10 shrink-0 rounded-md object-cover"
+				src={post.avatarUrl}
+				alt=""
+				loading="lazy"
+			/>
+		{:else}
+			<div
+				class={`flex size-10 shrink-0 items-center justify-center rounded-md ${post.accent} text-sm font-bold text-white`}
+			>
+				{post.author.slice(0, 1)}
+			</div>
+		{/if}
 		<div class="min-w-0 flex-1">
 			<div class="flex items-start justify-between gap-2">
 				<div class="min-w-0">
 					<div class="flex min-w-0 items-center gap-1.5">
 						<p class={['truncate font-bold', textClass.account]}>{post.author}</p>
-						<ShieldCheck class="size-4 shrink-0 text-sky-500" aria-label={m.verified()} />
+						{#if post.verified ?? true}
+							<ShieldCheck class="size-4 shrink-0 text-sky-500" aria-label={m.verified()} />
+						{/if}
 					</div>
 					<p class={['truncate text-slate-500 dark:text-slate-400', textClass.meta]}>
 						{post.handle} · {post.time}

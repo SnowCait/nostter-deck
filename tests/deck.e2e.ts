@@ -1,5 +1,14 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
+declare global {
+	interface Window {
+		__NOSTTER_DECK_SKIP_NOSTR_VERIFY__?: boolean;
+		__NOSTTER_DECK_WEBSOCKET_CTOR__?: typeof WebSocket;
+		__nostterFakeRelayConnections?: Record<string, number>;
+		__nostterFakeRelayProfileRequests?: Record<string, number>;
+	}
+}
+
 const columnNames = ['Home', 'Mentions', 'Search', 'Lists'];
 const sidebarButtonNames = [
 	'Home',
@@ -29,6 +38,129 @@ async function openDeck(page: Page) {
 		}
 	});
 	await page.goto('/');
+}
+
+async function installFakeNostrRelay(page: Page) {
+	await page.addInitScript(() => {
+		const relayConnections: Record<string, number> = {};
+		const relayProfileRequests: Record<string, number> = {};
+		const textEvent = {
+			id: 'event-custom-timeline-1',
+			pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+			created_at: Math.floor(Date.now() / 1000) - 90,
+			kind: 1,
+			tags: [['t', 'nostter']],
+			content: 'Hello from a custom Nostr timeline',
+			sig: '0'.repeat(128)
+		};
+		const profileEvent = {
+			id: 'event-profile-alice',
+			pubkey: textEvent.pubkey,
+			created_at: Math.floor(Date.now() / 1000) - 120,
+			kind: 0,
+			tags: [],
+			content: JSON.stringify({
+				display_name: 'Alice Relay',
+				picture: 'https://example.com/alice.png'
+			}),
+			sig: '0'.repeat(128)
+		};
+
+		class FakeWebSocket {
+			static CONNECTING = 0;
+			static OPEN = 1;
+			static CLOSING = 2;
+			static CLOSED = 3;
+
+			readyState = FakeWebSocket.CONNECTING;
+			url: string;
+			listeners: Record<string, Set<(event?: unknown) => void>> = {
+				open: new Set(),
+				message: new Set(),
+				close: new Set()
+			};
+
+			constructor(url: string) {
+				this.url = url;
+				relayConnections[url] = (relayConnections[url] ?? 0) + 1;
+				setTimeout(() => {
+					this.readyState = FakeWebSocket.OPEN;
+					this.dispatch('open');
+				}, 0);
+			}
+
+			addEventListener(type: string, callback: (event?: unknown) => void) {
+				this.listeners[type]?.add(callback);
+			}
+
+			removeEventListener(type: string, callback: (event?: unknown) => void) {
+				this.listeners[type]?.delete(callback);
+			}
+
+			send(data: string) {
+				const message = JSON.parse(data);
+				if (!Array.isArray(message) || message[0] !== 'REQ') return;
+
+				const subId = message[1] as string;
+				const filters = message.slice(2) as Array<{ kinds?: number[]; authors?: string[] }>;
+				const requestsTextEvents = filters.some(
+					(filter) => !filter.kinds || filter.kinds.includes(1)
+				);
+				const requestsProfiles = filters.some(
+					(filter) => filter.kinds?.includes(0) && filter.authors?.includes(textEvent.pubkey)
+				);
+
+				if (requestsTextEvents) {
+					setTimeout(() => {
+						this.emitMessage(['EVENT', subId, textEvent]);
+						this.emitMessage(['EVENT', subId, textEvent]);
+					}, 5);
+				}
+
+				if (requestsProfiles) {
+					relayProfileRequests[textEvent.pubkey] =
+						(relayProfileRequests[textEvent.pubkey] ?? 0) + 1;
+					setTimeout(() => {
+						this.emitMessage(['EVENT', subId, profileEvent]);
+					}, 20);
+				}
+			}
+
+			close(code = 1000) {
+				this.readyState = FakeWebSocket.CLOSED;
+				this.dispatch('close', { type: 'close', code, reason: '' });
+			}
+
+			emitMessage(message: unknown) {
+				this.dispatch('message', {
+					type: 'message',
+					data: JSON.stringify(message)
+				});
+			}
+
+			dispatch(type: string, event?: unknown) {
+				for (const callback of this.listeners[type] ?? []) {
+					callback(event);
+				}
+			}
+		}
+
+		window.__NOSTTER_DECK_SKIP_NOSTR_VERIFY__ = true;
+		window.__NOSTTER_DECK_WEBSOCKET_CTOR__ = FakeWebSocket as unknown as typeof WebSocket;
+		window.__nostterFakeRelayConnections = relayConnections;
+		window.__nostterFakeRelayProfileRequests = relayProfileRequests;
+	});
+}
+
+async function fakeRelayConnectionCounts(page: Page) {
+	return page.evaluate(() => {
+		const connections = window.__nostterFakeRelayConnections ?? {};
+
+		return {
+			damus: connections['wss://relay.damus.io/'] ?? connections['wss://relay.damus.io'],
+			nos: connections['wss://nos.lol/'] ?? connections['wss://nos.lol']
+		};
+	});
 }
 
 function deckColumns(page: Page) {
@@ -327,6 +459,7 @@ test.describe('nostter deck', () => {
 	});
 
 	test('adds and persists a custom timeline column', async ({ page }) => {
+		await installFakeNostrRelay(page);
 		await openDeck(page);
 		const columns = deckColumns(page);
 
@@ -369,10 +502,23 @@ test.describe('nostter deck', () => {
 		const customColumn = columns.nth(4);
 		await expectColumnOrder(columns, [...columnNames, 'Custom timeline']);
 		await expectColumnWidth(customColumn, standardColumnWidth);
-		await expect(customColumn.getByText('Relay fetching is not implemented yet.')).toBeVisible();
-		await expect(customColumn.getByText('Filters: 1')).toBeVisible();
-		await expect(customColumn.getByText('Relays: 2')).toBeVisible();
+		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
+		await expect(customColumn.getByText('Alice Relay')).toBeVisible();
+		await expect(customColumn.locator('img[src="https://example.com/alice.png"]')).toBeVisible();
+		await expect(customColumn.getByText('#nostter')).toHaveCount(1);
+		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toHaveCount(1);
 		await expectStoredCustomTimelineColumn(page);
+		await expect.poll(async () => fakeRelayConnectionCounts(page)).toEqual({ damus: 1, nos: 1 });
+		await expect
+			.poll(async () =>
+				page.evaluate(
+					() =>
+						window.__nostterFakeRelayProfileRequests?.[
+							'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+						] ?? 0
+				)
+			)
+			.toBe(2);
 
 		await columnOptionsButton(customColumn).click();
 
@@ -406,7 +552,7 @@ test.describe('nostter deck', () => {
 		await editedCustomRelaysInput.fill('wss://relay.example.com');
 		await expect(filterSaveButton).toBeEnabled();
 		await filterSaveButton.click();
-		await expect(customColumn.getByText('Relays: 2')).toBeVisible();
+		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expectStoredCustomTimelineColumn(
 			page,
 			[{ kinds: [1], limit: 20 }],
@@ -419,7 +565,7 @@ test.describe('nostter deck', () => {
 
 		await editedFiltersInput.fill('{"kinds":[1],"limit":2}');
 		await expect(filterSaveButton).toBeDisabled();
-		await expect(customColumn.getByText('Filters: 1')).toBeVisible();
+		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expectStoredCustomTimelineColumn(
 			page,
 			[{ kinds: [1], limit: 20 }],
@@ -429,7 +575,7 @@ test.describe('nostter deck', () => {
 		await editedFiltersInput.fill(JSON.stringify(savedFilters, null, 2));
 		await editedCustomRelaysInput.fill('https://relay.example.net');
 		await expect(filterSaveButton).toBeDisabled();
-		await expect(customColumn.getByText('Relays: 2')).toBeVisible();
+		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expectStoredCustomTimelineColumn(
 			page,
 			[{ kinds: [1], limit: 20 }],
@@ -448,8 +594,7 @@ test.describe('nostter deck', () => {
 		);
 
 		await filterSaveButton.click();
-		await expect(customColumn.getByText('Filters: 2')).toBeVisible();
-		await expect(customColumn.getByText('Relays: 2')).toBeVisible();
+		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expectStoredCustomTimelineColumn(page, savedFilters, savedRelaySelection);
 
 		await customColumn.getByLabel('wss://relay.damus.io/').setChecked(true);
@@ -468,8 +613,16 @@ test.describe('nostter deck', () => {
 		await expect(columns.nth(4).getByLabel('wss://relay.damus.io/')).toBeChecked();
 		await expect(columns.nth(4).getByLabel('wss://nos.lol/')).toBeChecked();
 		await expect(columns.nth(4).getByLabel('Custom relays')).toHaveValue('');
-		await expect(columns.nth(4).getByText('Filters: 2')).toBeVisible();
-		await expect(columns.nth(4).getByText('Relays: 2')).toBeVisible();
+		await expect(columns.nth(4).getByText('Hello from a custom Nostr timeline')).toBeVisible();
+
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		await page.getByLabel('Column type').selectOption('custom_timeline');
+		await page
+			.getByRole('dialog', { name: 'Add column' })
+			.getByRole('button', { name: 'Save' })
+			.click();
+		await expectColumnOrder(columns, [...columnNames, 'Custom timeline', 'Custom timeline']);
+		await expect.poll(async () => fakeRelayConnectionCounts(page)).toEqual({ damus: 1, nos: 1 });
 	});
 
 	test('changes and persists column widths', async ({ page }) => {

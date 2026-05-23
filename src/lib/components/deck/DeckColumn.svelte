@@ -310,20 +310,38 @@
 				sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
 			></iframe>
 		{:else if column.timelineKind === 'custom'}
-			<div
-				class={[
-					'flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-slate-500 dark:text-slate-400',
-					textClass.control
-				]}
-			>
-				<p class="font-semibold text-slate-700 dark:text-slate-300">
-					{m.custom_timeline_not_implemented()}
-				</p>
-				<p>{m.custom_timeline_filter_count({ count: column.filters.length })}</p>
-				<p>
-					{m.custom_timeline_relay_count({ count: resolveRelaySelection(column.relays).length })}
-				</p>
-			</div>
+			{#if column.error}
+				<div
+					class={[
+						'flex h-full items-center justify-center p-6 text-center font-semibold text-rose-600 dark:text-rose-400',
+						textClass.control
+					]}
+				>
+					{m.custom_timeline_error({ message: column.error })}
+				</div>
+			{:else if column.isLoading && column.posts.length === 0}
+				<div
+					class={[
+						'flex h-full items-center justify-center p-6 text-center text-slate-500 dark:text-slate-400',
+						textClass.control
+					]}
+				>
+					{m.custom_timeline_loading()}
+				</div>
+			{:else if column.posts.length === 0}
+				<div
+					class={[
+						'flex h-full items-center justify-center p-6 text-center text-slate-500 dark:text-slate-400',
+						textClass.control
+					]}
+				>
+					{m.custom_timeline_empty()}
+				</div>
+			{:else}
+				{#each column.posts as post (post.id ?? `${column.id}-${post.author}-${post.time}`)}
+					<PostCard {post} {textClass} />
+				{/each}
+			{/if}
 		{:else}
 			{#each column.posts as post (`${column.id}-${post.author}-${post.time}`)}
 				<PostCard {post} {textClass} />

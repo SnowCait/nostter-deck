@@ -45,6 +45,9 @@ export type MessageKey =
 	| 'custom_timeline_not_implemented'
 	| 'custom_timeline_filter_count'
 	| 'custom_timeline_relay_count'
+	| 'custom_timeline_loading'
+	| 'custom_timeline_empty'
+	| 'custom_timeline_error'
 	| 'save'
 	| 'cancel'
 	| 'close'
@@ -96,12 +99,15 @@ export type WebsiteColumnConfig = {
 export type ColumnConfig = TimelineColumnConfig | WebsiteColumnConfig;
 
 export type Post = {
+	id?: string;
 	author: string;
 	handle: string;
+	avatarUrl?: string;
 	time: string;
 	body: string;
 	accent: string;
 	tags: string[];
+	verified?: boolean;
 	stats: {
 		replies: string;
 		reposts: string;
@@ -118,7 +124,11 @@ export type PresetTimelineColumn = PresetTimelineColumnConfig & {
 	posts: Post[];
 };
 
-export type CustomTimelineColumn = CustomTimelineColumnConfig;
+export type CustomTimelineColumn = CustomTimelineColumnConfig & {
+	posts: Post[];
+	isLoading: boolean;
+	error: string | null;
+};
 export type TimelineColumn = PresetTimelineColumn | CustomTimelineColumn;
 export type WebsiteColumn = WebsiteColumnConfig;
 export type Column = TimelineColumn | WebsiteColumn;

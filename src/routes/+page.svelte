@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { onDestroy, tick } from 'svelte';
 	import { CalendarClock, Image, Plus, Send, Smile, UserRound } from '@lucide/svelte';
 	import DeckColumn from '$lib/components/deck/DeckColumn.svelte';
 	import Sidebar from '$lib/components/deck/Sidebar.svelte';
@@ -11,14 +11,27 @@
 		ColumnSourceKey,
 		ColumnWidth,
 		NostrFilter,
+		Post,
 		RelaySelection
 	} from '$lib/deck/types';
 	import { normalizeWebsiteUrl } from '$lib/deck/website-url';
 	import { textClassByFontSize } from '$lib/font-size';
 	import { parseNostrFilters } from '$lib/nostr/filters';
 	import { defaultRelays, resolveRelayDraft } from '$lib/nostr/relays';
+	import { startCustomTimelineSubscription } from '$lib/nostr/timeline';
 	import { m } from '$lib/paraglide/messages.js';
 	import { readUserSettings, type FontSize } from '$lib/user-settings';
+
+	type CustomTimelineRuntime = {
+		posts: Post[];
+		isLoading: boolean;
+		error: string | null;
+	};
+
+	type CustomTimelineSubscription = {
+		signature: string;
+		stop: () => void;
+	};
 
 	const savedColumnConfigs = readColumnConfigs();
 
@@ -35,6 +48,9 @@
 	let selectedDefaultRelays = $state<string[]>([...defaultRelays]);
 	let customTimelineRelays = $state('');
 	let nextColumnId = $state(getNextColumnNumber(savedColumnConfigs));
+	let customTimelineRuntimes = $state<Record<string, CustomTimelineRuntime>>({});
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity
+	const customTimelineSubscriptions = new Map<string, CustomTimelineSubscription>();
 
 	const composeMaxLength = 280;
 	const composeLength = $derived(composeText.length);
@@ -52,15 +68,69 @@
 				(parsedCustomTimelineFilters !== null && parsedCustomTimelineRelays !== null))
 	);
 	const columns = $derived<Column[]>(
-		columnConfigs.map((column) =>
-			column.type === 'timeline' && column.timelineKind === 'preset'
-				? {
-						...column,
-						posts: sourcePosts[column.sourceKey]
-					}
-				: { ...column }
-		)
+		columnConfigs.map((column) => {
+			if (column.type === 'timeline' && column.timelineKind === 'preset') {
+				return {
+					...column,
+					posts: sourcePosts[column.sourceKey]
+				};
+			}
+
+			if (column.type === 'timeline' && column.timelineKind === 'custom') {
+				const runtime = customTimelineRuntimes[column.id] ?? emptyCustomTimelineRuntime();
+
+				return {
+					...column,
+					...runtime
+				};
+			}
+
+			return { ...column };
+		})
 	);
+
+	$effect(() => {
+		const activeCustomColumns = columnConfigs.filter(
+			(column) => column.type === 'timeline' && column.timelineKind === 'custom'
+		);
+		const activeCustomColumnIds = new Set(activeCustomColumns.map((column) => column.id));
+
+		for (const [columnId, subscription] of customTimelineSubscriptions) {
+			if (activeCustomColumnIds.has(columnId)) continue;
+
+			subscription.stop();
+			customTimelineSubscriptions.delete(columnId);
+			removeCustomTimelineRuntime(columnId);
+		}
+
+		for (const column of activeCustomColumns) {
+			const signature = getCustomTimelineSignature(column.filters, column.relays);
+			if (customTimelineSubscriptions.get(column.id)?.signature === signature) continue;
+
+			customTimelineSubscriptions.get(column.id)?.stop();
+			setCustomTimelineRuntime(column.id, emptyCustomTimelineRuntime());
+
+			const subscription = startCustomTimelineSubscription({
+				filters: column.filters,
+				relays: column.relays,
+				onUpdate: (posts) => updateCustomTimelineRuntime(column.id, { posts }),
+				onLoadingChange: (isLoading) => updateCustomTimelineRuntime(column.id, { isLoading }),
+				onError: (error) => updateCustomTimelineRuntime(column.id, { error })
+			});
+
+			customTimelineSubscriptions.set(column.id, {
+				signature,
+				stop: subscription.stop
+			});
+		}
+	});
+
+	onDestroy(() => {
+		for (const subscription of customTimelineSubscriptions.values()) {
+			subscription.stop();
+		}
+		customTimelineSubscriptions.clear();
+	});
 
 	function getColumnId(columnId: string) {
 		return `deck-column-${columnId}`;
@@ -96,6 +166,41 @@
 	function setColumnConfigs(nextColumnConfigs: ColumnConfig[]) {
 		columnConfigs = nextColumnConfigs;
 		writeColumnConfigs(nextColumnConfigs);
+	}
+
+	function emptyCustomTimelineRuntime(): CustomTimelineRuntime {
+		return {
+			posts: [],
+			isLoading: false,
+			error: null
+		};
+	}
+
+	function setCustomTimelineRuntime(columnId: string, runtime: CustomTimelineRuntime) {
+		customTimelineRuntimes = {
+			...customTimelineRuntimes,
+			[columnId]: runtime
+		};
+	}
+
+	function updateCustomTimelineRuntime(columnId: string, patch: Partial<CustomTimelineRuntime>) {
+		customTimelineRuntimes = {
+			...customTimelineRuntimes,
+			[columnId]: {
+				...(customTimelineRuntimes[columnId] ?? emptyCustomTimelineRuntime()),
+				...patch
+			}
+		};
+	}
+
+	function removeCustomTimelineRuntime(columnId: string) {
+		const nextRuntimes = { ...customTimelineRuntimes };
+		delete nextRuntimes[columnId];
+		customTimelineRuntimes = nextRuntimes;
+	}
+
+	function getCustomTimelineSignature(filters: NostrFilter[], relays: RelaySelection) {
+		return JSON.stringify({ filters, relays });
 	}
 
 	function openAddColumnDialog() {
