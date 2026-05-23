@@ -32,6 +32,10 @@ export type MessageKey =
 	| 'add_column'
 	| 'edit_column'
 	| 'column_type'
+	| 'column_width'
+	| 'column_width_narrow'
+	| 'column_width_standard'
+	| 'column_width_wide'
 	| 'save'
 	| 'cancel'
 	| 'close'
@@ -50,10 +54,12 @@ export type ColumnTitleKey = Extract<
 	'timeline_home' | 'timeline_mentions' | 'timeline_search' | 'timeline_lists'
 >;
 export type ColumnSourceKey = ColumnTitleKey;
+export type ColumnWidth = 'narrow' | 'standard' | 'wide';
 
 export type ColumnConfig = {
 	id: string;
 	sourceKey: ColumnSourceKey;
+	width: ColumnWidth;
 };
 
 export type Post = {

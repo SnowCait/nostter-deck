@@ -10,7 +10,8 @@
 		Trash2
 	} from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
-	import type { Column } from '$lib/deck/types';
+	import { columnWidths } from '$lib/deck/column-configs';
+	import type { Column, ColumnWidth } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import PostCard from './PostCard.svelte';
 
@@ -26,6 +27,7 @@
 		onDelete: () => void;
 		onMoveLeft: () => void;
 		onMoveRight: () => void;
+		onWidthChange: (width: ColumnWidth) => void;
 	};
 
 	const {
@@ -39,21 +41,39 @@
 		onToggleSettings,
 		onDelete,
 		onMoveLeft,
-		onMoveRight
+		onMoveRight,
+		onWidthChange
 	}: Props = $props();
+
+	const columnWidthClassByWidth = {
+		narrow: 'w-[280px]',
+		standard: 'w-[342px]',
+		wide: 'w-[480px]'
+	} satisfies Record<ColumnWidth, string>;
+
+	const columnWidthLabels = {
+		narrow: () => m.column_width_narrow(),
+		standard: () => m.column_width_standard(),
+		wide: () => m.column_width_wide()
+	} satisfies Record<ColumnWidth, () => string>;
 
 	const columnIconClass = 'size-4 shrink-0 text-slate-500 dark:text-slate-400';
 	const columnActionClass =
 		'flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100';
 	const settingsActionClass =
 		'flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 disabled:dark:hover:bg-transparent';
+
+	function selectColumnWidth(event: Event) {
+		onWidthChange((event.currentTarget as HTMLSelectElement).value as ColumnWidth);
+	}
 </script>
 
 <section
 	{id}
 	tabindex="-1"
 	class={[
-		'flex h-full w-[342px] flex-col overflow-hidden border-r border-slate-200 bg-white transition-shadow outline-none dark:border-slate-800 dark:bg-slate-950',
+		'flex h-full flex-col overflow-hidden border-r border-slate-200 bg-white transition-[width,box-shadow] outline-none dark:border-slate-800 dark:bg-slate-950',
+		columnWidthClassByWidth[column.width],
 		isFocused ? 'relative z-10 shadow-[inset_0_0_0_2px_rgba(14,165,233,0.45)]' : ''
 	]}
 >
@@ -94,6 +114,26 @@
 		<div
 			class="shrink-0 border-b border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/70"
 		>
+			<label
+				class={['mb-2 block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
+				for={`column-width-${column.id}`}
+			>
+				{m.column_width()}
+			</label>
+			<select
+				id={`column-width-${column.id}`}
+				class={[
+					'mb-3 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+					textClass.control
+				]}
+				value={column.width}
+				onchange={selectColumnWidth}
+			>
+				{#each columnWidths as width (width)}
+					<option value={width}>{columnWidthLabels[width]()}</option>
+				{/each}
+			</select>
+
 			<div class="grid grid-cols-2 gap-2">
 				<button
 					type="button"

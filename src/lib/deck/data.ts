@@ -9,7 +9,8 @@ export const columnSourceKeys: ColumnSourceKey[] = [
 
 export const initialColumnConfigs: ColumnConfig[] = columnSourceKeys.map((sourceKey) => ({
 	id: sourceKey,
-	sourceKey
+	sourceKey,
+	width: 'standard'
 }));
 
 export const sourcePosts: Record<ColumnSourceKey, Post[]> = {

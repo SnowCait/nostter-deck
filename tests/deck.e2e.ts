@@ -13,9 +13,13 @@ const sidebarButtonNames = [
 const sidebarExpandedWidth = 236;
 const sidebarCollapsedWidth = 60;
 const composerWidth = 360;
+const narrowColumnWidth = 280;
+const standardColumnWidth = 342;
+const wideColumnWidth = 480;
 const sidebarCenterTolerance = 1;
 const uiStateStorageKey = 'nostter:ui-state';
 const userSettingsStorageKey = 'nostter:user-settings';
+const columnConfigsStorageKey = 'nostter:column-configs';
 
 async function openDeck(page: Page) {
 	await page.addInitScript(() => {
@@ -138,6 +142,23 @@ async function expectColumnOrder(columns: Locator, names: string[]) {
 	await expect(columns.locator('header h2')).toHaveText(names);
 }
 
+async function expectColumnWidth(column: Locator, width: number) {
+	await expect.poll(async () => Math.round((await column.boundingBox())?.width ?? 0)).toBe(width);
+}
+
+async function expectStoredColumnConfigWidths(page: Page, widths: string[]) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				return storedValue
+					? JSON.parse(storedValue).map((column: { width: string }) => column.width)
+					: null;
+			}, columnConfigsStorageKey)
+		)
+		.toEqual(widths);
+}
+
 async function requiredBox(locator: Locator, label: string) {
 	await expect(locator, `${label} should be visible before measuring`).toBeVisible();
 
@@ -222,6 +243,73 @@ test.describe('nostter deck', () => {
 		await expectColumnOrder(columns, columnNames);
 	});
 
+	test('changes and persists column widths', async ({ page }) => {
+		await openDeck(page);
+		const columns = deckColumns(page);
+
+		await expectColumnWidth(columns.first(), standardColumnWidth);
+		await expectColumnWidth(columns.nth(1), standardColumnWidth);
+
+		await columnOptionsButton(columns.first()).click();
+		const widthSelect = columns.first().getByLabel('Column width');
+		await expect(widthSelect).toHaveValue('standard');
+		await expect
+			.poll(async () =>
+				widthSelect
+					.locator('option')
+					.evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value))
+			)
+			.toEqual(['wide', 'standard', 'narrow']);
+
+		await widthSelect.selectOption('wide');
+		await expectColumnWidth(columns.first(), wideColumnWidth);
+		await expectColumnWidth(columns.nth(1), standardColumnWidth);
+		await expectStoredColumnConfigWidths(page, ['wide', 'standard', 'standard', 'standard']);
+
+		await page.reload();
+		await expectColumnOrder(columns, columnNames);
+		await expectColumnWidth(columns.first(), wideColumnWidth);
+		await expectColumnWidth(columns.nth(1), standardColumnWidth);
+		await columnOptionsButton(columns.first()).click();
+		await expect(columns.first().getByLabel('Column width')).toHaveValue('wide');
+
+		await columns.first().getByLabel('Column width').selectOption('narrow');
+		await expectColumnWidth(columns.first(), narrowColumnWidth);
+		await expectStoredColumnConfigWidths(page, ['narrow', 'standard', 'standard', 'standard']);
+	});
+
+	test('persists column changes across reloads', async ({ page }) => {
+		await openDeck(page);
+		const columns = deckColumns(page);
+
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		await page.getByLabel('Column type').selectOption('timeline_search');
+		await page.getByRole('button', { name: 'Save' }).click();
+		await expectColumnOrder(columns, ['Home', 'Mentions', 'Search', 'Lists', 'Search']);
+		await expectColumnWidth(columns.nth(4), standardColumnWidth);
+
+		await columnOptionsButton(columns.nth(4)).click();
+		await columns.nth(4).getByLabel('Column width').selectOption('wide');
+		await columns.nth(4).getByRole('button', { name: 'Move column left' }).click();
+		await expectColumnOrder(columns, ['Home', 'Mentions', 'Search', 'Search', 'Lists']);
+		await expectStoredColumnConfigWidths(page, [
+			'standard',
+			'standard',
+			'standard',
+			'wide',
+			'standard'
+		]);
+
+		await page.reload();
+		await expectColumnOrder(columns, ['Home', 'Mentions', 'Search', 'Search', 'Lists']);
+		await expectColumnWidth(columns.nth(3), wideColumnWidth);
+
+		await columnOptionsButton(columns.nth(3)).click();
+		await columns.nth(3).getByRole('button', { name: 'Delete column' }).click();
+		await page.reload();
+		await expectColumnOrder(columns, columnNames);
+	});
+
 	test('collapses and expands the sidebar', async ({ page }) => {
 		await openDeck(page);
 
@@ -275,6 +363,19 @@ test.describe('nostter deck', () => {
 			'false'
 		);
 		await expectSidebarWidth(page, sidebarExpandedWidth);
+	});
+
+	test('ignores invalid persisted column configs', async ({ page }) => {
+		await page.addInitScript((key) => {
+			window.localStorage.setItem(
+				key,
+				JSON.stringify([{ id: 'broken', sourceKey: 'timeline_home', width: 'huge' }])
+			);
+		}, columnConfigsStorageKey);
+		await openDeck(page);
+
+		await expectColumnOrder(deckColumns(page), columnNames);
+		await expectColumnWidth(deckColumns(page).first(), standardColumnWidth);
 	});
 
 	test('changes language from the settings dialog', async ({ page }) => {

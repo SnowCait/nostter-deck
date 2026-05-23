@@ -3,21 +3,24 @@
 	import { CalendarClock, Image, Plus, Send, Smile, UserRound } from '@lucide/svelte';
 	import DeckColumn from '$lib/components/deck/DeckColumn.svelte';
 	import Sidebar from '$lib/components/deck/Sidebar.svelte';
-	import { columnSourceKeys, initialColumnConfigs, sourcePosts } from '$lib/deck/data';
-	import type { Column, ColumnConfig, ColumnSourceKey } from '$lib/deck/types';
+	import { readColumnConfigs, writeColumnConfigs } from '$lib/deck/column-configs';
+	import { columnSourceKeys, sourcePosts } from '$lib/deck/data';
+	import type { Column, ColumnConfig, ColumnSourceKey, ColumnWidth } from '$lib/deck/types';
 	import { textClassByFontSize } from '$lib/font-size';
 	import { m } from '$lib/paraglide/messages.js';
 	import { readUserSettings, type FontSize } from '$lib/user-settings';
 
-	let columnConfigs = $state<ColumnConfig[]>(initialColumnConfigs.map((column) => ({ ...column })));
-	let activeColumnId = $state(initialColumnConfigs[0]?.id ?? '');
+	const savedColumnConfigs = readColumnConfigs();
+
+	let columnConfigs = $state<ColumnConfig[]>(savedColumnConfigs.map((column) => ({ ...column })));
+	let activeColumnId = $state(savedColumnConfigs[0]?.id ?? '');
 	let isColumnDialogOpen = $state(false);
 	let openSettingsColumnId = $state<string | null>(null);
 	let isComposePanelOpen = $state(false);
 	let composeText = $state('');
 	let fontSize = $state<FontSize>(readUserSettings().fontSize);
 	let selectedSourceKey = $state<ColumnSourceKey>('timeline_home');
-	let nextColumnId = $state(initialColumnConfigs.length + 1);
+	let nextColumnId = $state(getNextColumnNumber(savedColumnConfigs));
 
 	const composeMaxLength = 280;
 	const composeLength = $derived(composeText.length);
@@ -52,6 +55,20 @@
 		return id;
 	}
 
+	function getNextColumnNumber(columns: ColumnConfig[]) {
+		const columnNumbers = columns.map((column) => {
+			const trailingNumber = column.id.match(/-(\d+)$/)?.[1];
+			return trailingNumber ? Number.parseInt(trailingNumber, 10) : 0;
+		});
+
+		return Math.max(columns.length, ...columnNumbers) + 1;
+	}
+
+	function setColumnConfigs(nextColumnConfigs: ColumnConfig[]) {
+		columnConfigs = nextColumnConfigs;
+		writeColumnConfigs(nextColumnConfigs);
+	}
+
 	function openAddColumnDialog() {
 		selectedSourceKey = 'timeline_home';
 		isColumnDialogOpen = true;
@@ -71,7 +88,7 @@
 
 	async function saveColumnDialog() {
 		const id = createColumnId(selectedSourceKey);
-		columnConfigs = [...columnConfigs, { id, sourceKey: selectedSourceKey }];
+		setColumnConfigs([...columnConfigs, { id, sourceKey: selectedSourceKey, width: 'standard' }]);
 		closeColumnDialog();
 		await tick();
 		focusColumn(id);
@@ -82,7 +99,7 @@
 		if (deletedIndex < 0) return;
 
 		const nextColumns = columnConfigs.filter((column) => column.id !== columnId);
-		columnConfigs = nextColumns;
+		setColumnConfigs(nextColumns);
 		openSettingsColumnId = null;
 
 		if (activeColumnId !== columnId) return;
@@ -105,10 +122,16 @@
 		const nextColumns = [...columnConfigs];
 		const [column] = nextColumns.splice(currentIndex, 1);
 		nextColumns.splice(nextIndex, 0, column);
-		columnConfigs = nextColumns;
+		setColumnConfigs(nextColumns);
 
 		await tick();
 		focusColumn(columnId);
+	}
+
+	function updateColumnWidth(columnId: string, width: ColumnWidth) {
+		setColumnConfigs(
+			columnConfigs.map((column) => (column.id === columnId ? { ...column, width } : column))
+		);
 	}
 
 	function getColumnIndex(columnId: string) {
@@ -271,6 +294,7 @@
 						onDelete={() => deleteColumn(column.id)}
 						onMoveLeft={() => moveColumn(column.id, -1)}
 						onMoveRight={() => moveColumn(column.id, 1)}
+						onWidthChange={(width) => updateColumnWidth(column.id, width)}
 					/>
 				{/each}
 				<button
