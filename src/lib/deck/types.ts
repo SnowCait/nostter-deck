@@ -29,6 +29,7 @@ export type MessageKey =
 	| 'timeline_mentions'
 	| 'timeline_search'
 	| 'timeline_lists'
+	| 'column_type_website'
 	| 'add_column'
 	| 'edit_column'
 	| 'column_type'
@@ -36,6 +37,7 @@ export type MessageKey =
 	| 'column_width_narrow'
 	| 'column_width_standard'
 	| 'column_width_wide'
+	| 'website_url'
 	| 'save'
 	| 'cancel'
 	| 'close'
@@ -56,11 +58,21 @@ export type ColumnTitleKey = Extract<
 export type ColumnSourceKey = ColumnTitleKey;
 export type ColumnWidth = 'narrow' | 'standard' | 'wide';
 
-export type ColumnConfig = {
+export type TimelineColumnConfig = {
 	id: string;
+	type: 'timeline';
 	sourceKey: ColumnSourceKey;
 	width: ColumnWidth;
 };
+
+export type WebsiteColumnConfig = {
+	id: string;
+	type: 'website';
+	url: string;
+	width: ColumnWidth;
+};
+
+export type ColumnConfig = TimelineColumnConfig | WebsiteColumnConfig;
 
 export type Post = {
 	author: string;
@@ -81,6 +93,9 @@ export type Post = {
 	};
 };
 
-export type Column = ColumnConfig & {
+export type TimelineColumn = TimelineColumnConfig & {
 	posts: Post[];
 };
+
+export type WebsiteColumn = WebsiteColumnConfig;
+export type Column = TimelineColumn | WebsiteColumn;

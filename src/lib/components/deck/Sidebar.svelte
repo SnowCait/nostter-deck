@@ -1,6 +1,7 @@
 <script lang="ts">
 	import {
 		Bell,
+		Globe,
 		House,
 		Languages,
 		List,
@@ -17,6 +18,7 @@
 	} from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { getLocale, locales, setLocale } from '$lib/paraglide/runtime.js';
+	import { getColumnTitle } from '$lib/deck/column-title';
 	import type { Column, ColumnSourceKey } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import { readUiState, updateUiState } from '$lib/ui-state';
@@ -32,7 +34,7 @@
 
 	type AppLocale = (typeof locales)[number];
 	type Props = {
-		columns: Pick<Column, 'id' | 'sourceKey'>[];
+		columns: Column[];
 		activeColumnId: string;
 		onAddColumn: () => void;
 		onCompose: () => void;
@@ -183,7 +185,9 @@
 	<nav class="flex w-full flex-col gap-1" aria-label={m.app_title()}>
 		{#each columns as column (column.id)}
 			{@const isActive = activeColumnId === column.id}
-			{@const ColumnIcon = columnIconBySource[column.sourceKey]}
+			{@const ColumnIcon =
+				column.type === 'timeline' ? columnIconBySource[column.sourceKey] : Globe}
+			{@const columnTitle = getColumnTitle(column)}
 			<button
 				type="button"
 				class={[
@@ -195,8 +199,8 @@
 					!isCollapsed && isActive ? 'bg-sky-50 dark:bg-sky-950/50' : '',
 					!isCollapsed && !isActive ? 'hover:bg-slate-100 dark:hover:bg-slate-900' : ''
 				]}
-				title={m[column.sourceKey]()}
-				aria-label={m[column.sourceKey]()}
+				title={columnTitle}
+				aria-label={columnTitle}
 				aria-current={isActive ? 'page' : undefined}
 				onclick={() => onSelectColumn(column.id)}
 			>
@@ -214,9 +218,9 @@
 					<ColumnIcon class="size-5 shrink-0" aria-hidden="true" />
 				</span>
 				<span class={`${sidebarLabelClass()} flex-1 truncate text-left`}>
-					{m[column.sourceKey]()}
+					{columnTitle}
 				</span>
-				{#if column.sourceKey === 'timeline_mentions'}
+				{#if column.type === 'timeline' && column.sourceKey === 'timeline_mentions'}
 					<span class={sidebarBadgeClass()}>
 						<span
 							class="mr-2 rounded-full bg-sky-500 px-1.5 py-0.5 text-[11px] leading-none font-semibold text-white dark:bg-sky-400 dark:text-slate-950"

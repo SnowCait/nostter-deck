@@ -159,6 +159,22 @@ async function expectStoredColumnConfigWidths(page: Page, widths: string[]) {
 		.toEqual(widths);
 }
 
+async function expectStoredWebsiteColumn(page: Page, url: string) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				if (!storedValue) return null;
+
+				const column = JSON.parse(storedValue).find(
+					(item: { type?: string }) => item.type === 'website'
+				);
+				return column ? { type: column.type, url: column.url, width: column.width } : null;
+			}, columnConfigsStorageKey)
+		)
+		.toEqual({ type: 'website', url, width: 'standard' });
+}
+
 async function requiredBox(locator: Locator, label: string) {
 	await expect(locator, `${label} should be visible before measuring`).toBeVisible();
 
@@ -241,6 +257,38 @@ test.describe('nostter deck', () => {
 
 		await columns.nth(4).getByRole('button', { name: 'Delete column' }).click();
 		await expectColumnOrder(columns, columnNames);
+	});
+
+	test('adds and persists a website column', async ({ page }) => {
+		await openDeck(page);
+		const columns = deckColumns(page);
+
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		await expect(page.getByLabel('Website URL')).toHaveCount(0);
+
+		await page.getByLabel('Column type').selectOption('website');
+		const saveButton = page.getByRole('button', { name: 'Save' });
+		const urlInput = page.getByLabel('Website URL');
+		await expect(urlInput).toBeVisible();
+		await expect(saveButton).toBeDisabled();
+
+		await urlInput.fill('http://example.com');
+		await expect(saveButton).toBeDisabled();
+
+		await urlInput.fill('example.com');
+		await expect(saveButton).toBeEnabled();
+		await saveButton.click();
+
+		const websiteColumn = columns.nth(4);
+		await expectColumnOrder(columns, [...columnNames, 'example.com']);
+		await expectColumnWidth(websiteColumn, standardColumnWidth);
+		await expect(websiteColumn.locator('iframe')).toHaveAttribute('src', 'https://example.com/');
+		await expect(websiteColumn.getByRole('link')).toHaveCount(0);
+		await expectStoredWebsiteColumn(page, 'https://example.com/');
+
+		await page.reload();
+		await expectColumnOrder(columns, [...columnNames, 'example.com']);
+		await expect(columns.nth(4).locator('iframe')).toHaveAttribute('src', 'https://example.com/');
 	});
 
 	test('changes and persists column widths', async ({ page }) => {
@@ -369,7 +417,7 @@ test.describe('nostter deck', () => {
 		await page.addInitScript((key) => {
 			window.localStorage.setItem(
 				key,
-				JSON.stringify([{ id: 'broken', sourceKey: 'timeline_home', width: 'huge' }])
+				JSON.stringify([{ id: 'old-format', sourceKey: 'timeline_home', width: 'standard' }])
 			);
 		}, columnConfigsStorageKey);
 		await openDeck(page);

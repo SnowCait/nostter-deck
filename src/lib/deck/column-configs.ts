@@ -1,6 +1,7 @@
 import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
 import { columnSourceKeys, initialColumnConfigs } from './data';
 import type { ColumnConfig, ColumnSourceKey, ColumnWidth } from './types';
+import { normalizeWebsiteUrl } from './website-url';
 
 export const columnWidths = ['wide', 'standard', 'narrow'] as const;
 
@@ -26,16 +27,38 @@ function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 
 		const candidate = item as Partial<ColumnConfig>;
 		if (typeof candidate.id !== 'string' || candidate.id.length === 0) return [];
-		if (!isColumnSourceKey(candidate.sourceKey)) return [];
 		if (!isColumnWidth(candidate.width)) return [];
 
-		return [
-			{
-				id: candidate.id,
-				sourceKey: candidate.sourceKey,
-				width: candidate.width
-			}
-		];
+		if (candidate.type === 'timeline') {
+			if (!isColumnSourceKey(candidate.sourceKey)) return [];
+
+			return [
+				{
+					id: candidate.id,
+					type: 'timeline',
+					sourceKey: candidate.sourceKey,
+					width: candidate.width
+				}
+			];
+		}
+
+		if (candidate.type === 'website') {
+			if (typeof candidate.url !== 'string') return [];
+
+			const url = normalizeWebsiteUrl(candidate.url);
+			if (!url) return [];
+
+			return [
+				{
+					id: candidate.id,
+					type: 'website',
+					url,
+					width: candidate.width
+				}
+			];
+		}
+
+		return [];
 	});
 
 	return columns.length > 0 ? columns : defaultColumnConfigs();

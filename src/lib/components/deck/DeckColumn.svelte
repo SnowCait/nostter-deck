@@ -3,6 +3,7 @@
 		ArrowLeft,
 		ArrowRight,
 		Bell,
+		Globe,
 		House,
 		List,
 		Search,
@@ -10,6 +11,7 @@
 		Trash2
 	} from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import { getColumnTitle } from '$lib/deck/column-title';
 	import { columnWidths } from '$lib/deck/column-configs';
 	import type { Column, ColumnWidth } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
@@ -82,7 +84,9 @@
 	>
 		<div class="flex items-center justify-between gap-3">
 			<div class="flex min-w-0 items-center gap-2">
-				{#if column.sourceKey === 'timeline_home'}
+				{#if column.type === 'website'}
+					<Globe class={columnIconClass} aria-hidden="true" />
+				{:else if column.sourceKey === 'timeline_home'}
 					<House class={columnIconClass} aria-hidden="true" />
 				{:else if column.sourceKey === 'timeline_mentions'}
 					<Bell class={columnIconClass} aria-hidden="true" />
@@ -92,7 +96,7 @@
 					<List class={columnIconClass} aria-hidden="true" />
 				{/if}
 				<h2 class={['min-w-0 truncate font-bold', textClass.title]}>
-					{m[column.sourceKey]()}
+					{getColumnTitle(column)}
 				</h2>
 			</div>
 			<div class="flex shrink-0 items-center gap-1">
@@ -173,8 +177,17 @@
 	{/if}
 
 	<div class="min-h-0 flex-1 overflow-y-auto">
-		{#each column.posts as post (`${column.id}-${post.author}-${post.time}`)}
-			<PostCard {post} {textClass} />
-		{/each}
+		{#if column.type === 'website'}
+			<iframe
+				class="h-full w-full border-0 bg-white dark:bg-slate-950"
+				src={column.url}
+				title={getColumnTitle(column)}
+				sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
+			></iframe>
+		{:else}
+			{#each column.posts as post (`${column.id}-${post.author}-${post.time}`)}
+				<PostCard {post} {textClass} />
+			{/each}
+		{/if}
 	</div>
 </section>

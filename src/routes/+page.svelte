@@ -6,6 +6,7 @@
 	import { readColumnConfigs, writeColumnConfigs } from '$lib/deck/column-configs';
 	import { columnSourceKeys, sourcePosts } from '$lib/deck/data';
 	import type { Column, ColumnConfig, ColumnSourceKey, ColumnWidth } from '$lib/deck/types';
+	import { normalizeWebsiteUrl } from '$lib/deck/website-url';
 	import { textClassByFontSize } from '$lib/font-size';
 	import { m } from '$lib/paraglide/messages.js';
 	import { readUserSettings, type FontSize } from '$lib/user-settings';
@@ -19,18 +20,25 @@
 	let isComposePanelOpen = $state(false);
 	let composeText = $state('');
 	let fontSize = $state<FontSize>(readUserSettings().fontSize);
-	let selectedSourceKey = $state<ColumnSourceKey>('timeline_home');
+	let selectedColumnType = $state<ColumnSourceKey | 'website'>('timeline_home');
+	let websiteUrl = $state('');
 	let nextColumnId = $state(getNextColumnNumber(savedColumnConfigs));
 
 	const composeMaxLength = 280;
 	const composeLength = $derived(composeText.length);
 	const canSubmitPost = $derived(composeLength > 0 && composeLength <= composeMaxLength);
 	const textClass = $derived(textClassByFontSize[fontSize]);
+	const normalizedWebsiteUrl = $derived(normalizeWebsiteUrl(websiteUrl));
+	const canSaveColumn = $derived(selectedColumnType !== 'website' || normalizedWebsiteUrl !== null);
 	const columns = $derived<Column[]>(
-		columnConfigs.map((column) => ({
-			...column,
-			posts: sourcePosts[column.sourceKey]
-		}))
+		columnConfigs.map((column) =>
+			column.type === 'timeline'
+				? {
+						...column,
+						posts: sourcePosts[column.sourceKey]
+					}
+				: { ...column }
+		)
 	);
 
 	function getColumnId(columnId: string) {
@@ -49,8 +57,8 @@
 		columnElement?.focus({ preventScroll: true });
 	}
 
-	function createColumnId(sourceKey: ColumnSourceKey) {
-		const id = `${sourceKey}-${nextColumnId}`;
+	function createColumnId(columnType: ColumnSourceKey | 'website') {
+		const id = `${columnType}-${nextColumnId}`;
 		nextColumnId += 1;
 		return id;
 	}
@@ -70,7 +78,8 @@
 	}
 
 	function openAddColumnDialog() {
-		selectedSourceKey = 'timeline_home';
+		selectedColumnType = 'timeline_home';
+		websiteUrl = '';
 		isColumnDialogOpen = true;
 	}
 
@@ -87,8 +96,25 @@
 	}
 
 	async function saveColumnDialog() {
-		const id = createColumnId(selectedSourceKey);
-		setColumnConfigs([...columnConfigs, { id, sourceKey: selectedSourceKey, width: 'standard' }]);
+		if (!canSaveColumn) return;
+
+		const id = createColumnId(selectedColumnType);
+		const nextColumn =
+			selectedColumnType === 'website'
+				? {
+						id,
+						type: 'website' as const,
+						url: normalizedWebsiteUrl ?? '',
+						width: 'standard' as const
+					}
+				: {
+						id,
+						type: 'timeline' as const,
+						sourceKey: selectedColumnType,
+						width: 'standard' as const
+					};
+
+		setColumnConfigs([...columnConfigs, nextColumn]);
 		closeColumnDialog();
 		await tick();
 		focusColumn(id);
@@ -342,12 +368,35 @@
 					'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
 					textClass.control
 				]}
-				bind:value={selectedSourceKey}
+				bind:value={selectedColumnType}
 			>
 				{#each columnSourceKeys as sourceKey (sourceKey)}
 					<option value={sourceKey}>{m[sourceKey]()}</option>
 				{/each}
+				<option value="website">{m.column_type_website()}</option>
 			</select>
+
+			{#if selectedColumnType === 'website'}
+				<label
+					class={[
+						'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
+						textClass.control
+					]}
+					for="website-url"
+				>
+					{m.website_url()}
+				</label>
+				<input
+					id="website-url"
+					class={[
+						'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+						textClass.control
+					]}
+					type="url"
+					placeholder="https://example.com"
+					bind:value={websiteUrl}
+				/>
+			{/if}
 
 			<div class="mt-5 flex justify-end gap-3">
 				<div class="flex gap-2">
@@ -364,9 +413,10 @@
 					<button
 						type="button"
 						class={[
-							'h-9 rounded-md bg-sky-500 px-3 font-semibold text-white transition hover:bg-sky-600 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300',
+							'h-9 rounded-md bg-sky-500 px-3 font-semibold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300 disabled:dark:bg-slate-800 disabled:dark:text-slate-500',
 							textClass.control
 						]}
+						disabled={!canSaveColumn}
 						onclick={saveColumnDialog}
 					>
 						{m.save()}
