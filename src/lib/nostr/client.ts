@@ -1,5 +1,6 @@
 import { verifier } from '@rx-nostr/crypto';
 import { createRxNostr, type IWebSocketConstructor, type RxNostr } from 'rx-nostr';
+import { disposeProfileCache } from './profiles';
 
 declare global {
 	var __NOSTTER_DECK_SKIP_NOSTR_VERIFY__: boolean | undefined;
@@ -22,6 +23,7 @@ export function getNostrClient() {
 }
 
 export function disposeNostrClient() {
+	disposeProfileCache();
 	nostrClient?.dispose();
 	nostrClient = null;
 }

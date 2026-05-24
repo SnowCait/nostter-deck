@@ -1,17 +1,11 @@
 import { isAddressableKind } from 'nostr-tools/kinds';
-import {
-	createRxBackwardReq,
-	createRxForwardReq,
-	latest,
-	latestEach,
-	uniq,
-	type LazyFilter
-} from 'rx-nostr';
+import { createRxBackwardReq, createRxForwardReq, latest, uniq, type LazyFilter } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
-import { takeLast } from 'rxjs';
+import { takeLast, type Unsubscribable } from 'rxjs';
 import type { NostrFilter, Post, RelaySelection } from '$lib/deck/types';
 import { expandAddressAuthors, getFilterAuthorAddress, type AuthorAddress } from './filters';
 import { getNostrClient } from './client';
+import { getProfile, requestProfiles, subscribeProfiles } from './profiles';
 import { combineRelays, profileRelays, resolveRelaySelection } from './relays';
 
 type CustomTimelineSubscriptionOptions = {
@@ -20,10 +14,6 @@ type CustomTimelineSubscriptionOptions = {
 	onUpdate: (posts: Post[]) => void;
 	onLoadingChange: (isLoading: boolean) => void;
 	onError: (message: string) => void;
-};
-
-type Unsubscribable = {
-	unsubscribe: () => void;
 };
 
 const accentClasses = [
@@ -48,10 +38,7 @@ export function startCustomTimelineSubscription({
 	const profileRelayUrls = combineRelays(relayUrls, [...profileRelays]);
 	const rxNostr = getNostrClient();
 	const timelineReq = createRxForwardReq();
-	const profileReq = createRxForwardReq();
 	const eventsById = new Map<string, Nostr.Event>();
-	const profilesByPubkey = new Map<string, Nostr.Content.Metadata>();
-	const requestedProfilePubkeys = new Set<string>();
 	const pendingFiltersByAddress = new Map<string, NostrFilter[]>();
 	const subscriptions: Unsubscribable[] = [];
 
@@ -70,25 +57,8 @@ export function startCustomTimelineSubscription({
 		onUpdate(
 			[...eventsById.values()]
 				.sort((left, right) => right.created_at - left.created_at)
-				.map((event) => eventToPost(event, profilesByPubkey.get(event.pubkey)))
+				.map((event) => eventToPost(event, getProfile(event.pubkey)))
 		);
-	}
-
-	function requestProfiles(pubkeys: string[]) {
-		const newProfilePubkeys: string[] = [];
-		for (const pubkey of pubkeys) {
-			if (requestedProfilePubkeys.has(pubkey)) continue;
-
-			requestedProfilePubkeys.add(pubkey);
-			newProfilePubkeys.push(pubkey);
-		}
-
-		if (newProfilePubkeys.length > 0) {
-			profileReq.emit({
-				kinds: [0],
-				authors: newProfilePubkeys
-			});
-		}
 	}
 
 	function emitTimelineFilters(nextFilters: NostrFilter[]) {
@@ -174,26 +144,12 @@ export function startCustomTimelineSubscription({
 			if (event.kind !== 1 || eventsById.has(event.id)) return;
 
 			eventsById.set(event.id, event);
-			requestProfiles([event.pubkey]);
+			requestProfiles([event.pubkey], profileRelayUrls);
 			emitPosts();
 		})
 	);
 
-	addSubscription(
-		rxNostr
-			.use(profileReq, { on: { relays: profileRelayUrls } })
-			.pipe(
-				uniq(),
-				latestEach(({ event }) => event.pubkey)
-			)
-			.subscribe(({ event }) => {
-				const profile = parseProfile(event.content);
-				if (!profile) return;
-
-				profilesByPubkey.set(event.pubkey, profile);
-				emitPosts();
-			})
-	);
+	addSubscription(subscribeProfiles(emitPosts));
 
 	addSubscription(
 		rxNostr.createAllErrorObservable().subscribe(({ from, reason }) => {
@@ -234,17 +190,6 @@ function eventToPost(event: Nostr.Event, profile?: Nostr.Content.Metadata): Post
 			likes: '0'
 		}
 	};
-}
-
-function parseProfile(content: string): Nostr.Content.Metadata | null {
-	try {
-		const value = JSON.parse(content);
-		if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-
-		return value as Nostr.Content.Metadata;
-	} catch {
-		return null;
-	}
 }
 
 function shortenPubkey(pubkey: string) {
