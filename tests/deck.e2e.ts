@@ -123,6 +123,18 @@ async function installFakeNostrRelay(page: Page) {
 			}),
 			sig: '0'.repeat(128)
 		};
+		const staleProfileEvent = {
+			id: 'event-profile-alice-stale',
+			pubkey: textEvent.pubkey,
+			created_at: Math.floor(Date.now() / 1000) - 240,
+			kind: 0,
+			tags: [],
+			content: JSON.stringify({
+				display_name: 'Old Alice Relay',
+				picture: 'https://example.com/old-alice.png'
+			}),
+			sig: '0'.repeat(128)
+		};
 
 		class FakeWebSocket {
 			static CONNECTING = 0;
@@ -212,6 +224,7 @@ async function installFakeNostrRelay(page: Page) {
 						(relayProfileRequests[textEvent.pubkey] ?? 0) + 1;
 					setTimeout(() => {
 						this.emitMessage(['EVENT', subId, profileEvent]);
+						this.emitMessage(['EVENT', subId, staleProfileEvent]);
 					}, 20);
 				}
 
@@ -832,6 +845,7 @@ test.describe('nostter deck', () => {
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expect(customColumn.getByText('Hello from a stale contact list')).toHaveCount(0);
 		await expect(customColumn.getByText('Alice Relay')).toBeVisible();
+		await expect(customColumn.getByText('Old Alice Relay')).toHaveCount(0);
 		await expectStoredCustomTimelineColumn(page, savedFilters);
 		await expect
 			.poll(async () =>

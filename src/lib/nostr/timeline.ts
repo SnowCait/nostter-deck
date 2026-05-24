@@ -1,5 +1,12 @@
 import { isAddressableKind } from 'nostr-tools/kinds';
-import { createRxBackwardReq, createRxForwardReq, latest, uniq, type LazyFilter } from 'rx-nostr';
+import {
+	createRxBackwardReq,
+	createRxForwardReq,
+	latest,
+	latestEach,
+	uniq,
+	type LazyFilter
+} from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import { takeLast } from 'rxjs';
 import type { NostrFilter, Post, RelaySelection } from '$lib/deck/types';
@@ -173,15 +180,19 @@ export function startCustomTimelineSubscription({
 	);
 
 	addSubscription(
-		rxNostr.use(profileReq, { on: { relays: profileRelayUrls } }).subscribe(({ event }) => {
-			if (event.kind !== 0) return;
+		rxNostr
+			.use(profileReq, { on: { relays: profileRelayUrls } })
+			.pipe(
+				uniq(),
+				latestEach(({ event }) => event.pubkey)
+			)
+			.subscribe(({ event }) => {
+				const profile = parseProfile(event.content);
+				if (!profile) return;
 
-			const profile = parseProfile(event.content);
-			if (!profile) return;
-
-			profilesByPubkey.set(event.pubkey, profile);
-			emitPosts();
-		})
+				profilesByPubkey.set(event.pubkey, profile);
+				emitPosts();
+			})
 	);
 
 	addSubscription(
