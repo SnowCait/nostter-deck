@@ -12,19 +12,21 @@
 		ColumnSourceKey,
 		ColumnWidth,
 		NostrFilter,
-		Post,
 		RelaySelection
 	} from '$lib/deck/types';
 	import { normalizeWebsiteUrl } from '$lib/deck/website-url';
 	import { textClassByFontSize } from '$lib/font-size';
 	import { parseNostrFilters } from '$lib/nostr/filters';
+	import { eventToPost } from '$lib/nostr/posts';
+	import { getProfile } from '$lib/nostr/profiles';
 	import { defaultRelays, resolveRelayDraft } from '$lib/nostr/relays';
 	import { startCustomTimelineSubscription } from '$lib/nostr/timeline';
 	import { m } from '$lib/paraglide/messages.js';
 	import { readUserSettings, type AvatarShape, type FontSize } from '$lib/user-settings';
+	import type * as Nostr from 'nostr-typedef';
 
 	type CustomTimelineRuntime = {
-		posts: Post[];
+		eventsById: Record<string, Nostr.Event>;
 		isLoading: boolean;
 		error: string | null;
 	};
@@ -81,10 +83,13 @@
 
 			if (column.type === 'timeline' && column.timelineKind === 'custom') {
 				const runtime = customTimelineRuntimes[column.id] ?? emptyCustomTimelineRuntime();
+				const posts = getCustomTimelinePosts(runtime);
 
 				return {
 					...column,
-					...runtime
+					posts,
+					isLoading: runtime.isLoading,
+					error: runtime.error
 				};
 			}
 
@@ -118,7 +123,7 @@
 			const subscription = startCustomTimelineSubscription({
 				filters,
 				relays,
-				onUpdate: (posts) => updateCustomTimelineRuntime(column.id, { posts }),
+				onEvent: (event) => addCustomTimelineEvent(column.id, event),
 				onLoadingChange: (isLoading) => updateCustomTimelineRuntime(column.id, { isLoading }),
 				onError: (error) => updateCustomTimelineRuntime(column.id, { error })
 			});
@@ -175,7 +180,7 @@
 
 	function emptyCustomTimelineRuntime(): CustomTimelineRuntime {
 		return {
-			posts: [],
+			eventsById: {},
 			isLoading: false,
 			error: null
 		};
@@ -202,6 +207,27 @@
 		const nextRuntimes = { ...customTimelineRuntimes };
 		delete nextRuntimes[columnId];
 		customTimelineRuntimes = nextRuntimes;
+	}
+
+	function addCustomTimelineEvent(columnId: string, event: Nostr.Event) {
+		const runtime = customTimelineRuntimes[columnId] ?? emptyCustomTimelineRuntime();
+
+		customTimelineRuntimes = {
+			...customTimelineRuntimes,
+			[columnId]: {
+				...runtime,
+				eventsById: {
+					...runtime.eventsById,
+					[event.id]: event
+				}
+			}
+		};
+	}
+
+	function getCustomTimelinePosts(runtime: CustomTimelineRuntime) {
+		return Object.values(runtime.eventsById)
+			.sort((left, right) => right.created_at - left.created_at)
+			.map((event) => eventToPost(event, getProfile(event.pubkey)));
 	}
 
 	function getCustomTimelineSignature(filters: NostrFilter[], relays: RelaySelection) {

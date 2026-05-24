@@ -1,13 +1,11 @@
 import { createRxBackwardReq, latestEach, uniq, type LazyFilter } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import type { Unsubscribable } from 'rxjs';
+import { SvelteMap } from 'svelte/reactivity';
 import { getNostrClient } from './client';
 
-type ProfileListener = () => void;
-
-const profilesByPubkey = new Map<string, Nostr.Content.Metadata>();
+const profilesByPubkey = new SvelteMap<string, Nostr.Content.Metadata>();
 const requestedPubkeys = new Set<string>();
-const listeners = new Set<ProfileListener>();
 
 let profileReq: ReturnType<typeof createRxBackwardReq> | null = null;
 let profileSubscription: Unsubscribable | null = null;
@@ -27,9 +25,6 @@ function ensureProfileReq() {
 			if (!profile) return;
 
 			profilesByPubkey.set(event.pubkey, profile);
-			for (const listener of listeners) {
-				listener();
-			}
 		});
 
 	return profileReq;
@@ -59,23 +54,12 @@ export function getProfile(pubkey: string) {
 	return profilesByPubkey.get(pubkey);
 }
 
-export function subscribeProfiles(listener: ProfileListener): Unsubscribable {
-	listeners.add(listener);
-
-	return {
-		unsubscribe() {
-			listeners.delete(listener);
-		}
-	};
-}
-
 export function disposeProfileCache() {
 	profileSubscription?.unsubscribe();
 	profileReq = null;
 	profileSubscription = null;
 	profilesByPubkey.clear();
 	requestedPubkeys.clear();
-	listeners.clear();
 }
 
 function parseProfile(content: string): Nostr.Content.Metadata | null {
