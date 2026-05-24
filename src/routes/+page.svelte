@@ -16,6 +16,7 @@
 	} from '$lib/deck/types';
 	import { normalizeWebsiteUrl } from '$lib/deck/website-url';
 	import { textClassByFontSize } from '$lib/font-size';
+	import * as Dialog from '$lib/components/ui/dialog';
 	import { parseNostrFilters } from '$lib/nostr/filters';
 	import { eventToPost } from '$lib/nostr/posts';
 	import { getProfile } from '$lib/nostr/profiles';
@@ -539,156 +540,143 @@
 	</section>
 </main>
 
-{#if isColumnDialogOpen}
-	<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-		<button
-			type="button"
-			class="absolute inset-0 bg-slate-950/35 dark:bg-slate-950/65"
-			aria-hidden="true"
-			tabindex="-1"
-			onclick={closeColumnDialog}
-		></button>
-		<div
-			class="relative w-full max-w-sm rounded-md border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-800 dark:bg-slate-950"
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="column-dialog-title"
+<Dialog.Root bind:open={isColumnDialogOpen}>
+	<Dialog.Content
+		class="max-w-sm gap-0 rounded-md border border-slate-200 bg-white p-4 text-slate-950 shadow-xl ring-0 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50"
+		showCloseButton={false}
+	>
+		<div class="mb-4 flex items-center justify-between gap-3">
+			<Dialog.Title class={['font-bold', textClass.heading]}>
+				{m.add_column()}
+			</Dialog.Title>
+		</div>
+
+		<label
+			class={['mb-2 block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
+			for="column-type"
 		>
-			<div class="mb-4 flex items-center justify-between gap-3">
-				<h2 id="column-dialog-title" class={['font-bold', textClass.heading]}>
-					{m.add_column()}
-				</h2>
+			{m.column_type()}
+		</label>
+		<select
+			id="column-type"
+			class={[
+				'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+				textClass.control
+			]}
+			bind:value={selectedColumnType}
+		>
+			{#each columnSourceKeys as sourceKey (sourceKey)}
+				<option value={sourceKey}>{m[sourceKey]()}</option>
+			{/each}
+			<option value="custom_timeline">{m.column_type_custom_timeline()}</option>
+			<option value="website">{m.column_type_website()}</option>
+		</select>
+
+		{#if selectedColumnType === 'custom_timeline'}
+			<label
+				class={[
+					'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
+					textClass.control
+				]}
+				for="custom-timeline-filters"
+			>
+				{m.custom_timeline_filters()}
+			</label>
+			<textarea
+				id="custom-timeline-filters"
+				class={[
+					'min-h-32 w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+					textClass.control
+				]}
+				bind:value={customTimelineFilters}
+			></textarea>
+
+			<p class={['mt-4 mb-2 font-semibold text-slate-700 dark:text-slate-300', textClass.control]}>
+				{m.custom_timeline_relays()}
+			</p>
+			<div class="grid gap-2">
+				{#each defaultRelays as relay (relay)}
+					<label
+						class={[
+							'flex min-w-0 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+							textClass.control
+						]}
+					>
+						<input
+							class="size-4 shrink-0 accent-sky-500"
+							type="checkbox"
+							checked={selectedDefaultRelaySet.has(relay)}
+							onchange={(event) =>
+								toggleDefaultRelay(relay, (event.currentTarget as HTMLInputElement).checked)}
+						/>
+						<span class="min-w-0 truncate">{relay}</span>
+					</label>
+				{/each}
 			</div>
 
 			<label
-				class={['mb-2 block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
-				for="column-type"
-			>
-				{m.column_type()}
-			</label>
-			<select
-				id="column-type"
 				class={[
-					'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+					'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
 					textClass.control
 				]}
-				bind:value={selectedColumnType}
+				for="custom-timeline-relays"
 			>
-				{#each columnSourceKeys as sourceKey (sourceKey)}
-					<option value={sourceKey}>{m[sourceKey]()}</option>
-				{/each}
-				<option value="custom_timeline">{m.column_type_custom_timeline()}</option>
-				<option value="website">{m.column_type_website()}</option>
-			</select>
+				{m.custom_timeline_custom_relays()}
+			</label>
+			<textarea
+				id="custom-timeline-relays"
+				class={[
+					'min-h-24 w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+					textClass.control
+				]}
+				bind:value={customTimelineRelays}
+			></textarea>
+		{:else if selectedColumnType === 'website'}
+			<label
+				class={[
+					'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
+					textClass.control
+				]}
+				for="website-url"
+			>
+				{m.website_url()}
+			</label>
+			<input
+				id="website-url"
+				class={[
+					'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+					textClass.control
+				]}
+				type="url"
+				placeholder="https://example.com"
+				bind:value={websiteUrl}
+			/>
+		{/if}
 
-			{#if selectedColumnType === 'custom_timeline'}
-				<label
+		<div class="mt-5 flex justify-end gap-3">
+			<div class="flex gap-2">
+				<button
+					type="button"
 					class={[
-						'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
+						'h-9 rounded-md px-3 font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900',
 						textClass.control
 					]}
-					for="custom-timeline-filters"
+					onclick={closeColumnDialog}
 				>
-					{m.custom_timeline_filters()}
-				</label>
-				<textarea
-					id="custom-timeline-filters"
+					{m.cancel()}
+				</button>
+				<button
+					type="button"
 					class={[
-						'min-h-32 w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+						'h-9 rounded-md bg-sky-500 px-3 font-semibold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300 disabled:dark:bg-slate-800 disabled:dark:text-slate-500',
 						textClass.control
 					]}
-					bind:value={customTimelineFilters}
-				></textarea>
-
-				<p
-					class={['mt-4 mb-2 font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
+					disabled={!canSaveColumn}
+					onclick={saveColumnDialog}
 				>
-					{m.custom_timeline_relays()}
-				</p>
-				<div class="grid gap-2">
-					{#each defaultRelays as relay (relay)}
-						<label
-							class={[
-								'flex min-w-0 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-								textClass.control
-							]}
-						>
-							<input
-								class="size-4 shrink-0 accent-sky-500"
-								type="checkbox"
-								checked={selectedDefaultRelaySet.has(relay)}
-								onchange={(event) =>
-									toggleDefaultRelay(relay, (event.currentTarget as HTMLInputElement).checked)}
-							/>
-							<span class="min-w-0 truncate">{relay}</span>
-						</label>
-					{/each}
-				</div>
-
-				<label
-					class={[
-						'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
-						textClass.control
-					]}
-					for="custom-timeline-relays"
-				>
-					{m.custom_timeline_custom_relays()}
-				</label>
-				<textarea
-					id="custom-timeline-relays"
-					class={[
-						'min-h-24 w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
-						textClass.control
-					]}
-					bind:value={customTimelineRelays}
-				></textarea>
-			{:else if selectedColumnType === 'website'}
-				<label
-					class={[
-						'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
-						textClass.control
-					]}
-					for="website-url"
-				>
-					{m.website_url()}
-				</label>
-				<input
-					id="website-url"
-					class={[
-						'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
-						textClass.control
-					]}
-					type="url"
-					placeholder="https://example.com"
-					bind:value={websiteUrl}
-				/>
-			{/if}
-
-			<div class="mt-5 flex justify-end gap-3">
-				<div class="flex gap-2">
-					<button
-						type="button"
-						class={[
-							'h-9 rounded-md px-3 font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900',
-							textClass.control
-						]}
-						onclick={closeColumnDialog}
-					>
-						{m.cancel()}
-					</button>
-					<button
-						type="button"
-						class={[
-							'h-9 rounded-md bg-sky-500 px-3 font-semibold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300 disabled:dark:bg-slate-800 disabled:dark:text-slate-500',
-							textClass.control
-						]}
-						disabled={!canSaveColumn}
-						onclick={saveColumnDialog}
-					>
-						{m.save()}
-					</button>
-				</div>
+					{m.save()}
+				</button>
 			</div>
 		</div>
-	</div>
-{/if}
+	</Dialog.Content>
+</Dialog.Root>
