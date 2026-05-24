@@ -51,6 +51,7 @@ async function installFakeNostrRelay(page: Page) {
 		const addressableListAuthorPubkey =
 			'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd';
 		const staleContactPubkey = 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc';
+		const profilePictureUrl = 'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=';
 		const textEvent = {
 			id: 'event-custom-timeline-1',
 			pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -128,7 +129,7 @@ async function installFakeNostrRelay(page: Page) {
 			tags: [],
 			content: JSON.stringify({
 				display_name: 'Alice Relay',
-				picture: 'https://example.com/alice.png'
+				picture: profilePictureUrl
 			}),
 			sig: '0'.repeat(128)
 		};
@@ -470,6 +471,23 @@ async function expectStoredColumnConfigWidths(page: Page, widths: string[]) {
 		.toEqual(widths);
 }
 
+async function expectStoredColumnIdsAreOpaque(page: Page) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				if (!storedValue) return null;
+
+				return JSON.parse(storedValue).every(
+					(column: { id?: string }) =>
+						typeof column.id === 'string' &&
+						/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(column.id)
+				);
+			}, columnConfigsStorageKey)
+		)
+		.toBe(true);
+}
+
 async function expectStoredWebsiteColumn(page: Page, url: string) {
 	await expect
 		.poll(async () =>
@@ -630,6 +648,7 @@ test.describe('nostter deck', () => {
 		await expect(websiteColumn.locator('iframe')).toHaveAttribute('src', 'https://example.com/');
 		await expect(websiteColumn.getByRole('link')).toHaveCount(0);
 		await expectStoredWebsiteColumn(page, 'https://example.com/');
+		await expectStoredColumnIdsAreOpaque(page);
 
 		await page.reload();
 		await expectColumnOrder(columns, [...columnNames, 'example.com']);
@@ -682,15 +701,16 @@ test.describe('nostter deck', () => {
 		await expectColumnWidth(customColumn, standardColumnWidth);
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expect(customColumn.getByText('Alice Relay')).toBeVisible();
-		await expect(customColumn.locator('img[src="https://example.com/alice.png"]')).toBeVisible();
+		await expect(customColumn.locator('img[src^="data:image/gif"]')).toBeVisible();
 		const profileAvatar = customColumn.getByTestId('post-avatar').first();
 		await profileAvatar.dispatchEvent('error');
-		await expect(customColumn.locator('img[src="https://example.com/alice.png"]')).toHaveCount(0);
+		await expect(customColumn.locator('img[src^="data:image/gif"]')).toHaveCount(0);
 		await expect(profileAvatar).toHaveText('A');
 		await expect(profileAvatar).toHaveClass(/rounded-full/);
 		await expect(customColumn.getByText('#nostter')).toHaveCount(1);
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toHaveCount(1);
 		await expectStoredCustomTimelineColumn(page);
+		await expectStoredColumnIdsAreOpaque(page);
 		await expect
 			.poll(async () => fakeRelayConnectionCounts(page))
 			.toEqual({

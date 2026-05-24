@@ -52,7 +52,6 @@
 	let customTimelineFilters = $state('[{"kinds":[1],"limit":20}]');
 	let selectedDefaultRelays = $state<string[]>([...defaultRelays]);
 	let customTimelineRelays = $state('');
-	let nextColumnId = $state(getNextColumnNumber(savedColumnConfigs));
 	let customTimelineRuntimes = $state<Record<string, CustomTimelineRuntime>>({});
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	const customTimelineSubscriptions = new Map<string, CustomTimelineSubscription>();
@@ -158,19 +157,13 @@
 		columnElement?.focus({ preventScroll: true });
 	}
 
-	function createColumnId(columnType: ColumnSourceKey | 'custom_timeline' | 'website') {
-		const id = `${columnType}-${nextColumnId}`;
-		nextColumnId += 1;
-		return id;
-	}
+	function createColumnId(columns: ColumnConfig[]) {
+		const columnIds = new Set(columns.map((column) => column.id));
 
-	function getNextColumnNumber(columns: ColumnConfig[]) {
-		const columnNumbers = columns.map((column) => {
-			const trailingNumber = column.id.match(/-(\d+)$/)?.[1];
-			return trailingNumber ? Number.parseInt(trailingNumber, 10) : 0;
-		});
-
-		return Math.max(columns.length, ...columnNumbers) + 1;
+		while (true) {
+			const id = crypto.randomUUID();
+			if (!columnIds.has(id)) return id;
+		}
 	}
 
 	function setColumnConfigs(nextColumnConfigs: ColumnConfig[]) {
@@ -258,7 +251,7 @@
 	async function saveColumnDialog() {
 		if (!canSaveColumn) return;
 
-		const id = createColumnId(selectedColumnType);
+		const id = createColumnId(columnConfigs);
 		const nextColumn =
 			selectedColumnType === 'website'
 				? {
