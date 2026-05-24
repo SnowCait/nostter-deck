@@ -27,7 +27,6 @@ export function startCustomTimelineSubscription({
 	const profileRelayUrls = combineRelays(relayUrls, [...profileRelays]);
 	const rxNostr = getNostrClient();
 	const timelineReq = createRxForwardReq();
-	const eventsById = new Map<string, Nostr.Event>();
 	const pendingFiltersByAddress = new Map<string, NostrFilter[]>();
 	const subscriptions: Unsubscribable[] = [];
 
@@ -119,15 +118,15 @@ export function startCustomTimelineSubscription({
 	onLoadingChange(true);
 
 	addSubscription(
-		rxNostr.use(timelineReq, { on: { relays: relayUrls } }).subscribe(({ event }) => {
-			onLoadingChange(false);
+		rxNostr
+			.use(timelineReq, { on: { relays: relayUrls } })
+			.pipe(uniq())
+			.subscribe(({ event }) => {
+				onLoadingChange(false);
 
-			if (event.kind !== 1 || eventsById.has(event.id)) return;
-
-			eventsById.set(event.id, event);
-			requestProfiles([event.pubkey], profileRelayUrls);
-			onEvent(event);
-		})
+				requestProfiles([event.pubkey], profileRelayUrls);
+				onEvent(event);
+			})
 	);
 
 	addSubscription(

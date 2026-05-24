@@ -69,6 +69,15 @@ async function installFakeNostrRelay(page: Page) {
 			content: 'Hello from a stale contact list',
 			sig: '0'.repeat(128)
 		};
+		const repostEvent = {
+			id: 'event-custom-timeline-repost',
+			pubkey: textEvent.pubkey,
+			created_at: Math.floor(Date.now() / 1000) - 80,
+			kind: 6,
+			tags: [],
+			content: 'Repost from a custom Nostr timeline',
+			sig: '0'.repeat(128)
+		};
 		const staleContactListEvent = {
 			id: 'event-contact-list-stale',
 			pubkey: contactListAuthorPubkey,
@@ -187,6 +196,11 @@ async function installFakeNostrRelay(page: Page) {
 						(!filter.kinds || filter.kinds.includes(1)) &&
 						filter.authors?.includes(staleContactPubkey)
 				);
+				const requestsRepostEvents = filters.some(
+					(filter) =>
+						(!filter.kinds || filter.kinds.includes(6)) &&
+						(!filter.authors || filter.authors.includes(repostEvent.pubkey))
+				);
 				const requestsProfiles = filters.some(
 					(filter) => filter.kinds?.includes(0) && filter.authors?.includes(textEvent.pubkey)
 				);
@@ -216,6 +230,12 @@ async function installFakeNostrRelay(page: Page) {
 				if (requestsStaleTextEvents) {
 					setTimeout(() => {
 						this.emitMessage(['EVENT', subId, staleTextEvent]);
+					}, 5);
+				}
+
+				if (requestsRepostEvents) {
+					setTimeout(() => {
+						this.emitMessage(['EVENT', subId, repostEvent]);
 					}, 5);
 				}
 
@@ -769,6 +789,7 @@ test.describe('nostter deck', () => {
 		await filterSaveButton.click();
 		await expect(editedFiltersInput).toBeHidden();
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
+		await expect(customColumn.getByText('Repost from a custom Nostr timeline')).toBeVisible();
 		await expectStoredCustomTimelineColumn(page, savedFilters, savedRelaySelection);
 
 		await columnOptionsButton(customColumn).click();
