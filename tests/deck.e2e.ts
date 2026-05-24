@@ -6,6 +6,7 @@ declare global {
 		__NOSTTER_DECK_WEBSOCKET_CTOR__?: typeof WebSocket;
 		__nostterFakeRelayConnections?: Record<string, number>;
 		__nostterFakeRelayProfileRequests?: Record<string, number>;
+		__nostterFakeRelayAddressRequests?: Record<string, number>;
 	}
 }
 
@@ -44,6 +45,12 @@ async function installFakeNostrRelay(page: Page) {
 	await page.addInitScript(() => {
 		const relayConnections: Record<string, number> = {};
 		const relayProfileRequests: Record<string, number> = {};
+		const relayAddressRequests: Record<string, number> = {};
+		const contactListAuthorPubkey =
+			'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+		const addressableListAuthorPubkey =
+			'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd';
+		const staleContactPubkey = 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc';
 		const textEvent = {
 			id: 'event-custom-timeline-1',
 			pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -51,6 +58,57 @@ async function installFakeNostrRelay(page: Page) {
 			kind: 1,
 			tags: [['t', 'nostter']],
 			content: 'Hello from a custom Nostr timeline',
+			sig: '0'.repeat(128)
+		};
+		const staleTextEvent = {
+			id: 'event-stale-custom-timeline-1',
+			pubkey: staleContactPubkey,
+			created_at: Math.floor(Date.now() / 1000) - 100,
+			kind: 1,
+			tags: [['t', 'nostter']],
+			content: 'Hello from a stale contact list',
+			sig: '0'.repeat(128)
+		};
+		const staleContactListEvent = {
+			id: 'event-contact-list-stale',
+			pubkey: contactListAuthorPubkey,
+			created_at: Math.floor(Date.now() / 1000) - 240,
+			kind: 3,
+			tags: [['p', staleContactPubkey]],
+			content: '',
+			sig: '0'.repeat(128)
+		};
+		const contactListEvent = {
+			id: 'event-contact-list',
+			pubkey: contactListAuthorPubkey,
+			created_at: Math.floor(Date.now() / 1000) - 180,
+			kind: 3,
+			tags: [['p', textEvent.pubkey]],
+			content: '',
+			sig: '0'.repeat(128)
+		};
+		const emptyAddressableListEvent = {
+			id: 'event-addressable-list-empty',
+			pubkey: addressableListAuthorPubkey,
+			created_at: Math.floor(Date.now() / 1000) - 180,
+			kind: 30000,
+			tags: [
+				['d', ''],
+				['p', textEvent.pubkey]
+			],
+			content: '',
+			sig: '0'.repeat(128)
+		};
+		const namedAddressableListEvent = {
+			id: 'event-addressable-list-named',
+			pubkey: addressableListAuthorPubkey,
+			created_at: Math.floor(Date.now() / 1000) - 180,
+			kind: 30000,
+			tags: [
+				['d', 'favorites'],
+				['p', textEvent.pubkey]
+			],
+			content: '',
 			sig: '0'.repeat(128)
 		};
 		const profileEvent = {
@@ -102,12 +160,38 @@ async function installFakeNostrRelay(page: Page) {
 				if (!Array.isArray(message) || message[0] !== 'REQ') return;
 
 				const subId = message[1] as string;
-				const filters = message.slice(2) as Array<{ kinds?: number[]; authors?: string[] }>;
+				const filters = message.slice(2) as Array<{
+					kinds?: number[];
+					authors?: string[];
+					'#d'?: string[];
+				}>;
 				const requestsTextEvents = filters.some(
-					(filter) => !filter.kinds || filter.kinds.includes(1)
+					(filter) =>
+						(!filter.kinds || filter.kinds.includes(1)) &&
+						(!filter.authors || filter.authors.includes(textEvent.pubkey))
+				);
+				const requestsStaleTextEvents = filters.some(
+					(filter) =>
+						(!filter.kinds || filter.kinds.includes(1)) &&
+						filter.authors?.includes(staleContactPubkey)
 				);
 				const requestsProfiles = filters.some(
 					(filter) => filter.kinds?.includes(0) && filter.authors?.includes(textEvent.pubkey)
+				);
+				const requestsContactList = filters.some(
+					(filter) => filter.kinds?.includes(3) && filter.authors?.includes(contactListAuthorPubkey)
+				);
+				const requestsEmptyAddressableList = filters.some(
+					(filter) =>
+						filter.kinds?.includes(30000) &&
+						filter.authors?.includes(addressableListAuthorPubkey) &&
+						filter['#d']?.includes('')
+				);
+				const requestsNamedAddressableList = filters.some(
+					(filter) =>
+						filter.kinds?.includes(30000) &&
+						filter.authors?.includes(addressableListAuthorPubkey) &&
+						filter['#d']?.includes('favorites')
 				);
 
 				if (requestsTextEvents) {
@@ -117,12 +201,46 @@ async function installFakeNostrRelay(page: Page) {
 					}, 5);
 				}
 
+				if (requestsStaleTextEvents) {
+					setTimeout(() => {
+						this.emitMessage(['EVENT', subId, staleTextEvent]);
+					}, 5);
+				}
+
 				if (requestsProfiles) {
 					relayProfileRequests[textEvent.pubkey] =
 						(relayProfileRequests[textEvent.pubkey] ?? 0) + 1;
 					setTimeout(() => {
 						this.emitMessage(['EVENT', subId, profileEvent]);
 					}, 20);
+				}
+
+				if (requestsContactList) {
+					const address = `${contactListEvent.kind}:${contactListEvent.pubkey}:`;
+					relayAddressRequests[address] = (relayAddressRequests[address] ?? 0) + 1;
+					setTimeout(() => {
+						this.emitMessage(['EVENT', subId, staleContactListEvent]);
+						this.emitMessage(['EVENT', subId, contactListEvent]);
+						this.emitMessage(['EOSE', subId]);
+					}, 10);
+				}
+
+				if (requestsEmptyAddressableList) {
+					const address = `${emptyAddressableListEvent.kind}:${emptyAddressableListEvent.pubkey}:`;
+					relayAddressRequests[address] = (relayAddressRequests[address] ?? 0) + 1;
+					setTimeout(() => {
+						this.emitMessage(['EVENT', subId, emptyAddressableListEvent]);
+						this.emitMessage(['EOSE', subId]);
+					}, 10);
+				}
+
+				if (requestsNamedAddressableList) {
+					const address = `${namedAddressableListEvent.kind}:${namedAddressableListEvent.pubkey}:favorites`;
+					relayAddressRequests[address] = (relayAddressRequests[address] ?? 0) + 1;
+					setTimeout(() => {
+						this.emitMessage(['EVENT', subId, namedAddressableListEvent]);
+						this.emitMessage(['EOSE', subId]);
+					}, 10);
 				}
 			}
 
@@ -149,6 +267,7 @@ async function installFakeNostrRelay(page: Page) {
 		window.__NOSTTER_DECK_WEBSOCKET_CTOR__ = FakeWebSocket as unknown as typeof WebSocket;
 		window.__nostterFakeRelayConnections = relayConnections;
 		window.__nostterFakeRelayProfileRequests = relayProfileRequests;
+		window.__nostterFakeRelayAddressRequests = relayAddressRequests;
 	});
 }
 
@@ -336,7 +455,7 @@ async function expectStoredWebsiteColumn(page: Page, url: string) {
 
 async function expectStoredCustomTimelineColumn(
 	page: Page,
-	filters = [{ kinds: [1], limit: 20 }],
+	filters: unknown = [{ kinds: [1], limit: 20 }],
 	relays: unknown = defaultRelaySelection
 ) {
 	await expect
@@ -675,6 +794,69 @@ test.describe('nostter deck', () => {
 				userKindpages: 1,
 				yabuDirectory: 1
 			});
+	});
+
+	test('resolves custom timeline author addresses', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		const columns = deckColumns(page);
+		const contactListAddress =
+			'3:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:';
+		const emptyAddressableListAddress =
+			'30000:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd:';
+		const namedAddressableListAddress =
+			'30000:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd:favorites';
+		const savedFilters = [
+			{ kinds: [1], authors: contactListAddress },
+			{ kinds: [1], authors: emptyAddressableListAddress },
+			{ kinds: [1], authors: namedAddressableListAddress }
+		];
+
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		await page.getByLabel('Column type').selectOption('custom_timeline');
+
+		const saveButton = page.getByRole('button', { name: 'Save' });
+		const filtersInput = page.getByLabel('REQ filters');
+
+		await filtersInput.fill(
+			'[{"kinds":[1],"authors":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]'
+		);
+		await expect(saveButton).toBeDisabled();
+
+		await filtersInput.fill(JSON.stringify(savedFilters));
+		await expect(saveButton).toBeEnabled();
+		await saveButton.click();
+
+		const customColumn = columns.nth(4);
+		await expectColumnOrder(columns, [...columnNames, 'Custom timeline']);
+		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
+		await expect(customColumn.getByText('Hello from a stale contact list')).toHaveCount(0);
+		await expect(customColumn.getByText('Alice Relay')).toBeVisible();
+		await expectStoredCustomTimelineColumn(page, savedFilters);
+		await expect
+			.poll(async () =>
+				page.evaluate(
+					(address) => window.__nostterFakeRelayAddressRequests?.[address] ?? 0,
+					contactListAddress
+				)
+			)
+			.toBe(5);
+		await expect
+			.poll(async () =>
+				page.evaluate(
+					(address) => window.__nostterFakeRelayAddressRequests?.[address] ?? 0,
+					emptyAddressableListAddress
+				)
+			)
+			.toBe(2);
+		await expect
+			.poll(async () =>
+				page.evaluate(
+					(address) => window.__nostterFakeRelayAddressRequests?.[address] ?? 0,
+					namedAddressableListAddress
+				)
+			)
+			.toBe(2);
 	});
 
 	test('changes and persists column widths', async ({ page }) => {

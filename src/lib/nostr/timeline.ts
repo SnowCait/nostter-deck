@@ -1,6 +1,9 @@
-import { createRxForwardReq, type LazyFilter } from 'rx-nostr';
+import { isAddressableKind } from 'nostr-tools/kinds';
+import { createRxBackwardReq, createRxForwardReq, latest, uniq, type LazyFilter } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
+import { takeLast } from 'rxjs';
 import type { NostrFilter, Post, RelaySelection } from '$lib/deck/types';
+import { expandAddressAuthors, getFilterAuthorAddress, type AuthorAddress } from './filters';
 import { getNostrClient } from './client';
 import { combineRelays, profileRelays, resolveRelaySelection } from './relays';
 
@@ -42,7 +45,19 @@ export function startCustomTimelineSubscription({
 	const eventsById = new Map<string, Nostr.Event>();
 	const profilesByPubkey = new Map<string, Nostr.Content.Metadata>();
 	const requestedProfilePubkeys = new Set<string>();
+	const pendingFiltersByAddress = new Map<string, NostrFilter[]>();
 	const subscriptions: Unsubscribable[] = [];
+
+	function addSubscription(subscription: Unsubscribable) {
+		subscriptions.push(subscription);
+
+		return () => {
+			const index = subscriptions.indexOf(subscription);
+			if (index >= 0) {
+				subscriptions.splice(index, 1);
+			}
+		};
+	}
 
 	function emitPosts() {
 		onUpdate(
@@ -69,9 +84,83 @@ export function startCustomTimelineSubscription({
 		}
 	}
 
+	function emitTimelineFilters(nextFilters: NostrFilter[]) {
+		if (nextFilters.length > 0) {
+			timelineReq.emit(nextFilters as LazyFilter[]);
+		}
+	}
+
+	function getAddressFilter(address: AuthorAddress): NostrFilter {
+		const filter: NostrFilter = {
+			kinds: [address.kind],
+			authors: [address.pubkey],
+			limit: 1
+		};
+
+		if (isAddressableKind(address.kind)) {
+			filter['#d'] = [address.identifier];
+		}
+
+		return filter;
+	}
+
+	function emitResolvedAddressFilters(event: Nostr.Event, pendingFilters: NostrFilter[]) {
+		const authors = event.tags.flatMap((tag) => (tag[0] === 'p' && tag[1] ? [tag[1]] : []));
+		const expandedFilters = pendingFilters.flatMap((filter) => {
+			const expandedFilter = expandAddressAuthors(filter, authors);
+			return expandedFilter ? [expandedFilter] : [];
+		});
+
+		emitTimelineFilters(expandedFilters);
+	}
+
+	function resolveAddress(address: AuthorAddress, pendingFilters: NostrFilter[]) {
+		const addressReq = createRxBackwardReq();
+		const addressRelayUrls = address.kind === 3 ? profileRelayUrls : relayUrls;
+		let removeSubscription = () => {};
+
+		const subscription = rxNostr
+			.use(addressReq)
+			.pipe(uniq(), latest(), takeLast(1))
+			.subscribe({
+				next: ({ event }) => emitResolvedAddressFilters(event, pendingFilters),
+				complete: () => {
+					removeSubscription();
+				}
+			});
+
+		removeSubscription = addSubscription(subscription);
+		addressReq.emit(getAddressFilter(address) as LazyFilter, { relays: addressRelayUrls });
+		addressReq.over();
+	}
+
+	function emitInitialTimelineFilters() {
+		const directFilters: NostrFilter[] = [];
+		const addressesByKey = new Map<string, AuthorAddress>();
+
+		for (const filter of filters) {
+			const address = getFilterAuthorAddress(filter);
+			if (!address) {
+				directFilters.push(filter);
+				continue;
+			}
+
+			pendingFiltersByAddress.set(address.key, [
+				...(pendingFiltersByAddress.get(address.key) ?? []),
+				filter
+			]);
+			addressesByKey.set(address.key, address);
+		}
+
+		emitTimelineFilters(directFilters);
+		for (const address of addressesByKey.values()) {
+			resolveAddress(address, pendingFiltersByAddress.get(address.key) ?? []);
+		}
+	}
+
 	onLoadingChange(true);
 
-	subscriptions.push(
+	addSubscription(
 		rxNostr.use(timelineReq, { on: { relays: relayUrls } }).subscribe(({ event }) => {
 			onLoadingChange(false);
 
@@ -83,7 +172,7 @@ export function startCustomTimelineSubscription({
 		})
 	);
 
-	subscriptions.push(
+	addSubscription(
 		rxNostr.use(profileReq, { on: { relays: profileRelayUrls } }).subscribe(({ event }) => {
 			if (event.kind !== 0) return;
 
@@ -95,7 +184,7 @@ export function startCustomTimelineSubscription({
 		})
 	);
 
-	subscriptions.push(
+	addSubscription(
 		rxNostr.createAllErrorObservable().subscribe(({ from, reason }) => {
 			if (!relayUrls.includes(from)) return;
 
@@ -104,7 +193,7 @@ export function startCustomTimelineSubscription({
 		})
 	);
 
-	timelineReq.emit(filters as LazyFilter[]);
+	emitInitialTimelineFilters();
 
 	return {
 		stop() {
