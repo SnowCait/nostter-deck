@@ -107,15 +107,17 @@
 		}
 
 		for (const column of activeCustomColumns) {
-			const signature = getCustomTimelineSignature(column.filters, column.relays);
+			const filters = $state.snapshot(column.filters);
+			const relays = $state.snapshot(column.relays);
+			const signature = getCustomTimelineSignature(filters, relays);
 			if (customTimelineSubscriptions.get(column.id)?.signature === signature) continue;
 
 			customTimelineSubscriptions.get(column.id)?.stop();
 			setCustomTimelineRuntime(column.id, emptyCustomTimelineRuntime());
 
 			const subscription = startCustomTimelineSubscription({
-				filters: column.filters,
-				relays: column.relays,
+				filters,
+				relays,
 				onUpdate: (posts) => updateCustomTimelineRuntime(column.id, { posts }),
 				onLoadingChange: (isLoading) => updateCustomTimelineRuntime(column.id, { isLoading }),
 				onError: (error) => updateCustomTimelineRuntime(column.id, { error })
