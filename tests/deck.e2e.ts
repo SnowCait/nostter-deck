@@ -635,6 +635,20 @@ test.describe('nostter deck', () => {
 		await expect(addColumnDialog).toBeVisible();
 	});
 
+	test('closes the column add dialog from the backdrop only', async ({ page }) => {
+		await openDeck(page);
+
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		const addColumnDialog = page.getByRole('dialog', { name: 'Add column' });
+		await expect(addColumnDialog).toBeVisible();
+
+		await addColumnDialog.click();
+		await expect(addColumnDialog).toBeVisible();
+
+		await page.mouse.click(10, 10);
+		await expect(addColumnDialog).toHaveCount(0);
+	});
+
 	test('adds and persists a website column', async ({ page }) => {
 		await openDeck(page);
 		const columns = deckColumns(page);
@@ -1084,6 +1098,20 @@ test.describe('nostter deck', () => {
 		await page.getByRole('button', { name: 'Settings' }).click();
 		await page.getByRole('button', { name: 'Close' }).click();
 		await expect(page.getByRole('dialog', { name: 'Settings' })).toBeHidden();
+	});
+
+	test('closes the settings dialog from the backdrop only', async ({ page }) => {
+		await openDeck(page);
+
+		await page.getByRole('button', { name: 'Settings' }).click();
+		const settingsDialog = page.getByRole('dialog', { name: 'Settings' });
+		await expect(settingsDialog).toBeVisible();
+
+		await settingsDialog.click();
+		await expect(settingsDialog).toBeVisible();
+
+		await page.mouse.click(10, 10);
+		await expect(settingsDialog).toHaveCount(0);
 	});
 
 	test('changes and persists the theme from user settings', async ({ page }) => {

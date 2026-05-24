@@ -540,11 +540,16 @@
 </main>
 
 {#if isColumnDialogOpen}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 dark:bg-slate-950/65"
-	>
+	<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+		<button
+			type="button"
+			class="absolute inset-0 bg-slate-950/35 dark:bg-slate-950/65"
+			aria-hidden="true"
+			tabindex="-1"
+			onclick={closeColumnDialog}
+		></button>
 		<div
-			class="w-full max-w-sm rounded-md border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-800 dark:bg-slate-950"
+			class="relative w-full max-w-sm rounded-md border border-slate-200 bg-white p-4 shadow-xl dark:border-slate-800 dark:bg-slate-950"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="column-dialog-title"
