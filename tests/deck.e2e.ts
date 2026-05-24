@@ -622,6 +622,19 @@ test.describe('nostter deck', () => {
 		await expectColumnOrder(columns, columnNames);
 	});
 
+	test('opens the column add dialog only from the right edge plus button', async ({ page }) => {
+		await openDeck(page);
+
+		const addColumnDialog = page.getByRole('dialog', { name: 'Add column' });
+		const addColumnPlaceholder = page.getByTestId('column-add-placeholder');
+
+		await addColumnPlaceholder.getByText('Add column').click();
+		await expect(addColumnDialog).toHaveCount(0);
+
+		await addColumnPlaceholder.getByRole('button', { name: 'Add column' }).click();
+		await expect(addColumnDialog).toBeVisible();
+	});
+
 	test('adds and persists a website column', async ({ page }) => {
 		await openDeck(page);
 		const columns = deckColumns(page);
