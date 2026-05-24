@@ -50,7 +50,12 @@
 				</button>
 			</div>
 
-			<p class={['mt-2 text-slate-800 dark:text-slate-200', textClass.body]}>
+			<p
+				class={[
+					'mt-2 min-w-0 [overflow-wrap:anywhere] whitespace-pre-wrap text-slate-800 dark:text-slate-200',
+					textClass.body
+				]}
+			>
 				{post.body}
 			</p>
 
