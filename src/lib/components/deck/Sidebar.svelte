@@ -2,7 +2,6 @@
 	import {
 		CircleUserRound,
 		Languages,
-		PawPrint,
 		PanelLeftClose,
 		PanelLeftOpen,
 		Plus,
@@ -158,15 +157,13 @@
 >
 	<div class="mb-5 flex w-full items-center">
 		<div class="flex w-11 shrink-0 justify-center">
-			<div
-				class="flex size-10 items-center justify-center rounded-md bg-sky-500 text-white dark:bg-sky-400 dark:text-slate-950"
-			>
-				<PawPrint class="size-5" aria-hidden="true" />
+			<div class="flex size-10 items-center justify-center rounded-md">
+				<img src="/favicon.svg" alt="" class="size-7" aria-hidden="true" />
 			</div>
 		</div>
 		<div class={sidebarLabelClass()}>
-			<h1 class={['truncate font-bold', textClass.title]}>
-				{m.app_title()}
+			<h1 class={['flex min-w-0 items-center', textClass.title]}>
+				<img src="/logo.svg" alt={m.app_title()} class="h-7 max-w-[150px] dark:invert" />
 			</h1>
 		</div>
 	</div>

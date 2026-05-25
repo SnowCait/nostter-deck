@@ -53,6 +53,11 @@ test.describe('nostter deck', () => {
 
 		await expect(page).toHaveTitle('nostter deck');
 		await expect(page.getByRole('heading', { name: 'nostter deck' })).toBeVisible();
+		await expect(sidebar(page).locator('img[src="/favicon.svg"]')).toBeVisible();
+		await expect(sidebar(page).getByRole('img', { name: 'nostter deck' })).toHaveAttribute(
+			'src',
+			'/logo.svg'
+		);
 		await expectColumnOrder(deckColumns(page), columnNames);
 		await expect(sidebar(page).getByRole('button', { name: 'Post' })).toHaveCount(0);
 		await expect(sidebar(page).getByTestId('account-avatar')).toHaveCount(0);
