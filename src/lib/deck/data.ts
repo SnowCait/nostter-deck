@@ -1,4 +1,4 @@
-import type { ColumnSourceKey, Post } from './types';
+import type { ColumnSourceKey } from './types';
 
 export const columnSourceKeys: ColumnSourceKey[] = [
 	'timeline_home',
@@ -6,10 +6,3 @@ export const columnSourceKeys: ColumnSourceKey[] = [
 	'timeline_search',
 	'timeline_lists'
 ];
-
-export const sourcePosts: Record<ColumnSourceKey, Post[]> = {
-	timeline_home: [],
-	timeline_mentions: [],
-	timeline_search: [],
-	timeline_lists: []
-};

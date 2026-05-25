@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { defaultRelays, profileRelays } from '$lib/nostr/relays';
 import { fakeRelayConnectionCounts, installFakeNostrRelay } from './helpers/fake-nostr-relay';
 import {
+	addCustomTimelineColumn,
 	addPresetColumn,
 	columnConfigsStorageKey,
 	columnNames,
@@ -610,12 +611,11 @@ test.describe('nostter deck', () => {
 	});
 
 	test('changes and persists the font size from user settings', async ({ page }) => {
+		await installFakeNostrRelay(page);
 		await openDeck(page);
-		await addPresetColumn(page, 'timeline_search');
+		await addCustomTimelineColumn(page);
 
-		const postBody = page.getByText(
-			'A good dashboard keeps controls close to the context they affect.'
-		);
+		const postBody = page.getByText('Hello from a custom Nostr timeline');
 		const mediumFontSize = await fontSizePx(postBody);
 
 		await page.getByRole('button', { name: 'Settings' }).click();
@@ -650,8 +650,9 @@ test.describe('nostter deck', () => {
 	});
 
 	test('changes and persists the profile icon shape from user settings', async ({ page }) => {
+		await installFakeNostrRelay(page);
 		await openDeck(page, { isLoggedIn: true });
-		await addPresetColumn(page, 'timeline_search');
+		await addCustomTimelineColumn(page);
 
 		const postAvatar = page.getByTestId('post-avatar').first();
 		const sidebarAvatar = sidebar(page).getByTestId('account-avatar').first();

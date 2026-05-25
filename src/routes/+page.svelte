@@ -6,7 +6,7 @@
 	import ProfileAvatar from '$lib/components/deck/ProfileAvatar.svelte';
 	import Sidebar from '$lib/components/deck/Sidebar.svelte';
 	import { readColumnConfigs, writeColumnConfigs } from '$lib/deck/column-configs';
-	import { columnSourceKeys, sourcePosts } from '$lib/deck/data';
+	import { columnSourceKeys } from '$lib/deck/data';
 	import type {
 		Column,
 		ColumnConfig,
@@ -90,7 +90,7 @@
 			if (column.type === 'timeline' && column.timelineKind === 'preset') {
 				return {
 					...column,
-					posts: sourcePosts[column.sourceKey]
+					posts: []
 				};
 			}
 
