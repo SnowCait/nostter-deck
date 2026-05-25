@@ -92,11 +92,6 @@
 			'min-w-0 overflow-hidden whitespace-nowrap transition-all duration-150 ease-out',
 			isCollapsed ? 'max-w-0 opacity-0' : 'max-w-[150px] opacity-100'
 		].join(' ');
-	const sidebarBadgeClass = () =>
-		[
-			'overflow-hidden transition-all duration-150 ease-out',
-			isCollapsed ? 'max-w-0 opacity-0' : 'max-w-10 opacity-100'
-		].join(' ');
 
 	function toggleSidebar() {
 		const nextIsCollapsed = !isCollapsed;
@@ -230,15 +225,6 @@
 				<span class={`${sidebarLabelClass()} flex-1 truncate text-left`}>
 					{columnTitle}
 				</span>
-				{#if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_mentions'}
-					<span class={sidebarBadgeClass()}>
-						<span
-							class="mr-2 rounded-full bg-sky-500 px-1.5 py-0.5 text-[11px] leading-none font-semibold text-white dark:bg-sky-400 dark:text-slate-950"
-						>
-							8
-						</span>
-					</span>
-				{/if}
 			</button>
 		{/each}
 	</nav>

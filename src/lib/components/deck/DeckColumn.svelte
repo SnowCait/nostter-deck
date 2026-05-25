@@ -10,7 +10,6 @@
 	import ColumnIcon from './ColumnIcon.svelte';
 	import CustomTimelineSettings from './CustomTimelineSettings.svelte';
 	import FollowColumnSettings from './FollowColumnSettings.svelte';
-	import PostCard from './PostCard.svelte';
 	import SearchColumnSettings from './SearchColumnSettings.svelte';
 	import TimelineColumnBody from './TimelineColumnBody.svelte';
 
@@ -189,12 +188,8 @@
 				title={getColumnTitle(column)}
 				sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
 			></iframe>
-		{:else if column.timelineKind === 'custom' || column.sourceKey === 'timeline_follow' || column.sourceKey === 'timeline_search'}
-			<TimelineColumnBody {column} {isLoggedIn} {textClass} {avatarShape} />
 		{:else}
-			{#each column.posts as post (`${column.id}-${post.author}-${post.time}`)}
-				<PostCard {post} {isLoggedIn} {textClass} {avatarShape} />
-			{/each}
+			<TimelineColumnBody {column} {isLoggedIn} {textClass} {avatarShape} />
 		{/if}
 	</div>
 </section>

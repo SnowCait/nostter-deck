@@ -28,11 +28,8 @@ export type MessageKey =
 	| 'schedule_post'
 	| 'collapse_sidebar'
 	| 'expand_sidebar'
-	| 'timeline_home'
-	| 'timeline_mentions'
 	| 'timeline_follow'
 	| 'timeline_search'
-	| 'timeline_lists'
 	| 'column_type_website'
 	| 'column_type_custom_timeline'
 	| 'add_column'
@@ -68,10 +65,7 @@ export type MessageKey =
 	| 'share'
 	| 'verified';
 
-export type ColumnTitleKey = Extract<
-	MessageKey,
-	'timeline_home' | 'timeline_mentions' | 'timeline_follow' | 'timeline_search' | 'timeline_lists'
->;
+export type ColumnTitleKey = Extract<MessageKey, 'timeline_follow' | 'timeline_search'>;
 export type ColumnSourceKey = ColumnTitleKey;
 export type ColumnWidth = 'narrow' | 'standard' | 'wide';
 export type NostrFilter = Record<string, unknown>;
@@ -96,18 +90,7 @@ export type FollowTimelineColumnConfig = {
 	width: ColumnWidth;
 };
 
-export type StaticPresetTimelineColumnConfig = {
-	id: string;
-	type: 'timeline';
-	timelineKind: 'preset';
-	sourceKey: Exclude<ColumnSourceKey, 'timeline_follow' | 'timeline_search'>;
-	width: ColumnWidth;
-};
-
-export type PresetTimelineColumnConfig =
-	| FollowTimelineColumnConfig
-	| SearchTimelineColumnConfig
-	| StaticPresetTimelineColumnConfig;
+export type PresetTimelineColumnConfig = FollowTimelineColumnConfig | SearchTimelineColumnConfig;
 
 export type CustomTimelineColumnConfig = {
 	id: string;

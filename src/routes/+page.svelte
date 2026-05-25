@@ -46,10 +46,7 @@
 
 	const savedColumnConfigs = readColumnConfigs();
 	const isLoggedIn = (globalThis as NostrDeckGlobal).__NOSTTER_DECK_IS_LOGGED_IN__ === true;
-	const availableColumnSourceKeys = columnSourceKeys.filter(
-		(sourceKey) =>
-			isLoggedIn || (sourceKey !== 'timeline_home' && sourceKey !== 'timeline_mentions')
-	);
+	const availableColumnSourceKeys = columnSourceKeys;
 	const defaultColumnType = availableColumnSourceKeys[0] ?? 'timeline_search';
 
 	let columnConfigs = $state<ColumnConfig[]>(savedColumnConfigs.map((column) => ({ ...column })));

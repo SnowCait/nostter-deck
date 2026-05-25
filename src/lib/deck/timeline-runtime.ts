@@ -36,12 +36,7 @@ export type FetchableTimelineColumn =
 	| SearchTimelineColumnConfig;
 
 export function isFetchableTimelineColumn(column: ColumnConfig): column is FetchableTimelineColumn {
-	return (
-		column.type === 'timeline' &&
-		(column.timelineKind === 'custom' ||
-			(column.timelineKind === 'preset' && column.sourceKey === 'timeline_follow') ||
-			(column.timelineKind === 'preset' && column.sourceKey === 'timeline_search'))
-	);
+	return column.type === 'timeline';
 }
 
 export function getTimelineRequest(column: ColumnConfig): TimelineRequest | null {
@@ -86,7 +81,7 @@ export function toRuntimeColumn(
 	getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined
 ): Column {
 	if (!isFetchableTimelineColumn(column)) {
-		return column.type === 'timeline' ? { ...column, posts: [] } : { ...column };
+		return { ...column };
 	}
 
 	return {

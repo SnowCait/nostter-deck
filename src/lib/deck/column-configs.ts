@@ -66,15 +66,7 @@ function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 					];
 				}
 
-				return [
-					{
-						id: candidate.id,
-						type: 'timeline',
-						timelineKind: 'preset',
-						sourceKey: candidate.sourceKey,
-						width: candidate.width
-					}
-				];
+				return [];
 			}
 
 			if (candidate.timelineKind === 'custom') {

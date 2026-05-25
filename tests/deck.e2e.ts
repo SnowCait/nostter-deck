@@ -5,6 +5,7 @@ import { fakeRelayConnectionCounts, installFakeNostrRelay } from './helpers/fake
 import {
 	addCustomTimelineColumn,
 	addPresetColumn,
+	addWebsiteColumn,
 	columnConfigsStorageKey,
 	columnNames,
 	columnOptionsButton,
@@ -72,8 +73,6 @@ test.describe('nostter deck', () => {
 		await expectColumnOrder(deckColumns(page), columnNames);
 		await expect(sidebar(page).getByRole('button', { name: 'Post' })).toHaveCount(0);
 		await expect(sidebar(page).getByTestId('account-avatar')).toHaveCount(0);
-		await expect(sidebar(page).getByRole('button', { name: 'Home' })).toHaveCount(0);
-		await expect(sidebar(page).getByRole('button', { name: 'Mentions' })).toHaveCount(0);
 	});
 
 	test('adds, moves, and deletes a column', async ({ page }) => {
@@ -82,20 +81,20 @@ test.describe('nostter deck', () => {
 		const columns = deckColumns(page);
 
 		await addPresetColumn(page, 'timeline_search');
-		await addPresetColumn(page, 'timeline_lists');
+		await addWebsiteColumn(page, 'example.com');
 
-		await expectColumnOrder(columns, ['Search', 'Lists']);
+		await expectColumnOrder(columns, ['Search', 'example.com']);
 		await expect(sidebarButtonIcon(page, 'Search')).toBeVisible();
-		await expect(sidebarButtonIcon(page, 'Lists')).toBeVisible();
+		await expect(sidebarButtonIcon(page, 'example.com')).toBeVisible();
 
 		const addedColumn = columns.nth(1);
 		await columnOptionsButton(addedColumn).click();
 		await addedColumn.getByRole('button', { name: 'Move column left' }).click();
 
-		await expectColumnOrder(columns, ['Lists', 'Search']);
+		await expectColumnOrder(columns, ['example.com', 'Search']);
 
 		await columns.first().getByRole('button', { name: 'Move column right' }).click();
-		await expectColumnOrder(columns, ['Search', 'Lists']);
+		await expectColumnOrder(columns, ['Search', 'example.com']);
 
 		await columns.nth(1).getByRole('button', { name: 'Delete column' }).click();
 		await expectColumnOrder(columns, ['Search']);
@@ -115,7 +114,6 @@ test.describe('nostter deck', () => {
 		await expect(page.getByLabel('Column type').locator('option')).toHaveText([
 			'Follow',
 			'Search',
-			'Lists',
 			'Custom timeline',
 			'Website'
 		]);
@@ -560,9 +558,9 @@ test.describe('nostter deck', () => {
 		const columns = deckColumns(page);
 
 		await addPresetColumn(page, 'timeline_search');
-		await addPresetColumn(page, 'timeline_lists');
+		await addWebsiteColumn(page, 'example.com');
 
-		await expectColumnOrder(columns, ['Search', 'Lists']);
+		await expectColumnOrder(columns, ['Search', 'example.com']);
 		await expectColumnWidth(columns.first(), standardColumnWidth);
 		await expectColumnWidth(columns.nth(1), standardColumnWidth);
 
@@ -583,7 +581,7 @@ test.describe('nostter deck', () => {
 		await expectStoredColumnConfigWidths(page, ['wide', 'standard']);
 
 		await page.reload();
-		await expectColumnOrder(columns, ['Search', 'Lists']);
+		await expectColumnOrder(columns, ['Search', 'example.com']);
 		await expectColumnWidth(columns.first(), wideColumnWidth);
 		await expectColumnWidth(columns.nth(1), standardColumnWidth);
 		await columnOptionsButton(columns.first()).click();
@@ -600,18 +598,18 @@ test.describe('nostter deck', () => {
 		const columns = deckColumns(page);
 
 		await addPresetColumn(page, 'timeline_search');
-		await addPresetColumn(page, 'timeline_lists');
-		await expectColumnOrder(columns, ['Search', 'Lists']);
+		await addWebsiteColumn(page, 'example.com');
+		await expectColumnOrder(columns, ['Search', 'example.com']);
 		await expectColumnWidth(columns.nth(1), standardColumnWidth);
 
 		await columnOptionsButton(columns.nth(1)).click();
 		await columns.nth(1).getByLabel('Column width').selectOption('wide');
 		await columns.nth(1).getByRole('button', { name: 'Move column left' }).click();
-		await expectColumnOrder(columns, ['Lists', 'Search']);
+		await expectColumnOrder(columns, ['example.com', 'Search']);
 		await expectStoredColumnConfigWidths(page, ['wide', 'standard']);
 
 		await page.reload();
-		await expectColumnOrder(columns, ['Lists', 'Search']);
+		await expectColumnOrder(columns, ['example.com', 'Search']);
 		await expectColumnWidth(columns.first(), wideColumnWidth);
 
 		await columnOptionsButton(columns.first()).click();
@@ -625,7 +623,7 @@ test.describe('nostter deck', () => {
 		await openDeck(page);
 
 		await addPresetColumn(page, 'timeline_search');
-		await addPresetColumn(page, 'timeline_lists');
+		await addWebsiteColumn(page, 'example.com');
 
 		await expectSidebarWidth(page, sidebarExpandedWidth);
 
@@ -641,7 +639,7 @@ test.describe('nostter deck', () => {
 		await expectSidebarIconsCentered(page, [
 			...sidebarButtonNames,
 			'Search',
-			'Lists',
+			'example.com',
 			'Expand sidebar'
 		]);
 		expect(

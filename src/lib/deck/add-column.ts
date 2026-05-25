@@ -66,11 +66,5 @@ export function createColumnConfigFromDraft(draft: AddColumnDraft): ColumnConfig
 			: null;
 	}
 
-	return {
-		id: draft.id,
-		type: 'timeline',
-		timelineKind: 'preset',
-		sourceKey: draft.columnType,
-		width: 'standard'
-	};
+	return null;
 }

@@ -31,12 +31,7 @@ export async function openDeck(page: Page, options: { isLoggedIn?: boolean } = {
 
 export async function addPresetColumn(
 	page: Page,
-	sourceKey:
-		| 'timeline_home'
-		| 'timeline_mentions'
-		| 'timeline_follow'
-		| 'timeline_search'
-		| 'timeline_lists',
+	sourceKey: 'timeline_follow' | 'timeline_search',
 	options: { followTarget?: string; query?: string } = {}
 ) {
 	await page.getByRole('button', { name: 'Add column' }).first().click();
