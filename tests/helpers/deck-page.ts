@@ -1,0 +1,324 @@
+import { expect, type Locator, type Page } from '@playwright/test';
+
+export const columnNames: string[] = [];
+export const sidebarButtonNames = ['Add column', 'Post', 'Settings'];
+export const sidebarExpandedWidth = 236;
+export const sidebarCollapsedWidth = 60;
+export const composerWidth = 360;
+export const narrowColumnWidth = 280;
+export const standardColumnWidth = 342;
+export const wideColumnWidth = 480;
+export const sidebarCenterTolerance = 1;
+export const uiStateStorageKey = 'nostter:ui-state';
+export const userSettingsStorageKey = 'nostter:user-settings';
+export const columnConfigsStorageKey = 'nostter:column-configs';
+export const defaultRelaySelection = { type: 'default' };
+
+export async function openDeck(page: Page) {
+	await page.addInitScript(() => {
+		if (!window.localStorage.getItem('PARAGLIDE_LOCALE')) {
+			window.localStorage.setItem('PARAGLIDE_LOCALE', 'en');
+		}
+	});
+	await page.goto('/');
+}
+
+export async function addPresetColumn(
+	page: Page,
+	sourceKey: 'timeline_home' | 'timeline_mentions' | 'timeline_search' | 'timeline_lists'
+) {
+	await page.getByRole('button', { name: 'Add column' }).first().click();
+	await page.getByLabel('Column type').selectOption(sourceKey);
+	await page.getByRole('button', { name: 'Save' }).click();
+}
+
+export async function addWebsiteColumn(page: Page, url: string) {
+	await page.getByRole('button', { name: 'Add column' }).first().click();
+	await page.getByLabel('Column type').selectOption('website');
+	await page.getByLabel('Website URL').fill(url);
+	await page.getByRole('button', { name: 'Save' }).click();
+}
+
+export async function addCustomTimelineColumn(
+	page: Page,
+	options: { filters?: unknown; customRelays?: string } = {}
+) {
+	await page.getByRole('button', { name: 'Add column' }).first().click();
+	await page.getByLabel('Column type').selectOption('custom_timeline');
+
+	if (options.filters) {
+		await page.getByLabel('REQ filters').fill(JSON.stringify(options.filters));
+	}
+	if (options.customRelays !== undefined) {
+		await page.getByLabel('Custom relays').fill(options.customRelays);
+	}
+
+	await page
+		.getByRole('dialog', { name: 'Add column' })
+		.getByRole('button', { name: 'Save' })
+		.click();
+}
+
+export function deckColumns(page: Page) {
+	return page.locator('section[id^="deck-column-"]');
+}
+
+export function columnOptionsButton(column: Locator) {
+	return column.locator('header').getByRole('button', { name: 'Column options' });
+}
+
+export function sidebar(page: Page) {
+	return page.locator('aside');
+}
+
+export function sidebarButton(page: Page, name: string) {
+	return sidebar(page).getByRole('button', { name });
+}
+
+export function sidebarIconContainer(page: Page, name: string) {
+	return sidebarButton(page, name).locator('span').first();
+}
+
+export function sidebarButtonIcon(page: Page, name: string) {
+	return sidebarIconContainer(page, name).locator('svg');
+}
+
+export async function expectSidebarWidth(page: Page, width: number) {
+	await expect
+		.poll(async () => Math.round((await sidebar(page).boundingBox())?.width ?? 0))
+		.toBe(width);
+}
+
+export async function expectStoredSidebarCollapsed(page: Page, value: boolean) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				return storedValue ? JSON.parse(storedValue).sidebarCollapsed : null;
+			}, uiStateStorageKey)
+		)
+		.toBe(value);
+}
+
+export async function expectStoredThemePreference(page: Page, value: string) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				return storedValue ? JSON.parse(storedValue).theme : null;
+			}, userSettingsStorageKey)
+		)
+		.toBe(value);
+}
+
+export async function expectStoredFontSize(page: Page, value: string) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				return storedValue ? JSON.parse(storedValue).fontSize : null;
+			}, userSettingsStorageKey)
+		)
+		.toBe(value);
+}
+
+export async function expectStoredAvatarShape(page: Page, value: string) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				return storedValue ? JSON.parse(storedValue).avatarShape : null;
+			}, userSettingsStorageKey)
+		)
+		.toBe(value);
+}
+
+export async function expectThemeNotStoredInUiState(page: Page) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				return storedValue ? Object.hasOwn(JSON.parse(storedValue), 'theme') : false;
+			}, uiStateStorageKey)
+		)
+		.toBe(false);
+}
+
+export async function expectFontSizeNotStoredInUiState(page: Page) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				return storedValue ? Object.hasOwn(JSON.parse(storedValue), 'fontSize') : false;
+			}, uiStateStorageKey)
+		)
+		.toBe(false);
+}
+
+export async function expectAvatarShapeNotStoredInUiState(page: Page) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				return storedValue ? Object.hasOwn(JSON.parse(storedValue), 'avatarShape') : false;
+			}, uiStateStorageKey)
+		)
+		.toBe(false);
+}
+
+export async function fontSizePx(locator: Locator) {
+	await expect(locator).toBeVisible();
+
+	return Number.parseFloat(
+		await locator.evaluate((element) => window.getComputedStyle(element).fontSize)
+	);
+}
+
+export async function expectComposerNextToSidebar(page: Page, composer: Locator) {
+	const sidebarBox = await requiredBox(sidebar(page), 'sidebar');
+	const composerBox = await requiredBox(composer, 'composer');
+
+	expect(Math.round(composerBox.width), 'composer should keep its lane width').toBe(composerWidth);
+	expect(
+		Math.abs(composerBox.x - (sidebarBox.x + sidebarBox.width)),
+		'composer should sit directly next to the sidebar'
+	).toBeLessThanOrEqual(sidebarCenterTolerance);
+}
+
+export async function expectAbove(upper: Locator, lower: Locator, label: string) {
+	const upperBox = await requiredBox(upper, `${label} upper item`);
+	const lowerBox = await requiredBox(lower, `${label} lower item`);
+
+	expect(upperBox.y + upperBox.height, `${label} should be above`).toBeLessThanOrEqual(lowerBox.y);
+}
+
+export async function expectColumnOrder(columns: Locator, names: string[]) {
+	await expect(columns).toHaveCount(names.length);
+	await expect(columns.locator('header h2')).toHaveText(names);
+}
+
+export async function expectColumnWidth(column: Locator, width: number) {
+	await expect.poll(async () => Math.round((await column.boundingBox())?.width ?? 0)).toBe(width);
+}
+
+export async function expectStoredColumnConfigWidths(page: Page, widths: string[]) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				return storedValue
+					? JSON.parse(storedValue).map((column: { width: string }) => column.width)
+					: null;
+			}, columnConfigsStorageKey)
+		)
+		.toEqual(widths);
+}
+
+export async function expectStoredColumnIdsAreOpaque(page: Page) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				if (!storedValue) return null;
+
+				return JSON.parse(storedValue).every(
+					(column: { id?: string }) =>
+						typeof column.id === 'string' &&
+						/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(column.id)
+				);
+			}, columnConfigsStorageKey)
+		)
+		.toBe(true);
+}
+
+export async function expectStoredWebsiteColumn(page: Page, url: string) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				if (!storedValue) return null;
+
+				const column = JSON.parse(storedValue).find(
+					(item: { type?: string }) => item.type === 'website'
+				);
+				return column ? { type: column.type, url: column.url, width: column.width } : null;
+			}, columnConfigsStorageKey)
+		)
+		.toEqual({ type: 'website', url, width: 'standard' });
+}
+
+export async function expectStoredCustomTimelineColumn(
+	page: Page,
+	filters: unknown = [{ kinds: [1], limit: 20 }],
+	relays: unknown = defaultRelaySelection
+) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				if (!storedValue) return null;
+
+				const column = JSON.parse(storedValue).find(
+					(item: { timelineKind?: string }) => item.timelineKind === 'custom'
+				);
+				return column
+					? {
+							type: column.type,
+							timelineKind: column.timelineKind,
+							filters: column.filters,
+							relays: column.relays,
+							width: column.width
+						}
+					: null;
+			}, columnConfigsStorageKey)
+		)
+		.toEqual({
+			type: 'timeline',
+			timelineKind: 'custom',
+			filters,
+			relays,
+			width: 'standard'
+		});
+}
+
+export async function requiredBox(locator: Locator, label: string) {
+	await expect(locator, `${label} should be visible before measuring`).toBeVisible();
+
+	const box = await locator.boundingBox();
+	expect(box, `${label} should have a bounding box`).not.toBeNull();
+
+	return box!;
+}
+
+export async function iconCenterX(page: Page, name: string) {
+	const iconBox = await requiredBox(sidebarIconContainer(page, name), `${name} icon`);
+	return iconBox.x + iconBox.width / 2;
+}
+
+export async function expectSidebarIconsCentered(page: Page, names: string[]) {
+	const sidebarBox = await requiredBox(sidebar(page), 'sidebar');
+	const sidebarCenterX = sidebarBox.x + sidebarBox.width / 2;
+
+	for (const name of names) {
+		const buttonBox = await requiredBox(sidebarButton(page, name), `${name} button`);
+		const iconBox = await requiredBox(sidebarIconContainer(page, name), `${name} icon`);
+		const iconCenter = iconBox.x + iconBox.width / 2;
+
+		expect(
+			Math.abs(iconCenter - sidebarCenterX),
+			`${name} icon should be centered`
+		).toBeLessThanOrEqual(sidebarCenterTolerance);
+		expect(
+			buttonBox.width,
+			`${name} button should fit inside the collapsed sidebar`
+		).toBeLessThanOrEqual(sidebarBox.width);
+		expect(buttonBox.height, `${name} button should keep a visible height`).toBeGreaterThan(0);
+		expect(iconBox.x, `${name} icon should stay inside the sidebar`).toBeGreaterThanOrEqual(
+			sidebarBox.x
+		);
+		expect(
+			iconBox.x + iconBox.width,
+			`${name} icon should stay inside the sidebar`
+		).toBeLessThanOrEqual(sidebarBox.x + sidebarBox.width);
+	}
+}

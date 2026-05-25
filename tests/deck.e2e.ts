@@ -1,580 +1,44 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
-
-declare global {
-	interface Window {
-		__NOSTTER_DECK_SKIP_NOSTR_VERIFY__?: boolean;
-		__NOSTTER_DECK_WEBSOCKET_CTOR__?: typeof WebSocket;
-		__nostterFakeRelayConnections?: Record<string, number>;
-		__nostterFakeRelayProfileRequests?: Record<string, number>;
-		__nostterFakeRelayAddressRequests?: Record<string, number>;
-	}
-}
-
-const columnNames: string[] = [];
-const sidebarButtonNames = ['Add column', 'Post', 'Settings'];
-const sidebarExpandedWidth = 236;
-const sidebarCollapsedWidth = 60;
-const composerWidth = 360;
-const narrowColumnWidth = 280;
-const standardColumnWidth = 342;
-const wideColumnWidth = 480;
-const sidebarCenterTolerance = 1;
-const uiStateStorageKey = 'nostter:ui-state';
-const userSettingsStorageKey = 'nostter:user-settings';
-const columnConfigsStorageKey = 'nostter:column-configs';
-const defaultRelaySelection = { type: 'default' };
-
-async function openDeck(page: Page) {
-	await page.addInitScript(() => {
-		if (!window.localStorage.getItem('PARAGLIDE_LOCALE')) {
-			window.localStorage.setItem('PARAGLIDE_LOCALE', 'en');
-		}
-	});
-	await page.goto('/');
-}
-
-async function installFakeNostrRelay(page: Page) {
-	await page.addInitScript(() => {
-		const relayConnections: Record<string, number> = {};
-		const relayProfileRequests: Record<string, number> = {};
-		const relayAddressRequests: Record<string, number> = {};
-		const contactListAuthorPubkey =
-			'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
-		const addressableListAuthorPubkey =
-			'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd';
-		const staleContactPubkey = 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc';
-		const profilePictureUrl = 'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=';
-		const textEvent = {
-			id: 'event-custom-timeline-1',
-			pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-			created_at: Math.floor(Date.now() / 1000) - 90,
-			kind: 1,
-			tags: [['t', 'nostter']],
-			content: 'Hello from a custom Nostr timeline',
-			sig: '0'.repeat(128)
-		};
-		const staleTextEvent = {
-			id: 'event-stale-custom-timeline-1',
-			pubkey: staleContactPubkey,
-			created_at: Math.floor(Date.now() / 1000) - 100,
-			kind: 1,
-			tags: [['t', 'nostter']],
-			content: 'Hello from a stale contact list',
-			sig: '0'.repeat(128)
-		};
-		const repostEvent = {
-			id: 'event-custom-timeline-repost',
-			pubkey: textEvent.pubkey,
-			created_at: Math.floor(Date.now() / 1000) - 80,
-			kind: 6,
-			tags: [],
-			content: 'Repost from a custom Nostr timeline',
-			sig: '0'.repeat(128)
-		};
-		const staleContactListEvent = {
-			id: 'event-contact-list-stale',
-			pubkey: contactListAuthorPubkey,
-			created_at: Math.floor(Date.now() / 1000) - 240,
-			kind: 3,
-			tags: [['p', staleContactPubkey]],
-			content: '',
-			sig: '0'.repeat(128)
-		};
-		const contactListEvent = {
-			id: 'event-contact-list',
-			pubkey: contactListAuthorPubkey,
-			created_at: Math.floor(Date.now() / 1000) - 180,
-			kind: 3,
-			tags: [['p', textEvent.pubkey]],
-			content: '',
-			sig: '0'.repeat(128)
-		};
-		const emptyAddressableListEvent = {
-			id: 'event-addressable-list-empty',
-			pubkey: addressableListAuthorPubkey,
-			created_at: Math.floor(Date.now() / 1000) - 180,
-			kind: 30000,
-			tags: [
-				['d', ''],
-				['p', textEvent.pubkey]
-			],
-			content: '',
-			sig: '0'.repeat(128)
-		};
-		const namedAddressableListEvent = {
-			id: 'event-addressable-list-named',
-			pubkey: addressableListAuthorPubkey,
-			created_at: Math.floor(Date.now() / 1000) - 180,
-			kind: 30000,
-			tags: [
-				['d', 'favorites'],
-				['p', textEvent.pubkey]
-			],
-			content: '',
-			sig: '0'.repeat(128)
-		};
-		const profileEvent = {
-			id: 'event-profile-alice',
-			pubkey: textEvent.pubkey,
-			created_at: Math.floor(Date.now() / 1000) - 120,
-			kind: 0,
-			tags: [],
-			content: JSON.stringify({
-				display_name: 'Alice Relay',
-				picture: profilePictureUrl
-			}),
-			sig: '0'.repeat(128)
-		};
-		const staleProfileEvent = {
-			id: 'event-profile-alice-stale',
-			pubkey: textEvent.pubkey,
-			created_at: Math.floor(Date.now() / 1000) - 240,
-			kind: 0,
-			tags: [],
-			content: JSON.stringify({
-				display_name: 'Old Alice Relay',
-				picture: 'https://example.com/old-alice.png'
-			}),
-			sig: '0'.repeat(128)
-		};
-
-		class FakeWebSocket {
-			static CONNECTING = 0;
-			static OPEN = 1;
-			static CLOSING = 2;
-			static CLOSED = 3;
-
-			readyState = FakeWebSocket.CONNECTING;
-			url: string;
-			listeners: Record<string, Set<(event?: unknown) => void>> = {
-				open: new Set(),
-				message: new Set(),
-				close: new Set()
-			};
-
-			constructor(url: string) {
-				this.url = url;
-				relayConnections[url] = (relayConnections[url] ?? 0) + 1;
-				setTimeout(() => {
-					this.readyState = FakeWebSocket.OPEN;
-					this.dispatch('open');
-				}, 0);
-			}
-
-			addEventListener(type: string, callback: (event?: unknown) => void) {
-				this.listeners[type]?.add(callback);
-			}
-
-			removeEventListener(type: string, callback: (event?: unknown) => void) {
-				this.listeners[type]?.delete(callback);
-			}
-
-			send(data: string) {
-				const message = JSON.parse(data);
-				if (!Array.isArray(message) || message[0] !== 'REQ') return;
-
-				const subId = message[1] as string;
-				const filters = message.slice(2) as Array<{
-					kinds?: number[];
-					authors?: string[];
-					'#d'?: string[];
-				}>;
-				const requestsTextEvents = filters.some(
-					(filter) =>
-						(!filter.kinds || filter.kinds.includes(1)) &&
-						(!filter.authors || filter.authors.includes(textEvent.pubkey))
-				);
-				const requestsStaleTextEvents = filters.some(
-					(filter) =>
-						(!filter.kinds || filter.kinds.includes(1)) &&
-						filter.authors?.includes(staleContactPubkey)
-				);
-				const requestsRepostEvents = filters.some(
-					(filter) =>
-						(!filter.kinds || filter.kinds.includes(6)) &&
-						(!filter.authors || filter.authors.includes(repostEvent.pubkey))
-				);
-				const requestsProfiles = filters.some(
-					(filter) => filter.kinds?.includes(0) && filter.authors?.includes(textEvent.pubkey)
-				);
-				const requestsContactList = filters.some(
-					(filter) => filter.kinds?.includes(3) && filter.authors?.includes(contactListAuthorPubkey)
-				);
-				const requestsEmptyAddressableList = filters.some(
-					(filter) =>
-						filter.kinds?.includes(30000) &&
-						filter.authors?.includes(addressableListAuthorPubkey) &&
-						filter['#d']?.includes('')
-				);
-				const requestsNamedAddressableList = filters.some(
-					(filter) =>
-						filter.kinds?.includes(30000) &&
-						filter.authors?.includes(addressableListAuthorPubkey) &&
-						filter['#d']?.includes('favorites')
-				);
-
-				if (requestsTextEvents) {
-					setTimeout(() => {
-						this.emitMessage(['EVENT', subId, textEvent]);
-						this.emitMessage(['EVENT', subId, textEvent]);
-					}, 5);
-				}
-
-				if (requestsStaleTextEvents) {
-					setTimeout(() => {
-						this.emitMessage(['EVENT', subId, staleTextEvent]);
-					}, 5);
-				}
-
-				if (requestsRepostEvents) {
-					setTimeout(() => {
-						this.emitMessage(['EVENT', subId, repostEvent]);
-					}, 5);
-				}
-
-				if (requestsProfiles) {
-					relayProfileRequests[textEvent.pubkey] =
-						(relayProfileRequests[textEvent.pubkey] ?? 0) + 1;
-					setTimeout(() => {
-						this.emitMessage(['EVENT', subId, profileEvent]);
-						this.emitMessage(['EVENT', subId, staleProfileEvent]);
-					}, 20);
-				}
-
-				if (requestsContactList) {
-					const address = `${contactListEvent.kind}:${contactListEvent.pubkey}:`;
-					relayAddressRequests[address] = (relayAddressRequests[address] ?? 0) + 1;
-					setTimeout(() => {
-						this.emitMessage(['EVENT', subId, staleContactListEvent]);
-						this.emitMessage(['EVENT', subId, contactListEvent]);
-						this.emitMessage(['EOSE', subId]);
-					}, 10);
-				}
-
-				if (requestsEmptyAddressableList) {
-					const address = `${emptyAddressableListEvent.kind}:${emptyAddressableListEvent.pubkey}:`;
-					relayAddressRequests[address] = (relayAddressRequests[address] ?? 0) + 1;
-					setTimeout(() => {
-						this.emitMessage(['EVENT', subId, emptyAddressableListEvent]);
-						this.emitMessage(['EOSE', subId]);
-					}, 10);
-				}
-
-				if (requestsNamedAddressableList) {
-					const address = `${namedAddressableListEvent.kind}:${namedAddressableListEvent.pubkey}:favorites`;
-					relayAddressRequests[address] = (relayAddressRequests[address] ?? 0) + 1;
-					setTimeout(() => {
-						this.emitMessage(['EVENT', subId, namedAddressableListEvent]);
-						this.emitMessage(['EOSE', subId]);
-					}, 10);
-				}
-			}
-
-			close(code = 1000) {
-				this.readyState = FakeWebSocket.CLOSED;
-				this.dispatch('close', { type: 'close', code, reason: '' });
-			}
-
-			emitMessage(message: unknown) {
-				this.dispatch('message', {
-					type: 'message',
-					data: JSON.stringify(message)
-				});
-			}
-
-			dispatch(type: string, event?: unknown) {
-				for (const callback of this.listeners[type] ?? []) {
-					callback(event);
-				}
-			}
-		}
-
-		window.__NOSTTER_DECK_SKIP_NOSTR_VERIFY__ = true;
-		window.__NOSTTER_DECK_WEBSOCKET_CTOR__ = FakeWebSocket as unknown as typeof WebSocket;
-		window.__nostterFakeRelayConnections = relayConnections;
-		window.__nostterFakeRelayProfileRequests = relayProfileRequests;
-		window.__nostterFakeRelayAddressRequests = relayAddressRequests;
-	});
-}
-
-async function fakeRelayConnectionCounts(page: Page) {
-	return page.evaluate(() => {
-		const connections = window.__nostterFakeRelayConnections ?? {};
-
-		return {
-			damus: connections['wss://relay.damus.io/'] ?? connections['wss://relay.damus.io'],
-			nos: connections['wss://nos.lol/'] ?? connections['wss://nos.lol'],
-			purplepages: connections['wss://purplepag.es/'] ?? connections['wss://purplepag.es'],
-			userKindpages: connections['wss://user.kindpag.es/'] ?? connections['wss://user.kindpag.es'],
-			yabuDirectory:
-				connections['wss://directory.yabu.me/'] ?? connections['wss://directory.yabu.me']
-		};
-	});
-}
-
-function deckColumns(page: Page) {
-	return page.locator('section[id^="deck-column-"]');
-}
-
-function columnOptionsButton(column: Locator) {
-	return column.locator('header').getByRole('button', { name: 'Column options' });
-}
-
-function sidebar(page: Page) {
-	return page.locator('aside');
-}
-
-function sidebarButton(page: Page, name: string) {
-	return sidebar(page).getByRole('button', { name });
-}
-
-function sidebarIconContainer(page: Page, name: string) {
-	return sidebarButton(page, name).locator('span').first();
-}
-
-function sidebarButtonIcon(page: Page, name: string) {
-	return sidebarIconContainer(page, name).locator('svg');
-}
-
-async function expectSidebarWidth(page: Page, width: number) {
-	await expect
-		.poll(async () => Math.round((await sidebar(page).boundingBox())?.width ?? 0))
-		.toBe(width);
-}
-
-async function expectStoredSidebarCollapsed(page: Page, value: boolean) {
-	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				return storedValue ? JSON.parse(storedValue).sidebarCollapsed : null;
-			}, uiStateStorageKey)
-		)
-		.toBe(value);
-}
-
-async function expectStoredThemePreference(page: Page, value: string) {
-	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				return storedValue ? JSON.parse(storedValue).theme : null;
-			}, userSettingsStorageKey)
-		)
-		.toBe(value);
-}
-
-async function expectStoredFontSize(page: Page, value: string) {
-	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				return storedValue ? JSON.parse(storedValue).fontSize : null;
-			}, userSettingsStorageKey)
-		)
-		.toBe(value);
-}
-
-async function expectStoredAvatarShape(page: Page, value: string) {
-	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				return storedValue ? JSON.parse(storedValue).avatarShape : null;
-			}, userSettingsStorageKey)
-		)
-		.toBe(value);
-}
-
-async function expectThemeNotStoredInUiState(page: Page) {
-	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				return storedValue ? Object.hasOwn(JSON.parse(storedValue), 'theme') : false;
-			}, uiStateStorageKey)
-		)
-		.toBe(false);
-}
-
-async function expectFontSizeNotStoredInUiState(page: Page) {
-	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				return storedValue ? Object.hasOwn(JSON.parse(storedValue), 'fontSize') : false;
-			}, uiStateStorageKey)
-		)
-		.toBe(false);
-}
-
-async function expectAvatarShapeNotStoredInUiState(page: Page) {
-	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				return storedValue ? Object.hasOwn(JSON.parse(storedValue), 'avatarShape') : false;
-			}, uiStateStorageKey)
-		)
-		.toBe(false);
-}
-
-async function fontSizePx(locator: Locator) {
-	await expect(locator).toBeVisible();
-
-	return Number.parseFloat(
-		await locator.evaluate((element) => window.getComputedStyle(element).fontSize)
-	);
-}
-
-async function expectComposerNextToSidebar(page: Page, composer: Locator) {
-	const sidebarBox = await requiredBox(sidebar(page), 'sidebar');
-	const composerBox = await requiredBox(composer, 'composer');
-
-	expect(Math.round(composerBox.width), 'composer should keep its lane width').toBe(composerWidth);
-	expect(
-		Math.abs(composerBox.x - (sidebarBox.x + sidebarBox.width)),
-		'composer should sit directly next to the sidebar'
-	).toBeLessThanOrEqual(sidebarCenterTolerance);
-}
-
-async function expectAbove(upper: Locator, lower: Locator, label: string) {
-	const upperBox = await requiredBox(upper, `${label} upper item`);
-	const lowerBox = await requiredBox(lower, `${label} lower item`);
-
-	expect(upperBox.y + upperBox.height, `${label} should be above`).toBeLessThanOrEqual(lowerBox.y);
-}
-
-async function expectColumnOrder(columns: Locator, names: string[]) {
-	await expect(columns).toHaveCount(names.length);
-	await expect(columns.locator('header h2')).toHaveText(names);
-}
-
-async function expectColumnWidth(column: Locator, width: number) {
-	await expect.poll(async () => Math.round((await column.boundingBox())?.width ?? 0)).toBe(width);
-}
-
-async function expectStoredColumnConfigWidths(page: Page, widths: string[]) {
-	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				return storedValue
-					? JSON.parse(storedValue).map((column: { width: string }) => column.width)
-					: null;
-			}, columnConfigsStorageKey)
-		)
-		.toEqual(widths);
-}
-
-async function expectStoredColumnIdsAreOpaque(page: Page) {
-	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				if (!storedValue) return null;
-
-				return JSON.parse(storedValue).every(
-					(column: { id?: string }) =>
-						typeof column.id === 'string' &&
-						/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(column.id)
-				);
-			}, columnConfigsStorageKey)
-		)
-		.toBe(true);
-}
-
-async function expectStoredWebsiteColumn(page: Page, url: string) {
-	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				if (!storedValue) return null;
-
-				const column = JSON.parse(storedValue).find(
-					(item: { type?: string }) => item.type === 'website'
-				);
-				return column ? { type: column.type, url: column.url, width: column.width } : null;
-			}, columnConfigsStorageKey)
-		)
-		.toEqual({ type: 'website', url, width: 'standard' });
-}
-
-async function expectStoredCustomTimelineColumn(
-	page: Page,
-	filters: unknown = [{ kinds: [1], limit: 20 }],
-	relays: unknown = defaultRelaySelection
-) {
-	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				if (!storedValue) return null;
-
-				const column = JSON.parse(storedValue).find(
-					(item: { timelineKind?: string }) => item.timelineKind === 'custom'
-				);
-				return column
-					? {
-							type: column.type,
-							timelineKind: column.timelineKind,
-							filters: column.filters,
-							relays: column.relays,
-							width: column.width
-						}
-					: null;
-			}, columnConfigsStorageKey)
-		)
-		.toEqual({
-			type: 'timeline',
-			timelineKind: 'custom',
-			filters,
-			relays,
-			width: 'standard'
-		});
-}
-
-async function requiredBox(locator: Locator, label: string) {
-	await expect(locator, `${label} should be visible before measuring`).toBeVisible();
-
-	const box = await locator.boundingBox();
-	expect(box, `${label} should have a bounding box`).not.toBeNull();
-
-	return box!;
-}
-
-async function iconCenterX(page: Page, name: string) {
-	const iconBox = await requiredBox(sidebarIconContainer(page, name), `${name} icon`);
-	return iconBox.x + iconBox.width / 2;
-}
-
-async function expectSidebarIconsCentered(page: Page, names: string[]) {
-	const sidebarBox = await requiredBox(sidebar(page), 'sidebar');
-	const sidebarCenterX = sidebarBox.x + sidebarBox.width / 2;
-
-	for (const name of names) {
-		const buttonBox = await requiredBox(sidebarButton(page, name), `${name} button`);
-		const iconBox = await requiredBox(sidebarIconContainer(page, name), `${name} icon`);
-		const iconCenter = iconBox.x + iconBox.width / 2;
-
-		expect(
-			Math.abs(iconCenter - sidebarCenterX),
-			`${name} icon should be centered`
-		).toBeLessThanOrEqual(sidebarCenterTolerance);
-		expect(
-			buttonBox.width,
-			`${name} button should fit inside the collapsed sidebar`
-		).toBeLessThanOrEqual(sidebarBox.width);
-		expect(buttonBox.height, `${name} button should keep a visible height`).toBeGreaterThan(0);
-		expect(iconBox.x, `${name} icon should stay inside the sidebar`).toBeGreaterThanOrEqual(
-			sidebarBox.x
-		);
-		expect(
-			iconBox.x + iconBox.width,
-			`${name} icon should stay inside the sidebar`
-		).toBeLessThanOrEqual(sidebarBox.x + sidebarBox.width);
-	}
-}
+import { expect, test } from '@playwright/test';
+import { fakeRelayConnectionCounts, installFakeNostrRelay } from './helpers/fake-nostr-relay';
+import {
+	addPresetColumn,
+	columnConfigsStorageKey,
+	columnNames,
+	columnOptionsButton,
+	deckColumns,
+	defaultRelaySelection,
+	expectAbove,
+	expectAvatarShapeNotStoredInUiState,
+	expectColumnOrder,
+	expectColumnWidth,
+	expectComposerNextToSidebar,
+	expectFontSizeNotStoredInUiState,
+	expectSidebarIconsCentered,
+	expectSidebarWidth,
+	expectStoredAvatarShape,
+	expectStoredColumnConfigWidths,
+	expectStoredColumnIdsAreOpaque,
+	expectStoredCustomTimelineColumn,
+	expectStoredFontSize,
+	expectStoredSidebarCollapsed,
+	expectStoredThemePreference,
+	expectStoredWebsiteColumn,
+	expectThemeNotStoredInUiState,
+	fontSizePx,
+	iconCenterX,
+	narrowColumnWidth,
+	openDeck,
+	sidebar,
+	sidebarButtonIcon,
+	sidebarButtonNames,
+	sidebarCenterTolerance,
+	sidebarCollapsedWidth,
+	sidebarExpandedWidth,
+	standardColumnWidth,
+	uiStateStorageKey,
+	userSettingsStorageKey,
+	wideColumnWidth
+} from './helpers/deck-page';
 
 test.describe('nostter deck', () => {
 	test('shows the initial deck', async ({ page }) => {
@@ -596,14 +60,8 @@ test.describe('nostter deck', () => {
 		await openDeck(page);
 		const columns = deckColumns(page);
 
-		await page.getByRole('button', { name: 'Add column' }).first().click();
-		await expect(page.getByRole('dialog', { name: 'Add column' })).toBeVisible();
-		await page.getByLabel('Column type').selectOption('timeline_search');
-		await page.getByRole('button', { name: 'Save' }).click();
-
-		await page.getByRole('button', { name: 'Add column' }).first().click();
-		await page.getByLabel('Column type').selectOption('timeline_lists');
-		await page.getByRole('button', { name: 'Save' }).click();
+		await addPresetColumn(page, 'timeline_search');
+		await addPresetColumn(page, 'timeline_lists');
 
 		await expectColumnOrder(columns, ['Search', 'Lists']);
 		await expect(sidebarButtonIcon(page, 'Search')).toBeVisible();
@@ -945,12 +403,8 @@ test.describe('nostter deck', () => {
 		await openDeck(page);
 		const columns = deckColumns(page);
 
-		await page.getByRole('button', { name: 'Add column' }).first().click();
-		await page.getByLabel('Column type').selectOption('timeline_search');
-		await page.getByRole('button', { name: 'Save' }).click();
-		await page.getByRole('button', { name: 'Add column' }).first().click();
-		await page.getByLabel('Column type').selectOption('timeline_lists');
-		await page.getByRole('button', { name: 'Save' }).click();
+		await addPresetColumn(page, 'timeline_search');
+		await addPresetColumn(page, 'timeline_lists');
 
 		await expectColumnOrder(columns, ['Search', 'Lists']);
 		await expectColumnWidth(columns.first(), standardColumnWidth);
@@ -988,12 +442,8 @@ test.describe('nostter deck', () => {
 		await openDeck(page);
 		const columns = deckColumns(page);
 
-		await page.getByRole('button', { name: 'Add column' }).first().click();
-		await page.getByLabel('Column type').selectOption('timeline_search');
-		await page.getByRole('button', { name: 'Save' }).click();
-		await page.getByRole('button', { name: 'Add column' }).first().click();
-		await page.getByLabel('Column type').selectOption('timeline_lists');
-		await page.getByRole('button', { name: 'Save' }).click();
+		await addPresetColumn(page, 'timeline_search');
+		await addPresetColumn(page, 'timeline_lists');
 		await expectColumnOrder(columns, ['Search', 'Lists']);
 		await expectColumnWidth(columns.nth(1), standardColumnWidth);
 
@@ -1016,12 +466,8 @@ test.describe('nostter deck', () => {
 	test('collapses and expands the sidebar', async ({ page }) => {
 		await openDeck(page);
 
-		await page.getByRole('button', { name: 'Add column' }).first().click();
-		await page.getByLabel('Column type').selectOption('timeline_search');
-		await page.getByRole('button', { name: 'Save' }).click();
-		await page.getByRole('button', { name: 'Add column' }).first().click();
-		await page.getByLabel('Column type').selectOption('timeline_lists');
-		await page.getByRole('button', { name: 'Save' }).click();
+		await addPresetColumn(page, 'timeline_search');
+		await addPresetColumn(page, 'timeline_lists');
 
 		await expectSidebarWidth(page, sidebarExpandedWidth);
 
@@ -1159,6 +605,7 @@ test.describe('nostter deck', () => {
 
 	test('changes and persists the font size from user settings', async ({ page }) => {
 		await openDeck(page);
+		await addPresetColumn(page, 'timeline_home');
 
 		const postBody = page.getByText('Shipping a desktop-first deck today.');
 		const mediumFontSize = await fontSizePx(postBody);
@@ -1196,6 +643,7 @@ test.describe('nostter deck', () => {
 
 	test('changes and persists the profile icon shape from user settings', async ({ page }) => {
 		await openDeck(page);
+		await addPresetColumn(page, 'timeline_home');
 
 		const postAvatar = page.getByTestId('post-avatar').first();
 		const sidebarAvatar = sidebar(page).getByTestId('account-avatar').first();
