@@ -7,6 +7,7 @@ declare global {
 		__nostterFakeRelayConnections?: Record<string, number>;
 		__nostterFakeRelayProfileRequests?: Record<string, number>;
 		__nostterFakeRelayAddressRequests?: Record<string, number>;
+		__nostterFakeRelaySearchRequests?: Record<string, number>;
 	}
 }
 
@@ -15,6 +16,7 @@ export async function installFakeNostrRelay(page: Page) {
 		const relayConnections: Record<string, number> = {};
 		const relayProfileRequests: Record<string, number> = {};
 		const relayAddressRequests: Record<string, number> = {};
+		const relaySearchRequests: Record<string, number> = {};
 		const contactListAuthorPubkey =
 			'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 		const addressableListAuthorPubkey =
@@ -46,6 +48,15 @@ export async function installFakeNostrRelay(page: Page) {
 			kind: 6,
 			tags: [],
 			content: 'Repost from a custom Nostr timeline',
+			sig: '0'.repeat(128)
+		};
+		const editedSearchEvent = {
+			id: 'event-search-edited',
+			pubkey: textEvent.pubkey,
+			created_at: Math.floor(Date.now() / 1000) - 70,
+			kind: 1,
+			tags: [['t', 'edited']],
+			content: 'Edited search result from a Nostr search relay',
 			sig: '0'.repeat(128)
 		};
 		const staleContactListEvent = {
@@ -155,11 +166,16 @@ export async function installFakeNostrRelay(page: Page) {
 					kinds?: number[];
 					authors?: string[];
 					'#d'?: string[];
+					search?: string;
 				}>;
 				const requestsTextEvents = filters.some(
 					(filter) =>
+						!filter.search &&
 						(!filter.kinds || filter.kinds.includes(1)) &&
 						(!filter.authors || filter.authors.includes(textEvent.pubkey))
+				);
+				const requestedSearches = filters.flatMap((filter) =>
+					(!filter.kinds || filter.kinds.includes(1)) && filter.search ? [filter.search] : []
 				);
 				const requestsStaleTextEvents = filters.some(
 					(filter) =>
@@ -194,6 +210,13 @@ export async function installFakeNostrRelay(page: Page) {
 					setTimeout(() => {
 						this.emitMessage(['EVENT', subId, textEvent]);
 						this.emitMessage(['EVENT', subId, textEvent]);
+					}, 5);
+				}
+
+				for (const search of requestedSearches) {
+					relaySearchRequests[search] = (relaySearchRequests[search] ?? 0) + 1;
+					setTimeout(() => {
+						this.emitMessage(['EVENT', subId, search === 'edited' ? editedSearchEvent : textEvent]);
 					}, 5);
 				}
 
@@ -271,6 +294,7 @@ export async function installFakeNostrRelay(page: Page) {
 		window.__nostterFakeRelayConnections = relayConnections;
 		window.__nostterFakeRelayProfileRequests = relayProfileRequests;
 		window.__nostterFakeRelayAddressRequests = relayAddressRequests;
+		window.__nostterFakeRelaySearchRequests = relaySearchRequests;
 	});
 }
 

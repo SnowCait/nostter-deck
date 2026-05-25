@@ -44,6 +44,7 @@
 	"column_width_standard": "Standard",
 	"column_width_wide": "Wide",
 	"website_url": "Website URL",
+	"search_query": "Search query",
 	"custom_timeline_filters": "REQ filters",
 	"custom_timeline_filters_help": "Use a Nostr REQ filter array. authors normally accepts pubkey arrays; this app also accepts a single address string like kind:pubkey:identifier.",
 	"custom_timeline_relays": "Relays",

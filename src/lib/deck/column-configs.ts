@@ -30,6 +30,21 @@ function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 		if (candidate.type === 'timeline') {
 			if (candidate.timelineKind === 'preset') {
 				if (!isColumnSourceKey(candidate.sourceKey)) return [];
+				const query = (candidate as { query?: unknown }).query;
+				if (candidate.sourceKey === 'timeline_search') {
+					if (typeof query !== 'string' || query.trim().length === 0) return [];
+
+					return [
+						{
+							id: candidate.id,
+							type: 'timeline',
+							timelineKind: 'preset',
+							sourceKey: candidate.sourceKey,
+							query: query.trim(),
+							width: candidate.width
+						}
+					];
+				}
 
 				return [
 					{

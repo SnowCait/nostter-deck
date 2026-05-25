@@ -21,7 +21,7 @@
 	import { parseNostrFilters } from '$lib/nostr/filters';
 	import { eventToPost } from '$lib/nostr/posts';
 	import { getProfile } from '$lib/nostr/profiles';
-	import { defaultRelays, resolveRelayDraft } from '$lib/nostr/relays';
+	import { defaultRelays, resolveRelayDraft, searchRelays } from '$lib/nostr/relays';
 	import { startCustomTimelineSubscription } from '$lib/nostr/timeline';
 	import { m } from '$lib/paraglide/messages.js';
 	import { readUserSettings, type AvatarShape, type FontSize } from '$lib/user-settings';
@@ -63,6 +63,7 @@
 		defaultColumnType
 	);
 	let websiteUrl = $state('');
+	let searchQuery = $state('');
 	let customTimelineFilters = $state('[{"kinds":[1],"limit":20}]');
 	let selectedDefaultRelays = $state<string[]>([...defaultRelays]);
 	let customTimelineRelays = $state('');
@@ -75,6 +76,7 @@
 	const canSubmitPost = $derived(composeLength > 0 && composeLength <= composeMaxLength);
 	const textClass = $derived(textClassByFontSize[fontSize]);
 	const normalizedWebsiteUrl = $derived(normalizeWebsiteUrl(websiteUrl));
+	const normalizedSearchQuery = $derived(searchQuery.trim());
 	const parsedCustomTimelineFilters = $derived(parseNostrFilters(customTimelineFilters));
 	const selectedDefaultRelaySet = $derived(new Set(selectedDefaultRelays));
 	const parsedCustomTimelineRelays = $derived(
@@ -82,12 +84,25 @@
 	);
 	const canSaveColumn = $derived(
 		(selectedColumnType !== 'website' || normalizedWebsiteUrl !== null) &&
+			(selectedColumnType !== 'timeline_search' || normalizedSearchQuery.length > 0) &&
 			(selectedColumnType !== 'custom_timeline' ||
 				(parsedCustomTimelineFilters !== null && parsedCustomTimelineRelays !== null))
 	);
 	const columns = $derived<Column[]>(
 		columnConfigs.map((column) => {
 			if (column.type === 'timeline' && column.timelineKind === 'preset') {
+				if (column.sourceKey === 'timeline_search') {
+					const runtime = customTimelineRuntimes[column.id] ?? emptyCustomTimelineRuntime();
+					const posts = getCustomTimelinePosts(runtime);
+
+					return {
+						...column,
+						posts,
+						isLoading: runtime.isLoading,
+						error: runtime.error
+					};
+				}
+
 				return {
 					...column,
 					posts: []
@@ -111,22 +126,28 @@
 	);
 
 	$effect(() => {
-		const activeCustomColumns = columnConfigs.filter(
-			(column) => column.type === 'timeline' && column.timelineKind === 'custom'
+		const activeTimelineColumns = columnConfigs.filter(
+			(column) =>
+				column.type === 'timeline' &&
+				(column.timelineKind === 'custom' ||
+					(column.timelineKind === 'preset' && column.sourceKey === 'timeline_search'))
 		);
-		const activeCustomColumnIds = new Set(activeCustomColumns.map((column) => column.id));
+		const activeTimelineColumnIds = new Set(activeTimelineColumns.map((column) => column.id));
 
 		for (const [columnId, subscription] of customTimelineSubscriptions) {
-			if (activeCustomColumnIds.has(columnId)) continue;
+			if (activeTimelineColumnIds.has(columnId)) continue;
 
 			subscription.stop();
 			customTimelineSubscriptions.delete(columnId);
 			removeCustomTimelineRuntime(columnId);
 		}
 
-		for (const column of activeCustomColumns) {
-			const filters = $state.snapshot(column.filters);
-			const relays = $state.snapshot(column.relays);
+		for (const column of activeTimelineColumns) {
+			const request = getTimelineRequest(column);
+			if (!request) continue;
+
+			const filters = $state.snapshot(request.filters);
+			const relays = $state.snapshot(request.relays);
 			const signature = getCustomTimelineSignature(filters, relays);
 			if (customTimelineSubscriptions.get(column.id)?.signature === signature) continue;
 
@@ -241,9 +262,30 @@
 		return JSON.stringify({ filters, relays });
 	}
 
+	function getTimelineRequest(
+		column: ColumnConfig
+	): { filters: NostrFilter[]; relays: RelaySelection } | null {
+		if (column.type !== 'timeline') return null;
+
+		if (column.timelineKind === 'custom') {
+			return {
+				filters: column.filters,
+				relays: column.relays
+			};
+		}
+
+		if (column.sourceKey !== 'timeline_search') return null;
+
+		return {
+			filters: [{ kinds: [1], search: column.query, limit: 20 }],
+			relays: { type: 'custom', urls: [...searchRelays] }
+		};
+	}
+
 	function openAddColumnDialog() {
 		selectedColumnType = defaultColumnType;
 		websiteUrl = '';
+		searchQuery = '';
 		customTimelineFilters = '[{"kinds":[1],"limit":20}]';
 		selectedDefaultRelays = [...defaultRelays];
 		customTimelineRelays = '';
@@ -268,30 +310,42 @@
 		if (!canSaveColumn) return;
 
 		const id = createColumnId(columnConfigs);
-		const nextColumn =
-			selectedColumnType === 'website'
-				? {
-						id,
-						type: 'website' as const,
-						url: normalizedWebsiteUrl ?? '',
-						width: 'standard' as const
-					}
-				: selectedColumnType === 'custom_timeline'
-					? {
-							id,
-							type: 'timeline' as const,
-							timelineKind: 'custom' as const,
-							filters: parsedCustomTimelineFilters ?? [],
-							relays: parsedCustomTimelineRelays ?? { type: 'default' as const },
-							width: 'standard' as const
-						}
-					: {
-							id,
-							type: 'timeline' as const,
-							timelineKind: 'preset' as const,
-							sourceKey: selectedColumnType,
-							width: 'standard' as const
-						};
+		let nextColumn: ColumnConfig;
+
+		if (selectedColumnType === 'website') {
+			nextColumn = {
+				id,
+				type: 'website',
+				url: normalizedWebsiteUrl ?? '',
+				width: 'standard'
+			};
+		} else if (selectedColumnType === 'custom_timeline') {
+			nextColumn = {
+				id,
+				type: 'timeline',
+				timelineKind: 'custom',
+				filters: parsedCustomTimelineFilters ?? [],
+				relays: parsedCustomTimelineRelays ?? { type: 'default' },
+				width: 'standard'
+			};
+		} else if (selectedColumnType === 'timeline_search') {
+			nextColumn = {
+				id,
+				type: 'timeline',
+				timelineKind: 'preset',
+				sourceKey: selectedColumnType,
+				query: normalizedSearchQuery,
+				width: 'standard'
+			};
+		} else {
+			nextColumn = {
+				id,
+				type: 'timeline',
+				timelineKind: 'preset',
+				sourceKey: selectedColumnType,
+				width: 'standard'
+			};
+		}
 
 		setColumnConfigs([...columnConfigs, nextColumn]);
 		closeColumnDialog();
@@ -348,6 +402,23 @@
 			columnConfigs.map((column) =>
 				column.id === columnId && column.type === 'timeline' && column.timelineKind === 'custom'
 					? { ...column, filters, relays }
+					: column
+			)
+		);
+		openSettingsColumnId = null;
+	}
+
+	function saveSearchSettings(columnId: string, query: string) {
+		const nextQuery = query.trim();
+		if (nextQuery.length === 0) return;
+
+		setColumnConfigs(
+			columnConfigs.map((column) =>
+				column.id === columnId &&
+				column.type === 'timeline' &&
+				column.timelineKind === 'preset' &&
+				column.sourceKey === 'timeline_search'
+					? { ...column, query: nextQuery }
 					: column
 			)
 		);
@@ -533,6 +604,7 @@
 						onMoveLeft={() => moveColumn(column.id, -1)}
 						onMoveRight={() => moveColumn(column.id, 1)}
 						onWidthChange={(width) => updateColumnWidth(column.id, width)}
+						onSearchSave={(query) => saveSearchSettings(column.id, query)}
 						onCustomTimelineSave={(filters, relays) =>
 							saveCustomTimelineSettings(column.id, filters, relays)}
 					/>
@@ -588,6 +660,26 @@
 			<option value="custom_timeline">{m.column_type_custom_timeline()}</option>
 			<option value="website">{m.column_type_website()}</option>
 		</select>
+
+		{#if selectedColumnType === 'timeline_search'}
+			<label
+				class={[
+					'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
+					textClass.control
+				]}
+				for="search-query"
+			>
+				{m.search_query()}
+			</label>
+			<input
+				id="search-query"
+				class={[
+					'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+					textClass.control
+				]}
+				bind:value={searchQuery}
+			/>
+		{/if}
 
 		{#if selectedColumnType === 'custom_timeline'}
 			<div class="mt-4 mb-2 flex items-center justify-between gap-2">

@@ -31,10 +31,14 @@ export async function openDeck(page: Page, options: { isLoggedIn?: boolean } = {
 
 export async function addPresetColumn(
 	page: Page,
-	sourceKey: 'timeline_home' | 'timeline_mentions' | 'timeline_search' | 'timeline_lists'
+	sourceKey: 'timeline_home' | 'timeline_mentions' | 'timeline_search' | 'timeline_lists',
+	options: { query?: string } = {}
 ) {
 	await page.getByRole('button', { name: 'Add column' }).first().click();
 	await page.getByLabel('Column type').selectOption(sourceKey);
+	if (sourceKey === 'timeline_search') {
+		await page.getByLabel('Search query').fill(options.query ?? 'nostter');
+	}
 	await page.getByRole('button', { name: 'Save' }).click();
 }
 
@@ -283,6 +287,37 @@ export async function expectStoredCustomTimelineColumn(
 			timelineKind: 'custom',
 			filters,
 			relays,
+			width: 'standard'
+		});
+}
+
+export async function expectStoredSearchColumn(page: Page, query: string) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				if (!storedValue) return null;
+
+				const column = JSON.parse(storedValue).find(
+					(item: { timelineKind?: string; sourceKey?: string }) =>
+						item.timelineKind === 'preset' && item.sourceKey === 'timeline_search'
+				);
+				return column
+					? {
+							type: column.type,
+							timelineKind: column.timelineKind,
+							sourceKey: column.sourceKey,
+							query: column.query,
+							width: column.width
+						}
+					: null;
+			}, columnConfigsStorageKey)
+		)
+		.toEqual({
+			type: 'timeline',
+			timelineKind: 'preset',
+			sourceKey: 'timeline_search',
+			query,
 			width: 'standard'
 		});
 }

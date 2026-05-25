@@ -1,6 +1,7 @@
 import type { RelaySelection } from '$lib/deck/types';
 
 export const defaultRelays = ['wss://relay.damus.io/', 'wss://nos.lol/'] as const;
+export const searchRelays = ['wss://nostr.wine/', 'wss://search.nos.today/'] as const;
 export const profileRelays = [
 	'wss://purplepag.es/',
 	'wss://user.kindpag.es/',

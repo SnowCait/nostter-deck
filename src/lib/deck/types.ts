@@ -42,6 +42,7 @@ export type MessageKey =
 	| 'column_width_standard'
 	| 'column_width_wide'
 	| 'website_url'
+	| 'search_query'
 	| 'custom_timeline_filters'
 	| 'custom_timeline_filters_help'
 	| 'custom_timeline_relays'
@@ -74,13 +75,26 @@ export type ColumnWidth = 'narrow' | 'standard' | 'wide';
 export type NostrFilter = Record<string, unknown>;
 export type RelaySelection = { type: 'default' } | { type: 'custom'; urls: string[] };
 
-export type PresetTimelineColumnConfig = {
+export type SearchTimelineColumnConfig = {
 	id: string;
 	type: 'timeline';
 	timelineKind: 'preset';
-	sourceKey: ColumnSourceKey;
+	sourceKey: 'timeline_search';
+	query: string;
 	width: ColumnWidth;
 };
+
+export type StaticPresetTimelineColumnConfig = {
+	id: string;
+	type: 'timeline';
+	timelineKind: 'preset';
+	sourceKey: Exclude<ColumnSourceKey, 'timeline_search'>;
+	width: ColumnWidth;
+};
+
+export type PresetTimelineColumnConfig =
+	| SearchTimelineColumnConfig
+	| StaticPresetTimelineColumnConfig;
 
 export type CustomTimelineColumnConfig = {
 	id: string;
@@ -126,6 +140,8 @@ export type Post = {
 
 export type PresetTimelineColumn = PresetTimelineColumnConfig & {
 	posts: Post[];
+	isLoading?: boolean;
+	error?: string | null;
 };
 
 export type CustomTimelineColumn = CustomTimelineColumnConfig & {

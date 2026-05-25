@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { defaultRelays, profileRelays } from '$lib/nostr/relays';
+import { defaultRelays, profileRelays, searchRelays } from '$lib/nostr/relays';
 import { fakeRelayConnectionCounts, installFakeNostrRelay } from './helpers/fake-nostr-relay';
 import {
 	addCustomTimelineColumn,
@@ -21,6 +21,7 @@ import {
 	expectStoredColumnIdsAreOpaque,
 	expectStoredCustomTimelineColumn,
 	expectStoredFontSize,
+	expectStoredSearchColumn,
 	expectStoredSidebarCollapsed,
 	expectStoredThemePreference,
 	expectStoredWebsiteColumn,
@@ -66,6 +67,7 @@ test.describe('nostter deck', () => {
 	});
 
 	test('adds, moves, and deletes a column', async ({ page }) => {
+		await installFakeNostrRelay(page);
 		await openDeck(page);
 		const columns = deckColumns(page);
 
@@ -153,6 +155,63 @@ test.describe('nostter deck', () => {
 		await page.reload();
 		await expectColumnOrder(columns, [...columnNames, 'example.com']);
 		await expect(columns.first().locator('iframe')).toHaveAttribute('src', 'https://example.com/');
+	});
+
+	test('adds, edits, and persists a search preset column', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		const columns = deckColumns(page);
+
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		await page.getByLabel('Column type').selectOption('timeline_search');
+		const addDialog = page.getByRole('dialog', { name: 'Add column' });
+		const searchInput = addDialog.getByLabel('Search query');
+		const saveButton = addDialog.getByRole('button', { name: 'Save' });
+		await expect(searchInput).toBeVisible();
+		await expect(saveButton).toBeDisabled();
+
+		await searchInput.fill('nostter');
+		await expect(saveButton).toBeEnabled();
+		await saveButton.click();
+
+		const searchColumn = columns.first();
+		await expectColumnOrder(columns, [...columnNames, 'Search']);
+		await expect(searchColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
+		await expectStoredSearchColumn(page, 'nostter');
+		await expect
+			.poll(async () => fakeRelayConnectionCounts(page, searchRelays))
+			.toEqual(Object.fromEntries(searchRelays.map((relay) => [relay, 1])));
+		await expect
+			.poll(async () => page.evaluate(() => window.__nostterFakeRelaySearchRequests?.nostter ?? 0))
+			.toBe(searchRelays.length);
+
+		await columnOptionsButton(searchColumn).click();
+		const editInput = searchColumn.getByLabel('Search query');
+		await expect(editInput).toHaveValue('nostter');
+		await editInput.fill('edited');
+		await expect(
+			page.evaluate(() => window.__nostterFakeRelaySearchRequests?.edited ?? 0)
+		).resolves.toBe(0);
+		await expect(
+			searchColumn.getByText('Edited search result from a Nostr search relay')
+		).toHaveCount(0);
+
+		await searchColumn.getByRole('button', { name: 'Save' }).click();
+		await expect(searchColumn.getByLabel('Search query')).toHaveCount(0);
+		await expect(
+			searchColumn.getByText('Edited search result from a Nostr search relay')
+		).toBeVisible();
+		await expectStoredSearchColumn(page, 'edited');
+		await expect
+			.poll(async () => page.evaluate(() => window.__nostterFakeRelaySearchRequests?.edited ?? 0))
+			.toBe(searchRelays.length);
+
+		await page.reload();
+		await expectColumnOrder(columns, [...columnNames, 'Search']);
+		await expect(
+			searchColumn.getByText('Edited search result from a Nostr search relay')
+		).toBeVisible();
+		await expectStoredSearchColumn(page, 'edited');
 	});
 
 	test('adds and persists a custom timeline column', async ({ page }) => {
@@ -418,6 +477,7 @@ test.describe('nostter deck', () => {
 	});
 
 	test('changes and persists column widths', async ({ page }) => {
+		await installFakeNostrRelay(page);
 		await openDeck(page);
 		const columns = deckColumns(page);
 
@@ -457,6 +517,7 @@ test.describe('nostter deck', () => {
 	});
 
 	test('persists column changes across reloads', async ({ page }) => {
+		await installFakeNostrRelay(page);
 		await openDeck(page);
 		const columns = deckColumns(page);
 
@@ -482,6 +543,7 @@ test.describe('nostter deck', () => {
 	});
 
 	test('collapses and expands the sidebar', async ({ page }) => {
+		await installFakeNostrRelay(page);
 		await openDeck(page);
 
 		await addPresetColumn(page, 'timeline_search');
