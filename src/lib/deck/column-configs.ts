@@ -1,7 +1,7 @@
 import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
 import { normalizeNostrFilters } from '$lib/nostr/filters';
 import { normalizeRelaySelection } from '$lib/nostr/relays';
-import { columnSourceKeys, initialColumnConfigs } from './data';
+import { columnSourceKeys } from './data';
 import type { ColumnConfig, ColumnSourceKey, ColumnWidth } from './types';
 import { normalizeWebsiteUrl } from './website-url';
 
@@ -17,12 +17,8 @@ function isColumnWidth(value: unknown): value is ColumnWidth {
 	return typeof value === 'string' && columnWidths.includes(value as ColumnWidth);
 }
 
-function defaultColumnConfigs() {
-	return initialColumnConfigs.map((column) => ({ ...column }));
-}
-
 function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
-	if (!Array.isArray(value) || value.length === 0) return defaultColumnConfigs();
+	if (!Array.isArray(value) || value.length === 0) return [];
 
 	const columns = value.flatMap((item): ColumnConfig[] => {
 		if (!item || typeof item !== 'object') return [];
@@ -86,11 +82,11 @@ function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 		return [];
 	});
 
-	return columns.length > 0 ? columns : defaultColumnConfigs();
+	return columns;
 }
 
 export function readColumnConfigs(): ColumnConfig[] {
-	return readJsonStorage(columnConfigsStorageKey, defaultColumnConfigs(), normalizeColumnConfigs);
+	return readJsonStorage(columnConfigsStorageKey, [], normalizeColumnConfigs);
 }
 
 export function writeColumnConfigs(nextColumnConfigs: ColumnConfig[]) {

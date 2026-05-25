@@ -7,14 +7,6 @@ export const columnSourceKeys: ColumnSourceKey[] = [
 	'timeline_lists'
 ];
 
-export const initialColumnConfigs: ColumnConfig[] = columnSourceKeys.map((sourceKey) => ({
-	id: sourceKey,
-	type: 'timeline',
-	timelineKind: 'preset',
-	sourceKey,
-	width: 'standard'
-}));
-
 export const sourcePosts: Record<ColumnSourceKey, Post[]> = {
 	timeline_home: [],
 	timeline_mentions: [],

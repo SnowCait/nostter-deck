@@ -10,16 +10,8 @@ declare global {
 	}
 }
 
-const columnNames = ['Home', 'Mentions', 'Search', 'Lists'];
-const sidebarButtonNames = [
-	'Home',
-	'Mentions',
-	'Search',
-	'Lists',
-	'Add column',
-	'Post',
-	'Settings'
-];
+const columnNames: string[] = [];
+const sidebarButtonNames = ['Add column', 'Post', 'Settings'];
 const sidebarExpandedWidth = 236;
 const sidebarCollapsedWidth = 60;
 const composerWidth = 360;
@@ -340,6 +332,10 @@ function sidebarIconContainer(page: Page, name: string) {
 	return sidebarButton(page, name).locator('span').first();
 }
 
+function sidebarButtonIcon(page: Page, name: string) {
+	return sidebarIconContainer(page, name).locator('svg');
+}
+
 async function expectSidebarWidth(page: Page, width: number) {
 	await expect
 		.poll(async () => Math.round((await sidebar(page).boundingBox())?.width ?? 0))
@@ -588,14 +584,12 @@ test.describe('nostter deck', () => {
 		await expect(page.getByRole('heading', { name: 'nostter deck' })).toBeVisible();
 		await expectAbove(
 			sidebar(page).getByRole('button', { name: 'Post' }),
-			sidebar(page).getByRole('button', { name: 'Home' }),
+			sidebar(page).getByRole('button', { name: 'Add column' }),
 			'Post button'
 		);
 		await expectColumnOrder(deckColumns(page), columnNames);
-		await expect(page.getByText('Shipping a desktop-first deck today.')).toBeVisible();
-		await expect(
-			page.getByText('Can the compose box keep the selected column context?')
-		).toBeVisible();
+		await expect(sidebar(page).getByRole('button', { name: 'Home' })).toHaveCount(0);
+		await expect(sidebar(page).getByRole('button', { name: 'Mentions' })).toHaveCount(0);
 	});
 
 	test('adds, moves, and deletes a column', async ({ page }) => {
@@ -607,19 +601,25 @@ test.describe('nostter deck', () => {
 		await page.getByLabel('Column type').selectOption('timeline_search');
 		await page.getByRole('button', { name: 'Save' }).click();
 
-		await expectColumnOrder(columns, ['Home', 'Mentions', 'Search', 'Lists', 'Search']);
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		await page.getByLabel('Column type').selectOption('timeline_lists');
+		await page.getByRole('button', { name: 'Save' }).click();
 
-		const addedColumn = columns.nth(4);
+		await expectColumnOrder(columns, ['Search', 'Lists']);
+		await expect(sidebarButtonIcon(page, 'Search')).toBeVisible();
+		await expect(sidebarButtonIcon(page, 'Lists')).toBeVisible();
+
+		const addedColumn = columns.nth(1);
 		await columnOptionsButton(addedColumn).click();
 		await addedColumn.getByRole('button', { name: 'Move column left' }).click();
 
-		await expectColumnOrder(columns, ['Home', 'Mentions', 'Search', 'Search', 'Lists']);
+		await expectColumnOrder(columns, ['Lists', 'Search']);
 
-		await columns.nth(3).getByRole('button', { name: 'Move column right' }).click();
-		await expectColumnOrder(columns, ['Home', 'Mentions', 'Search', 'Lists', 'Search']);
+		await columns.first().getByRole('button', { name: 'Move column right' }).click();
+		await expectColumnOrder(columns, ['Search', 'Lists']);
 
-		await columns.nth(4).getByRole('button', { name: 'Delete column' }).click();
-		await expectColumnOrder(columns, columnNames);
+		await columns.nth(1).getByRole('button', { name: 'Delete column' }).click();
+		await expectColumnOrder(columns, ['Search']);
 	});
 
 	test('opens the column add dialog only from the right edge plus button', async ({ page }) => {
@@ -669,7 +669,7 @@ test.describe('nostter deck', () => {
 		await expect(saveButton).toBeEnabled();
 		await saveButton.click();
 
-		const websiteColumn = columns.nth(4);
+		const websiteColumn = columns.first();
 		await expectColumnOrder(columns, [...columnNames, 'example.com']);
 		await expectColumnWidth(websiteColumn, standardColumnWidth);
 		await expect(websiteColumn.locator('iframe')).toHaveAttribute('src', 'https://example.com/');
@@ -679,7 +679,7 @@ test.describe('nostter deck', () => {
 
 		await page.reload();
 		await expectColumnOrder(columns, [...columnNames, 'example.com']);
-		await expect(columns.nth(4).locator('iframe')).toHaveAttribute('src', 'https://example.com/');
+		await expect(columns.first().locator('iframe')).toHaveAttribute('src', 'https://example.com/');
 	});
 
 	test('adds and persists a custom timeline column', async ({ page }) => {
@@ -723,7 +723,7 @@ test.describe('nostter deck', () => {
 		await expect(saveButton).toBeEnabled();
 		await saveButton.click();
 
-		const customColumn = columns.nth(4);
+		const customColumn = columns.first();
 		await expectColumnOrder(columns, [...columnNames, 'Custom timeline']);
 		await expectColumnWidth(customColumn, standardColumnWidth);
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
@@ -850,14 +850,14 @@ test.describe('nostter deck', () => {
 
 		await page.reload();
 		await expectColumnOrder(columns, [...columnNames, 'Custom timeline']);
-		await columnOptionsButton(columns.nth(4)).click();
-		await expect(columns.nth(4).getByLabel('REQ filters')).toHaveValue(
+		await columnOptionsButton(columns.first()).click();
+		await expect(columns.first().getByLabel('REQ filters')).toHaveValue(
 			JSON.stringify(savedFilters, null, 2)
 		);
-		await expect(columns.nth(4).getByLabel('wss://relay.damus.io/')).toBeChecked();
-		await expect(columns.nth(4).getByLabel('wss://nos.lol/')).toBeChecked();
-		await expect(columns.nth(4).getByLabel('Custom relays')).toHaveValue('');
-		await expect(columns.nth(4).getByText('Hello from a custom Nostr timeline')).toBeVisible();
+		await expect(columns.first().getByLabel('wss://relay.damus.io/')).toBeChecked();
+		await expect(columns.first().getByLabel('wss://nos.lol/')).toBeChecked();
+		await expect(columns.first().getByLabel('Custom relays')).toHaveValue('');
+		await expect(columns.first().getByText('Hello from a custom Nostr timeline')).toBeVisible();
 
 		await page.getByRole('button', { name: 'Add column' }).first().click();
 		await page.getByLabel('Column type').selectOption('custom_timeline');
@@ -908,7 +908,7 @@ test.describe('nostter deck', () => {
 		await expect(saveButton).toBeEnabled();
 		await saveButton.click();
 
-		const customColumn = columns.nth(4);
+		const customColumn = columns.first();
 		await expectColumnOrder(columns, [...columnNames, 'Custom timeline']);
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expect(customColumn.getByText('Hello from a stale contact list')).toHaveCount(0);
@@ -945,6 +945,14 @@ test.describe('nostter deck', () => {
 		await openDeck(page);
 		const columns = deckColumns(page);
 
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		await page.getByLabel('Column type').selectOption('timeline_search');
+		await page.getByRole('button', { name: 'Save' }).click();
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		await page.getByLabel('Column type').selectOption('timeline_lists');
+		await page.getByRole('button', { name: 'Save' }).click();
+
+		await expectColumnOrder(columns, ['Search', 'Lists']);
 		await expectColumnWidth(columns.first(), standardColumnWidth);
 		await expectColumnWidth(columns.nth(1), standardColumnWidth);
 
@@ -962,10 +970,10 @@ test.describe('nostter deck', () => {
 		await widthSelect.selectOption('wide');
 		await expectColumnWidth(columns.first(), wideColumnWidth);
 		await expectColumnWidth(columns.nth(1), standardColumnWidth);
-		await expectStoredColumnConfigWidths(page, ['wide', 'standard', 'standard', 'standard']);
+		await expectStoredColumnConfigWidths(page, ['wide', 'standard']);
 
 		await page.reload();
-		await expectColumnOrder(columns, columnNames);
+		await expectColumnOrder(columns, ['Search', 'Lists']);
 		await expectColumnWidth(columns.first(), wideColumnWidth);
 		await expectColumnWidth(columns.nth(1), standardColumnWidth);
 		await columnOptionsButton(columns.first()).click();
@@ -973,7 +981,7 @@ test.describe('nostter deck', () => {
 
 		await columns.first().getByLabel('Column width').selectOption('narrow');
 		await expectColumnWidth(columns.first(), narrowColumnWidth);
-		await expectStoredColumnConfigWidths(page, ['narrow', 'standard', 'standard', 'standard']);
+		await expectStoredColumnConfigWidths(page, ['narrow', 'standard']);
 	});
 
 	test('persists column changes across reloads', async ({ page }) => {
@@ -983,33 +991,37 @@ test.describe('nostter deck', () => {
 		await page.getByRole('button', { name: 'Add column' }).first().click();
 		await page.getByLabel('Column type').selectOption('timeline_search');
 		await page.getByRole('button', { name: 'Save' }).click();
-		await expectColumnOrder(columns, ['Home', 'Mentions', 'Search', 'Lists', 'Search']);
-		await expectColumnWidth(columns.nth(4), standardColumnWidth);
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		await page.getByLabel('Column type').selectOption('timeline_lists');
+		await page.getByRole('button', { name: 'Save' }).click();
+		await expectColumnOrder(columns, ['Search', 'Lists']);
+		await expectColumnWidth(columns.nth(1), standardColumnWidth);
 
-		await columnOptionsButton(columns.nth(4)).click();
-		await columns.nth(4).getByLabel('Column width').selectOption('wide');
-		await columns.nth(4).getByRole('button', { name: 'Move column left' }).click();
-		await expectColumnOrder(columns, ['Home', 'Mentions', 'Search', 'Search', 'Lists']);
-		await expectStoredColumnConfigWidths(page, [
-			'standard',
-			'standard',
-			'standard',
-			'wide',
-			'standard'
-		]);
+		await columnOptionsButton(columns.nth(1)).click();
+		await columns.nth(1).getByLabel('Column width').selectOption('wide');
+		await columns.nth(1).getByRole('button', { name: 'Move column left' }).click();
+		await expectColumnOrder(columns, ['Lists', 'Search']);
+		await expectStoredColumnConfigWidths(page, ['wide', 'standard']);
 
 		await page.reload();
-		await expectColumnOrder(columns, ['Home', 'Mentions', 'Search', 'Search', 'Lists']);
-		await expectColumnWidth(columns.nth(3), wideColumnWidth);
+		await expectColumnOrder(columns, ['Lists', 'Search']);
+		await expectColumnWidth(columns.first(), wideColumnWidth);
 
-		await columnOptionsButton(columns.nth(3)).click();
-		await columns.nth(3).getByRole('button', { name: 'Delete column' }).click();
+		await columnOptionsButton(columns.first()).click();
+		await columns.first().getByRole('button', { name: 'Delete column' }).click();
 		await page.reload();
-		await expectColumnOrder(columns, columnNames);
+		await expectColumnOrder(columns, ['Search']);
 	});
 
 	test('collapses and expands the sidebar', async ({ page }) => {
 		await openDeck(page);
+
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		await page.getByLabel('Column type').selectOption('timeline_search');
+		await page.getByRole('button', { name: 'Save' }).click();
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		await page.getByLabel('Column type').selectOption('timeline_lists');
+		await page.getByRole('button', { name: 'Save' }).click();
 
 		await expectSidebarWidth(page, sidebarExpandedWidth);
 
@@ -1022,7 +1034,12 @@ test.describe('nostter deck', () => {
 		await expect(expandButton).toHaveAttribute('aria-pressed', 'true');
 		await expectSidebarWidth(page, sidebarCollapsedWidth);
 		await expectStoredSidebarCollapsed(page, true);
-		await expectSidebarIconsCentered(page, [...sidebarButtonNames, 'Expand sidebar']);
+		await expectSidebarIconsCentered(page, [
+			...sidebarButtonNames,
+			'Search',
+			'Lists',
+			'Expand sidebar'
+		]);
 		expect(
 			Math.abs((await iconCenterX(page, 'Expand sidebar')) - expandedIconCenterX)
 		).toBeLessThanOrEqual(sidebarCenterTolerance);
@@ -1073,7 +1090,6 @@ test.describe('nostter deck', () => {
 		await openDeck(page);
 
 		await expectColumnOrder(deckColumns(page), columnNames);
-		await expectColumnWidth(deckColumns(page).first(), standardColumnWidth);
 	});
 
 	test('changes language from the settings dialog', async ({ page }) => {
