@@ -521,6 +521,7 @@
 					<DeckColumn
 						{column}
 						id={getColumnId(column.id)}
+						{isLoggedIn}
 						isFocused={activeColumnId === column.id}
 						isSettingsOpen={openSettingsColumnId === column.id}
 						canMoveLeft={columnIndex > 0}

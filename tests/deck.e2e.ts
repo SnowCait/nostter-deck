@@ -214,6 +214,12 @@ test.describe('nostter deck', () => {
 		await expect(profileAvatar).toHaveClass(/rounded-full/);
 		await expect(customColumn.getByText('#nostter')).toHaveCount(1);
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toHaveCount(1);
+		const postArticle = customColumn.locator('article').first();
+		await expect(postArticle.getByRole('button', { name: 'Column options' })).toHaveCount(0);
+		await expect(postArticle.getByRole('button', { name: 'Reply' })).toHaveCount(0);
+		await expect(postArticle.getByRole('button', { name: 'Repost' })).toHaveCount(0);
+		await expect(postArticle.getByRole('button', { name: 'Like' })).toHaveCount(0);
+		await expect(postArticle.getByRole('button', { name: 'Share' })).toHaveCount(0);
 		await expectStoredCustomTimelineColumn(page);
 		await expectStoredColumnIdsAreOpaque(page);
 		await expect
@@ -661,8 +667,14 @@ test.describe('nostter deck', () => {
 
 		const postAvatar = page.getByTestId('post-avatar').first();
 		const sidebarAvatar = sidebar(page).getByTestId('account-avatar').first();
+		const postArticle = page.locator('article').first();
 		await expect(postAvatar).toHaveClass(/rounded-full/);
 		await expect(sidebarAvatar).toHaveClass(/rounded-full/);
+		await expect(postArticle.getByRole('button', { name: 'Column options' })).toBeVisible();
+		await expect(postArticle.getByRole('button', { name: 'Reply' })).toBeVisible();
+		await expect(postArticle.getByRole('button', { name: 'Repost' })).toBeVisible();
+		await expect(postArticle.getByRole('button', { name: 'Like' })).toBeVisible();
+		await expect(postArticle.getByRole('button', { name: 'Share' })).toBeVisible();
 
 		await page.getByRole('button', { name: 'Settings' }).click();
 		const avatarShapeSelect = page.getByLabel('Profile icon');

@@ -21,6 +21,7 @@
 	type Props = {
 		column: Column;
 		id: string;
+		isLoggedIn: boolean;
 		isFocused: boolean;
 		isSettingsOpen: boolean;
 		canMoveLeft: boolean;
@@ -38,6 +39,7 @@
 	const {
 		column,
 		id,
+		isLoggedIn,
 		isFocused,
 		isSettingsOpen,
 		canMoveLeft,
@@ -325,12 +327,12 @@
 				</div>
 			{:else}
 				{#each column.posts as post (post.id ?? `${column.id}-${post.author}-${post.time}`)}
-					<PostCard {post} {textClass} {avatarShape} />
+					<PostCard {post} {isLoggedIn} {textClass} {avatarShape} />
 				{/each}
 			{/if}
 		{:else}
 			{#each column.posts as post (`${column.id}-${post.author}-${post.time}`)}
-				<PostCard {post} {textClass} {avatarShape} />
+				<PostCard {post} {isLoggedIn} {textClass} {avatarShape} />
 			{/each}
 		{/if}
 	</div>
