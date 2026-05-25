@@ -1,16 +1,11 @@
 <script lang="ts">
 	import {
-		Bell,
 		CircleUserRound,
-		Globe,
-		House,
 		Languages,
-		List,
 		PawPrint,
 		PanelLeftClose,
 		PanelLeftOpen,
 		Plus,
-		Search,
 		Send,
 		Settings,
 		SlidersHorizontal,
@@ -21,7 +16,7 @@
 	import { getLocale, locales, setLocale } from '$lib/paraglide/runtime.js';
 	import { getColumnTitle } from '$lib/deck/column-title';
 	import * as Dialog from '$lib/components/ui/dialog';
-	import type { Column, ColumnSourceKey } from '$lib/deck/types';
+	import type { Column } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import { readUiState, updateUiState } from '$lib/ui-state';
 	import {
@@ -35,6 +30,7 @@
 		type FontSize,
 		type ThemePreference
 	} from '$lib/user-settings';
+	import ColumnIcon from './ColumnIcon.svelte';
 	import ProfileAvatar from './ProfileAvatar.svelte';
 
 	type AppLocale = (typeof locales)[number];
@@ -88,13 +84,6 @@
 		circle: () => m.avatar_shape_circle(),
 		square: () => m.avatar_shape_square()
 	} satisfies Record<AvatarShape, () => string>;
-
-	const columnIconBySource = {
-		timeline_home: House,
-		timeline_mentions: Bell,
-		timeline_search: Search,
-		timeline_lists: List
-	} satisfies Record<ColumnSourceKey, typeof House>;
 
 	const sidebarToggleLabel = () => (isCollapsed ? m.expand_sidebar() : m.collapse_sidebar());
 	const sidebarLabelClass = () =>
@@ -207,12 +196,6 @@
 	<nav class="flex w-full flex-col gap-1" aria-label={m.app_title()}>
 		{#each columns as column (column.id)}
 			{@const isActive = activeColumnId === column.id}
-			{@const ColumnIcon =
-				column.type === 'website'
-					? Globe
-					: column.timelineKind === 'custom'
-						? List
-						: columnIconBySource[column.sourceKey]}
 			{@const columnTitle = getColumnTitle(column)}
 			<button
 				type="button"
@@ -241,7 +224,7 @@
 							: ''
 					]}
 				>
-					<ColumnIcon class="size-5 shrink-0" aria-hidden="true" />
+					<ColumnIcon {column} iconClass="size-5 shrink-0" />
 				</span>
 				<span class={`${sidebarLabelClass()} flex-1 truncate text-left`}>
 					{columnTitle}

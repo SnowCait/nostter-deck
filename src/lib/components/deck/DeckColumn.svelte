@@ -1,15 +1,5 @@
 <script lang="ts">
-	import {
-		ArrowLeft,
-		ArrowRight,
-		Bell,
-		Globe,
-		House,
-		List,
-		Search,
-		SlidersHorizontal,
-		Trash2
-	} from '@lucide/svelte';
+	import { ArrowLeft, ArrowRight, SlidersHorizontal, Trash2 } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { getColumnTitle } from '$lib/deck/column-title';
 	import { columnWidths } from '$lib/deck/column-configs';
@@ -24,6 +14,7 @@
 		resolveRelayDraft,
 		resolveRelaySelection
 	} from '$lib/nostr/relays';
+	import ColumnIcon from './ColumnIcon.svelte';
 	import PostCard from './PostCard.svelte';
 
 	type Props = {
@@ -144,19 +135,7 @@
 	>
 		<div class="flex items-center justify-between gap-3">
 			<div class="flex min-w-0 items-center gap-2">
-				{#if column.type === 'website'}
-					<Globe class={columnIconClass} aria-hidden="true" />
-				{:else if column.timelineKind === 'custom'}
-					<List class={columnIconClass} aria-hidden="true" />
-				{:else if column.sourceKey === 'timeline_home'}
-					<House class={columnIconClass} aria-hidden="true" />
-				{:else if column.sourceKey === 'timeline_mentions'}
-					<Bell class={columnIconClass} aria-hidden="true" />
-				{:else if column.sourceKey === 'timeline_search'}
-					<Search class={columnIconClass} aria-hidden="true" />
-				{:else}
-					<List class={columnIconClass} aria-hidden="true" />
-				{/if}
+				<ColumnIcon {column} iconClass={columnIconClass} />
 				<h2 class={['min-w-0 truncate font-bold', textClass.title]}>
 					{getColumnTitle(column)}
 				</h2>
