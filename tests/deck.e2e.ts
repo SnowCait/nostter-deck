@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { nprofileEncode, npubEncode } from 'nostr-tools/nip19';
 import { defaultRelays, profileRelays, searchRelays } from '$lib/nostr/relays';
 import { fakeRelayConnectionCounts, installFakeNostrRelay } from './helpers/fake-nostr-relay';
 import {
@@ -20,6 +21,7 @@ import {
 	expectStoredColumnConfigWidths,
 	expectStoredColumnIdsAreOpaque,
 	expectStoredCustomTimelineColumn,
+	expectStoredFollowColumn,
 	expectStoredFontSize,
 	expectStoredSearchColumn,
 	expectStoredSidebarCollapsed,
@@ -47,6 +49,14 @@ const expectedProfileRelayConnections = Object.fromEntries(
 	expectedProfileRelayUrls.map((relay) => [relay, 1])
 );
 const expectedProfileRelayRequestCount = expectedProfileRelayUrls.length;
+const contactListAuthorPubkey = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+const textEventPubkey = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const followRelayHint = 'wss://follow.example/';
+const contactListNpub = npubEncode(contactListAuthorPubkey);
+const contactListNprofile = nprofileEncode({
+	pubkey: contactListAuthorPubkey,
+	relays: [followRelayHint]
+});
 
 test.describe('nostter deck', () => {
 	test('shows the initial deck', async ({ page }) => {
@@ -103,6 +113,7 @@ test.describe('nostter deck', () => {
 		await addColumnPlaceholder.getByRole('button', { name: 'Add column' }).click();
 		await expect(addColumnDialog).toBeVisible();
 		await expect(page.getByLabel('Column type').locator('option')).toHaveText([
+			'Follow',
 			'Search',
 			'Lists',
 			'Custom timeline',
@@ -155,6 +166,73 @@ test.describe('nostter deck', () => {
 		await page.reload();
 		await expectColumnOrder(columns, [...columnNames, 'example.com']);
 		await expect(columns.first().locator('iframe')).toHaveAttribute('src', 'https://example.com/');
+	});
+
+	test('adds, edits, and persists a follow preset column', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		const columns = deckColumns(page);
+
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		const addDialog = page.getByRole('dialog', { name: 'Add column' });
+		await expect(page.getByLabel('Column type')).toHaveValue('timeline_follow');
+		const targetInput = addDialog.getByLabel('npub or nprofile');
+		const saveButton = addDialog.getByRole('button', { name: 'Save' });
+		await expect(targetInput).toBeVisible();
+		await expect(saveButton).toBeDisabled();
+
+		await targetInput.fill('not-a-profile');
+		await expect(saveButton).toBeDisabled();
+
+		await targetInput.fill(contactListNprofile);
+		await expect(saveButton).toBeEnabled();
+		await saveButton.click();
+
+		const followColumn = columns.first();
+		await expectColumnOrder(columns, [...columnNames, 'Follow']);
+		await expect(followColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
+		await expectStoredFollowColumn(page, contactListAuthorPubkey, [followRelayHint]);
+		await expect
+			.poll(async () =>
+				fakeRelayConnectionCounts(page, [...defaultRelays, followRelayHint, ...profileRelays])
+			)
+			.toEqual(
+				Object.fromEntries(
+					[...new Set([...defaultRelays, followRelayHint, ...profileRelays])].map((relay) => [
+						relay,
+						1
+					])
+				)
+			);
+		await expect
+			.poll(async () =>
+				page.evaluate(
+					(address) => window.__nostterFakeRelayAddressRequests?.[address] ?? 0,
+					`3:${contactListAuthorPubkey}:`
+				)
+			)
+			.toBe([...new Set([...defaultRelays, followRelayHint, ...profileRelays])].length);
+		await expect
+			.poll(async () =>
+				page.evaluate(
+					(key) => window.__nostterFakeRelayTimelineAuthorRequests?.[key] ?? 0,
+					[textEventPubkey, contactListAuthorPubkey].sort().join(',')
+				)
+			)
+			.toBeGreaterThan(0);
+
+		await columnOptionsButton(followColumn).click();
+		const editInput = followColumn.getByLabel('npub or nprofile');
+		await expect(editInput).toHaveValue(contactListNpub);
+		await editInput.fill(contactListNpub);
+		await followColumn.getByRole('button', { name: 'Save' }).click();
+		await expect(followColumn.getByLabel('npub or nprofile')).toHaveCount(0);
+		await expectStoredFollowColumn(page, contactListAuthorPubkey, []);
+
+		await page.reload();
+		await expectColumnOrder(columns, [...columnNames, 'Follow']);
+		await expect(followColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
+		await expectStoredFollowColumn(page, contactListAuthorPubkey, []);
 	});
 
 	test('adds, edits, and persists a search preset column', async ({ page }) => {

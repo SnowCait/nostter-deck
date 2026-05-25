@@ -5,9 +5,11 @@
 	import { columnWidths } from '$lib/deck/column-configs';
 	import type { Column, ColumnWidth, NostrFilter, RelaySelection } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
+	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape } from '$lib/user-settings';
 	import ColumnIcon from './ColumnIcon.svelte';
 	import CustomTimelineSettings from './CustomTimelineSettings.svelte';
+	import FollowColumnSettings from './FollowColumnSettings.svelte';
 	import PostCard from './PostCard.svelte';
 	import SearchColumnSettings from './SearchColumnSettings.svelte';
 	import TimelineColumnBody from './TimelineColumnBody.svelte';
@@ -27,6 +29,7 @@
 		onMoveLeft: () => void;
 		onMoveRight: () => void;
 		onWidthChange: (width: ColumnWidth) => void;
+		onFollowSave: (profile: ProfilePointer) => void;
 		onSearchSave: (query: string) => void;
 		onCustomTimelineSave: (filters: NostrFilter[], relays: RelaySelection) => void;
 	};
@@ -46,6 +49,7 @@
 		onMoveLeft,
 		onMoveRight,
 		onWidthChange,
+		onFollowSave,
 		onSearchSave,
 		onCustomTimelineSave
 	}: Props = $props();
@@ -111,7 +115,9 @@
 		<div
 			class="shrink-0 border-b border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/70"
 		>
-			{#if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_search'}
+			{#if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_follow'}
+				<FollowColumnSettings {column} {textClass} onSave={onFollowSave} />
+			{:else if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_search'}
 				<SearchColumnSettings {column} {textClass} onSave={onSearchSave} />
 			{:else if column.type === 'timeline' && column.timelineKind === 'custom'}
 				<CustomTimelineSettings {column} {textClass} onSave={onCustomTimelineSave} />
@@ -183,7 +189,7 @@
 				title={getColumnTitle(column)}
 				sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
 			></iframe>
-		{:else if column.timelineKind === 'custom' || column.sourceKey === 'timeline_search'}
+		{:else if column.timelineKind === 'custom' || column.sourceKey === 'timeline_follow' || column.sourceKey === 'timeline_search'}
 			<TimelineColumnBody {column} {isLoggedIn} {textClass} {avatarShape} />
 		{:else}
 			{#each column.posts as post (`${column.id}-${post.author}-${post.time}`)}

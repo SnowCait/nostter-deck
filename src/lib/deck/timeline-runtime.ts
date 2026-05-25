@@ -3,12 +3,13 @@ import type {
 	Column,
 	ColumnConfig,
 	CustomTimelineColumnConfig,
+	FollowTimelineColumnConfig,
 	NostrFilter,
 	RelaySelection,
 	SearchTimelineColumnConfig
 } from './types';
 import { eventToPost } from '$lib/nostr/posts';
-import { searchRelays } from '$lib/nostr/relays';
+import { combineRelays, defaultRelays, searchRelays } from '$lib/nostr/relays';
 
 export type TimelineRuntime = {
 	eventsById: Record<string, Nostr.Event>;
@@ -29,12 +30,16 @@ export function emptyTimelineRuntime(): TimelineRuntime {
 	};
 }
 
-export type FetchableTimelineColumn = CustomTimelineColumnConfig | SearchTimelineColumnConfig;
+export type FetchableTimelineColumn =
+	| CustomTimelineColumnConfig
+	| FollowTimelineColumnConfig
+	| SearchTimelineColumnConfig;
 
 export function isFetchableTimelineColumn(column: ColumnConfig): column is FetchableTimelineColumn {
 	return (
 		column.type === 'timeline' &&
 		(column.timelineKind === 'custom' ||
+			(column.timelineKind === 'preset' && column.sourceKey === 'timeline_follow') ||
 			(column.timelineKind === 'preset' && column.sourceKey === 'timeline_search'))
 	);
 }
@@ -46,6 +51,13 @@ export function getTimelineRequest(column: ColumnConfig): TimelineRequest | null
 		return {
 			filters: column.filters,
 			relays: column.relays
+		};
+	}
+
+	if (column.sourceKey === 'timeline_follow') {
+		return {
+			filters: [{ kinds: [1], authors: `3:${column.pubkey}:` }],
+			relays: { type: 'custom', urls: combineRelays([...defaultRelays], column.relays) }
 		};
 	}
 

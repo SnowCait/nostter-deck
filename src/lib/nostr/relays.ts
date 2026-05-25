@@ -11,7 +11,7 @@ export const profileRelays = [
 
 const defaultRelaySet = new Set<string>(defaultRelays);
 
-function normalizeRelay(value: unknown): string | null {
+export function normalizeRelay(value: unknown): string | null {
 	if (typeof value !== 'string') return null;
 
 	try {

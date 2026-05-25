@@ -30,6 +30,7 @@ export type MessageKey =
 	| 'expand_sidebar'
 	| 'timeline_home'
 	| 'timeline_mentions'
+	| 'timeline_follow'
 	| 'timeline_search'
 	| 'timeline_lists'
 	| 'column_type_website'
@@ -42,6 +43,7 @@ export type MessageKey =
 	| 'column_width_standard'
 	| 'column_width_wide'
 	| 'website_url'
+	| 'follow_target'
 	| 'search_query'
 	| 'custom_timeline_filters'
 	| 'custom_timeline_filters_help'
@@ -68,7 +70,7 @@ export type MessageKey =
 
 export type ColumnTitleKey = Extract<
 	MessageKey,
-	'timeline_home' | 'timeline_mentions' | 'timeline_search' | 'timeline_lists'
+	'timeline_home' | 'timeline_mentions' | 'timeline_follow' | 'timeline_search' | 'timeline_lists'
 >;
 export type ColumnSourceKey = ColumnTitleKey;
 export type ColumnWidth = 'narrow' | 'standard' | 'wide';
@@ -84,15 +86,26 @@ export type SearchTimelineColumnConfig = {
 	width: ColumnWidth;
 };
 
+export type FollowTimelineColumnConfig = {
+	id: string;
+	type: 'timeline';
+	timelineKind: 'preset';
+	sourceKey: 'timeline_follow';
+	pubkey: string;
+	relays: string[];
+	width: ColumnWidth;
+};
+
 export type StaticPresetTimelineColumnConfig = {
 	id: string;
 	type: 'timeline';
 	timelineKind: 'preset';
-	sourceKey: Exclude<ColumnSourceKey, 'timeline_search'>;
+	sourceKey: Exclude<ColumnSourceKey, 'timeline_follow' | 'timeline_search'>;
 	width: ColumnWidth;
 };
 
 export type PresetTimelineColumnConfig =
+	| FollowTimelineColumnConfig
 	| SearchTimelineColumnConfig
 	| StaticPresetTimelineColumnConfig;
 

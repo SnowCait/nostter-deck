@@ -8,6 +8,7 @@ declare global {
 		__nostterFakeRelayProfileRequests?: Record<string, number>;
 		__nostterFakeRelayAddressRequests?: Record<string, number>;
 		__nostterFakeRelaySearchRequests?: Record<string, number>;
+		__nostterFakeRelayTimelineAuthorRequests?: Record<string, number>;
 	}
 }
 
@@ -17,6 +18,7 @@ export async function installFakeNostrRelay(page: Page) {
 		const relayProfileRequests: Record<string, number> = {};
 		const relayAddressRequests: Record<string, number> = {};
 		const relaySearchRequests: Record<string, number> = {};
+		const relayTimelineAuthorRequests: Record<string, number> = {};
 		const contactListAuthorPubkey =
 			'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 		const addressableListAuthorPubkey =
@@ -174,6 +176,13 @@ export async function installFakeNostrRelay(page: Page) {
 						(!filter.kinds || filter.kinds.includes(1)) &&
 						(!filter.authors || filter.authors.includes(textEvent.pubkey))
 				);
+				for (const filter of filters) {
+					if (filter.search || (filter.kinds && !filter.kinds.includes(1)) || !filter.authors) {
+						continue;
+					}
+					const key = [...filter.authors].sort().join(',');
+					relayTimelineAuthorRequests[key] = (relayTimelineAuthorRequests[key] ?? 0) + 1;
+				}
 				const requestedSearches = filters.flatMap((filter) =>
 					(!filter.kinds || filter.kinds.includes(1)) && filter.search ? [filter.search] : []
 				);
@@ -295,6 +304,7 @@ export async function installFakeNostrRelay(page: Page) {
 		window.__nostterFakeRelayProfileRequests = relayProfileRequests;
 		window.__nostterFakeRelayAddressRequests = relayAddressRequests;
 		window.__nostterFakeRelaySearchRequests = relaySearchRequests;
+		window.__nostterFakeRelayTimelineAuthorRequests = relayTimelineAuthorRequests;
 	});
 }
 

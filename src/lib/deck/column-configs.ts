@@ -1,6 +1,6 @@
 import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
 import { normalizeNostrFilters } from '$lib/nostr/filters';
-import { normalizeRelaySelection } from '$lib/nostr/relays';
+import { normalizeRelays, normalizeRelaySelection } from '$lib/nostr/relays';
 import { columnSourceKeys } from './data';
 import type { ColumnConfig, ColumnSourceKey, ColumnWidth } from './types';
 import { normalizeWebsiteUrl } from './website-url';
@@ -30,7 +30,27 @@ function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 		if (candidate.type === 'timeline') {
 			if (candidate.timelineKind === 'preset') {
 				if (!isColumnSourceKey(candidate.sourceKey)) return [];
+				const pubkey = (candidate as { pubkey?: unknown }).pubkey;
+				const relays = (candidate as { relays?: unknown }).relays;
 				const query = (candidate as { query?: unknown }).query;
+				if (candidate.sourceKey === 'timeline_follow') {
+					if (typeof pubkey !== 'string' || !/^[0-9a-f]{64}$/i.test(pubkey)) return [];
+					const normalizedRelays =
+						Array.isArray(relays) && relays.length > 0 ? normalizeRelays(relays) : [];
+					if (!normalizedRelays) return [];
+
+					return [
+						{
+							id: candidate.id,
+							type: 'timeline',
+							timelineKind: 'preset',
+							sourceKey: candidate.sourceKey,
+							pubkey: pubkey.toLowerCase(),
+							relays: normalizedRelays,
+							width: candidate.width
+						}
+					];
+				}
 				if (candidate.sourceKey === 'timeline_search') {
 					if (typeof query !== 'string' || query.trim().length === 0) return [];
 

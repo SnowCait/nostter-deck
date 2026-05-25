@@ -27,6 +27,7 @@
 	import { textClassByFontSize } from '$lib/font-size';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { parseNostrFilters } from '$lib/nostr/filters';
+	import { decodeProfilePointer, type ProfilePointer } from '$lib/nostr/nip19';
 	import { getProfile } from '$lib/nostr/profiles';
 	import { defaultRelays, resolveRelayDraft } from '$lib/nostr/relays';
 	import { startCustomTimelineSubscription } from '$lib/nostr/timeline';
@@ -62,6 +63,7 @@
 	let avatarShape = $state<AvatarShape>(initialUserSettings.avatarShape);
 	let selectedColumnType = $state<AddColumnType>(defaultColumnType);
 	let websiteUrl = $state('');
+	let followTarget = $state('');
 	let searchQuery = $state('');
 	let customTimelineFilters = $state('[{"kinds":[1],"limit":20}]');
 	let selectedDefaultRelays = $state<string[]>([...defaultRelays]);
@@ -75,6 +77,7 @@
 	const canSubmitPost = $derived(composeLength > 0 && composeLength <= composeMaxLength);
 	const textClass = $derived(textClassByFontSize[fontSize]);
 	const normalizedWebsiteUrl = $derived(normalizeWebsiteUrl(websiteUrl));
+	const parsedFollowTarget = $derived(decodeProfilePointer(followTarget));
 	const parsedCustomTimelineFilters = $derived(parseNostrFilters(customTimelineFilters));
 	const selectedDefaultRelaySet = $derived(new Set(selectedDefaultRelays));
 	const parsedCustomTimelineRelays = $derived(
@@ -210,6 +213,7 @@
 			id,
 			columnType: selectedColumnType,
 			websiteUrl: normalizedWebsiteUrl,
+			followTarget: parsedFollowTarget,
 			searchQuery,
 			customTimelineFilters: parsedCustomTimelineFilters,
 			customTimelineRelays: parsedCustomTimelineRelays
@@ -219,6 +223,7 @@
 	function openAddColumnDialog() {
 		selectedColumnType = defaultColumnType;
 		websiteUrl = '';
+		followTarget = '';
 		searchQuery = '';
 		customTimelineFilters = '[{"kinds":[1],"limit":20}]';
 		selectedDefaultRelays = [...defaultRelays];
@@ -302,6 +307,20 @@
 			columnConfigs.map((column) =>
 				column.id === columnId && column.type === 'timeline' && column.timelineKind === 'custom'
 					? { ...column, filters, relays }
+					: column
+			)
+		);
+		openSettingsColumnId = null;
+	}
+
+	function saveFollowSettings(columnId: string, profile: ProfilePointer) {
+		setColumnConfigs(
+			columnConfigs.map((column) =>
+				column.id === columnId &&
+				column.type === 'timeline' &&
+				column.timelineKind === 'preset' &&
+				column.sourceKey === 'timeline_follow'
+					? { ...column, pubkey: profile.pubkey, relays: profile.relays }
 					: column
 			)
 		);
@@ -504,6 +523,7 @@
 						onMoveLeft={() => moveColumn(column.id, -1)}
 						onMoveRight={() => moveColumn(column.id, 1)}
 						onWidthChange={(width) => updateColumnWidth(column.id, width)}
+						onFollowSave={(profile) => saveFollowSettings(column.id, profile)}
 						onSearchSave={(query) => saveSearchSettings(column.id, query)}
 						onCustomTimelineSave={(filters, relays) =>
 							saveCustomTimelineSettings(column.id, filters, relays)}
@@ -560,6 +580,26 @@
 			<option value="custom_timeline">{m.column_type_custom_timeline()}</option>
 			<option value="website">{m.column_type_website()}</option>
 		</select>
+
+		{#if selectedColumnType === 'timeline_follow'}
+			<label
+				class={[
+					'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
+					textClass.control
+				]}
+				for="follow-target"
+			>
+				{m.follow_target()}
+			</label>
+			<input
+				id="follow-target"
+				class={[
+					'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+					textClass.control
+				]}
+				bind:value={followTarget}
+			/>
+		{/if}
 
 		{#if selectedColumnType === 'timeline_search'}
 			<label

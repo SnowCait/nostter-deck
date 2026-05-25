@@ -61,8 +61,15 @@ export function startCustomTimelineSubscription({
 		return filter;
 	}
 
-	function emitResolvedAddressFilters(event: Nostr.Event, pendingFilters: NostrFilter[]) {
-		const authors = event.tags.flatMap((tag) => (tag[0] === 'p' && tag[1] ? [tag[1]] : []));
+	function emitResolvedAddressFilters(
+		address: AuthorAddress,
+		event: Nostr.Event,
+		pendingFilters: NostrFilter[]
+	) {
+		const authors = [
+			...event.tags.flatMap((tag) => (tag[0] === 'p' && tag[1] ? [tag[1]] : [])),
+			...(address.kind === 3 ? [address.pubkey] : [])
+		];
 		const expandedFilters = pendingFilters.flatMap((filter) => {
 			const expandedFilter = expandAddressAuthors(filter, authors);
 			return expandedFilter ? [expandedFilter] : [];
@@ -80,7 +87,7 @@ export function startCustomTimelineSubscription({
 			.use(addressReq)
 			.pipe(uniq(), latest(), takeLast(1))
 			.subscribe({
-				next: ({ event }) => emitResolvedAddressFilters(event, pendingFilters),
+				next: ({ event }) => emitResolvedAddressFilters(address, event, pendingFilters),
 				complete: () => {
 					removeSubscription();
 				}
