@@ -15,6 +15,7 @@
 		resolveRelaySelection
 	} from '$lib/nostr/relays';
 	import ColumnIcon from './ColumnIcon.svelte';
+	import FilterHelpButton from './FilterHelpButton.svelte';
 	import PostCard from './PostCard.svelte';
 
 	type Props = {
@@ -160,15 +161,15 @@
 			class="shrink-0 border-b border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/70"
 		>
 			{#if column.type === 'timeline' && column.timelineKind === 'custom'}
-				<label
-					class={['mb-2 block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
-					for={`column-filters-${column.id}`}
-				>
-					{m.custom_timeline_filters()}
-				</label>
-				<p class={['mb-2 text-slate-500 dark:text-slate-400', textClass.meta]}>
-					{m.custom_timeline_filters_help()}
-				</p>
+				<div class="mb-2 flex items-center justify-between gap-2">
+					<label
+						class={['block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
+						for={`column-filters-${column.id}`}
+					>
+						{m.custom_timeline_filters()}
+					</label>
+					<FilterHelpButton {textClass} />
+				</div>
 				<textarea
 					id={`column-filters-${column.id}`}
 					class={[

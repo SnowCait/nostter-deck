@@ -2,6 +2,7 @@
 	import { onDestroy, tick } from 'svelte';
 	import { CalendarClock, Image, Plus, Send, Smile, UserRound } from '@lucide/svelte';
 	import DeckColumn from '$lib/components/deck/DeckColumn.svelte';
+	import FilterHelpButton from '$lib/components/deck/FilterHelpButton.svelte';
 	import ProfileAvatar from '$lib/components/deck/ProfileAvatar.svelte';
 	import Sidebar from '$lib/components/deck/Sidebar.svelte';
 	import { readColumnConfigs, writeColumnConfigs } from '$lib/deck/column-configs';
@@ -588,18 +589,15 @@
 		</select>
 
 		{#if selectedColumnType === 'custom_timeline'}
-			<label
-				class={[
-					'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
-					textClass.control
-				]}
-				for="custom-timeline-filters"
-			>
-				{m.custom_timeline_filters()}
-			</label>
-			<p class={['mb-2 text-slate-500 dark:text-slate-400', textClass.meta]}>
-				{m.custom_timeline_filters_help()}
-			</p>
+			<div class="mt-4 mb-2 flex items-center justify-between gap-2">
+				<label
+					class={['block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
+					for="custom-timeline-filters"
+				>
+					{m.custom_timeline_filters()}
+				</label>
+				<FilterHelpButton {textClass} />
+			</div>
 			<textarea
 				id="custom-timeline-filters"
 				class={[

@@ -163,6 +163,11 @@ test.describe('nostter deck', () => {
 		const customRelaysInput = page.getByLabel('Custom relays');
 		await expect(filtersInput).toBeVisible();
 		await expect(filtersInput).toHaveValue('[{"kinds":[1],"limit":20}]');
+		await expect(page.getByText(/kind:pubkey:identifier/)).toHaveCount(0);
+		await page.getByRole('button', { name: /kind:pubkey:identifier/ }).click();
+		await expect(page.getByText(/kind:pubkey:identifier/)).toBeVisible();
+		await page.keyboard.press('Escape');
+		await expect(page.getByText(/kind:pubkey:identifier/)).toHaveCount(0);
 		await expect(page.getByLabel('wss://relay.damus.io/')).toBeChecked();
 		await expect(page.getByLabel('wss://nos.lol/')).toBeChecked();
 		await expect(customRelaysInput).toHaveValue('');
@@ -239,6 +244,10 @@ test.describe('nostter deck', () => {
 		await expect(editedFiltersInput).toHaveValue(
 			JSON.stringify([{ kinds: [1], limit: 20 }], null, 2)
 		);
+		await customColumn.getByRole('button', { name: /kind:pubkey:identifier/ }).click();
+		await expect(page.getByText(/kind:pubkey:identifier/)).toBeVisible();
+		await page.keyboard.press('Escape');
+		await expect(page.getByText(/kind:pubkey:identifier/)).toHaveCount(0);
 		await expect(customColumn.getByLabel('wss://relay.damus.io/')).toBeChecked();
 		await expect(customColumn.getByLabel('wss://nos.lol/')).toBeChecked();
 		await expect(editedCustomRelaysInput).toHaveValue('');
