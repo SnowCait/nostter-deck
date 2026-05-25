@@ -1,4 +1,4 @@
-import type { ColumnConfig, ColumnSourceKey, Post } from './types';
+import type { ColumnSourceKey, Post } from './types';
 
 export const columnSourceKeys: ColumnSourceKey[] = [
 	'timeline_home',
