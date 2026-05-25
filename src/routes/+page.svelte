@@ -37,7 +37,17 @@
 		stop: () => void;
 	};
 
+	type NostrDeckGlobal = typeof globalThis & {
+		__NOSTTER_DECK_IS_LOGGED_IN__?: boolean;
+	};
+
 	const savedColumnConfigs = readColumnConfigs();
+	const isLoggedIn = (globalThis as NostrDeckGlobal).__NOSTTER_DECK_IS_LOGGED_IN__ === true;
+	const availableColumnSourceKeys = columnSourceKeys.filter(
+		(sourceKey) =>
+			isLoggedIn || (sourceKey !== 'timeline_home' && sourceKey !== 'timeline_mentions')
+	);
+	const defaultColumnType = availableColumnSourceKeys[0] ?? 'timeline_search';
 
 	let columnConfigs = $state<ColumnConfig[]>(savedColumnConfigs.map((column) => ({ ...column })));
 	let activeColumnId = $state(savedColumnConfigs[0]?.id ?? '');
@@ -48,7 +58,9 @@
 	const initialUserSettings = readUserSettings();
 	let fontSize = $state<FontSize>(initialUserSettings.fontSize);
 	let avatarShape = $state<AvatarShape>(initialUserSettings.avatarShape);
-	let selectedColumnType = $state<ColumnSourceKey | 'custom_timeline' | 'website'>('timeline_home');
+	let selectedColumnType = $state<ColumnSourceKey | 'custom_timeline' | 'website'>(
+		defaultColumnType
+	);
 	let websiteUrl = $state('');
 	let customTimelineFilters = $state('[{"kinds":[1],"limit":20}]');
 	let selectedDefaultRelays = $state<string[]>([...defaultRelays]);
@@ -229,7 +241,7 @@
 	}
 
 	function openAddColumnDialog() {
-		selectedColumnType = 'timeline_home';
+		selectedColumnType = defaultColumnType;
 		websiteUrl = '';
 		customTimelineFilters = '[{"kinds":[1],"limit":20}]';
 		selectedDefaultRelays = [...defaultRelays];
@@ -242,6 +254,8 @@
 	}
 
 	function toggleComposePanel() {
+		if (!isLoggedIn) return;
+
 		isComposePanelOpen = !isComposePanelOpen;
 	}
 
@@ -372,6 +386,7 @@
 	<Sidebar
 		{columns}
 		{activeColumnId}
+		{isLoggedIn}
 		onAddColumn={openAddColumnDialog}
 		onCompose={toggleComposePanel}
 		{fontSize}
@@ -382,7 +397,7 @@
 		onSelectColumn={focusColumn}
 	/>
 
-	{#if isComposePanelOpen}
+	{#if isLoggedIn && isComposePanelOpen}
 		<section
 			class="flex h-full w-[360px] shrink-0 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
 			aria-labelledby="compose-panel-title"
@@ -565,7 +580,7 @@
 			]}
 			bind:value={selectedColumnType}
 		>
-			{#each columnSourceKeys as sourceKey (sourceKey)}
+			{#each availableColumnSourceKeys as sourceKey (sourceKey)}
 				<option value={sourceKey}>{m[sourceKey]()}</option>
 			{/each}
 			<option value="custom_timeline">{m.column_type_custom_timeline()}</option>

@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
 export const columnNames: string[] = [];
-export const sidebarButtonNames = ['Add column', 'Post', 'Settings'];
+export const sidebarButtonNames = ['Add column', 'Settings'];
 export const sidebarExpandedWidth = 236;
 export const sidebarCollapsedWidth = 60;
 export const composerWidth = 360;
@@ -14,12 +14,18 @@ export const userSettingsStorageKey = 'nostter:user-settings';
 export const columnConfigsStorageKey = 'nostter:column-configs';
 export const defaultRelaySelection = { type: 'default' };
 
-export async function openDeck(page: Page) {
-	await page.addInitScript(() => {
+export async function openDeck(page: Page, options: { isLoggedIn?: boolean } = {}) {
+	await page.addInitScript(({ isLoggedIn }) => {
+		const testWindow = window as Window & { __NOSTTER_DECK_IS_LOGGED_IN__?: boolean };
+
 		if (!window.localStorage.getItem('PARAGLIDE_LOCALE')) {
 			window.localStorage.setItem('PARAGLIDE_LOCALE', 'en');
 		}
-	});
+
+		if (isLoggedIn) {
+			testWindow.__NOSTTER_DECK_IS_LOGGED_IN__ = true;
+		}
+	}, options);
 	await page.goto('/');
 }
 

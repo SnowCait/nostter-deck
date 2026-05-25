@@ -8,7 +8,6 @@ import {
 	columnOptionsButton,
 	deckColumns,
 	defaultRelaySelection,
-	expectAbove,
 	expectAvatarShapeNotStoredInUiState,
 	expectColumnOrder,
 	expectColumnWidth,
@@ -53,12 +52,9 @@ test.describe('nostter deck', () => {
 
 		await expect(page).toHaveTitle('nostter deck');
 		await expect(page.getByRole('heading', { name: 'nostter deck' })).toBeVisible();
-		await expectAbove(
-			sidebar(page).getByRole('button', { name: 'Post' }),
-			sidebar(page).getByRole('button', { name: 'Add column' }),
-			'Post button'
-		);
 		await expectColumnOrder(deckColumns(page), columnNames);
+		await expect(sidebar(page).getByRole('button', { name: 'Post' })).toHaveCount(0);
+		await expect(sidebar(page).getByTestId('account-avatar')).toHaveCount(0);
 		await expect(sidebar(page).getByRole('button', { name: 'Home' })).toHaveCount(0);
 		await expect(sidebar(page).getByRole('button', { name: 'Mentions' })).toHaveCount(0);
 	});
@@ -98,6 +94,12 @@ test.describe('nostter deck', () => {
 
 		await addColumnPlaceholder.getByRole('button', { name: 'Add column' }).click();
 		await expect(addColumnDialog).toBeVisible();
+		await expect(page.getByLabel('Column type').locator('option')).toHaveText([
+			'Search',
+			'Lists',
+			'Custom timeline',
+			'Website'
+		]);
 	});
 
 	test('closes the column add dialog from the backdrop only', async ({ page }) => {
@@ -600,9 +602,11 @@ test.describe('nostter deck', () => {
 
 	test('changes and persists the font size from user settings', async ({ page }) => {
 		await openDeck(page);
-		await addPresetColumn(page, 'timeline_home');
+		await addPresetColumn(page, 'timeline_search');
 
-		const postBody = page.getByText('Shipping a desktop-first deck today.');
+		const postBody = page.getByText(
+			'A good dashboard keeps controls close to the context they affect.'
+		);
 		const mediumFontSize = await fontSizePx(postBody);
 
 		await page.getByRole('button', { name: 'Settings' }).click();
@@ -637,8 +641,8 @@ test.describe('nostter deck', () => {
 	});
 
 	test('changes and persists the profile icon shape from user settings', async ({ page }) => {
-		await openDeck(page);
-		await addPresetColumn(page, 'timeline_home');
+		await openDeck(page, { isLoggedIn: true });
+		await addPresetColumn(page, 'timeline_search');
 
 		const postAvatar = page.getByTestId('post-avatar').first();
 		const sidebarAvatar = sidebar(page).getByTestId('account-avatar').first();
@@ -690,8 +694,20 @@ test.describe('nostter deck', () => {
 		await expect(page.getByLabel('Profile icon')).toHaveValue('circle');
 	});
 
-	test('opens the compose panel from the sidebar', async ({ page }) => {
+	test('hides logged-in-only compose controls while logged out', async ({ page }) => {
 		await openDeck(page);
+
+		await expectSidebarWidth(page, sidebarExpandedWidth);
+		await expect(sidebar(page).getByRole('button', { name: 'Post' })).toHaveCount(0);
+		await expect(page.getByRole('region', { name: 'Post' })).toHaveCount(0);
+		await page.getByRole('button', { name: 'Collapse sidebar' }).click();
+		await expectSidebarWidth(page, sidebarCollapsedWidth);
+		await expect(sidebar(page).getByRole('button', { name: 'Post' })).toHaveCount(0);
+		await expect(page.getByRole('region', { name: 'Post' })).toHaveCount(0);
+	});
+
+	test('opens the compose panel from the sidebar when logged in', async ({ page }) => {
+		await openDeck(page, { isLoggedIn: true });
 
 		await sidebar(page).getByRole('button', { name: 'Post' }).click();
 		await expectSidebarWidth(page, sidebarExpandedWidth);

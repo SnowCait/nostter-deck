@@ -37,6 +37,7 @@
 	type Props = {
 		columns: Column[];
 		activeColumnId: string;
+		isLoggedIn: boolean;
 		onAddColumn: () => void;
 		onCompose: () => void;
 		fontSize: FontSize;
@@ -50,6 +51,7 @@
 	const {
 		columns,
 		activeColumnId,
+		isLoggedIn,
 		onAddColumn,
 		onCompose,
 		fontSize,
@@ -169,29 +171,31 @@
 		</div>
 	</div>
 
-	<button
-		type="button"
-		class={[
-			'group mb-4 flex h-11 w-full items-center rounded-md font-bold text-white transition',
-			textClass.control,
-			isCollapsed ? '' : 'bg-sky-500 shadow-sm hover:bg-sky-600'
-		]}
-		title={m.action_post()}
-		aria-label={m.action_post()}
-		onclick={onCompose}
-	>
-		<span
+	{#if isLoggedIn}
+		<button
+			type="button"
 			class={[
-				'flex size-11 shrink-0 items-center justify-center rounded-md transition',
-				isCollapsed ? 'bg-sky-500 shadow-sm group-hover:bg-sky-600' : ''
+				'group mb-4 flex h-11 w-full items-center rounded-md font-bold text-white transition',
+				textClass.control,
+				isCollapsed ? '' : 'bg-sky-500 shadow-sm hover:bg-sky-600'
 			]}
+			title={m.action_post()}
+			aria-label={m.action_post()}
+			onclick={onCompose}
 		>
-			<Send class="size-4" aria-hidden="true" />
-		</span>
-		<span class={`${sidebarLabelClass()} truncate text-left`}>
-			{m.action_post()}
-		</span>
-	</button>
+			<span
+				class={[
+					'flex size-11 shrink-0 items-center justify-center rounded-md transition',
+					isCollapsed ? 'bg-sky-500 shadow-sm group-hover:bg-sky-600' : ''
+				]}
+			>
+				<Send class="size-4" aria-hidden="true" />
+			</span>
+			<span class={`${sidebarLabelClass()} truncate text-left`}>
+				{m.action_post()}
+			</span>
+		</button>
+	{/if}
 
 	<nav class="flex w-full flex-col gap-1" aria-label={m.app_title()}>
 		{#each columns as column (column.id)}
@@ -322,29 +326,31 @@
 			</span>
 		</button>
 
-		<div
-			class={[
-				'flex h-11 w-full items-center rounded-md border border-slate-200 transition dark:border-slate-800',
-				isCollapsed ? 'border-0' : ''
-			]}
-		>
-			<div class="flex w-11 shrink-0 justify-center">
-				<ProfileAvatar
-					shape={avatarShape}
-					sizeClass="size-9"
-					fallbackClass="bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
-					testId="account-avatar"
-				>
-					<UserRound class="size-4" aria-hidden="true" />
-				</ProfileAvatar>
+		{#if isLoggedIn}
+			<div
+				class={[
+					'flex h-11 w-full items-center rounded-md border border-slate-200 transition dark:border-slate-800',
+					isCollapsed ? 'border-0' : ''
+				]}
+			>
+				<div class="flex w-11 shrink-0 justify-center">
+					<ProfileAvatar
+						shape={avatarShape}
+						sizeClass="size-9"
+						fallbackClass="bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
+						testId="account-avatar"
+					>
+						<UserRound class="size-4" aria-hidden="true" />
+					</ProfileAvatar>
+				</div>
+				<div class={sidebarLabelClass()}>
+					<p class={['truncate font-semibold', textClass.account]}>Mika</p>
+					<p class={['truncate text-slate-500 dark:text-slate-400', textClass.meta]}>
+						{m.account_role()}
+					</p>
+				</div>
 			</div>
-			<div class={sidebarLabelClass()}>
-				<p class={['truncate font-semibold', textClass.account]}>Mika</p>
-				<p class={['truncate text-slate-500 dark:text-slate-400', textClass.meta]}>
-					{m.account_role()}
-				</p>
-			</div>
-		</div>
+		{/if}
 	</div>
 </aside>
 
