@@ -597,6 +597,9 @@
 			>
 				{m.custom_timeline_filters()}
 			</label>
+			<p class={['mb-2 text-slate-500 dark:text-slate-400', textClass.meta]}>
+				{m.custom_timeline_filters_help()}
+			</p>
 			<textarea
 				id="custom-timeline-filters"
 				class={[

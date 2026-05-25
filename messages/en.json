@@ -45,6 +45,7 @@
 	"column_width_wide": "Wide",
 	"website_url": "Website URL",
 	"custom_timeline_filters": "REQ filters",
+	"custom_timeline_filters_help": "Use a Nostr REQ filter array. authors normally accepts pubkey arrays; this app also accepts a single address string like kind:pubkey:identifier.",
 	"custom_timeline_relays": "Relays",
 	"custom_timeline_custom_relays": "Custom relays",
 	"custom_timeline_not_implemented": "Relay fetching is not implemented yet.",

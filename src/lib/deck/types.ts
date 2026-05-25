@@ -43,6 +43,7 @@ export type MessageKey =
 	| 'column_width_wide'
 	| 'website_url'
 	| 'custom_timeline_filters'
+	| 'custom_timeline_filters_help'
 	| 'custom_timeline_relays'
 	| 'custom_timeline_custom_relays'
 	| 'custom_timeline_not_implemented'
