@@ -5,12 +5,20 @@
 	import FilterHelpButton from '$lib/components/deck/FilterHelpButton.svelte';
 	import ProfileAvatar from '$lib/components/deck/ProfileAvatar.svelte';
 	import Sidebar from '$lib/components/deck/Sidebar.svelte';
+	import { createColumnConfigFromDraft, type AddColumnType } from '$lib/deck/add-column';
 	import { readColumnConfigs, writeColumnConfigs } from '$lib/deck/column-configs';
 	import { columnSourceKeys } from '$lib/deck/data';
+	import {
+		emptyTimelineRuntime,
+		getTimelineRequest,
+		getTimelineSignature,
+		isFetchableTimelineColumn,
+		toRuntimeColumn,
+		type TimelineRuntime
+	} from '$lib/deck/timeline-runtime';
 	import type {
 		Column,
 		ColumnConfig,
-		ColumnSourceKey,
 		ColumnWidth,
 		NostrFilter,
 		RelaySelection
@@ -19,19 +27,12 @@
 	import { textClassByFontSize } from '$lib/font-size';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { parseNostrFilters } from '$lib/nostr/filters';
-	import { eventToPost } from '$lib/nostr/posts';
 	import { getProfile } from '$lib/nostr/profiles';
-	import { defaultRelays, resolveRelayDraft, searchRelays } from '$lib/nostr/relays';
+	import { defaultRelays, resolveRelayDraft } from '$lib/nostr/relays';
 	import { startCustomTimelineSubscription } from '$lib/nostr/timeline';
 	import { m } from '$lib/paraglide/messages.js';
 	import { readUserSettings, type AvatarShape, type FontSize } from '$lib/user-settings';
 	import type * as Nostr from 'nostr-typedef';
-
-	type CustomTimelineRuntime = {
-		eventsById: Record<string, Nostr.Event>;
-		isLoading: boolean;
-		error: string | null;
-	};
 
 	type CustomTimelineSubscription = {
 		signature: string;
@@ -59,15 +60,13 @@
 	const initialUserSettings = readUserSettings();
 	let fontSize = $state<FontSize>(initialUserSettings.fontSize);
 	let avatarShape = $state<AvatarShape>(initialUserSettings.avatarShape);
-	let selectedColumnType = $state<ColumnSourceKey | 'custom_timeline' | 'website'>(
-		defaultColumnType
-	);
+	let selectedColumnType = $state<AddColumnType>(defaultColumnType);
 	let websiteUrl = $state('');
 	let searchQuery = $state('');
 	let customTimelineFilters = $state('[{"kinds":[1],"limit":20}]');
 	let selectedDefaultRelays = $state<string[]>([...defaultRelays]);
 	let customTimelineRelays = $state('');
-	let customTimelineRuntimes = $state<Record<string, CustomTimelineRuntime>>({});
+	let customTimelineRuntimes = $state<Record<string, TimelineRuntime>>({});
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	const customTimelineSubscriptions = new Map<string, CustomTimelineSubscription>();
 
@@ -76,62 +75,24 @@
 	const canSubmitPost = $derived(composeLength > 0 && composeLength <= composeMaxLength);
 	const textClass = $derived(textClassByFontSize[fontSize]);
 	const normalizedWebsiteUrl = $derived(normalizeWebsiteUrl(websiteUrl));
-	const normalizedSearchQuery = $derived(searchQuery.trim());
 	const parsedCustomTimelineFilters = $derived(parseNostrFilters(customTimelineFilters));
 	const selectedDefaultRelaySet = $derived(new Set(selectedDefaultRelays));
 	const parsedCustomTimelineRelays = $derived(
 		resolveRelayDraft(selectedDefaultRelays, customTimelineRelays)
 	);
-	const canSaveColumn = $derived(
-		(selectedColumnType !== 'website' || normalizedWebsiteUrl !== null) &&
-			(selectedColumnType !== 'timeline_search' || normalizedSearchQuery.length > 0) &&
-			(selectedColumnType !== 'custom_timeline' ||
-				(parsedCustomTimelineFilters !== null && parsedCustomTimelineRelays !== null))
-	);
+	const canSaveColumn = $derived(createColumnConfigFromDraft(getColumnDraft('')) !== null);
 	const columns = $derived<Column[]>(
-		columnConfigs.map((column) => {
-			if (column.type === 'timeline' && column.timelineKind === 'preset') {
-				if (column.sourceKey === 'timeline_search') {
-					const runtime = customTimelineRuntimes[column.id] ?? emptyCustomTimelineRuntime();
-					const posts = getCustomTimelinePosts(runtime);
-
-					return {
-						...column,
-						posts,
-						isLoading: runtime.isLoading,
-						error: runtime.error
-					};
-				}
-
-				return {
-					...column,
-					posts: []
-				};
-			}
-
-			if (column.type === 'timeline' && column.timelineKind === 'custom') {
-				const runtime = customTimelineRuntimes[column.id] ?? emptyCustomTimelineRuntime();
-				const posts = getCustomTimelinePosts(runtime);
-
-				return {
-					...column,
-					posts,
-					isLoading: runtime.isLoading,
-					error: runtime.error
-				};
-			}
-
-			return { ...column };
-		})
+		columnConfigs.map((column) =>
+			toRuntimeColumn(
+				column,
+				customTimelineRuntimes[column.id] ?? emptyTimelineRuntime(),
+				getProfile
+			)
+		)
 	);
 
 	$effect(() => {
-		const activeTimelineColumns = columnConfigs.filter(
-			(column) =>
-				column.type === 'timeline' &&
-				(column.timelineKind === 'custom' ||
-					(column.timelineKind === 'preset' && column.sourceKey === 'timeline_search'))
-		);
+		const activeTimelineColumns = columnConfigs.filter(isFetchableTimelineColumn);
 		const activeTimelineColumnIds = new Set(activeTimelineColumns.map((column) => column.id));
 
 		for (const [columnId, subscription] of customTimelineSubscriptions) {
@@ -148,11 +109,11 @@
 
 			const filters = $state.snapshot(request.filters);
 			const relays = $state.snapshot(request.relays);
-			const signature = getCustomTimelineSignature(filters, relays);
+			const signature = getTimelineSignature({ filters, relays });
 			if (customTimelineSubscriptions.get(column.id)?.signature === signature) continue;
 
 			customTimelineSubscriptions.get(column.id)?.stop();
-			setCustomTimelineRuntime(column.id, emptyCustomTimelineRuntime());
+			setCustomTimelineRuntime(column.id, emptyTimelineRuntime());
 
 			const subscription = startCustomTimelineSubscription({
 				filters,
@@ -206,26 +167,18 @@
 		writeColumnConfigs(nextColumnConfigs);
 	}
 
-	function emptyCustomTimelineRuntime(): CustomTimelineRuntime {
-		return {
-			eventsById: {},
-			isLoading: false,
-			error: null
-		};
-	}
-
-	function setCustomTimelineRuntime(columnId: string, runtime: CustomTimelineRuntime) {
+	function setCustomTimelineRuntime(columnId: string, runtime: TimelineRuntime) {
 		customTimelineRuntimes = {
 			...customTimelineRuntimes,
 			[columnId]: runtime
 		};
 	}
 
-	function updateCustomTimelineRuntime(columnId: string, patch: Partial<CustomTimelineRuntime>) {
+	function updateCustomTimelineRuntime(columnId: string, patch: Partial<TimelineRuntime>) {
 		customTimelineRuntimes = {
 			...customTimelineRuntimes,
 			[columnId]: {
-				...(customTimelineRuntimes[columnId] ?? emptyCustomTimelineRuntime()),
+				...(customTimelineRuntimes[columnId] ?? emptyTimelineRuntime()),
 				...patch
 			}
 		};
@@ -238,7 +191,7 @@
 	}
 
 	function addCustomTimelineEvent(columnId: string, event: Nostr.Event) {
-		const runtime = customTimelineRuntimes[columnId] ?? emptyCustomTimelineRuntime();
+		const runtime = customTimelineRuntimes[columnId] ?? emptyTimelineRuntime();
 
 		customTimelineRuntimes = {
 			...customTimelineRuntimes,
@@ -252,33 +205,14 @@
 		};
 	}
 
-	function getCustomTimelinePosts(runtime: CustomTimelineRuntime) {
-		return Object.values(runtime.eventsById)
-			.sort((left, right) => right.created_at - left.created_at)
-			.map((event) => eventToPost(event, getProfile(event.pubkey)));
-	}
-
-	function getCustomTimelineSignature(filters: NostrFilter[], relays: RelaySelection) {
-		return JSON.stringify({ filters, relays });
-	}
-
-	function getTimelineRequest(
-		column: ColumnConfig
-	): { filters: NostrFilter[]; relays: RelaySelection } | null {
-		if (column.type !== 'timeline') return null;
-
-		if (column.timelineKind === 'custom') {
-			return {
-				filters: column.filters,
-				relays: column.relays
-			};
-		}
-
-		if (column.sourceKey !== 'timeline_search') return null;
-
+	function getColumnDraft(id: string) {
 		return {
-			filters: [{ kinds: [1], search: column.query, limit: 20 }],
-			relays: { type: 'custom', urls: [...searchRelays] }
+			id,
+			columnType: selectedColumnType,
+			websiteUrl: normalizedWebsiteUrl,
+			searchQuery,
+			customTimelineFilters: parsedCustomTimelineFilters,
+			customTimelineRelays: parsedCustomTimelineRelays
 		};
 	}
 
@@ -310,42 +244,8 @@
 		if (!canSaveColumn) return;
 
 		const id = createColumnId(columnConfigs);
-		let nextColumn: ColumnConfig;
-
-		if (selectedColumnType === 'website') {
-			nextColumn = {
-				id,
-				type: 'website',
-				url: normalizedWebsiteUrl ?? '',
-				width: 'standard'
-			};
-		} else if (selectedColumnType === 'custom_timeline') {
-			nextColumn = {
-				id,
-				type: 'timeline',
-				timelineKind: 'custom',
-				filters: parsedCustomTimelineFilters ?? [],
-				relays: parsedCustomTimelineRelays ?? { type: 'default' },
-				width: 'standard'
-			};
-		} else if (selectedColumnType === 'timeline_search') {
-			nextColumn = {
-				id,
-				type: 'timeline',
-				timelineKind: 'preset',
-				sourceKey: selectedColumnType,
-				query: normalizedSearchQuery,
-				width: 'standard'
-			};
-		} else {
-			nextColumn = {
-				id,
-				type: 'timeline',
-				timelineKind: 'preset',
-				sourceKey: selectedColumnType,
-				width: 'standard'
-			};
-		}
+		const nextColumn = createColumnConfigFromDraft(getColumnDraft(id));
+		if (!nextColumn) return;
 
 		setColumnConfigs([...columnConfigs, nextColumn]);
 		closeColumnDialog();

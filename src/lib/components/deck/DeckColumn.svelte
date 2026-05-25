@@ -6,17 +6,11 @@
 	import type { Column, ColumnWidth, NostrFilter, RelaySelection } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { AvatarShape } from '$lib/user-settings';
-	import { parseNostrFilters } from '$lib/nostr/filters';
-	import {
-		defaultRelays,
-		formatCustomRelays,
-		getSelectedDefaultRelays,
-		resolveRelayDraft,
-		resolveRelaySelection
-	} from '$lib/nostr/relays';
 	import ColumnIcon from './ColumnIcon.svelte';
-	import FilterHelpButton from './FilterHelpButton.svelte';
+	import CustomTimelineSettings from './CustomTimelineSettings.svelte';
 	import PostCard from './PostCard.svelte';
+	import SearchColumnSettings from './SearchColumnSettings.svelte';
+	import TimelineColumnBody from './TimelineColumnBody.svelte';
 
 	type Props = {
 		column: Column;
@@ -56,16 +50,6 @@
 		onCustomTimelineSave
 	}: Props = $props();
 
-	let searchQueryDraftColumnId = $state('');
-	let searchQueryDraftSource = $state('');
-	let searchQueryDraft = $state('');
-	let filterDraftColumnId = $state('');
-	let filterDraftSource = $state('');
-	let filterDraft = $state('');
-	let relayDraftSource = $state('');
-	let selectedDefaultRelays = $state<string[]>([]);
-	let customRelayDraft = $state('');
-
 	const columnWidthClassByWidth = {
 		narrow: 'w-[280px]',
 		standard: 'w-[342px]',
@@ -83,74 +67,9 @@
 		'flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100';
 	const settingsActionClass =
 		'flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 disabled:dark:hover:bg-transparent';
-	const parsedFilterDraft = $derived(parseNostrFilters(filterDraft));
-	const selectedDefaultRelaySet = $derived(new Set(selectedDefaultRelays));
-	const parsedRelayDraft = $derived(resolveRelayDraft(selectedDefaultRelays, customRelayDraft));
-	const canSaveCustomTimelineDraft = $derived(
-		parsedFilterDraft !== null && parsedRelayDraft !== null
-	);
-	const canSaveSearchQueryDraft = $derived(searchQueryDraft.trim().length > 0);
-
-	$effect(() => {
-		if (
-			column.type !== 'timeline' ||
-			column.timelineKind !== 'preset' ||
-			column.sourceKey !== 'timeline_search'
-		) {
-			return;
-		}
-
-		if (searchQueryDraftColumnId === column.id && searchQueryDraftSource === column.query) {
-			return;
-		}
-
-		searchQueryDraftColumnId = column.id;
-		searchQueryDraftSource = column.query;
-		searchQueryDraft = column.query;
-	});
-
-	$effect(() => {
-		if (column.type !== 'timeline' || column.timelineKind !== 'custom') return;
-
-		const nextFilterDraft = JSON.stringify(column.filters, null, 2);
-		const resolvedRelays = resolveRelaySelection(column.relays);
-		const nextRelayDraft = JSON.stringify(column.relays);
-		if (
-			filterDraftColumnId === column.id &&
-			filterDraftSource === nextFilterDraft &&
-			relayDraftSource === nextRelayDraft
-		) {
-			return;
-		}
-
-		filterDraftColumnId = column.id;
-		filterDraftSource = nextFilterDraft;
-		relayDraftSource = nextRelayDraft;
-		filterDraft = nextFilterDraft;
-		selectedDefaultRelays = getSelectedDefaultRelays(resolvedRelays);
-		customRelayDraft = formatCustomRelays(resolvedRelays);
-	});
 
 	function selectColumnWidth(event: Event) {
 		onWidthChange((event.currentTarget as HTMLSelectElement).value as ColumnWidth);
-	}
-
-	function toggleDefaultRelay(relay: string, isSelected: boolean) {
-		selectedDefaultRelays = isSelected
-			? [...selectedDefaultRelaySet, relay]
-			: selectedDefaultRelays.filter((selectedRelay) => selectedRelay !== relay);
-	}
-
-	function saveCustomTimelineDraft() {
-		if (!parsedFilterDraft || !parsedRelayDraft) return;
-
-		onCustomTimelineSave(parsedFilterDraft, parsedRelayDraft);
-	}
-
-	function saveSearchQueryDraft() {
-		if (!canSaveSearchQueryDraft) return;
-
-		onSearchSave(searchQueryDraft);
 	}
 </script>
 
@@ -193,98 +112,9 @@
 			class="shrink-0 border-b border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/70"
 		>
 			{#if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_search'}
-				<label
-					class={['mb-2 block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
-					for={`column-search-query-${column.id}`}
-				>
-					{m.search_query()}
-				</label>
-				<input
-					id={`column-search-query-${column.id}`}
-					class={[
-						'mb-3 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
-						textClass.control
-					]}
-					bind:value={searchQueryDraft}
-				/>
-				<button
-					type="button"
-					class={[
-						'mb-3 flex h-9 w-full items-center justify-center rounded-md bg-sky-500 px-3 font-semibold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300 disabled:dark:bg-slate-800 disabled:dark:text-slate-500',
-						textClass.control
-					]}
-					disabled={!canSaveSearchQueryDraft}
-					onclick={saveSearchQueryDraft}
-				>
-					{m.save()}
-				</button>
+				<SearchColumnSettings {column} {textClass} onSave={onSearchSave} />
 			{:else if column.type === 'timeline' && column.timelineKind === 'custom'}
-				<div class="mb-2 flex items-center justify-between gap-2">
-					<label
-						class={['block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
-						for={`column-filters-${column.id}`}
-					>
-						{m.custom_timeline_filters()}
-					</label>
-					<FilterHelpButton {textClass} />
-				</div>
-				<textarea
-					id={`column-filters-${column.id}`}
-					class={[
-						'mb-3 min-h-32 w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
-						textClass.control
-					]}
-					bind:value={filterDraft}
-				></textarea>
-
-				<p class={['mb-2 font-semibold text-slate-700 dark:text-slate-300', textClass.control]}>
-					{m.custom_timeline_relays()}
-				</p>
-				<div class="mb-3 grid gap-2">
-					{#each defaultRelays as relay (relay)}
-						<label
-							class={[
-								'flex min-w-0 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-								textClass.control
-							]}
-						>
-							<input
-								class="size-4 shrink-0 accent-sky-500"
-								type="checkbox"
-								checked={selectedDefaultRelaySet.has(relay)}
-								onchange={(event) =>
-									toggleDefaultRelay(relay, (event.currentTarget as HTMLInputElement).checked)}
-							/>
-							<span class="min-w-0 truncate">{relay}</span>
-						</label>
-					{/each}
-				</div>
-
-				<label
-					class={['mb-2 block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
-					for={`column-custom-relays-${column.id}`}
-				>
-					{m.custom_timeline_custom_relays()}
-				</label>
-				<textarea
-					id={`column-custom-relays-${column.id}`}
-					class={[
-						'mb-3 min-h-24 w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
-						textClass.control
-					]}
-					bind:value={customRelayDraft}
-				></textarea>
-				<button
-					type="button"
-					class={[
-						'mb-3 flex h-9 w-full items-center justify-center rounded-md bg-sky-500 px-3 font-semibold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300 disabled:dark:bg-slate-800 disabled:dark:text-slate-500',
-						textClass.control
-					]}
-					disabled={!canSaveCustomTimelineDraft}
-					onclick={saveCustomTimelineDraft}
-				>
-					{m.save()}
-				</button>
+				<CustomTimelineSettings {column} {textClass} onSave={onCustomTimelineSave} />
 			{/if}
 
 			<label
@@ -354,38 +184,7 @@
 				sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
 			></iframe>
 		{:else if column.timelineKind === 'custom' || column.sourceKey === 'timeline_search'}
-			{#if column.error}
-				<div
-					class={[
-						'flex h-full items-center justify-center p-6 text-center font-semibold text-rose-600 dark:text-rose-400',
-						textClass.control
-					]}
-				>
-					{m.custom_timeline_error({ message: column.error })}
-				</div>
-			{:else if column.isLoading && column.posts.length === 0}
-				<div
-					class={[
-						'flex h-full items-center justify-center p-6 text-center text-slate-500 dark:text-slate-400',
-						textClass.control
-					]}
-				>
-					{m.custom_timeline_loading()}
-				</div>
-			{:else if column.posts.length === 0}
-				<div
-					class={[
-						'flex h-full items-center justify-center p-6 text-center text-slate-500 dark:text-slate-400',
-						textClass.control
-					]}
-				>
-					{m.custom_timeline_empty()}
-				</div>
-			{:else}
-				{#each column.posts as post (post.id ?? `${column.id}-${post.author}-${post.time}`)}
-					<PostCard {post} {isLoggedIn} {textClass} {avatarShape} />
-				{/each}
-			{/if}
+			<TimelineColumnBody {column} {isLoggedIn} {textClass} {avatarShape} />
 		{:else}
 			{#each column.posts as post (`${column.id}-${post.author}-${post.time}`)}
 				<PostCard {post} {isLoggedIn} {textClass} {avatarShape} />
