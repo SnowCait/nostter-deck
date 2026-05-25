@@ -274,17 +274,15 @@ export async function installFakeNostrRelay(page: Page) {
 	});
 }
 
-export async function fakeRelayConnectionCounts(page: Page) {
-	return page.evaluate(() => {
+export async function fakeRelayConnectionCounts(page: Page, relays: readonly string[]) {
+	return page.evaluate((relayUrls) => {
 		const connections = window.__nostterFakeRelayConnections ?? {};
 
-		return {
-			damus: connections['wss://relay.damus.io/'] ?? connections['wss://relay.damus.io'],
-			nos: connections['wss://nos.lol/'] ?? connections['wss://nos.lol'],
-			purplepages: connections['wss://purplepag.es/'] ?? connections['wss://purplepag.es'],
-			userKindpages: connections['wss://user.kindpag.es/'] ?? connections['wss://user.kindpag.es'],
-			yabuDirectory:
-				connections['wss://directory.yabu.me/'] ?? connections['wss://directory.yabu.me']
-		};
-	});
+		return Object.fromEntries(
+			relayUrls.map((relay) => [
+				relay,
+				connections[relay] ?? connections[relay.replace(/\/$/, '')] ?? 0
+			])
+		);
+	}, relays);
 }

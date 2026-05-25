@@ -4,7 +4,8 @@ export const defaultRelays = ['wss://relay.damus.io/', 'wss://nos.lol/'] as cons
 export const profileRelays = [
 	'wss://purplepag.es/',
 	'wss://user.kindpag.es/',
-	'wss://directory.yabu.me/'
+	'wss://directory.yabu.me/',
+	'wss://profiles.nostr1.com/'
 ] as const;
 
 const defaultRelaySet = new Set<string>(defaultRelays);

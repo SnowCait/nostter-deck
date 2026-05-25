@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { defaultRelays, profileRelays } from '$lib/nostr/relays';
 import { fakeRelayConnectionCounts, installFakeNostrRelay } from './helpers/fake-nostr-relay';
 import {
 	addPresetColumn,
@@ -39,6 +40,12 @@ import {
 	userSettingsStorageKey,
 	wideColumnWidth
 } from './helpers/deck-page';
+
+const expectedProfileRelayUrls = [...new Set([...defaultRelays, ...profileRelays])];
+const expectedProfileRelayConnections = Object.fromEntries(
+	expectedProfileRelayUrls.map((relay) => [relay, 1])
+);
+const expectedProfileRelayRequestCount = expectedProfileRelayUrls.length;
 
 test.describe('nostter deck', () => {
 	test('shows the initial deck', async ({ page }) => {
@@ -197,14 +204,8 @@ test.describe('nostter deck', () => {
 		await expectStoredCustomTimelineColumn(page);
 		await expectStoredColumnIdsAreOpaque(page);
 		await expect
-			.poll(async () => fakeRelayConnectionCounts(page))
-			.toEqual({
-				damus: 1,
-				nos: 1,
-				purplepages: 1,
-				userKindpages: 1,
-				yabuDirectory: 1
-			});
+			.poll(async () => fakeRelayConnectionCounts(page, expectedProfileRelayUrls))
+			.toEqual(expectedProfileRelayConnections);
 		await expect
 			.poll(async () =>
 				page.evaluate(
@@ -214,7 +215,7 @@ test.describe('nostter deck', () => {
 						] ?? 0
 				)
 			)
-			.toBe(5);
+			.toBe(expectedProfileRelayRequestCount);
 
 		await columnOptionsButton(customColumn).click();
 
@@ -325,14 +326,8 @@ test.describe('nostter deck', () => {
 			.click();
 		await expectColumnOrder(columns, [...columnNames, 'Custom timeline', 'Custom timeline']);
 		await expect
-			.poll(async () => fakeRelayConnectionCounts(page))
-			.toEqual({
-				damus: 1,
-				nos: 1,
-				purplepages: 1,
-				userKindpages: 1,
-				yabuDirectory: 1
-			});
+			.poll(async () => fakeRelayConnectionCounts(page, expectedProfileRelayUrls))
+			.toEqual(expectedProfileRelayConnections);
 	});
 
 	test('resolves custom timeline author addresses', async ({ page }) => {
@@ -380,7 +375,7 @@ test.describe('nostter deck', () => {
 					contactListAddress
 				)
 			)
-			.toBe(5);
+			.toBe(expectedProfileRelayRequestCount);
 		await expect
 			.poll(async () =>
 				page.evaluate(
