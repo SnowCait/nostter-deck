@@ -6,6 +6,7 @@
 	import ProfileAvatar from '$lib/components/deck/ProfileAvatar.svelte';
 	import Sidebar from '$lib/components/deck/Sidebar.svelte';
 	import { createColumnConfigFromDraft, type AddColumnType } from '$lib/deck/add-column';
+	import { getDefaultColumnIconKey } from '$lib/deck/column-icons';
 	import { readColumnConfigs, writeColumnConfigs } from '$lib/deck/column-configs';
 	import { columnSourceKeys } from '$lib/deck/data';
 	import {
@@ -19,6 +20,7 @@
 	import type {
 		Column,
 		ColumnConfig,
+		ColumnIconKey,
 		ColumnWidth,
 		NostrFilter,
 		RelaySelection
@@ -295,6 +297,39 @@
 		);
 	}
 
+	function updateColumnTitle(columnId: string, title: string) {
+		const nextTitle = title.trim();
+		setColumnConfigs(
+			columnConfigs.map((column) => {
+				if (column.id !== columnId) return column;
+
+				if (!nextTitle) {
+					const nextColumn = { ...column };
+					delete nextColumn.title;
+					return nextColumn;
+				}
+
+				return { ...column, title: nextTitle };
+			})
+		);
+	}
+
+	function updateColumnIcon(columnId: string, icon: ColumnIconKey | null) {
+		setColumnConfigs(
+			columnConfigs.map((column) => {
+				if (column.id !== columnId) return column;
+
+				if (!icon || icon === getDefaultColumnIconKey(column)) {
+					const nextColumn = { ...column };
+					delete nextColumn.icon;
+					return nextColumn;
+				}
+
+				return { ...column, icon };
+			})
+		);
+	}
+
 	function saveCustomTimelineSettings(
 		columnId: string,
 		filters: NostrFilter[],
@@ -519,6 +554,8 @@
 						onDelete={() => deleteColumn(column.id)}
 						onMoveLeft={() => moveColumn(column.id, -1)}
 						onMoveRight={() => moveColumn(column.id, 1)}
+						onTitleChange={(title) => updateColumnTitle(column.id, title)}
+						onIconChange={(icon) => updateColumnIcon(column.id, icon)}
 						onWidthChange={(width) => updateColumnWidth(column.id, width)}
 						onFollowSave={(profile) => saveFollowSettings(column.id, profile)}
 						onSearchSave={(query) => saveSearchSettings(column.id, query)}

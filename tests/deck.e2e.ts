@@ -21,6 +21,7 @@ import {
 	expectStoredAvatarShape,
 	expectStoredColumnConfigWidths,
 	expectStoredColumnIdsAreOpaque,
+	expectStoredFirstColumnDisplay,
 	expectStoredCustomTimelineColumn,
 	expectStoredFollowColumn,
 	expectStoredFontSize,
@@ -288,6 +289,50 @@ test.describe('nostter deck', () => {
 			searchColumn.getByText('Edited search result from a Nostr search relay')
 		).toBeVisible();
 		await expectStoredSearchColumn(page, 'edited');
+	});
+
+	test('changes and persists column title and icon', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		const columns = deckColumns(page);
+
+		await addPresetColumn(page, 'timeline_search');
+		const searchColumn = columns.first();
+		await expectColumnOrder(columns, ['Search']);
+
+		await columnOptionsButton(searchColumn).click();
+		await searchColumn.getByLabel('Column title').fill('My search');
+		await expectColumnOrder(columns, ['My search']);
+
+		const iconGroup = searchColumn.getByRole('group', { name: 'Column icon' });
+		await expect(iconGroup.getByRole('button').first()).toHaveAttribute('aria-label', 'Default');
+		await expect(iconGroup.getByRole('button', { name: 'Search' })).toHaveCount(0);
+		await iconGroup.getByRole('button', { name: 'Radio' }).click();
+		await expect(searchColumn.locator('header svg').first()).toHaveClass(/lucide-radio/);
+		await expect(sidebarButtonIcon(page, 'My search')).toHaveClass(/lucide-radio/);
+		await expectStoredFirstColumnDisplay(page, { title: 'My search', icon: 'radio' });
+
+		await page.reload();
+		await expectColumnOrder(columns, ['My search']);
+		await expect(sidebarButtonIcon(page, 'My search')).toHaveClass(/lucide-radio/);
+		await columnOptionsButton(searchColumn).click();
+		await expect(searchColumn.getByLabel('Column title')).toHaveValue('My search');
+		await expect(
+			searchColumn
+				.getByRole('group', { name: 'Column icon' })
+				.getByRole('button', { name: 'Radio' })
+		).toHaveAttribute('aria-pressed', 'true');
+
+		await searchColumn.getByLabel('Column title').fill('   ');
+		await expectColumnOrder(columns, ['Search']);
+		await expectStoredFirstColumnDisplay(page, { icon: 'radio' });
+
+		await searchColumn
+			.getByRole('group', { name: 'Column icon' })
+			.getByRole('button', { name: 'Default' })
+			.click();
+		await expect(sidebarButtonIcon(page, 'Search')).toHaveClass(/lucide-search/);
+		await expectStoredFirstColumnDisplay(page, {});
 	});
 
 	test('adds and persists a custom timeline column', async ({ page }) => {
@@ -692,6 +737,30 @@ test.describe('nostter deck', () => {
 		await openDeck(page);
 
 		await expectColumnOrder(deckColumns(page), columnNames);
+	});
+
+	test('ignores invalid persisted column icon', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await page.addInitScript((key) => {
+			window.localStorage.setItem(
+				key,
+				JSON.stringify([
+					{
+						id: 'search',
+						type: 'timeline',
+						timelineKind: 'preset',
+						sourceKey: 'timeline_search',
+						query: 'nostter',
+						width: 'standard',
+						icon: 'invalid'
+					}
+				])
+			);
+		}, columnConfigsStorageKey);
+		await openDeck(page);
+
+		await expectColumnOrder(deckColumns(page), ['Search']);
+		await expect(sidebarButtonIcon(page, 'Search')).toHaveClass(/lucide-search/);
 	});
 
 	test('changes language from the settings dialog', async ({ page }) => {

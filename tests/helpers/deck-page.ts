@@ -244,6 +244,23 @@ export async function expectStoredColumnIdsAreOpaque(page: Page) {
 		.toBe(true);
 }
 
+export async function expectStoredFirstColumnDisplay(
+	page: Page,
+	display: { title?: string; icon?: string }
+) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				if (!storedValue) return null;
+
+				const column = JSON.parse(storedValue)[0];
+				return column ? { title: column.title ?? null, icon: column.icon ?? null } : null;
+			}, columnConfigsStorageKey)
+		)
+		.toEqual({ title: display.title ?? null, icon: display.icon ?? null });
+}
+
 export async function expectStoredWebsiteColumn(page: Page, url: string) {
 	await expect
 		.poll(async () =>

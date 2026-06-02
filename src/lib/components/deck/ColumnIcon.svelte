@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { Globe, Radio, Search, UsersRound } from '@lucide/svelte';
+	import { getColumnIconKey } from '$lib/deck/column-icons';
 	import type { Column } from '$lib/deck/types';
+	import ColumnIconGlyph from './ColumnIconGlyph.svelte';
 
 	type Props = {
 		column: Column;
@@ -8,14 +9,7 @@
 	};
 
 	const { column, iconClass }: Props = $props();
+	const iconKey = $derived(getColumnIconKey(column));
 </script>
 
-{#if column.type === 'website'}
-	<Globe class={iconClass} aria-hidden="true" />
-{:else if column.timelineKind === 'custom'}
-	<Radio class={iconClass} aria-hidden="true" />
-{:else if column.sourceKey === 'timeline_follow'}
-	<UsersRound class={iconClass} aria-hidden="true" />
-{:else}
-	<Search class={iconClass} aria-hidden="true" />
-{/if}
+<ColumnIconGlyph {iconKey} {iconClass} />

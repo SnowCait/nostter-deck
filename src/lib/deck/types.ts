@@ -35,6 +35,13 @@ export type MessageKey =
 	| 'add_column'
 	| 'edit_column'
 	| 'column_type'
+	| 'column_title'
+	| 'column_icon'
+	| 'column_icon_default'
+	| 'column_icon_users'
+	| 'column_icon_search'
+	| 'column_icon_radio'
+	| 'column_icon_globe'
 	| 'column_width'
 	| 'column_width_narrow'
 	| 'column_width_standard'
@@ -68,8 +75,14 @@ export type MessageKey =
 export type ColumnTitleKey = Extract<MessageKey, 'timeline_follow' | 'timeline_search'>;
 export type ColumnSourceKey = ColumnTitleKey;
 export type ColumnWidth = 'narrow' | 'standard' | 'wide';
+export type ColumnIconKey = 'users' | 'search' | 'radio' | 'globe';
 export type NostrFilter = Record<string, unknown>;
 export type RelaySelection = { type: 'default' } | { type: 'custom'; urls: string[] };
+
+export type ColumnDisplayConfig = {
+	title?: string;
+	icon?: ColumnIconKey;
+};
 
 export type SearchTimelineColumnConfig = {
 	id: string;
@@ -78,7 +91,7 @@ export type SearchTimelineColumnConfig = {
 	sourceKey: 'timeline_search';
 	query: string;
 	width: ColumnWidth;
-};
+} & ColumnDisplayConfig;
 
 export type FollowTimelineColumnConfig = {
 	id: string;
@@ -88,7 +101,7 @@ export type FollowTimelineColumnConfig = {
 	pubkey: string;
 	relays: string[];
 	width: ColumnWidth;
-};
+} & ColumnDisplayConfig;
 
 export type PresetTimelineColumnConfig = FollowTimelineColumnConfig | SearchTimelineColumnConfig;
 
@@ -99,7 +112,7 @@ export type CustomTimelineColumnConfig = {
 	filters: NostrFilter[];
 	relays: RelaySelection;
 	width: ColumnWidth;
-};
+} & ColumnDisplayConfig;
 
 export type TimelineColumnConfig = PresetTimelineColumnConfig | CustomTimelineColumnConfig;
 
@@ -108,7 +121,7 @@ export type WebsiteColumnConfig = {
 	type: 'website';
 	url: string;
 	width: ColumnWidth;
-};
+} & ColumnDisplayConfig;
 
 export type ColumnConfig = TimelineColumnConfig | WebsiteColumnConfig;
 
