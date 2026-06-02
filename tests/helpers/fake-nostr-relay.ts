@@ -6,6 +6,7 @@ declare global {
 		__NOSTTER_DECK_WEBSOCKET_CTOR__?: typeof WebSocket;
 		__nostterFakeRelayConnections?: Record<string, number>;
 		__nostterFakeRelayProfileRequests?: Record<string, number>;
+		__nostterFakeRelayProfileAuthorRequests?: Record<string, number>;
 		__nostterFakeRelayAddressRequests?: Record<string, number>;
 		__nostterFakeRelaySearchRequests?: Record<string, number>;
 		__nostterFakeRelayTimelineAuthorRequests?: Record<string, number>;
@@ -16,6 +17,7 @@ export async function installFakeNostrRelay(page: Page) {
 	await page.addInitScript(() => {
 		const relayConnections: Record<string, number> = {};
 		const relayProfileRequests: Record<string, number> = {};
+		const relayProfileAuthorRequests: Record<string, number> = {};
 		const relayAddressRequests: Record<string, number> = {};
 		const relaySearchRequests: Record<string, number> = {};
 		const relayTimelineAuthorRequests: Record<string, number> = {};
@@ -199,6 +201,12 @@ export async function installFakeNostrRelay(page: Page) {
 				const requestsProfiles = filters.some(
 					(filter) => filter.kinds?.includes(0) && filter.authors?.includes(textEvent.pubkey)
 				);
+				for (const filter of filters) {
+					if (!filter.kinds?.includes(0) || !filter.authors) continue;
+
+					const key = [...filter.authors].sort().join(',');
+					relayProfileAuthorRequests[key] = (relayProfileAuthorRequests[key] ?? 0) + 1;
+				}
 				const requestsContactList = filters.some(
 					(filter) => filter.kinds?.includes(3) && filter.authors?.includes(contactListAuthorPubkey)
 				);
@@ -302,6 +310,7 @@ export async function installFakeNostrRelay(page: Page) {
 		window.__NOSTTER_DECK_WEBSOCKET_CTOR__ = FakeWebSocket as unknown as typeof WebSocket;
 		window.__nostterFakeRelayConnections = relayConnections;
 		window.__nostterFakeRelayProfileRequests = relayProfileRequests;
+		window.__nostterFakeRelayProfileAuthorRequests = relayProfileAuthorRequests;
 		window.__nostterFakeRelayAddressRequests = relayAddressRequests;
 		window.__nostterFakeRelaySearchRequests = relaySearchRequests;
 		window.__nostterFakeRelayTimelineAuthorRequests = relayTimelineAuthorRequests;

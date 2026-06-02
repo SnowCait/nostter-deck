@@ -53,6 +53,7 @@ const expectedProfileRelayConnections = Object.fromEntries(
 const expectedProfileRelayRequestCount = expectedProfileRelayUrls.length;
 const contactListAuthorPubkey = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 const textEventPubkey = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const staleContactPubkey = 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc';
 const followRelayHint = 'wss://follow.example/';
 const contactListNpub = npubEncode(contactListAuthorPubkey);
 const contactListNprofile = nprofileEncode({
@@ -531,6 +532,28 @@ test.describe('nostter deck', () => {
 		await expect
 			.poll(async () => fakeRelayConnectionCounts(page, expectedProfileRelayUrls))
 			.toEqual(expectedProfileRelayConnections);
+	});
+
+	test('batches profile requests for timeline event authors', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		const columns = deckColumns(page);
+		const profileAuthorsKey = [textEventPubkey, staleContactPubkey].sort().join(',');
+
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [1], authors: [textEventPubkey, staleContactPubkey], limit: 20 }]
+		});
+
+		await expect(columns.first().getByText('Hello from a custom Nostr timeline')).toBeVisible();
+		await expect(columns.first().getByText('Hello from a stale contact list')).toBeVisible();
+		await expect
+			.poll(async () =>
+				page.evaluate(
+					(key) => window.__nostterFakeRelayProfileAuthorRequests?.[key] ?? 0,
+					profileAuthorsKey
+				)
+			)
+			.toBe(expectedProfileRelayRequestCount);
 	});
 
 	test('resolves custom timeline author addresses', async ({ page }) => {

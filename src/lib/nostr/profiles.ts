@@ -1,11 +1,12 @@
-import { createRxBackwardReq, latestEach, uniq, type LazyFilter } from 'rx-nostr';
+import { createRxBackwardReq, latestEach, uniq, type LazyFilter, type ReqPacket } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
-import type { Unsubscribable } from 'rxjs';
+import { bufferTime, from, mergeMap, type Unsubscribable } from 'rxjs';
 import { SvelteMap } from 'svelte/reactivity';
 import { getNostrClient } from './client';
 
 const profilesByPubkey = new SvelteMap<string, Nostr.Content.Metadata>();
 const requestedPubkeys = new Set<string>();
+const profileRequestBufferMs = 1000;
 
 let profileReq: ReturnType<typeof createRxBackwardReq> | null = null;
 let profileSubscription: Unsubscribable | null = null;
@@ -14,8 +15,12 @@ function ensureProfileReq() {
 	if (profileReq) return profileReq;
 
 	profileReq = createRxBackwardReq();
+	const batchedProfileReq = profileReq.pipe(
+		bufferTime(profileRequestBufferMs),
+		mergeMap(mergeProfileReqPackets)
+	);
 	profileSubscription = getNostrClient()
-		.use(profileReq)
+		.use(batchedProfileReq)
 		.pipe(
 			uniq(),
 			latestEach(({ event }) => event.pubkey)
@@ -28,6 +33,41 @@ function ensureProfileReq() {
 		});
 
 	return profileReq;
+}
+
+function mergeProfileReqPackets(packets: ReqPacket[]) {
+	const packetsByRelaySignature = new Map<string, ReqPacket>();
+
+	for (const packet of packets) {
+		if (packet.filters.length === 0) continue;
+
+		const relays = packet.relays ? [...packet.relays].sort() : [];
+		const relaySignature = JSON.stringify(relays);
+		const currentPacket = packetsByRelaySignature.get(relaySignature);
+		const authors = new Set<string>(
+			currentPacket?.filters.flatMap((filter) => filter.authors ?? []) ?? []
+		);
+
+		for (const filter of packet.filters) {
+			for (const author of filter.authors ?? []) {
+				authors.add(author);
+			}
+		}
+
+		if (authors.size === 0) continue;
+
+		packetsByRelaySignature.set(relaySignature, {
+			filters: [
+				{
+					kinds: [0],
+					authors: [...authors]
+				}
+			],
+			...(packet.relays ? { relays } : {})
+		});
+	}
+
+	return from(packetsByRelaySignature.values());
 }
 
 export function requestProfiles(pubkeys: string[], relays: string[]) {
