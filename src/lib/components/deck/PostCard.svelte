@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Heart, MessageCircle, Ellipsis, Repeat2, Share, ShieldCheck } from '@lucide/svelte';
+	import { linkifyPostContent } from '$lib/deck/post-content-links';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Post } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
@@ -14,6 +15,7 @@
 	};
 
 	const { post, isLoggedIn, textClass, avatarShape }: Props = $props();
+	const bodyTokens = $derived(linkifyPostContent(post.body));
 </script>
 
 <article
@@ -59,7 +61,20 @@
 					textClass.body
 				]}
 			>
-				{post.body}
+				{#each bodyTokens as token, index (index)}
+					{#if token.type === 'link'}
+						<a
+							href={token.href}
+							target="_blank"
+							rel="external noopener noreferrer"
+							class="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-300 dark:hover:text-sky-200"
+						>
+							{token.text}
+						</a>
+					{:else}
+						{token.text}
+					{/if}
+				{/each}
 			</p>
 
 			<div class="mt-2 flex flex-wrap gap-1.5">

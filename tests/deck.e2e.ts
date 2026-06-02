@@ -396,6 +396,15 @@ test.describe('nostter deck', () => {
 		await expect(customColumn.getByText('#nostter')).toHaveCount(1);
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toHaveCount(1);
 		const postArticle = customColumn.locator('article').first();
+		const bodyLink = postArticle.getByRole('link', {
+			name: 'https://example.com/path?from=nostter'
+		});
+		await expect(bodyLink).toBeVisible();
+		await expect(bodyLink).toHaveAttribute('href', 'https://example.com/path?from=nostter');
+		await expect(bodyLink).toHaveAttribute('target', '_blank');
+		await expect(bodyLink).toHaveAttribute('rel', 'external noopener noreferrer');
+		await expect(postArticle.getByRole('link', { name: 'www.example.com' })).toHaveCount(0);
+		await expect(postArticle.getByRole('link', { name: /^npub/ })).toHaveCount(0);
 		await expect(postArticle.getByRole('button', { name: 'Column options' })).toHaveCount(0);
 		await expect(postArticle.getByRole('button', { name: 'Reply' })).toHaveCount(0);
 		await expect(postArticle.getByRole('button', { name: 'Repost' })).toHaveCount(0);

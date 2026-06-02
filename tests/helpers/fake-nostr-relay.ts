@@ -33,7 +33,8 @@ export async function installFakeNostrRelay(page: Page) {
 			created_at: Math.floor(Date.now() / 1000) - 90,
 			kind: 1,
 			tags: [['t', 'nostter']],
-			content: 'Hello from a custom Nostr timeline',
+			content:
+				'Hello from a custom Nostr timeline https://example.com/path?from=nostter. www.example.com npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0l98cr',
 			sig: '0'.repeat(128)
 		};
 		const staleTextEvent = {
