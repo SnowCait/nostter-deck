@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { Repost, ShortTextNote } from 'nostr-tools/kinds';
 import { nprofileEncode, npubEncode } from 'nostr-tools/nip19';
 import { defaultRelays, profileRelays, searchRelays } from '$lib/nostr/relays';
 import { fakeRelayConnectionCounts, installFakeNostrRelay } from './helpers/fake-nostr-relay';
@@ -429,8 +430,8 @@ test.describe('nostter deck', () => {
 		await columnOptionsButton(customColumn).click();
 
 		const savedFilters = [
-			{ kinds: [1], limit: 2 },
-			{ kinds: [6], limit: 2 }
+			{ kinds: [ShortTextNote], limit: 2 },
+			{ kinds: [Repost], limit: 2 }
 		];
 		const initialRelaySelection = {
 			type: 'custom',
@@ -444,7 +445,7 @@ test.describe('nostter deck', () => {
 		const editedCustomRelaysInput = customColumn.getByLabel('Custom relays');
 		const filterSaveButton = customColumn.getByRole('button', { name: 'Save' });
 		await expect(editedFiltersInput).toHaveValue(
-			JSON.stringify([{ kinds: [1], limit: 20 }], null, 2)
+			JSON.stringify([{ kinds: [ShortTextNote], limit: 20 }], null, 2)
 		);
 		await customColumn.getByRole('button', { name: /kind:pubkey:identifier/ }).click();
 		await expect(page.getByText(/kind:pubkey:identifier/)).toBeVisible();
@@ -466,7 +467,7 @@ test.describe('nostter deck', () => {
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expectStoredCustomTimelineColumn(
 			page,
-			[{ kinds: [1], limit: 20 }],
+			[{ kinds: [ShortTextNote], limit: 20 }],
 			initialRelaySelection
 		);
 
@@ -475,12 +476,12 @@ test.describe('nostter deck', () => {
 		await expect(customColumn.getByLabel('wss://nos.lol/')).not.toBeChecked();
 		await expect(editedCustomRelaysInput).toHaveValue('wss://relay.example.com/');
 
-		await editedFiltersInput.fill('{"kinds":[1],"limit":2}');
+		await editedFiltersInput.fill(JSON.stringify({ kinds: [ShortTextNote], limit: 2 }));
 		await expect(filterSaveButton).toBeDisabled();
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expectStoredCustomTimelineColumn(
 			page,
-			[{ kinds: [1], limit: 20 }],
+			[{ kinds: [ShortTextNote], limit: 20 }],
 			initialRelaySelection
 		);
 
@@ -490,7 +491,7 @@ test.describe('nostter deck', () => {
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expectStoredCustomTimelineColumn(
 			page,
-			[{ kinds: [1], limit: 20 }],
+			[{ kinds: [ShortTextNote], limit: 20 }],
 			initialRelaySelection
 		);
 
@@ -501,14 +502,17 @@ test.describe('nostter deck', () => {
 		await expect(filterSaveButton).toBeEnabled();
 		await expectStoredCustomTimelineColumn(
 			page,
-			[{ kinds: [1], limit: 20 }],
+			[{ kinds: [ShortTextNote], limit: 20 }],
 			initialRelaySelection
 		);
 
 		await filterSaveButton.click();
 		await expect(editedFiltersInput).toBeHidden();
-		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
-		await expect(customColumn.getByText('Repost from a custom Nostr timeline')).toBeVisible();
+		await expect(
+			customColumn.getByText('Hello from a custom Nostr timeline').first()
+		).toBeVisible();
+		await expect(customColumn.getByText('Alice Relay reposted')).toHaveCount(2);
+		await expect(customColumn.getByText('Repost from a custom Nostr timeline')).toHaveCount(0);
 		await expectStoredCustomTimelineColumn(page, savedFilters, savedRelaySelection);
 
 		await columnOptionsButton(customColumn).click();
@@ -529,7 +533,9 @@ test.describe('nostter deck', () => {
 		await expect(columns.first().getByLabel('wss://relay.damus.io/')).toBeChecked();
 		await expect(columns.first().getByLabel('wss://nos.lol/')).toBeChecked();
 		await expect(columns.first().getByLabel('Custom relays')).toHaveValue('');
-		await expect(columns.first().getByText('Hello from a custom Nostr timeline')).toBeVisible();
+		await expect(
+			columns.first().getByText('Hello from a custom Nostr timeline').first()
+		).toBeVisible();
 
 		await page.getByRole('button', { name: 'Add column' }).first().click();
 		await page.getByLabel('Column type').selectOption('custom_timeline');
@@ -550,7 +556,9 @@ test.describe('nostter deck', () => {
 		const profileAuthorsKey = [textEventPubkey, staleContactPubkey].sort().join(',');
 
 		await addCustomTimelineColumn(page, {
-			filters: [{ kinds: [1], authors: [textEventPubkey, staleContactPubkey], limit: 20 }]
+			filters: [
+				{ kinds: [ShortTextNote], authors: [textEventPubkey, staleContactPubkey], limit: 20 }
+			]
 		});
 
 		await expect(columns.first().getByText('Hello from a custom Nostr timeline')).toBeVisible();
@@ -565,6 +573,28 @@ test.describe('nostter deck', () => {
 			.toBe(expectedProfileRelayRequestCount);
 	});
 
+	test('shows NIP-18 reposts from custom timelines', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		const columns = deckColumns(page);
+
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [Repost], limit: 20 }]
+		});
+
+		const customColumn = columns.first();
+		await expect(customColumn.getByText('Alice Relay reposted')).toHaveCount(2);
+		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toHaveCount(2);
+		await expect(customColumn.getByText('Repost from a custom Nostr timeline')).toHaveCount(0);
+		await expect
+			.poll(async () =>
+				page.evaluate(
+					() => window.__nostterFakeRelayEventIdRequests?.['event-custom-timeline-1'] ?? 0
+				)
+			)
+			.toBeGreaterThan(0);
+	});
+
 	test('resolves custom timeline author addresses', async ({ page }) => {
 		await installFakeNostrRelay(page);
 		await openDeck(page);
@@ -576,9 +606,9 @@ test.describe('nostter deck', () => {
 		const namedAddressableListAddress =
 			'30000:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd:favorites';
 		const savedFilters = [
-			{ kinds: [1], authors: contactListAddress },
-			{ kinds: [1], authors: emptyAddressableListAddress },
-			{ kinds: [1], authors: namedAddressableListAddress }
+			{ kinds: [ShortTextNote], authors: contactListAddress },
+			{ kinds: [ShortTextNote], authors: emptyAddressableListAddress },
+			{ kinds: [ShortTextNote], authors: namedAddressableListAddress }
 		];
 
 		await page.getByRole('button', { name: 'Add column' }).first().click();

@@ -1,3 +1,4 @@
+import { Repost, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
 import type {
 	Column,
@@ -8,11 +9,12 @@ import type {
 	RelaySelection,
 	SearchTimelineColumnConfig
 } from './types';
-import { eventToPost } from '$lib/nostr/posts';
+import { eventToPost, repostEventToPost } from '$lib/nostr/posts';
 import { combineRelays, defaultRelays, searchRelays } from '$lib/nostr/relays';
 
 export type TimelineRuntime = {
 	eventsById: Record<string, Nostr.Event>;
+	repostedEventsById: Record<string, Nostr.Event>;
 	isLoading: boolean;
 	error: string | null;
 };
@@ -25,6 +27,7 @@ export type TimelineRequest = {
 export function emptyTimelineRuntime(): TimelineRuntime {
 	return {
 		eventsById: {},
+		repostedEventsById: {},
 		isLoading: false,
 		error: null
 	};
@@ -51,13 +54,13 @@ export function getTimelineRequest(column: ColumnConfig): TimelineRequest | null
 
 	if (column.sourceKey === 'timeline_follow') {
 		return {
-			filters: [{ kinds: [1], authors: `3:${column.pubkey}:` }],
+			filters: [{ kinds: [ShortTextNote], authors: `3:${column.pubkey}:` }],
 			relays: { type: 'custom', urls: combineRelays([...defaultRelays], column.relays) }
 		};
 	}
 
 	return {
-		filters: [{ kinds: [1], search: column.query, limit: 20 }],
+		filters: [{ kinds: [ShortTextNote], search: column.query, limit: 20 }],
 		relays: { type: 'custom', urls: [...searchRelays] }
 	};
 }
@@ -72,7 +75,11 @@ export function timelineRuntimeToPosts(
 ) {
 	return Object.values(runtime.eventsById)
 		.sort((left, right) => right.created_at - left.created_at)
-		.map((event) => eventToPost(event, getProfile(event.pubkey)));
+		.map((event) =>
+			event.kind === Repost
+				? repostEventToPost(event, runtime.repostedEventsById[event.id], getProfile)
+				: eventToPost(event, getProfile(event.pubkey))
+		);
 }
 
 export function toRuntimeColumn(

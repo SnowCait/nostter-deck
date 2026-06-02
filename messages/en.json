@@ -70,6 +70,8 @@
 	"column_options": "Column options",
 	"reply": "Reply",
 	"repost": "Repost",
+	"reposted_by": "{name} reposted",
+	"reposted_event_unavailable": "Reposted event unavailable",
 	"like": "Like",
 	"share": "Share",
 	"verified": "Verified"

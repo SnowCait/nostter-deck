@@ -21,6 +21,18 @@
 <article
 	class="border-b border-slate-200 p-3 transition hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/80"
 >
+	{#if post.repostedBy}
+		<div
+			class={[
+				'mb-2 flex min-w-0 items-center gap-1.5 pl-[3.25rem] font-semibold text-slate-500 dark:text-slate-400',
+				textClass.meta
+			]}
+		>
+			<Repeat2 class="size-4 shrink-0" aria-hidden="true" />
+			<span class="truncate">{m.reposted_by({ name: post.repostedBy.author })}</span>
+		</div>
+	{/if}
+
 	<div class="flex gap-3">
 		<ProfileAvatar
 			shape={avatarShape}
@@ -55,27 +67,33 @@
 				{/if}
 			</div>
 
-			<p
-				class={[
-					'mt-2 min-w-0 [overflow-wrap:anywhere] whitespace-pre-wrap text-slate-800 dark:text-slate-200',
-					textClass.body
-				]}
-			>
-				{#each bodyTokens as token, index (index)}
-					{#if token.type === 'link'}
-						<a
-							href={token.href}
-							target="_blank"
-							rel="external noopener noreferrer"
-							class="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-300 dark:hover:text-sky-200"
-						>
+			{#if post.isRepostUnavailable}
+				<p class={['mt-2 text-slate-500 dark:text-slate-400', textClass.body]}>
+					{m.reposted_event_unavailable()}
+				</p>
+			{:else}
+				<p
+					class={[
+						'mt-2 min-w-0 [overflow-wrap:anywhere] whitespace-pre-wrap text-slate-800 dark:text-slate-200',
+						textClass.body
+					]}
+				>
+					{#each bodyTokens as token, index (index)}
+						{#if token.type === 'link'}
+							<a
+								href={token.href}
+								target="_blank"
+								rel="external noopener noreferrer"
+								class="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-300 dark:hover:text-sky-200"
+							>
+								{token.text}
+							</a>
+						{:else}
 							{token.text}
-						</a>
-					{:else}
-						{token.text}
-					{/if}
-				{/each}
-			</p>
+						{/if}
+					{/each}
+				</p>
+			{/if}
 
 			<div class="mt-2 flex flex-wrap gap-1.5">
 				{#each post.tags as tag (tag)}

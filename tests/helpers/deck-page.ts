@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { ShortTextNote } from 'nostr-tools/kinds';
 
 export const columnNames: string[] = [];
 export const sidebarButtonNames = ['Add column', 'Settings'];
@@ -279,7 +280,7 @@ export async function expectStoredWebsiteColumn(page: Page, url: string) {
 
 export async function expectStoredCustomTimelineColumn(
 	page: Page,
-	filters: unknown = [{ kinds: [1], limit: 20 }],
+	filters: unknown = [{ kinds: [ShortTextNote], limit: 20 }],
 	relays: unknown = defaultRelaySelection
 ) {
 	await expect

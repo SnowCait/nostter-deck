@@ -1,3 +1,4 @@
+import { ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
 import type { Post } from '$lib/deck/types';
 
@@ -13,16 +14,43 @@ const accentClasses = [
 ];
 
 export function eventToPost(event: Nostr.Event, profile?: Nostr.Content.Metadata): Post {
-	const displayName = profile?.display_name ?? profile?.name;
+	return createPost(event, profile);
+}
+
+export function repostEventToPost(
+	repostEvent: Nostr.Event,
+	repostedEvent: Nostr.Event | undefined,
+	getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined
+): Post {
+	const repostProfile = getProfile(repostEvent.pubkey);
+	const repostedBy = createPostAuthor(repostEvent.pubkey, repostProfile);
+
+	if (!repostedEvent || repostedEvent.kind !== ShortTextNote) {
+		return {
+			...createPost(repostEvent, repostProfile),
+			body: '',
+			tags: [],
+			repostedBy,
+			isRepostUnavailable: true
+		};
+	}
+
+	return {
+		...createPost(repostedEvent, getProfile(repostedEvent.pubkey)),
+		id: repostEvent.id,
+		time: formatRelativeTime(repostEvent.created_at),
+		repostedBy
+	};
+}
+
+function createPost(event: Nostr.Event, profile?: Nostr.Content.Metadata): Post {
+	const author = createPostAuthor(event.pubkey, profile);
 
 	return {
 		id: event.id,
-		author: displayName || shortenPubkey(event.pubkey),
-		handle: shortenPubkey(event.pubkey),
-		avatarUrl: profile?.picture,
+		...author,
 		time: formatRelativeTime(event.created_at),
 		body: event.content,
-		accent: accentClasses[hashString(event.pubkey) % accentClasses.length],
 		tags: event.tags.flatMap((tag) => (tag[0] === 't' && tag[1] ? [`#${tag[1]}`] : [])),
 		verified: false,
 		stats: {
@@ -30,6 +58,17 @@ export function eventToPost(event: Nostr.Event, profile?: Nostr.Content.Metadata
 			reposts: '0',
 			likes: '0'
 		}
+	};
+}
+
+function createPostAuthor(pubkey: string, profile?: Nostr.Content.Metadata) {
+	const displayName = profile?.display_name ?? profile?.name;
+
+	return {
+		author: displayName || shortenPubkey(pubkey),
+		handle: shortenPubkey(pubkey),
+		avatarUrl: profile?.picture,
+		accent: accentClasses[hashString(pubkey) % accentClasses.length]
 	};
 }
 

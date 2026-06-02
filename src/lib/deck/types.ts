@@ -68,6 +68,8 @@ export type MessageKey =
 	| 'column_options'
 	| 'reply'
 	| 'repost'
+	| 'reposted_by'
+	| 'reposted_event_unavailable'
 	| 'like'
 	| 'share'
 	| 'verified';
@@ -140,6 +142,13 @@ export type Post = {
 		reposts: string;
 		likes: string;
 	};
+	repostedBy?: {
+		author: string;
+		handle: string;
+		avatarUrl?: string;
+		accent: string;
+	};
+	isRepostUnavailable?: boolean;
 	attachment?: {
 		label: string;
 		title: string;

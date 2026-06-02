@@ -1,4 +1,4 @@
-import { isAddressableKind } from 'nostr-tools/kinds';
+import { isAddressableKind, Repost } from 'nostr-tools/kinds';
 import { createRxBackwardReq, createRxForwardReq, latest, uniq, type LazyFilter } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import { takeLast, type Unsubscribable } from 'rxjs';
@@ -12,6 +12,7 @@ type CustomTimelineSubscriptionOptions = {
 	filters: NostrFilter[];
 	relays: RelaySelection;
 	onEvent: (event: Nostr.Event) => void;
+	onRepostedEvent: (repostEventId: string, event: Nostr.Event) => void;
 	onLoadingChange: (isLoading: boolean) => void;
 	onError: (message: string) => void;
 };
@@ -20,6 +21,7 @@ export function startCustomTimelineSubscription({
 	filters,
 	relays,
 	onEvent,
+	onRepostedEvent,
 	onLoadingChange,
 	onError
 }: CustomTimelineSubscriptionOptions) {
@@ -98,6 +100,54 @@ export function startCustomTimelineSubscription({
 		addressReq.over();
 	}
 
+	function parseRepostedEvent(repostEvent: Nostr.Event): Nostr.Event | null {
+		if (!repostEvent.content.trim()) return null;
+
+		try {
+			const value = JSON.parse(repostEvent.content);
+			if (!isNostrEvent(value)) return null;
+
+			return value;
+		} catch {
+			return null;
+		}
+	}
+
+	function getRepostedEventId(repostEvent: Nostr.Event) {
+		return repostEvent.tags.find((tag) => tag[0] === 'e' && tag[1])?.[1] ?? null;
+	}
+
+	function requestRepostedEvent(repostEvent: Nostr.Event) {
+		const embeddedEvent = parseRepostedEvent(repostEvent);
+		if (embeddedEvent) {
+			onRepostedEvent(repostEvent.id, embeddedEvent);
+			requestProfiles([embeddedEvent.pubkey], profileRelayUrls);
+			return;
+		}
+
+		const repostedEventId = getRepostedEventId(repostEvent);
+		if (!repostedEventId) return;
+
+		const repostReq = createRxBackwardReq();
+		let removeSubscription = () => {};
+		const subscription = rxNostr
+			.use(repostReq)
+			.pipe(uniq())
+			.subscribe({
+				next: ({ event }) => {
+					onRepostedEvent(repostEvent.id, event);
+					requestProfiles([event.pubkey], profileRelayUrls);
+				},
+				complete: () => {
+					removeSubscription();
+				}
+			});
+
+		removeSubscription = addSubscription(subscription);
+		repostReq.emit({ ids: [repostedEventId] } as LazyFilter, { relays: relayUrls });
+		repostReq.over();
+	}
+
 	function emitInitialTimelineFilters() {
 		const directFilters: NostrFilter[] = [];
 		const addressesByKey = new Map<string, AuthorAddress>();
@@ -132,6 +182,9 @@ export function startCustomTimelineSubscription({
 				onLoadingChange(false);
 
 				requestProfiles([event.pubkey], profileRelayUrls);
+				if (event.kind === Repost) {
+					requestRepostedEvent(event);
+				}
 				onEvent(event);
 			})
 	);
@@ -154,6 +207,21 @@ export function startCustomTimelineSubscription({
 			}
 		}
 	};
+}
+
+function isNostrEvent(value: unknown): value is Nostr.Event {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+
+	const event = value as Partial<Nostr.Event>;
+	return (
+		typeof event.id === 'string' &&
+		typeof event.pubkey === 'string' &&
+		typeof event.created_at === 'number' &&
+		typeof event.kind === 'number' &&
+		Array.isArray(event.tags) &&
+		typeof event.content === 'string' &&
+		typeof event.sig === 'string'
+	);
 }
 
 function formatRelayError(relay: string, reason: unknown) {

@@ -121,6 +121,8 @@
 				filters,
 				relays,
 				onEvent: (event) => addCustomTimelineEvent(column.id, event),
+				onRepostedEvent: (repostEventId, event) =>
+					addCustomTimelineRepostedEvent(column.id, repostEventId, event),
 				onLoadingChange: (isLoading) => updateCustomTimelineRuntime(column.id, { isLoading }),
 				onError: (error) => updateCustomTimelineRuntime(column.id, { error })
 			});
@@ -202,6 +204,25 @@
 				eventsById: {
 					...runtime.eventsById,
 					[event.id]: event
+				}
+			}
+		};
+	}
+
+	function addCustomTimelineRepostedEvent(
+		columnId: string,
+		repostEventId: string,
+		event: Nostr.Event
+	) {
+		const runtime = customTimelineRuntimes[columnId] ?? emptyTimelineRuntime();
+
+		customTimelineRuntimes = {
+			...customTimelineRuntimes,
+			[columnId]: {
+				...runtime,
+				repostedEventsById: {
+					...runtime.repostedEventsById,
+					[repostEventId]: event
 				}
 			}
 		};

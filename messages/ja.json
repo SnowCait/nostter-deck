@@ -70,6 +70,8 @@
 	"column_options": "カラム設定",
 	"reply": "返信",
 	"repost": "リポスト",
+	"reposted_by": "{name}がリポスト",
+	"reposted_event_unavailable": "リポスト元を取得できません",
 	"like": "いいね",
 	"share": "共有",
 	"verified": "認証済み"
