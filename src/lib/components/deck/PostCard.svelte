@@ -117,6 +117,8 @@
 
 	function formatPostMessage(message: PostMessage) {
 		switch (message.key) {
+			case 'replying_to':
+				return m.replying_to();
 			case 'reposted_by':
 				return m.reposted_by(message.params);
 			case 'reposted_event_unavailable':
@@ -134,20 +136,24 @@
 <article
 	class="border-b border-slate-200 p-3 transition hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/80"
 >
-	{#if post.context}
-		<div
-			class={[
-				'mb-2 flex min-w-0 items-center gap-1.5 pl-[3.25rem] font-semibold text-slate-500 dark:text-slate-400',
-				textClass.meta
-			]}
-		>
-			{#if post.context.icon === 'repost'}
-				<Repeat2 class="size-4 shrink-0" aria-hidden="true" />
-			{:else if post.context.icon === 'heart'}
-				<Heart class="size-4 shrink-0" aria-hidden="true" />
-			{/if}
-			<span class="truncate">{formatPostMessage(post.context.message)}</span>
-		</div>
+	{#if post.contexts}
+		{#each post.contexts as context, index (`${context.icon}:${context.message.key}:${index}`)}
+			<div
+				class={[
+					'mb-2 flex min-w-0 items-center gap-1.5 pl-[3.25rem] font-semibold text-slate-500 dark:text-slate-400',
+					textClass.meta
+				]}
+			>
+				{#if context.icon === 'repost'}
+					<Repeat2 class="size-4 shrink-0" aria-hidden="true" />
+				{:else if context.icon === 'heart'}
+					<Heart class="size-4 shrink-0" aria-hidden="true" />
+				{:else if context.icon === 'reply'}
+					<MessageCircle class="size-4 shrink-0" aria-hidden="true" />
+				{/if}
+				<span class="truncate">{formatPostMessage(context.message)}</span>
+			</div>
+		{/each}
 	{/if}
 
 	<div class="flex gap-3">

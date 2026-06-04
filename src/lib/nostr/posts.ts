@@ -1,6 +1,6 @@
 import { ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
-import type { Post } from '$lib/deck/types';
+import type { Post, PostContext } from '$lib/deck/types';
 
 const accentClasses = [
 	'bg-sky-500',
@@ -30,23 +30,25 @@ export function repostEventToPost(
 			key: 'reposted_by',
 			params: { name: repostAuthor.author }
 		}
-	} satisfies NonNullable<Post['context']>;
+	} satisfies PostContext;
 
 	if (!repostedEvent || repostedEvent.kind !== ShortTextNote) {
 		return {
 			...createPost(repostEvent, repostProfile),
 			body: '',
 			tags: [],
-			context,
+			contexts: [context],
 			unavailableMessage: { key: 'reposted_event_unavailable' }
 		};
 	}
 
+	const repostedPost = createPost(repostedEvent, getProfile(repostedEvent.pubkey));
+
 	return {
-		...createPost(repostedEvent, getProfile(repostedEvent.pubkey)),
+		...repostedPost,
 		id: repostEvent.id,
 		time: formatRelativeTime(repostEvent.created_at),
-		context
+		contexts: [context, ...(repostedPost.contexts ?? [])]
 	};
 }
 
@@ -69,28 +71,31 @@ export function reactionEventToPost(
 					key: 'reacted_by',
 					params: { name: reactionAuthor.author, content: reactionContent }
 				}
-	} satisfies NonNullable<Post['context']>;
+	} satisfies PostContext;
 
 	if (!reactedEvent || reactedEvent.kind !== ShortTextNote) {
 		return {
 			...createPost(reactionEvent, reactionProfile),
 			body: '',
 			tags: [],
-			context,
+			contexts: [context],
 			unavailableMessage: { key: 'reaction_event_unavailable' }
 		};
 	}
 
+	const reactedPost = createPost(reactedEvent, getProfile(reactedEvent.pubkey));
+
 	return {
-		...createPost(reactedEvent, getProfile(reactedEvent.pubkey)),
+		...reactedPost,
 		id: reactionEvent.id,
 		time: formatRelativeTime(reactionEvent.created_at),
-		context
+		contexts: [context, ...(reactedPost.contexts ?? [])]
 	};
 }
 
 function createPost(event: Nostr.Event, profile?: Nostr.Content.Metadata): Post {
 	const author = createPostAuthor(event.pubkey, profile);
+	const contexts = getReplyContexts(event);
 
 	return {
 		id: event.id,
@@ -103,8 +108,25 @@ function createPost(event: Nostr.Event, profile?: Nostr.Content.Metadata): Post 
 			replies: '0',
 			reposts: '0',
 			likes: '0'
-		}
+		},
+		...(contexts.length > 0 ? { contexts } : {})
 	};
+}
+
+function getReplyContexts(event: Nostr.Event): PostContext[] {
+	return isReplyEvent(event) ? [{ icon: 'reply', message: { key: 'replying_to' } }] : [];
+}
+
+function isReplyEvent(event: Nostr.Event) {
+	const eventTags = event.tags.filter((tag) => tag[0] === 'e' && tag[1]);
+	if (eventTags.length === 0) return false;
+
+	const markedEventTags = eventTags.filter((tag) => tag[3]);
+	if (markedEventTags.length > 0) {
+		return markedEventTags.some((tag) => tag[3] === 'reply' || tag[3] === 'root');
+	}
+
+	return true;
 }
 
 function getReactionContent(event: Nostr.Event) {

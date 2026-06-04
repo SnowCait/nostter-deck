@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
-import { reactionEventToPost, repostEventToPost } from './posts';
+import { eventToPost, reactionEventToPost, repostEventToPost } from './posts';
 
 const reactionPubkey = 'a'.repeat(64);
 const targetPubkey = 'b'.repeat(64);
@@ -39,13 +39,15 @@ describe('posts', () => {
 		expect(reactionEventToPost(reaction, event({}), getProfile)).toMatchObject({
 			body: 'Target note',
 			author: 'Bob',
-			context: {
-				icon: 'heart',
-				message: {
-					key: 'reacted_by_like',
-					params: { name: 'Alice' }
+			contexts: [
+				{
+					icon: 'heart',
+					message: {
+						key: 'reacted_by_like',
+						params: { name: 'Alice' }
+					}
 				}
-			}
+			]
 		});
 	});
 
@@ -59,13 +61,15 @@ describe('posts', () => {
 
 		expect(reactionEventToPost(reaction, event({}), getProfile)).toMatchObject({
 			body: 'Target note',
-			context: {
-				icon: 'heart',
-				message: {
-					key: 'reacted_by',
-					params: { name: 'Alice', content: '👀' }
+			contexts: [
+				{
+					icon: 'heart',
+					message: {
+						key: 'reacted_by',
+						params: { name: 'Alice', content: '👀' }
+					}
 				}
-			}
+			]
 		});
 	});
 
@@ -79,14 +83,47 @@ describe('posts', () => {
 
 		expect(reactionEventToPost(reaction, undefined, getProfile)).toMatchObject({
 			body: '',
-			context: {
-				icon: 'heart',
-				message: {
-					key: 'reacted_by_like',
-					params: { name: 'Alice' }
+			contexts: [
+				{
+					icon: 'heart',
+					message: {
+						key: 'reacted_by_like',
+						params: { name: 'Alice' }
+					}
 				}
-			},
+			],
 			unavailableMessage: { key: 'reaction_event_unavailable' }
+		});
+	});
+
+	test('keeps reply context when formatting a reaction target', () => {
+		const reaction = event({
+			id: '2'.repeat(64),
+			pubkey: reactionPubkey,
+			kind: Reaction,
+			content: '+'
+		});
+
+		expect(
+			reactionEventToPost(
+				reaction,
+				event({ tags: [['e', '4'.repeat(64), '', 'reply']] }),
+				getProfile
+			)
+		).toMatchObject({
+			contexts: [
+				{
+					icon: 'heart',
+					message: {
+						key: 'reacted_by_like',
+						params: { name: 'Alice' }
+					}
+				},
+				{
+					icon: 'reply',
+					message: { key: 'replying_to' }
+				}
+			]
 		});
 	});
 
@@ -101,13 +138,15 @@ describe('posts', () => {
 		expect(repostEventToPost(repost, event({}), getProfile)).toMatchObject({
 			body: 'Target note',
 			author: 'Bob',
-			context: {
-				icon: 'repost',
-				message: {
-					key: 'reposted_by',
-					params: { name: 'Carol' }
+			contexts: [
+				{
+					icon: 'repost',
+					message: {
+						key: 'reposted_by',
+						params: { name: 'Carol' }
+					}
 				}
-			}
+			]
 		});
 	});
 
@@ -121,14 +160,65 @@ describe('posts', () => {
 
 		expect(repostEventToPost(repost, undefined, getProfile)).toMatchObject({
 			body: '',
-			context: {
-				icon: 'repost',
-				message: {
-					key: 'reposted_by',
-					params: { name: 'Carol' }
+			contexts: [
+				{
+					icon: 'repost',
+					message: {
+						key: 'reposted_by',
+						params: { name: 'Carol' }
+					}
 				}
-			},
+			],
 			unavailableMessage: { key: 'reposted_event_unavailable' }
 		});
+	});
+
+	test('keeps reply context when formatting a repost target', () => {
+		const repost = event({
+			id: '3'.repeat(64),
+			pubkey: repostPubkey,
+			kind: Repost,
+			content: ''
+		});
+
+		expect(
+			repostEventToPost(repost, event({ tags: [['e', '4'.repeat(64), '', 'reply']] }), getProfile)
+		).toMatchObject({
+			contexts: [
+				{
+					icon: 'repost',
+					message: {
+						key: 'reposted_by',
+						params: { name: 'Carol' }
+					}
+				},
+				{
+					icon: 'reply',
+					message: { key: 'replying_to' }
+				}
+			]
+		});
+	});
+
+	test('marks NIP-10 reply tags as replies', () => {
+		expect(eventToPost(event({ tags: [['e', '4'.repeat(64), '', 'reply']] }))).toMatchObject({
+			contexts: [{ icon: 'reply', message: { key: 'replying_to' } }]
+		});
+	});
+
+	test('marks NIP-10 root tags as replies', () => {
+		expect(eventToPost(event({ tags: [['e', '4'.repeat(64), '', 'root']] }))).toMatchObject({
+			contexts: [{ icon: 'reply', message: { key: 'replying_to' } }]
+		});
+	});
+
+	test('treats unmarked e tags as deprecated reply tags', () => {
+		expect(eventToPost(event({ tags: [['e', '4'.repeat(64)]] }))).toMatchObject({
+			contexts: [{ icon: 'reply', message: { key: 'replying_to' } }]
+		});
+	});
+
+	test('does not treat q tags as replies', () => {
+		expect(eventToPost(event({ tags: [['q', '4'.repeat(64)]] }))).not.toHaveProperty('contexts');
 	});
 });

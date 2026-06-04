@@ -70,6 +70,7 @@
 	"column_options": "Column options",
 	"reply": "Reply",
 	"repost": "Repost",
+	"replying_to": "Replying",
 	"reposted_by": "{name} reposted",
 	"reposted_event_unavailable": "Reposted event unavailable",
 	"reacted_by_like": "{name} liked",

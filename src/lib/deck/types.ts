@@ -68,6 +68,7 @@ export type MessageKey =
 	| 'column_options'
 	| 'reply'
 	| 'repost'
+	| 'replying_to'
 	| 'reposted_by'
 	| 'reposted_event_unavailable'
 	| 'reacted_by_like'
@@ -85,11 +86,17 @@ export type NostrFilter = Record<string, unknown>;
 export type RelaySelection = { type: 'default' } | { type: 'custom'; urls: string[] };
 
 export type PostMessage =
+	| { key: 'replying_to' }
 	| { key: 'reposted_by'; params: { name: string } }
 	| { key: 'reposted_event_unavailable' }
 	| { key: 'reacted_by_like'; params: { name: string } }
 	| { key: 'reacted_by'; params: { name: string; content: string } }
 	| { key: 'reaction_event_unavailable' };
+
+export type PostContext = {
+	icon: 'reply' | 'repost' | 'heart';
+	message: PostMessage;
+};
 
 export type ColumnDisplayConfig = {
 	title?: string;
@@ -152,10 +159,7 @@ export type Post = {
 		reposts: string;
 		likes: string;
 	};
-	context?: {
-		icon: 'repost' | 'heart';
-		message: PostMessage;
-	};
+	contexts?: PostContext[];
 	unavailableMessage?: PostMessage;
 	attachment?: {
 		label: string;
