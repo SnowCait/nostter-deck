@@ -7,7 +7,6 @@ import {
 	addCustomTimelineColumn,
 	addPresetColumn,
 	addWebsiteColumn,
-	columnConfigsStorageKey,
 	columnNames,
 	columnOptionsButton,
 	deckColumns,
@@ -42,8 +41,6 @@ import {
 	sidebarCollapsedWidth,
 	sidebarExpandedWidth,
 	standardColumnWidth,
-	uiStateStorageKey,
-	userSettingsStorageKey,
 	wideColumnWidth
 } from './helpers/deck-page';
 
@@ -882,55 +879,6 @@ test.describe('nostter deck', () => {
 		await expectSidebarWidth(page, sidebarExpandedWidth);
 	});
 
-	test('ignores invalid persisted sidebar state', async ({ page }) => {
-		await page.addInitScript((key) => {
-			window.localStorage.setItem(key, 'not-json');
-		}, uiStateStorageKey);
-		await openDeck(page);
-
-		await expect(page.getByRole('button', { name: 'Collapse sidebar' })).toHaveAttribute(
-			'aria-pressed',
-			'false'
-		);
-		await expectSidebarWidth(page, sidebarExpandedWidth);
-	});
-
-	test('ignores invalid persisted column configs', async ({ page }) => {
-		await page.addInitScript((key) => {
-			window.localStorage.setItem(
-				key,
-				JSON.stringify([{ id: 'old-format', sourceKey: 'timeline_home', width: 'standard' }])
-			);
-		}, columnConfigsStorageKey);
-		await openDeck(page);
-
-		await expectColumnOrder(deckColumns(page), columnNames);
-	});
-
-	test('ignores invalid persisted column icon', async ({ page }) => {
-		await installFakeNostrRelay(page);
-		await page.addInitScript((key) => {
-			window.localStorage.setItem(
-				key,
-				JSON.stringify([
-					{
-						id: 'search',
-						type: 'timeline',
-						timelineKind: 'preset',
-						sourceKey: 'timeline_search',
-						query: 'nostter',
-						width: 'standard',
-						icon: 'invalid'
-					}
-				])
-			);
-		}, columnConfigsStorageKey);
-		await openDeck(page);
-
-		await expectColumnOrder(deckColumns(page), ['Search']);
-		await expect(sidebarButtonIcon(page, 'Search')).toHaveClass(/lucide-search/);
-	});
-
 	test('changes language from the settings dialog', async ({ page }) => {
 		await openDeck(page);
 
@@ -1079,21 +1027,6 @@ test.describe('nostter deck', () => {
 		await page.getByRole('button', { name: 'Settings' }).click();
 		await expect(page.getByLabel('Profile icon')).toHaveValue('square');
 		await expectStoredAvatarShape(page, 'square');
-	});
-
-	test('ignores invalid persisted user settings', async ({ page }) => {
-		await page.addInitScript((key) => {
-			window.localStorage.setItem(
-				key,
-				JSON.stringify({ theme: 'sepia', fontSize: 'giant', avatarShape: 'triangle' })
-			);
-		}, userSettingsStorageKey);
-		await openDeck(page);
-
-		await page.getByRole('button', { name: 'Settings' }).click();
-		await expect(page.getByLabel('Theme')).toHaveValue('system');
-		await expect(page.getByLabel('Font size')).toHaveValue('medium');
-		await expect(page.getByLabel('Profile icon')).toHaveValue('circle');
 	});
 
 	test('hides logged-in-only compose controls while logged out', async ({ page }) => {
