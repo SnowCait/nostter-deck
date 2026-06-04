@@ -36,7 +36,10 @@ export async function installFakeNostrRelay(page: Page) {
 				pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
 				created_at: Math.floor(Date.now() / 1000) - 90,
 				kind: shortTextNoteKind,
-				tags: [['t', 'nostter']],
+				tags: [
+					['t', 'nostter'],
+					['t', 'nostter']
+				],
 				content:
 					'Hello from a custom Nostr timeline https://example.com/path?from=nostter. www.example.com npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0l98cr',
 				sig: '0'.repeat(128)

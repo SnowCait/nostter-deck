@@ -51,7 +51,7 @@ function createPost(event: Nostr.Event, profile?: Nostr.Content.Metadata): Post 
 		...author,
 		time: formatRelativeTime(event.created_at),
 		body: event.content,
-		tags: event.tags.flatMap((tag) => (tag[0] === 't' && tag[1] ? [`#${tag[1]}`] : [])),
+		tags: getDisplayHashtags(event.tags),
 		verified: false,
 		stats: {
 			replies: '0',
@@ -59,6 +59,11 @@ function createPost(event: Nostr.Event, profile?: Nostr.Content.Metadata): Post 
 			likes: '0'
 		}
 	};
+}
+
+function getDisplayHashtags(tags: Nostr.Event['tags']) {
+	const displayHashtags = tags.flatMap((tag) => (tag[0] === 't' && tag[1] ? [`#${tag[1]}`] : []));
+	return [...new Set(displayHashtags)];
 }
 
 function createPostAuthor(pubkey: string, profile?: Nostr.Content.Metadata) {
