@@ -22,6 +22,7 @@ export type UrlMediaMetadata =
 const mediaByUrl = new SvelteMap<string, UrlMediaMetadata>();
 const failedMetadataOrigins = new Set<string>();
 const metadataLock = new AsyncLock();
+const simplexSmpHostnamePattern = /^smp\d+\.simplex\.im$/i;
 
 export function getUrlMediaMetadata(url: string) {
 	return mediaByUrl.get(url);
@@ -70,7 +71,7 @@ function parseUrl(url: string) {
 }
 
 function canRequestUrlMetadata(url: URL) {
-	return url.protocol === 'https:';
+	return url.protocol === 'https:' && !simplexSmpHostnamePattern.test(url.hostname);
 }
 
 async function loadUrlMediaMetadata(url: URL) {

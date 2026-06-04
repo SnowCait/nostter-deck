@@ -28,6 +28,21 @@ describe('url media metadata', () => {
 		expect(getUrlMediaMetadata(httpUrl)).toEqual({ status: 'link', url: httpUrl });
 	});
 
+	test('does not request metadata for SimpleX SMP hosts', () => {
+		const simplexSmpUrl = 'https://smp18.simplex.im:443/server';
+		const normalizedSimplexSmpUrl = 'https://smp18.simplex.im/server';
+		const fetchMock = vi.fn<typeof fetch>();
+		vi.stubGlobal('fetch', fetchMock);
+
+		requestUrlMediaMetadata([simplexSmpUrl]);
+
+		expect(fetchMock).not.toHaveBeenCalled();
+		expect(getUrlMediaMetadata(normalizedSimplexSmpUrl)).toEqual({
+			status: 'link',
+			url: normalizedSimplexSmpUrl
+		});
+	});
+
 	test('serializes HEAD requests for the same origin', async () => {
 		const firstUrl = 'https://serialized.example/first-image';
 		const secondUrl = 'https://serialized.example/second-image';
