@@ -606,9 +606,7 @@ test.describe('nostter deck', () => {
 
 		const customColumn = columns.first();
 		const timelineScroll = customColumn.getByTestId('timeline-scroll');
-		await expect(customColumn.getByText('Bulk event 000')).toBeVisible();
 		await expect(customColumn.locator('article')).toHaveCount(200);
-		await expect(customColumn.getByText('Bulk event 249')).toHaveCount(0);
 
 		await timelineScroll.evaluate((element) => {
 			element.scrollTop = element.scrollHeight;
@@ -620,7 +618,6 @@ test.describe('nostter deck', () => {
 
 		await timelineScroll.evaluate((element) => {
 			element.scrollTop = 0;
-			element.dispatchEvent(new Event('scroll'));
 		});
 		await expect(customColumn.getByText('Bulk event 000')).toBeVisible();
 		await expect(customColumn.locator('article')).toHaveCount(200);

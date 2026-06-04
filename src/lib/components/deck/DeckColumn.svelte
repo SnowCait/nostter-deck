@@ -96,6 +96,7 @@
 		'flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100';
 	const settingsActionClass =
 		'flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 disabled:dark:hover:bg-transparent';
+	let timelineScrollElement: HTMLDivElement | undefined = $state();
 
 	function selectColumnWidth(event: Event) {
 		onWidthChange((event.currentTarget as HTMLSelectElement).value as ColumnWidth);
@@ -284,6 +285,7 @@
 	{/if}
 
 	<div
+		bind:this={timelineScrollElement}
 		class="min-h-0 flex-1 overflow-y-auto"
 		data-testid="timeline-scroll"
 		onscroll={scrollTimeline}
@@ -301,6 +303,7 @@
 				{isLoggedIn}
 				{textClass}
 				{avatarShape}
+				scrollRoot={timelineScrollElement}
 				onLoadOlder={onLoadOlderTimeline}
 				onLoadNewer={onLoadNewerTimeline}
 			/>
