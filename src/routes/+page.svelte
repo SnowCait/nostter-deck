@@ -139,9 +139,9 @@
 			const subscription = startCustomTimelineSubscription({
 				filters,
 				relays,
-				onEvent: (event) => void addCustomTimelineEvent(column.id, signature, event),
+				onEvent: (event) => addCustomTimelineEvent(column.id, signature, event),
 				onRepostedEvent: (repostEventId, event) =>
-					void addCustomTimelineRepostedEvent(column.id, repostEventId, event),
+					addCustomTimelineRepostedEvent(column.id, repostEventId, event),
 				onLoadingChange: (isLoading) => updateCustomTimelineRuntime(column.id, { isLoading }),
 				onError: (error) => updateCustomTimelineRuntime(column.id, { error })
 			});
@@ -220,9 +220,8 @@
 		void clearTimelineColumn(columnId);
 	}
 
-	async function addCustomTimelineEvent(columnId: string, timelineKey: string, event: Nostr.Event) {
-		await storeTimelineEvent(columnId, timelineKey, event);
-
+	function addCustomTimelineEvent(columnId: string, timelineKey: string, event: Nostr.Event) {
+		void storeTimelineEvent(columnId, timelineKey, event);
 		const runtime = customTimelineRuntimes[columnId] ?? emptyTimelineRuntime();
 		if (runtime.timelineKey !== timelineKey) return;
 		if (runtime.hasNewerStored) return;
@@ -250,12 +249,12 @@
 		void hydrateReferencedEvents(columnId);
 	}
 
-	async function addCustomTimelineRepostedEvent(
+	function addCustomTimelineRepostedEvent(
 		columnId: string,
 		repostEventId: string,
 		event: Nostr.Event
 	) {
-		await storeEvent(event);
+		void storeEvent(event);
 		const runtime = customTimelineRuntimes[columnId] ?? emptyTimelineRuntime();
 		if (!runtime.visibleEventIds.includes(repostEventId)) return;
 
