@@ -44,6 +44,22 @@ export async function installFakeNostrRelay(page: Page) {
 					'Hello from a custom Nostr timeline https://example.com/path?from=nostter. www.example.com npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0l98cr',
 				sig: '0'.repeat(128)
 			};
+			const longTextEvent = {
+				id: 'event-custom-timeline-long-text',
+				pubkey: 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+				created_at: textEvent.created_at - 1,
+				kind: shortTextNoteKind,
+				tags: [],
+				content: [
+					'Long post starts here.',
+					...Array.from(
+						{ length: 40 },
+						(_, index) => `Long post line ${(index + 1).toString().padStart(2, '0')}`
+					),
+					'Long post ends here.'
+				].join('\n'),
+				sig: '0'.repeat(128)
+			};
 			const staleTextEvent = {
 				id: 'event-stale-custom-timeline-1',
 				pubkey: staleContactPubkey,
@@ -271,6 +287,7 @@ export async function installFakeNostrRelay(page: Page) {
 						setTimeout(() => {
 							this.emitMessage(['EVENT', subId, textEvent]);
 							this.emitMessage(['EVENT', subId, textEvent]);
+							this.emitMessage(['EVENT', subId, longTextEvent]);
 						}, 5);
 					}
 

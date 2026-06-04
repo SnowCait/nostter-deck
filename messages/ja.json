@@ -72,6 +72,8 @@
 	"repost": "リポスト",
 	"reposted_by": "{name}がリポスト",
 	"reposted_event_unavailable": "リポスト元を取得できません",
+	"show_more_post": "続きを読む",
+	"show_less_post": "閉じる",
 	"like": "いいね",
 	"share": "共有",
 	"verified": "認証済み"

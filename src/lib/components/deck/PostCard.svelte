@@ -16,6 +16,8 @@
 
 	const { post, isLoggedIn, textClass, avatarShape }: Props = $props();
 	const bodyTokens = $derived(linkifyPostContent(post.body));
+	let isBodyExpanded = $state(false);
+	const isBodyCollapsible = $derived(post.body.length > 500 || post.body.split('\n').length > 12);
 </script>
 
 <article
@@ -72,27 +74,50 @@
 					{m.reposted_event_unavailable()}
 				</p>
 			{:else}
-				<p
-					class={[
-						'mt-2 min-w-0 [overflow-wrap:anywhere] whitespace-pre-wrap text-slate-800 dark:text-slate-200',
-						textClass.body
-					]}
-				>
-					{#each bodyTokens as token, index (index)}
-						{#if token.type === 'link'}
-							<a
-								href={token.href}
-								target="_blank"
-								rel="external noopener noreferrer"
-								class="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-300 dark:hover:text-sky-200"
-							>
+				<div class="relative mt-2">
+					<p
+						data-testid="post-body"
+						class={[
+							'min-w-0 [overflow-wrap:anywhere] whitespace-pre-wrap text-slate-800 dark:text-slate-200',
+							isBodyCollapsible && !isBodyExpanded ? 'max-h-48 overflow-hidden' : '',
+							textClass.body
+						]}
+					>
+						{#each bodyTokens as token, index (index)}
+							{#if token.type === 'link'}
+								<a
+									href={token.href}
+									target="_blank"
+									rel="external noopener noreferrer"
+									class="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-300 dark:hover:text-sky-200"
+								>
+									{token.text}
+								</a>
+							{:else}
 								{token.text}
-							</a>
-						{:else}
-							{token.text}
-						{/if}
-					{/each}
-				</p>
+							{/if}
+						{/each}
+					</p>
+					{#if isBodyCollapsible && !isBodyExpanded}
+						<div
+							class="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-b from-white/0 to-white dark:to-slate-950"
+							aria-hidden="true"
+						></div>
+					{/if}
+				</div>
+				{#if isBodyCollapsible}
+					<button
+						type="button"
+						class={[
+							'mt-1 rounded-md font-semibold text-sky-600 transition hover:text-sky-700 dark:text-sky-300 dark:hover:text-sky-200',
+							textClass.meta
+						]}
+						aria-expanded={isBodyExpanded}
+						onclick={() => (isBodyExpanded = !isBodyExpanded)}
+					>
+						{isBodyExpanded ? m.show_less_post() : m.show_more_post()}
+					</button>
+				{/if}
 			{/if}
 
 			<div class="mt-2 flex flex-wrap gap-1.5">

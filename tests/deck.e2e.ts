@@ -406,6 +406,24 @@ test.describe('nostter deck', () => {
 		await expect(bodyLink).toHaveAttribute('rel', 'external noopener noreferrer');
 		await expect(postArticle.getByRole('link', { name: 'www.example.com' })).toHaveCount(0);
 		await expect(postArticle.getByRole('link', { name: /^npub/ })).toHaveCount(0);
+		await expect(postArticle.getByRole('button', { name: 'Show more' })).toHaveCount(0);
+		const longPostArticle = customColumn
+			.locator('article')
+			.filter({ hasText: 'Long post starts here' });
+		const longPostBody = longPostArticle.getByTestId('post-body');
+		await expect(longPostArticle.getByRole('button', { name: 'Show more' })).toBeVisible();
+		const collapsedBodyHeight = await longPostBody.evaluate((element) => element.clientHeight);
+		expect(collapsedBodyHeight).toBeLessThanOrEqual(192);
+		await longPostArticle.getByRole('button', { name: 'Show more' }).click();
+		await expect(longPostArticle.getByRole('button', { name: 'Show less' })).toBeVisible();
+		await expect
+			.poll(async () => longPostBody.evaluate((element) => element.clientHeight))
+			.toBeGreaterThan(collapsedBodyHeight);
+		await longPostArticle.getByRole('button', { name: 'Show less' }).click();
+		await expect(longPostArticle.getByRole('button', { name: 'Show more' })).toBeVisible();
+		await expect
+			.poll(async () => longPostBody.evaluate((element) => element.clientHeight))
+			.toBeLessThanOrEqual(192);
 		await expect(postArticle.getByRole('button', { name: 'Column options' })).toHaveCount(0);
 		await expect(postArticle.getByRole('button', { name: 'Reply' })).toHaveCount(0);
 		await expect(postArticle.getByRole('button', { name: 'Repost' })).toHaveCount(0);

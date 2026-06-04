@@ -72,6 +72,8 @@
 	"repost": "Repost",
 	"reposted_by": "{name} reposted",
 	"reposted_event_unavailable": "Reposted event unavailable",
+	"show_more_post": "Show more",
+	"show_less_post": "Show less",
 	"like": "Like",
 	"share": "Share",
 	"verified": "Verified"
