@@ -1,10 +1,11 @@
 import { describe, expect, test } from 'vitest';
-import { Reaction, ShortTextNote } from 'nostr-tools/kinds';
+import { Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
-import { reactionEventToPost } from './posts';
+import { reactionEventToPost, repostEventToPost } from './posts';
 
 const reactionPubkey = 'a'.repeat(64);
 const targetPubkey = 'b'.repeat(64);
+const repostPubkey = 'c'.repeat(64);
 
 function event(patch: Partial<Nostr.Event>): Nostr.Event {
 	return {
@@ -22,6 +23,7 @@ function event(patch: Partial<Nostr.Event>): Nostr.Event {
 function getProfile(pubkey: string): Nostr.Content.Metadata | undefined {
 	if (pubkey === reactionPubkey) return { display_name: 'Alice' };
 	if (pubkey === targetPubkey) return { display_name: 'Bob' };
+	if (pubkey === repostPubkey) return { display_name: 'Carol' };
 	return undefined;
 }
 
@@ -37,10 +39,12 @@ describe('posts', () => {
 		expect(reactionEventToPost(reaction, event({}), getProfile)).toMatchObject({
 			body: 'Target note',
 			author: 'Bob',
-			reactedBy: {
-				author: 'Alice',
-				content: '+',
-				kind: 'like'
+			context: {
+				icon: 'heart',
+				message: {
+					key: 'reacted_by_like',
+					params: { name: 'Alice' }
+				}
 			}
 		});
 	});
@@ -55,10 +59,12 @@ describe('posts', () => {
 
 		expect(reactionEventToPost(reaction, event({}), getProfile)).toMatchObject({
 			body: 'Target note',
-			reactedBy: {
-				author: 'Alice',
-				content: '👀',
-				kind: 'reaction'
+			context: {
+				icon: 'heart',
+				message: {
+					key: 'reacted_by',
+					params: { name: 'Alice', content: '👀' }
+				}
 			}
 		});
 	});
@@ -73,11 +79,56 @@ describe('posts', () => {
 
 		expect(reactionEventToPost(reaction, undefined, getProfile)).toMatchObject({
 			body: '',
-			isReactionUnavailable: true,
-			reactedBy: {
-				author: 'Alice',
-				kind: 'like'
+			context: {
+				icon: 'heart',
+				message: {
+					key: 'reacted_by_like',
+					params: { name: 'Alice' }
+				}
+			},
+			unavailableMessage: { key: 'reaction_event_unavailable' }
+		});
+	});
+
+	test('formats repost context', () => {
+		const repost = event({
+			id: '3'.repeat(64),
+			pubkey: repostPubkey,
+			kind: Repost,
+			content: ''
+		});
+
+		expect(repostEventToPost(repost, event({}), getProfile)).toMatchObject({
+			body: 'Target note',
+			author: 'Bob',
+			context: {
+				icon: 'repost',
+				message: {
+					key: 'reposted_by',
+					params: { name: 'Carol' }
+				}
 			}
+		});
+	});
+
+	test('marks unavailable repost targets', () => {
+		const repost = event({
+			id: '3'.repeat(64),
+			pubkey: repostPubkey,
+			kind: Repost,
+			content: ''
+		});
+
+		expect(repostEventToPost(repost, undefined, getProfile)).toMatchObject({
+			body: '',
+			context: {
+				icon: 'repost',
+				message: {
+					key: 'reposted_by',
+					params: { name: 'Carol' }
+				}
+			},
+			unavailableMessage: { key: 'reposted_event_unavailable' }
 		});
 	});
 });

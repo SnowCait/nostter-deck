@@ -9,7 +9,7 @@
 		type UrlMediaMetadata
 	} from '$lib/deck/url-media';
 	import { m } from '$lib/paraglide/messages.js';
-	import type { Post } from '$lib/deck/types';
+	import type { Post, PostMessage } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { AvatarShape } from '$lib/user-settings';
 	import type * as Nostr from 'nostr-typedef';
@@ -101,38 +101,39 @@
 
 		setUrlImageDimensions(url, image.naturalWidth, image.naturalHeight);
 	}
+
+	function formatPostMessage(message: PostMessage) {
+		switch (message.key) {
+			case 'reposted_by':
+				return m.reposted_by(message.params);
+			case 'reposted_event_unavailable':
+				return m.reposted_event_unavailable();
+			case 'reacted_by_like':
+				return m.reacted_by_like(message.params);
+			case 'reacted_by':
+				return m.reacted_by(message.params);
+			case 'reaction_event_unavailable':
+				return m.reaction_event_unavailable();
+		}
+	}
 </script>
 
 <article
 	class="border-b border-slate-200 p-3 transition hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/80"
 >
-	{#if post.repostedBy}
+	{#if post.context}
 		<div
 			class={[
 				'mb-2 flex min-w-0 items-center gap-1.5 pl-[3.25rem] font-semibold text-slate-500 dark:text-slate-400',
 				textClass.meta
 			]}
 		>
-			<Repeat2 class="size-4 shrink-0" aria-hidden="true" />
-			<span class="truncate">{m.reposted_by({ name: post.repostedBy.author })}</span>
-		</div>
-	{/if}
-	{#if post.reactedBy}
-		<div
-			class={[
-				'mb-2 flex min-w-0 items-center gap-1.5 pl-[3.25rem] font-semibold text-slate-500 dark:text-slate-400',
-				textClass.meta
-			]}
-		>
-			<Heart class="size-4 shrink-0" aria-hidden="true" />
-			<span class="truncate">
-				{post.reactedBy.kind === 'like'
-					? m.reacted_by_like({ name: post.reactedBy.author })
-					: m.reacted_by({
-							name: post.reactedBy.author,
-							content: post.reactedBy.content
-						})}
-			</span>
+			{#if post.context.icon === 'repost'}
+				<Repeat2 class="size-4 shrink-0" aria-hidden="true" />
+			{:else if post.context.icon === 'heart'}
+				<Heart class="size-4 shrink-0" aria-hidden="true" />
+			{/if}
+			<span class="truncate">{formatPostMessage(post.context.message)}</span>
 		</div>
 	{/if}
 
@@ -170,13 +171,9 @@
 				{/if}
 			</div>
 
-			{#if post.isRepostUnavailable}
+			{#if post.unavailableMessage}
 				<p class={['mt-2 text-slate-500 dark:text-slate-400', textClass.body]}>
-					{m.reposted_event_unavailable()}
-				</p>
-			{:else if post.isReactionUnavailable}
-				<p class={['mt-2 text-slate-500 dark:text-slate-400', textClass.body]}>
-					{m.reaction_event_unavailable()}
+					{formatPostMessage(post.unavailableMessage)}
 				</p>
 			{:else}
 				<div class="relative mt-2">

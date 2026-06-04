@@ -84,6 +84,13 @@ export type ColumnIconKey = 'users' | 'search' | 'radio' | 'globe';
 export type NostrFilter = Record<string, unknown>;
 export type RelaySelection = { type: 'default' } | { type: 'custom'; urls: string[] };
 
+export type PostMessage =
+	| { key: 'reposted_by'; params: { name: string } }
+	| { key: 'reposted_event_unavailable' }
+	| { key: 'reacted_by_like'; params: { name: string } }
+	| { key: 'reacted_by'; params: { name: string; content: string } }
+	| { key: 'reaction_event_unavailable' };
+
 export type ColumnDisplayConfig = {
 	title?: string;
 	icon?: ColumnIconKey;
@@ -145,22 +152,11 @@ export type Post = {
 		reposts: string;
 		likes: string;
 	};
-	repostedBy?: {
-		author: string;
-		handle: string;
-		avatarUrl?: string;
-		accent: string;
+	context?: {
+		icon: 'repost' | 'heart';
+		message: PostMessage;
 	};
-	reactedBy?: {
-		author: string;
-		handle: string;
-		avatarUrl?: string;
-		accent: string;
-		content: string;
-		kind: 'like' | 'reaction';
-	};
-	isRepostUnavailable?: boolean;
-	isReactionUnavailable?: boolean;
+	unavailableMessage?: PostMessage;
 	attachment?: {
 		label: string;
 		title: string;

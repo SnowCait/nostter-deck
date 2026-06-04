@@ -23,15 +23,22 @@ export function repostEventToPost(
 	getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined
 ): Post {
 	const repostProfile = getProfile(repostEvent.pubkey);
-	const repostedBy = createPostAuthor(repostEvent.pubkey, repostProfile);
+	const repostAuthor = createPostAuthor(repostEvent.pubkey, repostProfile);
+	const context = {
+		icon: 'repost',
+		message: {
+			key: 'reposted_by',
+			params: { name: repostAuthor.author }
+		}
+	} satisfies NonNullable<Post['context']>;
 
 	if (!repostedEvent || repostedEvent.kind !== ShortTextNote) {
 		return {
 			...createPost(repostEvent, repostProfile),
 			body: '',
 			tags: [],
-			repostedBy,
-			isRepostUnavailable: true
+			context,
+			unavailableMessage: { key: 'reposted_event_unavailable' }
 		};
 	}
 
@@ -39,7 +46,7 @@ export function repostEventToPost(
 		...createPost(repostedEvent, getProfile(repostedEvent.pubkey)),
 		id: repostEvent.id,
 		time: formatRelativeTime(repostEvent.created_at),
-		repostedBy
+		context
 	};
 }
 
@@ -50,19 +57,27 @@ export function reactionEventToPost(
 ): Post {
 	const reactionProfile = getProfile(reactionEvent.pubkey);
 	const reactionContent = getReactionContent(reactionEvent);
-	const reactedBy = {
-		...createPostAuthor(reactionEvent.pubkey, reactionProfile),
-		content: reactionContent,
-		kind: isLikeReaction(reactionEvent.content) ? 'like' : 'reaction'
-	} satisfies NonNullable<Post['reactedBy']>;
+	const reactionAuthor = createPostAuthor(reactionEvent.pubkey, reactionProfile);
+	const context = {
+		icon: 'heart',
+		message: isLikeReaction(reactionEvent.content)
+			? {
+					key: 'reacted_by_like',
+					params: { name: reactionAuthor.author }
+				}
+			: {
+					key: 'reacted_by',
+					params: { name: reactionAuthor.author, content: reactionContent }
+				}
+	} satisfies NonNullable<Post['context']>;
 
 	if (!reactedEvent || reactedEvent.kind !== ShortTextNote) {
 		return {
 			...createPost(reactionEvent, reactionProfile),
 			body: '',
 			tags: [],
-			reactedBy,
-			isReactionUnavailable: true
+			context,
+			unavailableMessage: { key: 'reaction_event_unavailable' }
 		};
 	}
 
@@ -70,7 +85,7 @@ export function reactionEventToPost(
 		...createPost(reactedEvent, getProfile(reactedEvent.pubkey)),
 		id: reactionEvent.id,
 		time: formatRelativeTime(reactionEvent.created_at),
-		reactedBy
+		context
 	};
 }
 
