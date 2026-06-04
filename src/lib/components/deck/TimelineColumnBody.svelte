@@ -3,6 +3,7 @@
 	import type { TimelineColumn } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { AvatarShape } from '$lib/user-settings';
+	import type * as Nostr from 'nostr-typedef';
 	import PostCard from './PostCard.svelte';
 
 	type Props = {
@@ -11,6 +12,9 @@
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
 		scrollRoot?: HTMLDivElement;
+		getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined;
+		requestProfiles: (pubkeys: string[], relays: string[]) => void;
+		profileRelays: string[];
 		onLoadOlder: () => void;
 		onLoadNewer: () => void;
 	};
@@ -21,6 +25,9 @@
 		textClass,
 		avatarShape,
 		scrollRoot,
+		getProfile,
+		requestProfiles,
+		profileRelays,
 		onLoadOlder,
 		onLoadNewer
 	}: Props = $props();
@@ -83,7 +90,15 @@
 {:else}
 	<div bind:this={newerSentinel} class="h-px" aria-hidden="true"></div>
 	{#each column.posts as post (post.id ?? `${column.id}-${post.author}-${post.time}`)}
-		<PostCard {post} {isLoggedIn} {textClass} {avatarShape} />
+		<PostCard
+			{post}
+			{isLoggedIn}
+			{textClass}
+			{avatarShape}
+			{getProfile}
+			{requestProfiles}
+			{profileRelays}
+		/>
 	{/each}
 	<div bind:this={olderSentinel} class="h-px" aria-hidden="true"></div>
 {/if}

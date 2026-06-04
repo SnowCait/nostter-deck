@@ -1,3 +1,6 @@
+import { decode } from 'nostr-tools/nip19';
+import { normalizeRelay } from '$lib/nostr/relays';
+
 declare global {
 	interface URLConstructor {
 		canParse(url: string | URL, base?: string | URL): boolean;
@@ -20,6 +23,8 @@ export type PostContentToken =
 			href: string;
 			entityType: NostrReferenceEntityType;
 			identifier: string;
+			pubkey?: string;
+			relayHints?: string[];
 	  };
 
 const nostrReferenceEntityTypes = ['npub', 'nprofile', 'note', 'nevent', 'naddr'] as const;
@@ -105,14 +110,39 @@ function parseNostrReference(
 
 	const entityType = match[2].toLowerCase();
 	if (!isNostrReferenceEntityType(entityType)) return null;
+	const nostrReference = parseNostrReferenceData(match[1], entityType);
+	if (!nostrReference) return null;
 
 	return {
 		type: 'nostrReference',
 		text: value,
 		href: `nostr:${match[1]}`,
 		entityType,
-		identifier: match[1]
+		identifier: match[1],
+		...nostrReference
 	};
+}
+
+function parseNostrReferenceData(identifier: string, entityType: NostrReferenceEntityType) {
+	try {
+		const decoded = decode(identifier);
+		if (decoded.type !== entityType) return null;
+
+		switch (decoded.type) {
+			case 'npub':
+				return { pubkey: decoded.data };
+			case 'nprofile':
+				return {
+					pubkey: decoded.data.pubkey,
+					relayHints:
+						decoded.data.relays?.map(normalizeRelay).filter((relay) => relay !== null) ?? []
+				};
+			default:
+				return {};
+		}
+	} catch {
+		return null;
+	}
 }
 
 function isNostrReferenceEntityType(value: string): value is NostrReferenceEntityType {

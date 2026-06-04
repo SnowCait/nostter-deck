@@ -39,6 +39,8 @@ export async function installFakeNostrRelay(page: Page) {
 				'nostr:nevent1qvzqqqqqqypzp242424242424242424242424242424242424242424242424242qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqgq3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyuv4j77';
 			const nostrNaddr =
 				'nostr:naddr1qvzqqqr4gupzp242424242424242424242424242424242424242424242424242qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqpmpwf6xjcmvv5hynj0x';
+			const nostrFallbackNpub =
+				'nostr:npub1lllllllllllllllllllllllllllllllllllllllllllllllllllsq7lrjw';
 			const nostrNsec = 'nostr:nsec1yg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3qxh9tww';
 			const textEvent = {
 				id: 'event-custom-timeline-1',
@@ -59,7 +61,7 @@ export async function installFakeNostrRelay(page: Page) {
 				created_at: textEvent.created_at - 2,
 				kind: shortTextNoteKind,
 				tags: [],
-				content: `NIP-21 references ${nostrNpub} ${nostrNprofile} ${nostrNote} ${nostrNevent} ${nostrNaddr} ${nostrNsec}`,
+				content: `NIP-21 references ${nostrNpub} ${nostrNprofile} ${nostrNote} ${nostrNevent} ${nostrNaddr} ${nostrFallbackNpub} ${nostrNsec}`,
 				sig: '0'.repeat(128)
 			};
 			const longTextEvent = {

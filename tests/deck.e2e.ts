@@ -69,6 +69,7 @@ const nostrNevent =
 	'nostr:nevent1qvzqqqqqqypzp242424242424242424242424242424242424242424242424242qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqgq3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyuv4j77';
 const nostrNaddr =
 	'nostr:naddr1qvzqqqr4gupzp242424242424242424242424242424242424242424242424242qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqpmpwf6xjcmvv5hynj0x';
+const nostrFallbackNpub = 'nostr:npub1lllllllllllllllllllllllllllllllllllllllllllllllllllsq7lrjw';
 const nostrNsec = 'nostr:nsec1yg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3qxh9tww';
 
 test.describe('nostter deck', () => {
@@ -396,7 +397,7 @@ test.describe('nostter deck', () => {
 		await expectColumnOrder(columns, [...columnNames, 'Custom timeline']);
 		await expectColumnWidth(customColumn, standardColumnWidth);
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
-		await expect(customColumn.getByText('Alice Relay')).toBeVisible();
+		await expect(customColumn.getByText('Alice Relay', { exact: true })).toBeVisible();
 		await expect(customColumn.locator('img[src^="data:image/gif"]')).toBeVisible();
 		const profileAvatar = customColumn.getByTestId('post-avatar').first();
 		await profileAvatar.dispatchEvent('error');
@@ -419,7 +420,15 @@ test.describe('nostter deck', () => {
 		const nostrReferenceArticle = customColumn
 			.locator('article')
 			.filter({ hasText: 'NIP-21 references' });
-		for (const nostrUri of [nostrNpub, nostrNprofile, nostrNote, nostrNevent, nostrNaddr]) {
+		for (const nostrUri of [nostrNpub, nostrNprofile]) {
+			await expect(nostrReferenceArticle.locator(`a[href="${nostrUri}"]`)).toHaveText(
+				'@Alice Relay'
+			);
+		}
+		await expect(nostrReferenceArticle.locator(`a[href="${nostrFallbackNpub}"]`)).toHaveText(
+			'@npub1lllllll'
+		);
+		for (const nostrUri of [nostrNote, nostrNevent, nostrNaddr]) {
 			await expect(nostrReferenceArticle.getByRole('link', { name: nostrUri })).toHaveAttribute(
 				'href',
 				nostrUri

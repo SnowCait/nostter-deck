@@ -14,6 +14,7 @@
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape } from '$lib/user-settings';
+	import type * as Nostr from 'nostr-typedef';
 	import ColumnIcon from './ColumnIcon.svelte';
 	import ColumnIconGlyph from './ColumnIconGlyph.svelte';
 	import CustomTimelineSettings from './CustomTimelineSettings.svelte';
@@ -31,6 +32,9 @@
 		canMoveRight: boolean;
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
+		getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined;
+		requestProfiles: (pubkeys: string[], relays: string[]) => void;
+		profileRelays: string[];
 		onToggleSettings: () => void;
 		onDelete: () => void;
 		onMoveLeft: () => void;
@@ -55,6 +59,9 @@
 		canMoveRight,
 		textClass,
 		avatarShape,
+		getProfile,
+		requestProfiles,
+		profileRelays,
 		onToggleSettings,
 		onDelete,
 		onMoveLeft,
@@ -304,6 +311,9 @@
 				{textClass}
 				{avatarShape}
 				scrollRoot={timelineScrollElement}
+				{getProfile}
+				{requestProfiles}
+				{profileRelays}
 				onLoadOlder={onLoadOlderTimeline}
 				onLoadNewer={onLoadNewerTimeline}
 			/>

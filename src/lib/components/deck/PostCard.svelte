@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { Heart, MessageCircle, Ellipsis, Repeat2, Share, ShieldCheck } from '@lucide/svelte';
-	import { linkifyPostContent } from '$lib/deck/post-content-links';
+	import { npubEncode } from 'nostr-tools/nip19';
+	import { linkifyPostContent, type PostContentToken } from '$lib/deck/post-content-links';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Post } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { AvatarShape } from '$lib/user-settings';
+	import type * as Nostr from 'nostr-typedef';
 	import ProfileAvatar from './ProfileAvatar.svelte';
 
 	type Props = {
@@ -12,12 +14,56 @@
 		isLoggedIn: boolean;
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
+		getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined;
+		requestProfiles: (pubkeys: string[], relays: string[]) => void;
+		profileRelays: string[];
 	};
 
-	const { post, isLoggedIn, textClass, avatarShape }: Props = $props();
+	const {
+		post,
+		isLoggedIn,
+		textClass,
+		avatarShape,
+		getProfile,
+		requestProfiles,
+		profileRelays
+	}: Props = $props();
 	const bodyTokens = $derived(linkifyPostContent(post.body));
 	let isBodyExpanded = $state(false);
 	const isBodyCollapsible = $derived(post.body.length > 500 || post.body.split('\n').length > 12);
+
+	$effect(() => {
+		const profileReferenceTokens = bodyTokens.filter(isProfileReferenceToken);
+		if (profileReferenceTokens.length === 0) return;
+
+		requestProfiles(
+			[...new Set(profileReferenceTokens.map((token) => token.pubkey))],
+			[
+				...new Set([
+					...profileRelays,
+					...profileReferenceTokens.flatMap((token) => token.relayHints ?? [])
+				])
+			]
+		);
+	});
+
+	function isProfileReferenceToken(
+		token: PostContentToken
+	): token is Extract<PostContentToken, { type: 'nostrReference' }> & { pubkey: string } {
+		return (
+			token.type === 'nostrReference' &&
+			(token.entityType === 'npub' || token.entityType === 'nprofile') &&
+			typeof token.pubkey === 'string'
+		);
+	}
+
+	function getNostrReferenceText(token: Extract<PostContentToken, { type: 'nostrReference' }>) {
+		if (!isProfileReferenceToken(token)) return token.text;
+
+		const profile = getProfile(token.pubkey);
+		const displayName = profile?.display_name ?? profile?.name;
+		return displayName ? `@${displayName}` : `@${npubEncode(token.pubkey).slice(0, 12)}`;
+	}
 </script>
 
 <article
@@ -91,7 +137,7 @@
 									rel="external noopener noreferrer"
 									class="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-300 dark:hover:text-sky-200"
 								>
-									{token.text}
+									{token.type === 'nostrReference' ? getNostrReferenceText(token) : token.text}
 								</a>
 							{:else}
 								{token.text}

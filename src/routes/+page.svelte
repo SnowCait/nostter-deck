@@ -45,8 +45,8 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { parseNostrFilters } from '$lib/nostr/filters';
 	import { decodeProfilePointer, type ProfilePointer } from '$lib/nostr/nip19';
-	import { getProfile } from '$lib/nostr/profiles';
-	import { defaultRelays, resolveRelayDraft } from '$lib/nostr/relays';
+	import { getProfile, requestProfiles } from '$lib/nostr/profiles';
+	import { defaultRelays, profileRelays, resolveRelayDraft } from '$lib/nostr/relays';
 	import { startCustomTimelineSubscription } from '$lib/nostr/timeline';
 	import { m } from '$lib/paraglide/messages.js';
 	import { readUserSettings, type AvatarShape, type FontSize } from '$lib/user-settings';
@@ -64,6 +64,7 @@
 	const savedColumnConfigs = readColumnConfigs();
 	const isLoggedIn = (globalThis as NostrDeckGlobal).__NOSTTER_DECK_IS_LOGGED_IN__ === true;
 	const availableColumnSourceKeys = columnSourceKeys;
+	const defaultProfileRelays = [...profileRelays];
 	const defaultColumnType = availableColumnSourceKeys[0] ?? 'timeline_search';
 
 	let columnConfigs = $state<ColumnConfig[]>(savedColumnConfigs.map((column) => ({ ...column })));
@@ -795,6 +796,9 @@
 						canMoveRight={columnIndex >= 0 && columnIndex < columnConfigs.length - 1}
 						{textClass}
 						{avatarShape}
+						{getProfile}
+						{requestProfiles}
+						profileRelays={defaultProfileRelays}
 						onToggleSettings={() => toggleColumnSettings(column.id)}
 						onDelete={() => deleteColumn(column.id)}
 						onMoveLeft={() => moveColumn(column.id, -1)}
