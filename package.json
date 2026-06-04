@@ -3,6 +3,11 @@
 	"version": "0.1.0",
 	"description": "",
 	"type": "module",
+	"packageManager": "npm@11.15.0",
+	"engines": {
+		"node": ">=24.14.0",
+		"npm": ">=11.10.0"
+	},
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
@@ -20,7 +25,6 @@
 		"test:e2e": "playwright install && playwright test",
 		"test": "npm run test:unit && npm run test:e2e"
 	},
-	"license": "MIT",
 	"dependencies": {
 		"@rx-nostr/crypto": "^3.1.6",
 		"@tauri-apps/api": "^2",
