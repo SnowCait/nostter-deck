@@ -2,6 +2,12 @@
 	import { Heart, MessageCircle, Ellipsis, Repeat2, Share, ShieldCheck } from '@lucide/svelte';
 	import { npubEncode } from 'nostr-tools/nip19';
 	import { linkifyPostContent, type PostContentToken } from '$lib/deck/post-content-links';
+	import {
+		getUrlMediaMetadata,
+		requestUrlMediaMetadata,
+		setUrlImageDimensions,
+		type UrlMediaMetadata
+	} from '$lib/deck/url-media';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Post } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
@@ -31,6 +37,12 @@
 	const bodyTokens = $derived(linkifyPostContent(post.body));
 	let isBodyExpanded = $state(false);
 	const isBodyCollapsible = $derived(post.body.length > 500 || post.body.split('\n').length > 12);
+
+	$effect(() => {
+		requestUrlMediaMetadata([
+			...new Set(bodyTokens.flatMap((token) => (token.type === 'link' ? [token.href] : [])))
+		]);
+	});
 
 	$effect(() => {
 		const profileReferenceTokens = bodyTokens.filter(isProfileReferenceToken);
@@ -63,6 +75,31 @@
 		const profile = getProfile(token.pubkey);
 		const displayName = profile?.display_name ?? profile?.name;
 		return displayName ? `@${displayName}` : `@${npubEncode(token.pubkey).slice(0, 12)}`;
+	}
+
+	function getUrlHostname(url: string) {
+		try {
+			return new URL(url).hostname;
+		} catch {
+			return url;
+		}
+	}
+
+	function getImagePreviewStyle(media: UrlMediaMetadata | undefined) {
+		if (media?.status !== 'image' || !media.width || !media.height) return '';
+
+		return `width: min(100%, ${(12 * media.width) / media.height}rem); aspect-ratio: ${media.width} / ${media.height}`;
+	}
+
+	function hasImageDimensions(media: UrlMediaMetadata | undefined) {
+		return media?.status === 'image' && Boolean(media.width) && Boolean(media.height);
+	}
+
+	function loadPreviewImage(event: Event, url: string) {
+		const image = event.currentTarget as HTMLImageElement | null;
+		if (!image) return;
+
+		setUrlImageDimensions(url, image.naturalWidth, image.naturalHeight);
 	}
 </script>
 
@@ -121,29 +158,77 @@
 				</p>
 			{:else}
 				<div class="relative mt-2">
-					<p
+					<div
 						data-testid="post-body"
 						class={[
-							'min-w-0 [overflow-wrap:anywhere] whitespace-pre-wrap text-slate-800 dark:text-slate-200',
+							'min-w-0 [overflow-wrap:anywhere] text-slate-800 dark:text-slate-200',
 							isBodyCollapsible && !isBodyExpanded ? 'max-h-48 overflow-hidden' : '',
 							textClass.body
 						]}
 					>
 						{#each bodyTokens as token, index (index)}
-							{#if token.type === 'link' || token.type === 'nostrReference'}
+							{#if token.type === 'link'}
+								{@const media = getUrlMediaMetadata(token.href)}
+								<a
+									href={token.href}
+									target="_blank"
+									rel="external noopener noreferrer"
+									data-testid="url-preview"
+									style={getImagePreviewStyle(media)}
+									class={[
+										'my-2 flex overflow-hidden rounded-md border border-slate-200 bg-slate-50 text-slate-600 transition hover:border-slate-300 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-800',
+										hasImageDimensions(media) ? 'mx-auto' : 'h-48'
+									]}
+								>
+									{#if media?.status === 'image'}
+										<img
+											src={media.url}
+											alt={token.text}
+											class="h-full w-full object-cover"
+											loading="lazy"
+											onload={(event) => loadPreviewImage(event, media.url)}
+										/>
+									{:else if media?.status === 'link'}
+										<span class="flex min-w-0 flex-1 flex-col justify-center gap-2 p-4">
+											<span
+												class={[
+													'truncate font-bold text-slate-800 dark:text-slate-100',
+													textClass.account
+												]}
+											>
+												{getUrlHostname(token.href)}
+											</span>
+											<span
+												class={[
+													'line-clamp-2 [overflow-wrap:anywhere] text-slate-500 dark:text-slate-400',
+													textClass.meta
+												]}
+											>
+												{token.text}
+											</span>
+										</span>
+									{:else}
+										<span class="flex w-full flex-col justify-center gap-3 p-4" aria-hidden="true">
+											<span class="h-4 w-1/3 rounded bg-slate-200 dark:bg-slate-800"></span>
+											<span class="h-4 w-3/4 rounded bg-slate-200 dark:bg-slate-800"></span>
+											<span class="h-4 w-1/2 rounded bg-slate-200 dark:bg-slate-800"></span>
+										</span>
+									{/if}
+								</a>
+							{:else if token.type === 'nostrReference'}
 								<a
 									href={token.href}
 									target="_blank"
 									rel="external noopener noreferrer"
 									class="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-300 dark:hover:text-sky-200"
 								>
-									{token.type === 'nostrReference' ? getNostrReferenceText(token) : token.text}
+									{getNostrReferenceText(token)}
 								</a>
 							{:else}
-								{token.text}
+								<span class="whitespace-pre-wrap">{token.text}</span>
 							{/if}
 						{/each}
-					</p>
+					</div>
 					{#if isBodyCollapsible && !isBodyExpanded}
 						<div
 							class="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-b from-white/0 to-white dark:to-slate-950"

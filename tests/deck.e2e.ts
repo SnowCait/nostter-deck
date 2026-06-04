@@ -71,6 +71,11 @@ const nostrNaddr =
 	'nostr:naddr1qvzqqqr4gupzp242424242424242424242424242424242424242424242424242qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqpmpwf6xjcmvv5hynj0x';
 const nostrFallbackNpub = 'nostr:npub1lllllllllllllllllllllllllllllllllllllllllllllllllllsq7lrjw';
 const nostrNsec = 'nostr:nsec1yg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3qxh9tww';
+const imagePreviewUrl = 'https://example.com/image-without-extension';
+const linkPreviewUrl = 'https://example.com/article';
+const pathPreviewUrl = 'https://example.com/path?from=nostter';
+const tallPreviewSvg =
+	'<svg xmlns="http://www.w3.org/2000/svg" width="120" height="240"><rect width="120" height="240" fill="black"/></svg>';
 
 test.describe('nostter deck', () => {
 	test('shows the initial deck', async ({ page }) => {
@@ -350,6 +355,25 @@ test.describe('nostter deck', () => {
 	test('adds and persists a custom timeline column', async ({ page }) => {
 		await installFakeNostrRelay(page);
 		await openDeck(page);
+		await page.route(imagePreviewUrl, async (route) => {
+			await route.fulfill({
+				status: 200,
+				headers: { 'Content-Type': 'image/svg+xml' },
+				body: route.request().method() === 'HEAD' ? undefined : tallPreviewSvg
+			});
+		});
+		for (const url of [linkPreviewUrl, pathPreviewUrl]) {
+			await page.route(url, async (route) => {
+				await route.fulfill({
+					status: 200,
+					headers: { 'Content-Type': 'text/html' },
+					body:
+						route.request().method() === 'HEAD'
+							? undefined
+							: '<!doctype html><title>Example</title>'
+				});
+			});
+		}
 		const columns = deckColumns(page);
 
 		await page.getByRole('button', { name: 'Add column' }).first().click();
@@ -407,13 +431,43 @@ test.describe('nostter deck', () => {
 		await expect(customColumn.getByText('#nostter')).toHaveCount(1);
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toHaveCount(1);
 		const postArticle = customColumn.locator('article').first();
-		const bodyLink = postArticle.getByRole('link', {
-			name: 'https://example.com/path?from=nostter'
-		});
-		await expect(bodyLink).toBeVisible();
-		await expect(bodyLink).toHaveAttribute('href', 'https://example.com/path?from=nostter');
-		await expect(bodyLink).toHaveAttribute('target', '_blank');
-		await expect(bodyLink).toHaveAttribute('rel', 'external noopener noreferrer');
+		const imagePreviews = postArticle.locator(
+			`a[data-testid="url-preview"][href="${imagePreviewUrl}"]`
+		);
+		await expect(imagePreviews).toHaveCount(2);
+		await expect(imagePreviews.first().locator(`img[src="${imagePreviewUrl}"]`)).toBeVisible();
+		const linkPreview = postArticle.locator(
+			`a[data-testid="url-preview"][href="${linkPreviewUrl}"]`
+		);
+		const pathPreview = postArticle.locator(
+			`a[data-testid="url-preview"][href="${pathPreviewUrl}"]`
+		);
+		await expect(linkPreview).toBeVisible();
+		await expect(pathPreview).toBeVisible();
+		await expect(pathPreview).toHaveAttribute('target', '_blank');
+		await expect(pathPreview).toHaveAttribute('rel', 'external noopener noreferrer');
+		await expect(pathPreview).toContainText('example.com');
+		await expect(pathPreview).toContainText(pathPreviewUrl);
+		const imagePreviewBox = await imagePreviews.first().boundingBox();
+		const imageBox = await imagePreviews.first().locator('img').boundingBox();
+		const linkPreviewBox = await linkPreview.boundingBox();
+		expect(imagePreviewBox).not.toBeNull();
+		expect(imageBox).not.toBeNull();
+		expect(linkPreviewBox).not.toBeNull();
+		expect(Math.abs(imagePreviewBox!.width - imageBox!.width)).toBeLessThanOrEqual(2);
+		expect(Math.abs(imagePreviewBox!.height - imageBox!.height)).toBeLessThanOrEqual(2);
+		expect(imagePreviewBox!.height).toBeGreaterThan(180);
+		expect(imagePreviewBox!.width / imagePreviewBox!.height).toBeCloseTo(0.5, 1);
+		expect(linkPreviewBox!.height).toBe(192);
+		await expect
+			.poll(async () => {
+				const [imagePreviewWidth, linkPreviewWidth] = await Promise.all([
+					imagePreviews.first().evaluate((element) => element.clientWidth),
+					linkPreview.evaluate((element) => element.clientWidth)
+				]);
+				return imagePreviewWidth < linkPreviewWidth;
+			})
+			.toBe(true);
 		await expect(postArticle.getByRole('link', { name: 'www.example.com' })).toHaveCount(0);
 		await expect(postArticle.getByRole('link', { name: /^npub/ })).toHaveCount(0);
 		await expect(postArticle.getByRole('button', { name: 'Show more' })).toHaveCount(0);

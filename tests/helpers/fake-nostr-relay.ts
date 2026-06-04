@@ -42,6 +42,8 @@ export async function installFakeNostrRelay(page: Page) {
 			const nostrFallbackNpub =
 				'nostr:npub1lllllllllllllllllllllllllllllllllllllllllllllllllllsq7lrjw';
 			const nostrNsec = 'nostr:nsec1yg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3qxh9tww';
+			const imagePreviewUrl = 'https://example.com/image-without-extension';
+			const linkPreviewUrl = 'https://example.com/article';
 			const textEvent = {
 				id: 'event-custom-timeline-1',
 				pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -51,8 +53,7 @@ export async function installFakeNostrRelay(page: Page) {
 					['t', 'nostter'],
 					['t', 'nostter']
 				],
-				content:
-					'Hello from a custom Nostr timeline https://example.com/path?from=nostter. www.example.com npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0l98cr',
+				content: `Hello from a custom Nostr timeline ${imagePreviewUrl} ${imagePreviewUrl} ${linkPreviewUrl} https://example.com/path?from=nostter. www.example.com npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0l98cr`,
 				sig: '0'.repeat(128)
 			};
 			const nostrReferenceEvent = {
