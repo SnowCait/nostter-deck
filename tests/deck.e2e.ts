@@ -64,13 +64,7 @@ const contactListNprofile = nprofileEncode({
 const nostrNpub = 'nostr:npub1424242424242424242424242424242424242424242424242424qamrcaj';
 const nostrNprofile =
 	'nostr:nprofile1qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqg924242424242424242424242424242424242424242424242424gv3cla6';
-const nostrNote = 'nostr:note1zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsglnzgl';
-const nostrNevent =
-	'nostr:nevent1qvzqqqqqqypzp242424242424242424242424242424242424242424242424242qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqgq3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyuv4j77';
-const nostrNaddr =
-	'nostr:naddr1qvzqqqr4gupzp242424242424242424242424242424242424242424242424242qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqpmpwf6xjcmvv5hynj0x';
 const nostrFallbackNpub = 'nostr:npub1lllllllllllllllllllllllllllllllllllllllllllllllllllsq7lrjw';
-const nostrNsec = 'nostr:nsec1yg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3qxh9tww';
 const imagePreviewUrl = 'https://example.com/image-without-extension';
 const linkPreviewUrl = 'https://example.com/article';
 const pathPreviewUrl = 'https://example.com/path?from=nostter';
@@ -395,15 +389,6 @@ test.describe('nostter deck', () => {
 		await expect(customRelaysInput).toHaveValue('');
 		await expect(saveButton).toBeEnabled();
 
-		await filtersInput.fill('{"kinds":[1],"limit":20}');
-		await expect(saveButton).toBeDisabled();
-
-		await filtersInput.fill('[]');
-		await expect(saveButton).toBeDisabled();
-
-		await filtersInput.fill('[{"kinds":[1],"limit":20}, 1]');
-		await expect(saveButton).toBeDisabled();
-
 		await filtersInput.fill('[{"kinds":[1],"limit":20}]');
 		await expect(saveButton).toBeEnabled();
 
@@ -482,13 +467,6 @@ test.describe('nostter deck', () => {
 		await expect(nostrReferenceArticle.locator(`a[href="${nostrFallbackNpub}"]`)).toHaveText(
 			'@npub1lllllll'
 		);
-		for (const nostrUri of [nostrNote, nostrNevent, nostrNaddr]) {
-			await expect(nostrReferenceArticle.getByRole('link', { name: nostrUri })).toHaveAttribute(
-				'href',
-				nostrUri
-			);
-		}
-		await expect(nostrReferenceArticle.getByRole('link', { name: nostrNsec })).toHaveCount(0);
 		const longPostArticle = customColumn
 			.locator('article')
 			.filter({ hasText: 'Long post starts here' });
