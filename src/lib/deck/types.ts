@@ -158,12 +158,20 @@ export type Post = {
 
 export type PresetTimelineColumn = PresetTimelineColumnConfig & {
 	posts: Post[];
+	hasOlderStored?: boolean;
+	hasNewerStored?: boolean;
+	isLoadingOlder?: boolean;
+	isLoadingNewer?: boolean;
 	isLoading?: boolean;
 	error?: string | null;
 };
 
 export type CustomTimelineColumn = CustomTimelineColumnConfig & {
 	posts: Post[];
+	hasOlderStored: boolean;
+	hasNewerStored: boolean;
+	isLoadingOlder: boolean;
+	isLoadingNewer: boolean;
 	isLoading: boolean;
 	error: string | null;
 };

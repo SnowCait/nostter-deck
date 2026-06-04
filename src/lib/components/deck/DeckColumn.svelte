@@ -41,6 +41,8 @@
 		onFollowSave: (profile: ProfilePointer) => void;
 		onSearchSave: (query: string) => void;
 		onCustomTimelineSave: (filters: NostrFilter[], relays: RelaySelection) => void;
+		onLoadOlderTimeline: () => void;
+		onLoadNewerTimeline: () => void;
 	};
 
 	const {
@@ -62,7 +64,9 @@
 		onWidthChange,
 		onFollowSave,
 		onSearchSave,
-		onCustomTimelineSave
+		onCustomTimelineSave,
+		onLoadOlderTimeline,
+		onLoadNewerTimeline
 	}: Props = $props();
 
 	const columnWidthClassByWidth = {
@@ -108,6 +112,19 @@
 				? 'border-sky-500 bg-sky-50 text-sky-700 dark:border-sky-400 dark:bg-sky-950/50 dark:text-sky-300'
 				: 'border-slate-300 bg-white text-slate-500 hover:border-slate-400 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-50'
 		];
+	}
+
+	function scrollTimeline(event: Event) {
+		if (column.type !== 'timeline') return;
+
+		const element = event.currentTarget as HTMLDivElement;
+		const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
+		if (element.scrollTop <= 8 && column.hasNewerStored && !column.isLoadingNewer) {
+			onLoadNewerTimeline();
+		}
+		if (distanceFromBottom <= 8 && column.hasOlderStored && !column.isLoadingOlder) {
+			onLoadOlderTimeline();
+		}
 	}
 </script>
 
@@ -266,7 +283,11 @@
 		</div>
 	{/if}
 
-	<div class="min-h-0 flex-1 overflow-y-auto">
+	<div
+		class="min-h-0 flex-1 overflow-y-auto"
+		data-testid="timeline-scroll"
+		onscroll={scrollTimeline}
+	>
 		{#if column.type === 'website'}
 			<iframe
 				class="h-full w-full border-0 bg-white dark:bg-slate-950"
@@ -275,7 +296,14 @@
 				sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
 			></iframe>
 		{:else}
-			<TimelineColumnBody {column} {isLoggedIn} {textClass} {avatarShape} />
+			<TimelineColumnBody
+				{column}
+				{isLoggedIn}
+				{textClass}
+				{avatarShape}
+				onLoadOlder={onLoadOlderTimeline}
+				onLoadNewer={onLoadNewerTimeline}
+			/>
 		{/if}
 	</div>
 </section>

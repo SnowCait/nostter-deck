@@ -149,6 +149,16 @@ export async function installFakeNostrRelay(page: Page) {
 				}),
 				sig: '0'.repeat(128)
 			};
+			const bulkCreatedAt = Math.floor(Date.now() / 1000) - 60;
+			const bulkEvents = Array.from({ length: 250 }, (_, index) => ({
+				id: index.toString(16).padStart(64, '0'),
+				pubkey: textEvent.pubkey,
+				created_at: bulkCreatedAt,
+				kind: shortTextNoteKind,
+				tags: [],
+				content: `Bulk event ${index.toString().padStart(3, '0')}`,
+				sig: '0'.repeat(128)
+			}));
 
 			class FakeWebSocket {
 				static CONNECTING = 0;
@@ -264,6 +274,13 @@ export async function installFakeNostrRelay(page: Page) {
 					for (const search of requestedSearches) {
 						relaySearchRequests[search] = (relaySearchRequests[search] ?? 0) + 1;
 						setTimeout(() => {
+							if (search === 'bulk') {
+								for (const event of [...bulkEvents].reverse()) {
+									this.emitMessage(['EVENT', subId, event]);
+								}
+								return;
+							}
+
 							this.emitMessage([
 								'EVENT',
 								subId,

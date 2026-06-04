@@ -595,6 +595,37 @@ test.describe('nostter deck', () => {
 			.toBeGreaterThan(0);
 	});
 
+	test('keeps a bounded timeline window backed by IndexedDB', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		const columns = deckColumns(page);
+
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], search: 'bulk', limit: 250 }]
+		});
+
+		const customColumn = columns.first();
+		const timelineScroll = customColumn.getByTestId('timeline-scroll');
+		await expect(customColumn.getByText('Bulk event 000')).toBeVisible();
+		await expect(customColumn.locator('article')).toHaveCount(200);
+		await expect(customColumn.getByText('Bulk event 249')).toHaveCount(0);
+
+		await timelineScroll.evaluate((element) => {
+			element.scrollTop = element.scrollHeight;
+			element.dispatchEvent(new Event('scroll'));
+		});
+		await expect(customColumn.getByText('Bulk event 249')).toBeVisible();
+		await expect(customColumn.locator('article')).toHaveCount(200);
+		await expect(customColumn.getByText('Bulk event 000')).toHaveCount(0);
+
+		await timelineScroll.evaluate((element) => {
+			element.scrollTop = 0;
+			element.dispatchEvent(new Event('scroll'));
+		});
+		await expect(customColumn.getByText('Bulk event 000')).toBeVisible();
+		await expect(customColumn.locator('article')).toHaveCount(200);
+	});
+
 	test('resolves custom timeline author addresses', async ({ page }) => {
 		await installFakeNostrRelay(page);
 		await openDeck(page);

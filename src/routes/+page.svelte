@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, tick } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { CalendarClock, Image, Plus, Send, Smile, UserRound } from '@lucide/svelte';
 	import DeckColumn from '$lib/components/deck/DeckColumn.svelte';
 	import FilterHelpButton from '$lib/components/deck/FilterHelpButton.svelte';
@@ -10,13 +10,28 @@
 	import { readColumnConfigs, writeColumnConfigs } from '$lib/deck/column-configs';
 	import { columnSourceKeys } from '$lib/deck/data';
 	import {
+		compareEventsByNip01,
 		emptyTimelineRuntime,
+		getRepostedEventId,
 		getTimelineRequest,
 		getTimelineSignature,
 		isFetchableTimelineColumn,
+		maxVisibleTimelineEvents,
+		timelinePageSize,
 		toRuntimeColumn,
 		type TimelineRuntime
 	} from '$lib/deck/timeline-runtime';
+	import {
+		clearTimelineColumn,
+		hasNewerTimelineEvents,
+		hasOlderTimelineEvents,
+		loadEventsByIds,
+		loadNewerTimelineEvents,
+		loadOlderTimelineEvents,
+		resetSessionTimelineCache,
+		storeEvent,
+		storeTimelineEvent
+	} from '$lib/deck/timeline-cache';
 	import type {
 		Column,
 		ColumnConfig,
@@ -68,6 +83,7 @@
 	let selectedDefaultRelays = $state<string[]>([...defaultRelays]);
 	let customTimelineRelays = $state('');
 	let customTimelineRuntimes = $state<Record<string, TimelineRuntime>>({});
+	let isTimelineCacheReady = $state(false);
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	const customTimelineSubscriptions = new Map<string, CustomTimelineSubscription>();
 
@@ -94,6 +110,8 @@
 	);
 
 	$effect(() => {
+		if (!isTimelineCacheReady) return;
+
 		const activeTimelineColumns = columnConfigs.filter(isFetchableTimelineColumn);
 		const activeTimelineColumnIds = new Set(activeTimelineColumns.map((column) => column.id));
 
@@ -115,14 +133,15 @@
 			if (customTimelineSubscriptions.get(column.id)?.signature === signature) continue;
 
 			customTimelineSubscriptions.get(column.id)?.stop();
-			setCustomTimelineRuntime(column.id, emptyTimelineRuntime());
+			void clearTimelineColumn(column.id, signature);
+			setCustomTimelineRuntime(column.id, emptyTimelineRuntime(signature));
 
 			const subscription = startCustomTimelineSubscription({
 				filters,
 				relays,
-				onEvent: (event) => addCustomTimelineEvent(column.id, event),
+				onEvent: (event) => void addCustomTimelineEvent(column.id, signature, event),
 				onRepostedEvent: (repostEventId, event) =>
-					addCustomTimelineRepostedEvent(column.id, repostEventId, event),
+					void addCustomTimelineRepostedEvent(column.id, repostEventId, event),
 				onLoadingChange: (isLoading) => updateCustomTimelineRuntime(column.id, { isLoading }),
 				onError: (error) => updateCustomTimelineRuntime(column.id, { error })
 			});
@@ -132,6 +151,12 @@
 				stop: subscription.stop
 			});
 		}
+	});
+
+	onMount(() => {
+		void resetSessionTimelineCache().then(() => {
+			isTimelineCacheReady = true;
+		});
 	});
 
 	onDestroy(() => {
@@ -192,39 +217,239 @@
 		const nextRuntimes = { ...customTimelineRuntimes };
 		delete nextRuntimes[columnId];
 		customTimelineRuntimes = nextRuntimes;
+		void clearTimelineColumn(columnId);
 	}
 
-	function addCustomTimelineEvent(columnId: string, event: Nostr.Event) {
+	async function addCustomTimelineEvent(columnId: string, timelineKey: string, event: Nostr.Event) {
+		await storeTimelineEvent(columnId, timelineKey, event);
+
 		const runtime = customTimelineRuntimes[columnId] ?? emptyTimelineRuntime();
+		if (runtime.timelineKey !== timelineKey) return;
+		if (runtime.hasNewerStored) return;
+
+		const runtimeWithEvent = {
+			...runtime,
+			loadedEventsById: {
+				...runtime.loadedEventsById,
+				[event.id]: event
+			}
+		};
+		const nextVisibleEventIds = insertVisibleEventId(runtimeWithEvent, event.id);
+		const trimmedVisibleEventIds = trimVisibleEventIds(nextVisibleEventIds, 'older');
+
+		setCustomTimelineRuntime(
+			columnId,
+			pruneLoadedEvents({
+				...runtimeWithEvent,
+				visibleEventIds: trimmedVisibleEventIds,
+				hasOlderStored:
+					runtimeWithEvent.hasOlderStored ||
+					nextVisibleEventIds.length > trimmedVisibleEventIds.length
+			})
+		);
+		void hydrateReferencedEvents(columnId);
+	}
+
+	async function addCustomTimelineRepostedEvent(
+		columnId: string,
+		repostEventId: string,
+		event: Nostr.Event
+	) {
+		await storeEvent(event);
+		const runtime = customTimelineRuntimes[columnId] ?? emptyTimelineRuntime();
+		if (!runtime.visibleEventIds.includes(repostEventId)) return;
 
 		customTimelineRuntimes = {
 			...customTimelineRuntimes,
 			[columnId]: {
 				...runtime,
-				eventsById: {
-					...runtime.eventsById,
+				loadedEventsById: {
+					...runtime.loadedEventsById,
 					[event.id]: event
 				}
 			}
 		};
 	}
 
-	function addCustomTimelineRepostedEvent(
-		columnId: string,
-		repostEventId: string,
-		event: Nostr.Event
-	) {
+	async function hydrateReferencedEvents(columnId: string) {
 		const runtime = customTimelineRuntimes[columnId] ?? emptyTimelineRuntime();
+		const referencedEventIds = getMissingReferencedEventIds(runtime);
+		if (referencedEventIds.length === 0) return;
 
-		customTimelineRuntimes = {
-			...customTimelineRuntimes,
-			[columnId]: {
-				...runtime,
-				repostedEventsById: {
-					...runtime.repostedEventsById,
-					[repostEventId]: event
+		const referencedEventsById = await loadEventsByIds(referencedEventIds);
+		const currentRuntime = customTimelineRuntimes[columnId] ?? runtime;
+		setCustomTimelineRuntime(
+			columnId,
+			pruneLoadedEvents({
+				...currentRuntime,
+				loadedEventsById: {
+					...currentRuntime.loadedEventsById,
+					...referencedEventsById
 				}
+			})
+		);
+	}
+
+	async function loadOlderTimelineEventsFromCache(columnId: string) {
+		const runtime = customTimelineRuntimes[columnId] ?? emptyTimelineRuntime();
+		if (runtime.isLoadingOlder || !runtime.hasOlderStored) return;
+
+		const cursor = getVisibleCursor(runtime, 'older');
+		if (!cursor) return;
+
+		updateCustomTimelineRuntime(columnId, { isLoadingOlder: true });
+		const page = await loadOlderTimelineEvents(
+			columnId,
+			runtime.timelineKey,
+			cursor,
+			timelinePageSize
+		);
+		const currentRuntime = customTimelineRuntimes[columnId] ?? runtime;
+		const runtimeWithPage = await withReferencedEvents({
+			...currentRuntime,
+			loadedEventsById: {
+				...currentRuntime.loadedEventsById,
+				...page.eventsById
 			}
+		});
+		const nextVisibleEventIds = mergeVisibleEventIds(runtimeWithPage, [
+			...runtimeWithPage.visibleEventIds,
+			...page.entries.map((entry) => entry.eventId)
+		]);
+		const trimmedVisibleEventIds = trimVisibleEventIds(nextVisibleEventIds, 'newer');
+		const tailCursor = getEventCursor(
+			runtimeWithPage.loadedEventsById[trimmedVisibleEventIds.at(-1) ?? '']
+		);
+
+		setCustomTimelineRuntime(
+			columnId,
+			pruneLoadedEvents({
+				...runtimeWithPage,
+				visibleEventIds: trimmedVisibleEventIds,
+				hasOlderStored: tailCursor
+					? await hasOlderTimelineEvents(columnId, runtime.timelineKey, tailCursor)
+					: false,
+				hasNewerStored:
+					runtimeWithPage.hasNewerStored ||
+					nextVisibleEventIds.length > trimmedVisibleEventIds.length,
+				isLoadingOlder: false
+			})
+		);
+	}
+
+	async function loadNewerTimelineEventsFromCache(columnId: string) {
+		const runtime = customTimelineRuntimes[columnId] ?? emptyTimelineRuntime();
+		if (runtime.isLoadingNewer || !runtime.hasNewerStored) return;
+
+		const cursor = getVisibleCursor(runtime, 'newer');
+		if (!cursor) return;
+
+		updateCustomTimelineRuntime(columnId, { isLoadingNewer: true });
+		const page = await loadNewerTimelineEvents(
+			columnId,
+			runtime.timelineKey,
+			cursor,
+			timelinePageSize
+		);
+		const currentRuntime = customTimelineRuntimes[columnId] ?? runtime;
+		const runtimeWithPage = await withReferencedEvents({
+			...currentRuntime,
+			loadedEventsById: {
+				...currentRuntime.loadedEventsById,
+				...page.eventsById
+			}
+		});
+		const nextVisibleEventIds = mergeVisibleEventIds(runtimeWithPage, [
+			...page.entries.map((entry) => entry.eventId),
+			...runtimeWithPage.visibleEventIds
+		]);
+		const trimmedVisibleEventIds = trimVisibleEventIds(nextVisibleEventIds, 'older');
+		const headCursor = getEventCursor(
+			runtimeWithPage.loadedEventsById[trimmedVisibleEventIds[0] ?? '']
+		);
+
+		setCustomTimelineRuntime(
+			columnId,
+			pruneLoadedEvents({
+				...runtimeWithPage,
+				visibleEventIds: trimmedVisibleEventIds,
+				hasNewerStored: headCursor
+					? await hasNewerTimelineEvents(columnId, runtime.timelineKey, headCursor)
+					: false,
+				hasOlderStored:
+					runtimeWithPage.hasOlderStored ||
+					nextVisibleEventIds.length > trimmedVisibleEventIds.length,
+				isLoadingNewer: false
+			})
+		);
+	}
+
+	async function withReferencedEvents(runtime: TimelineRuntime): Promise<TimelineRuntime> {
+		const referencedEventIds = getMissingReferencedEventIds(runtime);
+		if (referencedEventIds.length === 0) return runtime;
+
+		return {
+			...runtime,
+			loadedEventsById: {
+				...runtime.loadedEventsById,
+				...(await loadEventsByIds(referencedEventIds))
+			}
+		};
+	}
+
+	function getMissingReferencedEventIds(runtime: TimelineRuntime) {
+		return runtime.visibleEventIds
+			.map((eventId) => runtime.loadedEventsById[eventId])
+			.flatMap((event) =>
+				event ? [getRepostedEventId(event)].flatMap((id) => (id ? [id] : [])) : []
+			)
+			.filter((eventId) => !runtime.loadedEventsById[eventId]);
+	}
+
+	function insertVisibleEventId(runtime: TimelineRuntime, eventId: string) {
+		return mergeVisibleEventIds(runtime, [...runtime.visibleEventIds, eventId]);
+	}
+
+	function mergeVisibleEventIds(runtime: TimelineRuntime, eventIds: string[]) {
+		return [...new Set(eventIds)]
+			.filter((eventId) => runtime.loadedEventsById[eventId])
+			.sort((leftId, rightId) =>
+				compareEventsByNip01(runtime.loadedEventsById[leftId], runtime.loadedEventsById[rightId])
+			);
+	}
+
+	function trimVisibleEventIds(eventIds: string[], trimSide: 'newer' | 'older') {
+		if (eventIds.length <= maxVisibleTimelineEvents) return eventIds;
+
+		return trimSide === 'newer'
+			? eventIds.slice(eventIds.length - maxVisibleTimelineEvents)
+			: eventIds.slice(0, maxVisibleTimelineEvents);
+	}
+
+	function getVisibleCursor(runtime: TimelineRuntime, side: 'newer' | 'older') {
+		const eventId = side === 'newer' ? runtime.visibleEventIds[0] : runtime.visibleEventIds.at(-1);
+		return getEventCursor(runtime.loadedEventsById[eventId ?? '']);
+	}
+
+	function getEventCursor(event?: Nostr.Event) {
+		return event ? { createdAt: event.created_at, eventId: event.id } : null;
+	}
+
+	function pruneLoadedEvents(runtime: TimelineRuntime): TimelineRuntime {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local lookup, not component state
+		const retainedEventIds = new Set(runtime.visibleEventIds);
+		for (const eventId of runtime.visibleEventIds) {
+			const referencedEventId = getRepostedEventId(runtime.loadedEventsById[eventId]);
+			if (referencedEventId) retainedEventIds.add(referencedEventId);
+		}
+
+		return {
+			...runtime,
+			loadedEventsById: Object.fromEntries(
+				Object.entries(runtime.loadedEventsById).filter(([eventId]) =>
+					retainedEventIds.has(eventId)
+				)
+			)
 		};
 	}
 
@@ -582,6 +807,8 @@
 						onSearchSave={(query) => saveSearchSettings(column.id, query)}
 						onCustomTimelineSave={(filters, relays) =>
 							saveCustomTimelineSettings(column.id, filters, relays)}
+						onLoadOlderTimeline={() => void loadOlderTimelineEventsFromCache(column.id)}
+						onLoadNewerTimeline={() => void loadNewerTimelineEventsFromCache(column.id)}
 					/>
 				{/each}
 				<div

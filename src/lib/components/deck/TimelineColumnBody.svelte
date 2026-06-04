@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { TimelineColumn } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
@@ -10,9 +11,33 @@
 		isLoggedIn: boolean;
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
+		onLoadOlder: () => void;
+		onLoadNewer: () => void;
 	};
 
-	const { column, isLoggedIn, textClass, avatarShape }: Props = $props();
+	const { column, isLoggedIn, textClass, avatarShape, onLoadOlder, onLoadNewer }: Props = $props();
+	let newerSentinel: HTMLDivElement | undefined = $state();
+	let olderSentinel: HTMLDivElement | undefined = $state();
+
+	onMount(() => {
+		const observer = new IntersectionObserver((entries) => {
+			for (const entry of entries) {
+				if (!entry.isIntersecting) continue;
+
+				if (entry.target === newerSentinel && column.hasNewerStored && !column.isLoadingNewer) {
+					onLoadNewer();
+				}
+				if (entry.target === olderSentinel && column.hasOlderStored && !column.isLoadingOlder) {
+					onLoadOlder();
+				}
+			}
+		});
+
+		if (newerSentinel) observer.observe(newerSentinel);
+		if (olderSentinel) observer.observe(olderSentinel);
+
+		return () => observer.disconnect();
+	});
 </script>
 
 {#if column.error}
@@ -43,7 +68,9 @@
 		{m.custom_timeline_empty()}
 	</div>
 {:else}
+	<div bind:this={newerSentinel} class="h-px" aria-hidden="true"></div>
 	{#each column.posts as post (post.id ?? `${column.id}-${post.author}-${post.time}`)}
 		<PostCard {post} {isLoggedIn} {textClass} {avatarShape} />
 	{/each}
+	<div bind:this={olderSentinel} class="h-px" aria-hidden="true"></div>
 {/if}
