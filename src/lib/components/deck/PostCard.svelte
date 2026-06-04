@@ -173,10 +173,10 @@
 						{#if post.verified ?? true}
 							<ShieldCheck class="size-4 shrink-0 text-sky-500" aria-label={m.verified()} />
 						{/if}
+						<span class={['shrink-0 text-slate-500 dark:text-slate-400', textClass.meta]}>
+							· {post.time}
+						</span>
 					</div>
-					<p class={['truncate text-slate-500 dark:text-slate-400', textClass.meta]}>
-						{post.handle} · {post.time}
-					</p>
 				</div>
 				{#if isLoggedIn}
 					<button
