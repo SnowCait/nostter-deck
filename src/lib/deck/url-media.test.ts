@@ -17,6 +17,17 @@ describe('url media metadata', () => {
 		vi.unstubAllGlobals();
 	});
 
+	test('does not request metadata for http urls', () => {
+		const httpUrl = 'http://insecure.example/image';
+		const fetchMock = vi.fn<typeof fetch>();
+		vi.stubGlobal('fetch', fetchMock);
+
+		requestUrlMediaMetadata([httpUrl]);
+
+		expect(fetchMock).not.toHaveBeenCalled();
+		expect(getUrlMediaMetadata(httpUrl)).toEqual({ status: 'link', url: httpUrl });
+	});
+
 	test('serializes HEAD requests for the same origin', async () => {
 		const firstUrl = 'https://serialized.example/first-image';
 		const secondUrl = 'https://serialized.example/second-image';

@@ -38,7 +38,7 @@ export function requestUrlMediaMetadata(urls: string[]) {
 		const normalizedUrl = parsedUrl.href;
 		if (mediaByUrl.has(normalizedUrl)) continue;
 
-		if (failedMetadataOrigins.has(parsedUrl.origin)) {
+		if (!canRequestUrlMetadata(parsedUrl) || failedMetadataOrigins.has(parsedUrl.origin)) {
 			mediaByUrl.set(normalizedUrl, { status: 'link', url: normalizedUrl });
 			continue;
 		}
@@ -69,9 +69,18 @@ function parseUrl(url: string) {
 	}
 }
 
+function canRequestUrlMetadata(url: URL) {
+	return url.protocol === 'https:';
+}
+
 async function loadUrlMediaMetadata(url: URL) {
 	const normalizedUrl = url.href;
 	const origin = url.origin;
+
+	if (!canRequestUrlMetadata(url)) {
+		mediaByUrl.set(normalizedUrl, { status: 'link', url: normalizedUrl });
+		return;
+	}
 
 	await metadataLock.acquire(origin, async () => {
 		if (failedMetadataOrigins.has(origin)) {
