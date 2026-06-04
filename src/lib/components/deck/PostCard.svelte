@@ -209,14 +209,14 @@
 									style={getImagePreviewStyle(media)}
 									class={[
 										'my-2 flex overflow-hidden rounded-md border border-slate-200 bg-slate-50 text-slate-600 transition hover:border-slate-300 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-800',
-										hasImageDimensions(media) ? 'mx-auto' : 'h-48'
+										hasImageDimensions(media) ? '' : 'h-48'
 									]}
 								>
 									{#if media?.status === 'image'}
 										<img
 											src={media.url}
 											alt={token.text}
-											class="h-full w-full object-cover"
+											class="h-full w-full object-contain"
 											loading="lazy"
 											onload={(event) => loadPreviewImage(event, media.url)}
 										/>
