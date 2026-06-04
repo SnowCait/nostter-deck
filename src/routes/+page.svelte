@@ -11,7 +11,7 @@
 	import { columnSourceKeys } from '$lib/deck/data';
 	import {
 		emptyTimelineRuntime,
-		getRepostedEventId,
+		getReferencedEventId,
 		getTimelineRequest,
 		getTimelineSignature,
 		isFetchableTimelineColumn,
@@ -141,8 +141,8 @@
 				filters,
 				relays,
 				onEvent: (event, { phase }) => addCustomTimelineEvent(column.id, signature, event, phase),
-				onRepostedEvent: (repostEventId, event) =>
-					addCustomTimelineRepostedEvent(column.id, repostEventId, event),
+				onReferencedEvent: (referenceEventId, event) =>
+					addCustomTimelineReferencedEvent(column.id, referenceEventId, event),
 				onLoadingChange: (isLoading) => updateCustomTimelineRuntime(column.id, { isLoading }),
 				onError: (error) => updateCustomTimelineRuntime(column.id, { error })
 			});
@@ -263,14 +263,14 @@
 		void hydrateReferencedEvents(columnId);
 	}
 
-	function addCustomTimelineRepostedEvent(
+	function addCustomTimelineReferencedEvent(
 		columnId: string,
-		repostEventId: string,
+		referenceEventId: string,
 		event: Nostr.Event
 	) {
 		void storeEvent(event);
 		const runtime = customTimelineRuntimes[columnId] ?? emptyTimelineRuntime();
-		if (!runtime.visibleEventIds.includes(repostEventId)) return;
+		if (!runtime.visibleEventIds.includes(referenceEventId)) return;
 
 		customTimelineRuntimes = {
 			...customTimelineRuntimes,
@@ -414,7 +414,7 @@
 		return runtime.visibleEventIds
 			.map((eventId) => runtime.loadedEventsById[eventId])
 			.flatMap((event) =>
-				event ? [getRepostedEventId(event)].flatMap((id) => (id ? [id] : [])) : []
+				event ? [getReferencedEventId(event)].flatMap((id) => (id ? [id] : [])) : []
 			)
 			.filter((eventId) => !runtime.loadedEventsById[eventId]);
 	}
@@ -448,7 +448,7 @@
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local lookup, not component state
 		const retainedEventIds = new Set(runtime.visibleEventIds);
 		for (const eventId of runtime.visibleEventIds) {
-			const referencedEventId = getRepostedEventId(runtime.loadedEventsById[eventId]);
+			const referencedEventId = getReferencedEventId(runtime.loadedEventsById[eventId]);
 			if (referencedEventId) retainedEventIds.add(referencedEventId);
 		}
 

@@ -70,6 +70,9 @@ export type MessageKey =
 	| 'repost'
 	| 'reposted_by'
 	| 'reposted_event_unavailable'
+	| 'reacted_by_like'
+	| 'reacted_by'
+	| 'reaction_event_unavailable'
 	| 'like'
 	| 'share'
 	| 'verified';
@@ -148,7 +151,16 @@ export type Post = {
 		avatarUrl?: string;
 		accent: string;
 	};
+	reactedBy?: {
+		author: string;
+		handle: string;
+		avatarUrl?: string;
+		accent: string;
+		content: string;
+		kind: 'like' | 'reaction';
+	};
 	isRepostUnavailable?: boolean;
+	isReactionUnavailable?: boolean;
 	attachment?: {
 		label: string;
 		title: string;

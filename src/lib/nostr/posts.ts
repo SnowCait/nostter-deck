@@ -43,6 +43,37 @@ export function repostEventToPost(
 	};
 }
 
+export function reactionEventToPost(
+	reactionEvent: Nostr.Event,
+	reactedEvent: Nostr.Event | undefined,
+	getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined
+): Post {
+	const reactionProfile = getProfile(reactionEvent.pubkey);
+	const reactionContent = getReactionContent(reactionEvent);
+	const reactedBy = {
+		...createPostAuthor(reactionEvent.pubkey, reactionProfile),
+		content: reactionContent,
+		kind: isLikeReaction(reactionEvent.content) ? 'like' : 'reaction'
+	} satisfies NonNullable<Post['reactedBy']>;
+
+	if (!reactedEvent || reactedEvent.kind !== ShortTextNote) {
+		return {
+			...createPost(reactionEvent, reactionProfile),
+			body: '',
+			tags: [],
+			reactedBy,
+			isReactionUnavailable: true
+		};
+	}
+
+	return {
+		...createPost(reactedEvent, getProfile(reactedEvent.pubkey)),
+		id: reactionEvent.id,
+		time: formatRelativeTime(reactionEvent.created_at),
+		reactedBy
+	};
+}
+
 function createPost(event: Nostr.Event, profile?: Nostr.Content.Metadata): Post {
 	const author = createPostAuthor(event.pubkey, profile);
 
@@ -59,6 +90,14 @@ function createPost(event: Nostr.Event, profile?: Nostr.Content.Metadata): Post 
 			likes: '0'
 		}
 	};
+}
+
+function getReactionContent(event: Nostr.Event) {
+	return isLikeReaction(event.content) ? '+' : event.content;
+}
+
+function isLikeReaction(content: string) {
+	return content.trim() === '' || content.trim() === '+';
 }
 
 function getDisplayHashtags(tags: Nostr.Event['tags']) {

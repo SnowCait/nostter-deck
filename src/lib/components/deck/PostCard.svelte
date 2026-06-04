@@ -117,6 +117,24 @@
 			<span class="truncate">{m.reposted_by({ name: post.repostedBy.author })}</span>
 		</div>
 	{/if}
+	{#if post.reactedBy}
+		<div
+			class={[
+				'mb-2 flex min-w-0 items-center gap-1.5 pl-[3.25rem] font-semibold text-slate-500 dark:text-slate-400',
+				textClass.meta
+			]}
+		>
+			<Heart class="size-4 shrink-0" aria-hidden="true" />
+			<span class="truncate">
+				{post.reactedBy.kind === 'like'
+					? m.reacted_by_like({ name: post.reactedBy.author })
+					: m.reacted_by({
+							name: post.reactedBy.author,
+							content: post.reactedBy.content
+						})}
+			</span>
+		</div>
+	{/if}
 
 	<div class="flex gap-3">
 		<ProfileAvatar
@@ -155,6 +173,10 @@
 			{#if post.isRepostUnavailable}
 				<p class={['mt-2 text-slate-500 dark:text-slate-400', textClass.body]}>
 					{m.reposted_event_unavailable()}
+				</p>
+			{:else if post.isReactionUnavailable}
+				<p class={['mt-2 text-slate-500 dark:text-slate-400', textClass.body]}>
+					{m.reaction_event_unavailable()}
 				</p>
 			{:else}
 				<div class="relative mt-2">

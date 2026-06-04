@@ -1,4 +1,4 @@
-import { Repost, ShortTextNote } from 'nostr-tools/kinds';
+import { Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
 import type {
 	Column,
@@ -9,7 +9,7 @@ import type {
 	RelaySelection,
 	SearchTimelineColumnConfig
 } from './types';
-import { eventToPost, repostEventToPost } from '$lib/nostr/posts';
+import { eventToPost, reactionEventToPost, repostEventToPost } from '$lib/nostr/posts';
 import { combineRelays, defaultRelays, searchRelays } from '$lib/nostr/relays';
 import { getTimelineKey } from './timeline-cache';
 
@@ -104,8 +104,10 @@ export function mergeTimelineEventIds(runtime: TimelineRuntime, eventIds: string
 	return [...liveEventIds, ...sortedEventIds];
 }
 
-export function getRepostedEventId(event: Nostr.Event) {
-	return event.tags.find((tag) => tag[0] === 'e' && tag[1])?.[1] ?? null;
+export function getReferencedEventId(event: Nostr.Event) {
+	if (event.kind !== Repost && event.kind !== Reaction) return null;
+
+	return event.tags.findLast((tag) => tag[0] === 'e' && tag[1])?.[1] ?? null;
 }
 
 export function timelineRuntimeToPosts(
@@ -120,10 +122,16 @@ export function timelineRuntimeToPosts(
 			event.kind === Repost
 				? repostEventToPost(
 						event,
-						runtime.loadedEventsById[getRepostedEventId(event) ?? ''],
+						runtime.loadedEventsById[getReferencedEventId(event) ?? ''],
 						getProfile
 					)
-				: eventToPost(event, getProfile(event.pubkey))
+				: event.kind === Reaction
+					? reactionEventToPost(
+							event,
+							runtime.loadedEventsById[getReferencedEventId(event) ?? ''],
+							getProfile
+						)
+					: eventToPost(event, getProfile(event.pubkey))
 		];
 	});
 }

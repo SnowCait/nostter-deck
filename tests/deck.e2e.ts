@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { Repost, ShortTextNote } from 'nostr-tools/kinds';
+import { Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import { nprofileEncode, npubEncode } from 'nostr-tools/nip19';
 import { defaultRelays, profileRelays, searchRelays } from '$lib/nostr/relays';
 import { fakeRelayConnectionCounts, installFakeNostrRelay } from './helpers/fake-nostr-relay';
@@ -506,7 +506,8 @@ test.describe('nostter deck', () => {
 
 		const savedFilters = [
 			{ kinds: [ShortTextNote], limit: 2 },
-			{ kinds: [Repost], limit: 2 }
+			{ kinds: [Repost], limit: 2 },
+			{ kinds: [Reaction], limit: 2 }
 		];
 		const initialRelaySelection = {
 			type: 'custom',
@@ -587,6 +588,7 @@ test.describe('nostter deck', () => {
 			customColumn.getByText('Hello from a custom Nostr timeline').first()
 		).toBeVisible();
 		await expect(customColumn.getByText('Alice Relay reposted')).toHaveCount(2);
+		await expect(customColumn.getByText('Alice Relay liked')).toBeVisible();
 		await expect(customColumn.getByText('Repost from a custom Nostr timeline')).toHaveCount(0);
 		await expectStoredCustomTimelineColumn(page, savedFilters, savedRelaySelection);
 

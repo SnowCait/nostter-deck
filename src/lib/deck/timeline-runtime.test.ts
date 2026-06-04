@@ -1,14 +1,23 @@
 import { describe, expect, test } from 'vitest';
+import { Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
-import { emptyTimelineRuntime, mergeTimelineEventIds } from './timeline-runtime';
+import {
+	emptyTimelineRuntime,
+	getReferencedEventId,
+	mergeTimelineEventIds
+} from './timeline-runtime';
 
-function event(id: string, createdAt: number): Nostr.Event {
+function event(
+	id: string,
+	createdAt: number,
+	options: Partial<Pick<Nostr.Event, 'kind' | 'tags'>> = {}
+): Nostr.Event {
 	return {
 		id,
 		pubkey: 'a'.repeat(64),
 		created_at: createdAt,
-		kind: 1,
-		tags: [],
+		kind: options.kind ?? ShortTextNote,
+		tags: options.tags ?? [],
 		content: id,
 		sig: '0'.repeat(128)
 	};
@@ -65,5 +74,39 @@ describe('timeline runtime', () => {
 		expect(mergeTimelineEventIds(runtime, [boundaryEvent.id, boundaryEvent.id])).toEqual([
 			boundaryEvent.id
 		]);
+	});
+
+	test('uses the last e tag as a reaction reference', () => {
+		const reaction = event('7'.repeat(64), 100, {
+			kind: Reaction,
+			tags: [
+				['e', 'first-reference'],
+				['p', 'a'.repeat(64)],
+				['e', 'last-reference']
+			]
+		});
+
+		expect(getReferencedEventId(reaction)).toBe('last-reference');
+	});
+
+	test('uses the last e tag as a repost reference', () => {
+		const repost = event('6'.repeat(64), 100, {
+			kind: Repost,
+			tags: [
+				['e', 'first-reference'],
+				['e', 'last-reference']
+			]
+		});
+
+		expect(getReferencedEventId(repost)).toBe('last-reference');
+	});
+
+	test('does not return references for non-repost and non-reaction events', () => {
+		const note = event('1'.repeat(64), 100, {
+			kind: ShortTextNote,
+			tags: [['e', 'referenced-event']]
+		});
+
+		expect(getReferencedEventId(note)).toBeNull();
 	});
 });

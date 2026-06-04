@@ -1,4 +1,4 @@
-import { isAddressableKind, Repost } from 'nostr-tools/kinds';
+import { isAddressableKind, Reaction, Repost } from 'nostr-tools/kinds';
 import {
 	createRxBackwardReq,
 	createRxForwardReq,
@@ -21,7 +21,7 @@ type CustomTimelineSubscriptionOptions = {
 	filters: NostrFilter[];
 	relays: RelaySelection;
 	onEvent: (event: Nostr.Event, meta: { phase: TimelineEventPhase }) => void;
-	onRepostedEvent: (repostEventId: string, event: Nostr.Event) => void;
+	onReferencedEvent: (referenceEventId: string, event: Nostr.Event) => void;
 	onLoadingChange: (isLoading: boolean) => void;
 	onError: (message: string) => void;
 };
@@ -30,7 +30,7 @@ export function startCustomTimelineSubscription({
 	filters,
 	relays,
 	onEvent,
-	onRepostedEvent,
+	onReferencedEvent,
 	onLoadingChange,
 	onError
 }: CustomTimelineSubscriptionOptions) {
@@ -145,29 +145,30 @@ export function startCustomTimelineSubscription({
 		}
 	}
 
-	function getRepostedEventId(repostEvent: Nostr.Event) {
-		return repostEvent.tags.find((tag) => tag[0] === 'e' && tag[1])?.[1] ?? null;
+	function getReferencedEventId(referenceEvent: Nostr.Event) {
+		return referenceEvent.tags.findLast((tag) => tag[0] === 'e' && tag[1])?.[1] ?? null;
 	}
 
-	function requestRepostedEvent(repostEvent: Nostr.Event) {
-		const embeddedEvent = parseRepostedEvent(repostEvent);
+	function requestReferencedEvent(referenceEvent: Nostr.Event) {
+		const embeddedEvent =
+			referenceEvent.kind === Repost ? parseRepostedEvent(referenceEvent) : null;
 		if (embeddedEvent) {
-			onRepostedEvent(repostEvent.id, embeddedEvent);
+			onReferencedEvent(referenceEvent.id, embeddedEvent);
 			requestProfiles([embeddedEvent.pubkey], profileRelayUrls);
 			return;
 		}
 
-		const repostedEventId = getRepostedEventId(repostEvent);
-		if (!repostedEventId) return;
+		const referencedEventId = getReferencedEventId(referenceEvent);
+		if (!referencedEventId) return;
 
-		const repostReq = createRxBackwardReq();
+		const referenceReq = createRxBackwardReq();
 		let removeSubscription = () => {};
 		const subscription = rxNostr
-			.use(repostReq)
+			.use(referenceReq)
 			.pipe(uniq())
 			.subscribe({
 				next: ({ event }) => {
-					onRepostedEvent(repostEvent.id, event);
+					onReferencedEvent(referenceEvent.id, event);
 					requestProfiles([event.pubkey], profileRelayUrls);
 				},
 				complete: () => {
@@ -176,8 +177,8 @@ export function startCustomTimelineSubscription({
 			});
 
 		removeSubscription = addSubscription(subscription);
-		repostReq.emit({ ids: [repostedEventId] } as LazyFilter, { relays: relayUrls });
-		repostReq.over();
+		referenceReq.emit({ ids: [referencedEventId] } as LazyFilter, { relays: relayUrls });
+		referenceReq.over();
 	}
 
 	function emitInitialTimelineFilters() {
@@ -242,8 +243,8 @@ export function startCustomTimelineSubscription({
 
 	function handleTimelineEvent(event: Nostr.Event, phase: TimelineEventPhase) {
 		requestProfiles([event.pubkey], profileRelayUrls);
-		if (event.kind === Repost) {
-			requestRepostedEvent(event);
+		if (event.kind === Repost || event.kind === Reaction) {
+			requestReferencedEvent(event);
 		}
 		onEvent(event, { phase });
 	}

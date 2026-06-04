@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { Repost, ShortTextNote } from 'nostr-tools/kinds';
+import { Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 
 declare global {
 	interface Window {
@@ -17,7 +17,7 @@ declare global {
 
 export async function installFakeNostrRelay(page: Page) {
 	await page.addInitScript(
-		({ repostKind, shortTextNoteKind }) => {
+		({ reactionKind, repostKind, shortTextNoteKind }) => {
 			const relayConnections: Record<string, number> = {};
 			const relayProfileRequests: Record<string, number> = {};
 			const relayProfileAuthorRequests: Record<string, number> = {};
@@ -112,6 +112,18 @@ export async function installFakeNostrRelay(page: Page) {
 					['p', textEvent.pubkey]
 				],
 				content: '',
+				sig: '0'.repeat(128)
+			};
+			const reactionEvent = {
+				id: 'event-custom-timeline-reaction',
+				pubkey: textEvent.pubkey,
+				created_at: Math.floor(Date.now() / 1000) - 72,
+				kind: reactionKind,
+				tags: [
+					['e', textEvent.id],
+					['p', textEvent.pubkey]
+				],
+				content: '+',
 				sig: '0'.repeat(128)
 			};
 			const editedSearchEvent = {
@@ -291,6 +303,12 @@ export async function installFakeNostrRelay(page: Page) {
 							(!filter.kinds || filter.kinds.includes(repostKind)) &&
 							(!filter.authors || filter.authors.includes(repostEvent.pubkey))
 					);
+					const requestsReactionEvents = filters.some(
+						(filter) =>
+							matchesFilterTime(reactionEvent, filter) &&
+							(!filter.kinds || filter.kinds.includes(reactionKind)) &&
+							(!filter.authors || filter.authors.includes(reactionEvent.pubkey))
+					);
 					const requestsProfiles = filters.some(
 						(filter) =>
 							matchesFilterTime(profileEvent, filter) &&
@@ -361,6 +379,12 @@ export async function installFakeNostrRelay(page: Page) {
 						setTimeout(() => {
 							this.emitMessage(['EVENT', subId, repostEvent]);
 							this.emitMessage(['EVENT', subId, tagOnlyRepostEvent]);
+						}, 5);
+					}
+
+					if (requestsReactionEvents) {
+						setTimeout(() => {
+							this.emitMessage(['EVENT', subId, reactionEvent]);
 						}, 5);
 					}
 
@@ -445,6 +469,7 @@ export async function installFakeNostrRelay(page: Page) {
 			window.__nostterFakeRelayTimelineAuthorRequests = relayTimelineAuthorRequests;
 		},
 		{
+			reactionKind: Reaction,
 			repostKind: Repost,
 			shortTextNoteKind: ShortTextNote
 		}
