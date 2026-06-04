@@ -428,8 +428,7 @@ test.describe('nostter deck', () => {
 		await expect(pathPreview).toBeVisible();
 		await expect(pathPreview).toHaveAttribute('target', '_blank');
 		await expect(pathPreview).toHaveAttribute('rel', 'external noopener noreferrer');
-		await expect(pathPreview).toContainText('example.com');
-		await expect(pathPreview).toContainText(pathPreviewUrl);
+		await expect(pathPreview).toContainText('Example');
 		const imagePreviewBox = await imagePreviews.first().boundingBox();
 		const imageBox = await imagePreviews.first().locator('img').boundingBox();
 		const linkPreviewBox = await linkPreview.boundingBox();

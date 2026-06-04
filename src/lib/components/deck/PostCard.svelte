@@ -3,6 +3,7 @@
 	import { npubEncode } from 'nostr-tools/nip19';
 	import { linkifyPostContent, type PostContentToken } from '$lib/deck/post-content-links';
 	import {
+		clearUrlPreviewImage,
 		getUrlMediaMetadata,
 		requestUrlMediaMetadata,
 		setUrlImageDimensions,
@@ -95,11 +96,23 @@
 		return media?.status === 'image' && Boolean(media.width) && Boolean(media.height);
 	}
 
+	function getLinkPreviewTitle(media: UrlMediaMetadata | undefined, fallbackUrl: string) {
+		return media?.status === 'link' && media.title ? media.title : getUrlHostname(fallbackUrl);
+	}
+
+	function shouldShowFallbackLinkUrl(media: UrlMediaMetadata | undefined) {
+		return media?.status === 'link' && !media.title && !media.imageUrl;
+	}
+
 	function loadPreviewImage(event: Event, url: string) {
 		const image = event.currentTarget as HTMLImageElement | null;
 		if (!image) return;
 
 		setUrlImageDimensions(url, image.naturalWidth, image.naturalHeight);
+	}
+
+	function handleLinkPreviewImageError(url: string) {
+		clearUrlPreviewImage(url);
 	}
 
 	function formatPostMessage(message: PostMessage) {
@@ -208,22 +221,40 @@
 											onload={(event) => loadPreviewImage(event, media.url)}
 										/>
 									{:else if media?.status === 'link'}
-										<span class="flex min-w-0 flex-1 flex-col justify-center gap-2 p-4">
+										<span class="flex min-w-0 flex-1 flex-col">
+											{#if media.imageUrl}
+												<img
+													src={media.imageUrl}
+													alt=""
+													class="h-36 w-full shrink-0 object-cover"
+													loading="lazy"
+													onerror={() => handleLinkPreviewImageError(media.url)}
+												/>
+											{/if}
 											<span
 												class={[
-													'truncate font-bold text-slate-800 dark:text-slate-100',
-													textClass.account
+													'flex min-h-0 flex-1 flex-col justify-center gap-2',
+													media.imageUrl ? 'p-3' : 'p-4'
 												]}
 											>
-												{getUrlHostname(token.href)}
-											</span>
-											<span
-												class={[
-													'line-clamp-2 [overflow-wrap:anywhere] text-slate-500 dark:text-slate-400',
-													textClass.meta
-												]}
-											>
-												{token.text}
+												<span
+													class={[
+														'line-clamp-2 font-bold [overflow-wrap:anywhere] text-slate-800 dark:text-slate-100',
+														textClass.account
+													]}
+												>
+													{getLinkPreviewTitle(media, token.href)}
+												</span>
+												{#if shouldShowFallbackLinkUrl(media)}
+													<span
+														class={[
+															'line-clamp-2 [overflow-wrap:anywhere] text-slate-500 dark:text-slate-400',
+															textClass.meta
+														]}
+													>
+														{token.href}
+													</span>
+												{/if}
 											</span>
 										</span>
 									{:else}
