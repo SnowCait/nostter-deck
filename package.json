@@ -16,8 +16,9 @@
 		"tauri:update": "npm update && cd src-tauri && cargo update",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
+		"test:unit": "vitest run",
 		"test:e2e": "playwright install && playwright test",
-		"test": "npm run test:e2e"
+		"test": "npm run test:unit && npm run test:e2e"
 	},
 	"license": "MIT",
 	"dependencies": {
