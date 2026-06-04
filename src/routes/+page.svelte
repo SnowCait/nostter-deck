@@ -10,13 +10,13 @@
 	import { readColumnConfigs, writeColumnConfigs } from '$lib/deck/column-configs';
 	import { columnSourceKeys } from '$lib/deck/data';
 	import {
-		compareEventsByNip01,
 		emptyTimelineRuntime,
 		getRepostedEventId,
 		getTimelineRequest,
 		getTimelineSignature,
 		isFetchableTimelineColumn,
 		maxVisibleTimelineEvents,
+		mergeTimelineEventIds,
 		timelinePageSize,
 		toRuntimeColumn,
 		type TimelineRuntime
@@ -47,7 +47,7 @@
 	import { decodeProfilePointer, type ProfilePointer } from '$lib/nostr/nip19';
 	import { getProfile, requestProfiles } from '$lib/nostr/profiles';
 	import { defaultRelays, profileRelays, resolveRelayDraft } from '$lib/nostr/relays';
-	import { startCustomTimelineSubscription } from '$lib/nostr/timeline';
+	import { startCustomTimelineSubscription, type TimelineEventPhase } from '$lib/nostr/timeline';
 	import { m } from '$lib/paraglide/messages.js';
 	import { readUserSettings, type AvatarShape, type FontSize } from '$lib/user-settings';
 	import type * as Nostr from 'nostr-typedef';
@@ -140,7 +140,7 @@
 			const subscription = startCustomTimelineSubscription({
 				filters,
 				relays,
-				onEvent: (event) => addCustomTimelineEvent(column.id, signature, event),
+				onEvent: (event, { phase }) => addCustomTimelineEvent(column.id, signature, event, phase),
 				onRepostedEvent: (repostEventId, event) =>
 					addCustomTimelineRepostedEvent(column.id, repostEventId, event),
 				onLoadingChange: (isLoading) => updateCustomTimelineRuntime(column.id, { isLoading }),
@@ -221,20 +221,33 @@
 		void clearTimelineColumn(columnId);
 	}
 
-	function addCustomTimelineEvent(columnId: string, timelineKey: string, event: Nostr.Event) {
+	function addCustomTimelineEvent(
+		columnId: string,
+		timelineKey: string,
+		event: Nostr.Event,
+		phase: TimelineEventPhase
+	) {
 		void storeTimelineEvent(columnId, timelineKey, event);
 		const runtime = customTimelineRuntimes[columnId] ?? emptyTimelineRuntime();
 		if (runtime.timelineKey !== timelineKey) return;
 		if (runtime.hasNewerStored) return;
 
+		const liveEventIds =
+			phase === 'live'
+				? [event.id, ...runtime.liveEventIds.filter((eventId) => eventId !== event.id)]
+				: runtime.liveEventIds;
 		const runtimeWithEvent = {
 			...runtime,
+			liveEventIds,
 			loadedEventsById: {
 				...runtime.loadedEventsById,
 				[event.id]: event
 			}
 		};
-		const nextVisibleEventIds = insertVisibleEventId(runtimeWithEvent, event.id);
+		const nextVisibleEventIds =
+			phase === 'live'
+				? mergeVisibleEventIds(runtimeWithEvent, [event.id, ...runtimeWithEvent.visibleEventIds])
+				: insertVisibleEventId(runtimeWithEvent, event.id);
 		const trimmedVisibleEventIds = trimVisibleEventIds(nextVisibleEventIds, 'older');
 
 		setCustomTimelineRuntime(
@@ -411,11 +424,7 @@
 	}
 
 	function mergeVisibleEventIds(runtime: TimelineRuntime, eventIds: string[]) {
-		return [...new Set(eventIds)]
-			.filter((eventId) => runtime.loadedEventsById[eventId])
-			.sort((leftId, rightId) =>
-				compareEventsByNip01(runtime.loadedEventsById[leftId], runtime.loadedEventsById[rightId])
-			);
+		return mergeTimelineEventIds(runtime, eventIds);
 	}
 
 	function trimVisibleEventIds(eventIds: string[], trimSide: 'newer' | 'older') {
@@ -445,6 +454,7 @@
 
 		return {
 			...runtime,
+			liveEventIds: runtime.liveEventIds.filter((eventId) => retainedEventIds.has(eventId)),
 			loadedEventsById: Object.fromEntries(
 				Object.entries(runtime.loadedEventsById).filter(([eventId]) =>
 					retainedEventIds.has(eventId)

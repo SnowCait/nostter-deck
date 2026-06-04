@@ -1,5 +1,12 @@
 import { isAddressableKind, Repost } from 'nostr-tools/kinds';
-import { createRxBackwardReq, createRxForwardReq, latest, uniq, type LazyFilter } from 'rx-nostr';
+import {
+	createRxBackwardReq,
+	createRxForwardReq,
+	latest,
+	now,
+	uniq,
+	type LazyFilter
+} from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import { takeLast, type Unsubscribable } from 'rxjs';
 import type { NostrFilter, RelaySelection } from '$lib/deck/types';
@@ -8,10 +15,12 @@ import { getNostrClient } from './client';
 import { requestProfiles } from './profiles';
 import { combineRelays, profileRelays, resolveRelaySelection } from './relays';
 
+export type TimelineEventPhase = 'initial' | 'live';
+
 type CustomTimelineSubscriptionOptions = {
 	filters: NostrFilter[];
 	relays: RelaySelection;
-	onEvent: (event: Nostr.Event) => void;
+	onEvent: (event: Nostr.Event, meta: { phase: TimelineEventPhase }) => void;
 	onRepostedEvent: (repostEventId: string, event: Nostr.Event) => void;
 	onLoadingChange: (isLoading: boolean) => void;
 	onError: (message: string) => void;
@@ -28,7 +37,9 @@ export function startCustomTimelineSubscription({
 	const relayUrls = resolveRelaySelection(relays);
 	const profileRelayUrls = combineRelays(relayUrls, [...profileRelays]);
 	const rxNostr = getNostrClient();
-	const timelineReq = createRxForwardReq();
+	const initialTimelineReq = createRxBackwardReq();
+	const liveTimelineReq = createRxForwardReq();
+	const subscriptionBoundary = now();
 	const pendingFiltersByAddress = new Map<string, NostrFilter[]>();
 	const subscriptions: Unsubscribable[] = [];
 
@@ -43,9 +54,30 @@ export function startCustomTimelineSubscription({
 		};
 	}
 
+	function withTimelineBoundary(filter: NostrFilter, phase: TimelineEventPhase): LazyFilter {
+		if (phase === 'initial') {
+			return {
+				...filter,
+				until: subscriptionBoundary
+			} as LazyFilter;
+		}
+
+		return {
+			...omitFilterKeys(filter, ['limit', 'until']),
+			since: subscriptionBoundary
+		} as LazyFilter;
+	}
+
+	function omitFilterKeys(filter: NostrFilter, omittedKeys: string[]) {
+		return Object.fromEntries(
+			Object.entries(filter).filter(([key]) => !omittedKeys.includes(key))
+		) as NostrFilter;
+	}
+
 	function emitTimelineFilters(nextFilters: NostrFilter[]) {
 		if (nextFilters.length > 0) {
-			timelineReq.emit(nextFilters as LazyFilter[]);
+			initialTimelineReq.emit(nextFilters.map((filter) => withTimelineBoundary(filter, 'initial')));
+			liveTimelineReq.emit(nextFilters.map((filter) => withTimelineBoundary(filter, 'live')));
 		}
 	}
 
@@ -176,16 +208,24 @@ export function startCustomTimelineSubscription({
 
 	addSubscription(
 		rxNostr
-			.use(timelineReq, { on: { relays: relayUrls } })
+			.use(initialTimelineReq, { on: { relays: relayUrls } })
+			.pipe(uniq())
+			.subscribe({
+				next: ({ event }) => {
+					onLoadingChange(false);
+					handleTimelineEvent(event, 'initial');
+				},
+				complete: () => onLoadingChange(false)
+			})
+	);
+
+	addSubscription(
+		rxNostr
+			.use(liveTimelineReq, { on: { relays: relayUrls } })
 			.pipe(uniq())
 			.subscribe(({ event }) => {
 				onLoadingChange(false);
-
-				requestProfiles([event.pubkey], profileRelayUrls);
-				if (event.kind === Repost) {
-					requestRepostedEvent(event);
-				}
-				onEvent(event);
+				handleTimelineEvent(event, 'live');
 			})
 	);
 
@@ -199,6 +239,14 @@ export function startCustomTimelineSubscription({
 	);
 
 	emitInitialTimelineFilters();
+
+	function handleTimelineEvent(event: Nostr.Event, phase: TimelineEventPhase) {
+		requestProfiles([event.pubkey], profileRelayUrls);
+		if (event.kind === Repost) {
+			requestRepostedEvent(event);
+		}
+		onEvent(event, { phase });
+	}
 
 	return {
 		stop() {

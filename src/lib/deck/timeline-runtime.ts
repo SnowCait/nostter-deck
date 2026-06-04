@@ -16,6 +16,7 @@ import { getTimelineKey } from './timeline-cache';
 export type TimelineRuntime = {
 	timelineKey: string;
 	visibleEventIds: string[];
+	liveEventIds: string[];
 	loadedEventsById: Record<string, Nostr.Event>;
 	hasOlderStored: boolean;
 	hasNewerStored: boolean;
@@ -37,6 +38,7 @@ export function emptyTimelineRuntime(timelineKey = ''): TimelineRuntime {
 	return {
 		timelineKey,
 		visibleEventIds: [],
+		liveEventIds: [],
 		loadedEventsById: {},
 		hasOlderStored: false,
 		hasNewerStored: false,
@@ -87,6 +89,19 @@ export function compareEventsByNip01(left: Nostr.Event, right: Nostr.Event) {
 	if (left.created_at !== right.created_at) return right.created_at - left.created_at;
 
 	return left.id.localeCompare(right.id);
+}
+
+export function mergeTimelineEventIds(runtime: TimelineRuntime, eventIds: string[]) {
+	const eventIdSet = new Set(eventIds.filter((eventId) => runtime.loadedEventsById[eventId]));
+	const liveEventIdSet = new Set(runtime.liveEventIds);
+	const liveEventIds = runtime.liveEventIds.filter((eventId) => eventIdSet.has(eventId));
+	const sortedEventIds = [...eventIdSet]
+		.filter((eventId) => !liveEventIdSet.has(eventId))
+		.sort((leftId, rightId) =>
+			compareEventsByNip01(runtime.loadedEventsById[leftId], runtime.loadedEventsById[rightId])
+		);
+
+	return [...liveEventIds, ...sortedEventIds];
 }
 
 export function getRepostedEventId(event: Nostr.Event) {

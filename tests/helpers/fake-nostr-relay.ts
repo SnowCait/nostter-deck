@@ -242,9 +242,18 @@ export async function installFakeNostrRelay(page: Page) {
 						ids?: string[];
 						'#d'?: string[];
 						search?: string;
+						since?: number;
+						until?: number;
 					}>;
+					const matchesFilterTime = (
+						event: { created_at: number },
+						filter: { since?: number; until?: number }
+					) =>
+						(filter.since === undefined || event.created_at >= filter.since) &&
+						(filter.until === undefined || event.created_at <= filter.until);
 					const requestsTextEvents = filters.some(
 						(filter) =>
+							matchesFilterTime(textEvent, filter) &&
 							!filter.search &&
 							!filter.ids &&
 							(!filter.kinds || filter.kinds.includes(shortTextNoteKind)) &&
@@ -263,23 +272,30 @@ export async function installFakeNostrRelay(page: Page) {
 						relayTimelineAuthorRequests[key] = (relayTimelineAuthorRequests[key] ?? 0) + 1;
 					}
 					const requestedSearches = filters.flatMap((filter) =>
-						(!filter.kinds || filter.kinds.includes(shortTextNoteKind)) && filter.search
+						matchesFilterTime(searchPreviewEvent(filter.search), filter) &&
+						(!filter.kinds || filter.kinds.includes(shortTextNoteKind)) &&
+						filter.search
 							? [filter.search]
 							: []
 					);
 					const requestsStaleTextEvents = filters.some(
 						(filter) =>
+							matchesFilterTime(staleTextEvent, filter) &&
 							!filter.ids &&
 							(!filter.kinds || filter.kinds.includes(shortTextNoteKind)) &&
 							filter.authors?.includes(staleContactPubkey)
 					);
 					const requestsRepostEvents = filters.some(
 						(filter) =>
+							matchesFilterTime(repostEvent, filter) &&
 							(!filter.kinds || filter.kinds.includes(repostKind)) &&
 							(!filter.authors || filter.authors.includes(repostEvent.pubkey))
 					);
 					const requestsProfiles = filters.some(
-						(filter) => filter.kinds?.includes(0) && filter.authors?.includes(textEvent.pubkey)
+						(filter) =>
+							matchesFilterTime(profileEvent, filter) &&
+							filter.kinds?.includes(0) &&
+							filter.authors?.includes(textEvent.pubkey)
 					);
 					for (const filter of filters) {
 						if (!filter.kinds?.includes(0) || !filter.authors) continue;
@@ -289,16 +305,20 @@ export async function installFakeNostrRelay(page: Page) {
 					}
 					const requestsContactList = filters.some(
 						(filter) =>
-							filter.kinds?.includes(3) && filter.authors?.includes(contactListAuthorPubkey)
+							matchesFilterTime(contactListEvent, filter) &&
+							filter.kinds?.includes(3) &&
+							filter.authors?.includes(contactListAuthorPubkey)
 					);
 					const requestsEmptyAddressableList = filters.some(
 						(filter) =>
+							matchesFilterTime(emptyAddressableListEvent, filter) &&
 							filter.kinds?.includes(30000) &&
 							filter.authors?.includes(addressableListAuthorPubkey) &&
 							filter['#d']?.includes('')
 					);
 					const requestsNamedAddressableList = filters.some(
 						(filter) =>
+							matchesFilterTime(namedAddressableListEvent, filter) &&
 							filter.kinds?.includes(30000) &&
 							filter.authors?.includes(addressableListAuthorPubkey) &&
 							filter['#d']?.includes('favorites')
@@ -350,6 +370,11 @@ export async function installFakeNostrRelay(page: Page) {
 							this.emitMessage(['EVENT', subId, textEvent]);
 							this.emitMessage(['EOSE', subId]);
 						}, 5);
+					}
+
+					function searchPreviewEvent(search: string | undefined) {
+						if (search === 'bulk') return bulkEvents[0] ?? textEvent;
+						return search === 'edited' ? editedSearchEvent : textEvent;
 					}
 
 					if (requestsProfiles) {
