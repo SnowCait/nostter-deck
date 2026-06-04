@@ -84,7 +84,7 @@
 						]}
 					>
 						{#each bodyTokens as token, index (index)}
-							{#if token.type === 'link'}
+							{#if token.type === 'link' || token.type === 'nostrReference'}
 								<a
 									href={token.href}
 									target="_blank"

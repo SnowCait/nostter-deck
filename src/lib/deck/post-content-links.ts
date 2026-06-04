@@ -13,9 +13,27 @@ export type PostContentToken =
 			type: 'link';
 			text: string;
 			href: string;
+	  }
+	| {
+			type: 'nostrReference';
+			text: string;
+			href: string;
+			entityType: NostrReferenceEntityType;
+			identifier: string;
 	  };
 
-const urlCandidatePattern = /https?:\/\/[^\s<>"']+/gi;
+const nostrReferenceEntityTypes = ['npub', 'nprofile', 'note', 'nevent', 'naddr'] as const;
+type NostrReferenceEntityType = (typeof nostrReferenceEntityTypes)[number];
+const nostrReferenceEntityPattern = nostrReferenceEntityTypes.join('|');
+
+const linkCandidatePattern = new RegExp(
+	`https?:\\/\\/[^\\s<>"']+|nostr:(?:${nostrReferenceEntityPattern})1[02-9ac-hj-np-z]+`,
+	'gi'
+);
+const nostrReferencePattern = new RegExp(
+	`^nostr:((${nostrReferenceEntityPattern})1[02-9ac-hj-np-z]+)$`,
+	'i'
+);
 const trailingUrlPunctuationPattern = /[),.;:!?，、。！？）］】]+$/;
 
 ensureUrlCanParse();
@@ -24,17 +42,13 @@ export function linkifyPostContent(content: string): PostContentToken[] {
 	const tokens: PostContentToken[] = [];
 	let currentIndex = 0;
 
-	for (const match of content.matchAll(urlCandidatePattern)) {
+	for (const match of content.matchAll(linkCandidatePattern)) {
 		const candidate = match[0];
 		const matchIndex = match.index ?? 0;
 		const linkText = trimTrailingUrlPunctuation(candidate);
+		const token = parseLinkCandidate(linkText);
 
-		if (linkText.length === 0 || !URL.canParse(linkText)) {
-			continue;
-		}
-
-		const url = new URL(linkText);
-		if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+		if (!token) {
 			continue;
 		}
 
@@ -45,11 +59,7 @@ export function linkifyPostContent(content: string): PostContentToken[] {
 			});
 		}
 
-		tokens.push({
-			type: 'link',
-			text: linkText,
-			href: url.href
-		});
+		tokens.push(token);
 		currentIndex = matchIndex + linkText.length;
 	}
 
@@ -65,6 +75,48 @@ export function linkifyPostContent(content: string): PostContentToken[] {
 
 function trimTrailingUrlPunctuation(value: string) {
 	return value.replace(trailingUrlPunctuationPattern, '');
+}
+
+function parseLinkCandidate(
+	value: string
+): Extract<PostContentToken, { type: 'link' | 'nostrReference' }> | null {
+	if (value.length === 0) return null;
+
+	const nostrReference = parseNostrReference(value);
+	if (nostrReference) return nostrReference;
+
+	if (!URL.canParse(value)) return null;
+
+	const url = new URL(value);
+	if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+
+	return {
+		type: 'link',
+		text: value,
+		href: url.href
+	};
+}
+
+function parseNostrReference(
+	value: string
+): Extract<PostContentToken, { type: 'nostrReference' }> | null {
+	const match = nostrReferencePattern.exec(value);
+	if (!match) return null;
+
+	const entityType = match[2].toLowerCase();
+	if (!isNostrReferenceEntityType(entityType)) return null;
+
+	return {
+		type: 'nostrReference',
+		text: value,
+		href: `nostr:${match[1]}`,
+		entityType,
+		identifier: match[1]
+	};
+}
+
+function isNostrReferenceEntityType(value: string): value is NostrReferenceEntityType {
+	return nostrReferenceEntityTypes.includes(value as NostrReferenceEntityType);
 }
 
 function ensureUrlCanParse() {

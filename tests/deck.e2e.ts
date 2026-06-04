@@ -61,6 +61,15 @@ const contactListNprofile = nprofileEncode({
 	pubkey: contactListAuthorPubkey,
 	relays: [followRelayHint]
 });
+const nostrNpub = 'nostr:npub1424242424242424242424242424242424242424242424242424qamrcaj';
+const nostrNprofile =
+	'nostr:nprofile1qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqg924242424242424242424242424242424242424242424242424gv3cla6';
+const nostrNote = 'nostr:note1zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsglnzgl';
+const nostrNevent =
+	'nostr:nevent1qvzqqqqqqypzp242424242424242424242424242424242424242424242424242qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqgq3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyuv4j77';
+const nostrNaddr =
+	'nostr:naddr1qvzqqqr4gupzp242424242424242424242424242424242424242424242424242qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqpmpwf6xjcmvv5hynj0x';
+const nostrNsec = 'nostr:nsec1yg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3qxh9tww';
 
 test.describe('nostter deck', () => {
 	test('shows the initial deck', async ({ page }) => {
@@ -407,6 +416,16 @@ test.describe('nostter deck', () => {
 		await expect(postArticle.getByRole('link', { name: 'www.example.com' })).toHaveCount(0);
 		await expect(postArticle.getByRole('link', { name: /^npub/ })).toHaveCount(0);
 		await expect(postArticle.getByRole('button', { name: 'Show more' })).toHaveCount(0);
+		const nostrReferenceArticle = customColumn
+			.locator('article')
+			.filter({ hasText: 'NIP-21 references' });
+		for (const nostrUri of [nostrNpub, nostrNprofile, nostrNote, nostrNevent, nostrNaddr]) {
+			await expect(nostrReferenceArticle.getByRole('link', { name: nostrUri })).toHaveAttribute(
+				'href',
+				nostrUri
+			);
+		}
+		await expect(nostrReferenceArticle.getByRole('link', { name: nostrNsec })).toHaveCount(0);
 		const longPostArticle = customColumn
 			.locator('article')
 			.filter({ hasText: 'Long post starts here' });

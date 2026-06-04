@@ -31,6 +31,15 @@ export async function installFakeNostrRelay(page: Page) {
 				'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd';
 			const staleContactPubkey = 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc';
 			const profilePictureUrl = 'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=';
+			const nostrNpub = 'nostr:npub1424242424242424242424242424242424242424242424242424qamrcaj';
+			const nostrNprofile =
+				'nostr:nprofile1qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqg924242424242424242424242424242424242424242424242424gv3cla6';
+			const nostrNote = 'nostr:note1zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsglnzgl';
+			const nostrNevent =
+				'nostr:nevent1qvzqqqqqqypzp242424242424242424242424242424242424242424242424242qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqgq3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyuv4j77';
+			const nostrNaddr =
+				'nostr:naddr1qvzqqqr4gupzp242424242424242424242424242424242424242424242424242qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqpmpwf6xjcmvv5hynj0x';
+			const nostrNsec = 'nostr:nsec1yg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3qxh9tww';
 			const textEvent = {
 				id: 'event-custom-timeline-1',
 				pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -42,6 +51,15 @@ export async function installFakeNostrRelay(page: Page) {
 				],
 				content:
 					'Hello from a custom Nostr timeline https://example.com/path?from=nostter. www.example.com npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0l98cr',
+				sig: '0'.repeat(128)
+			};
+			const nostrReferenceEvent = {
+				id: 'event-custom-timeline-nostr-references',
+				pubkey: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+				created_at: textEvent.created_at - 2,
+				kind: shortTextNoteKind,
+				tags: [],
+				content: `NIP-21 references ${nostrNpub} ${nostrNprofile} ${nostrNote} ${nostrNevent} ${nostrNaddr} ${nostrNsec}`,
 				sig: '0'.repeat(128)
 			};
 			const longTextEvent = {
@@ -288,6 +306,7 @@ export async function installFakeNostrRelay(page: Page) {
 							this.emitMessage(['EVENT', subId, textEvent]);
 							this.emitMessage(['EVENT', subId, textEvent]);
 							this.emitMessage(['EVENT', subId, longTextEvent]);
+							this.emitMessage(['EVENT', subId, nostrReferenceEvent]);
 						}, 5);
 					}
 
