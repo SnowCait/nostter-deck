@@ -6,7 +6,7 @@ import {
 	loadNewerTimelineEvents,
 	loadOlderTimelineEvents,
 	storeEvent,
-	storeTimelineEvent
+	storeTimelineEvents
 } from './timeline-cache';
 import {
 	emptyTimelineRuntime,
@@ -15,6 +15,7 @@ import {
 	getTimelineSignature,
 	isFetchableTimelineColumn,
 	maxVisibleTimelineEvents,
+	mergeTimelineEventBatch,
 	mergeTimelineEventIds,
 	timelinePageSize,
 	type TimelineRuntime
@@ -38,10 +39,26 @@ type TimelineCursor = {
 	eventId: string;
 };
 
+type PendingTimelineEvent = {
+	event: Nostr.Event;
+	phase: TimelineEventPhase;
+};
+
+type PendingTimelineBatch = {
+	timelineKey: string;
+	events: PendingTimelineEvent[];
+	referencedEvents: Map<string, Nostr.Event>;
+	timeoutId: ReturnType<typeof setTimeout>;
+};
+
+const timelineEventBatchDelayMs = 16;
+
 export function createTimelineController({ getColumnConfigs, isReady }: TimelineControllerOptions) {
 	let runtimes = $state<Record<string, TimelineRuntime>>({});
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- long-lived subscription registry
 	const subscriptions = new Map<string, CustomTimelineSubscription>();
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- short-lived event queues
+	const pendingBatches = new Map<string, PendingTimelineBatch>();
 
 	$effect(() => {
 		if (!isReady()) return;
@@ -55,6 +72,7 @@ export function createTimelineController({ getColumnConfigs, isReady }: Timeline
 
 			subscription.stop();
 			subscriptions.delete(columnId);
+			cancelPendingBatch(columnId);
 			removeRuntime(columnId);
 		}
 
@@ -68,6 +86,7 @@ export function createTimelineController({ getColumnConfigs, isReady }: Timeline
 			if (subscriptions.get(column.id)?.signature === signature) continue;
 
 			subscriptions.get(column.id)?.stop();
+			cancelPendingBatch(column.id);
 			void clearTimelineColumn(column.id, signature);
 			setRuntime(column.id, emptyTimelineRuntime(signature));
 
@@ -106,6 +125,7 @@ export function createTimelineController({ getColumnConfigs, isReady }: Timeline
 	}
 
 	function removeRuntime(columnId: string) {
+		cancelPendingBatch(columnId);
 		const nextRuntimes = { ...runtimes };
 		delete nextRuntimes[columnId];
 		runtimes = nextRuntimes;
@@ -118,44 +138,35 @@ export function createTimelineController({ getColumnConfigs, isReady }: Timeline
 		event: Nostr.Event,
 		phase: TimelineEventPhase
 	) {
-		void storeTimelineEvent(columnId, timelineKey, event);
 		const runtime = runtimes[columnId] ?? emptyTimelineRuntime();
 		if (runtime.timelineKey !== timelineKey) return;
-		if (runtime.hasNewerStored) return;
 
-		const liveEventIds =
-			phase === 'live'
-				? [event.id, ...runtime.liveEventIds.filter((eventId) => eventId !== event.id)]
-				: runtime.liveEventIds;
-		const runtimeWithEvent = {
-			...runtime,
-			liveEventIds,
-			loadedEventsById: {
-				...runtime.loadedEventsById,
-				[event.id]: event
-			}
+		const pendingBatch = pendingBatches.get(columnId);
+		if (pendingBatch?.timelineKey === timelineKey) {
+			pendingBatch.events.push({ event, phase });
+			return;
+		}
+
+		cancelPendingBatch(columnId);
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- short-lived batch lookup
+		const referencedEvents = new Map<string, Nostr.Event>();
+		const nextBatch: PendingTimelineBatch = {
+			timelineKey,
+			events: [{ event, phase }],
+			referencedEvents,
+			timeoutId: setTimeout(() => flushPendingBatch(columnId), timelineEventBatchDelayMs)
 		};
-		const nextVisibleEventIds =
-			phase === 'live'
-				? mergeVisibleEventIds(runtimeWithEvent, [event.id, ...runtimeWithEvent.visibleEventIds])
-				: insertVisibleEventId(runtimeWithEvent, event.id);
-		const trimmedVisibleEventIds = trimVisibleEventIds(nextVisibleEventIds, 'older');
-
-		setRuntime(
-			columnId,
-			pruneLoadedEvents({
-				...runtimeWithEvent,
-				visibleEventIds: trimmedVisibleEventIds,
-				hasOlderStored:
-					runtimeWithEvent.hasOlderStored ||
-					nextVisibleEventIds.length > trimmedVisibleEventIds.length
-			})
-		);
-		void hydrateReferencedEvents(columnId);
+		pendingBatches.set(columnId, nextBatch);
 	}
 
 	function addReferencedEvent(columnId: string, referenceEventId: string, event: Nostr.Event) {
 		void storeEvent(event);
+		const pendingBatch = pendingBatches.get(columnId);
+		if (pendingBatch?.events.some(({ event }) => event.id === referenceEventId)) {
+			pendingBatch.referencedEvents.set(referenceEventId, event);
+			return;
+		}
+
 		const runtime = runtimes[columnId] ?? emptyTimelineRuntime();
 		if (!runtime.visibleEventIds.includes(referenceEventId)) return;
 
@@ -169,6 +180,80 @@ export function createTimelineController({ getColumnConfigs, isReady }: Timeline
 				}
 			}
 		};
+	}
+
+	function flushPendingBatch(columnId: string) {
+		const pendingBatch = pendingBatches.get(columnId);
+		if (!pendingBatch) return;
+
+		pendingBatches.delete(columnId);
+		const events = deduplicatePendingEvents(pendingBatch.events);
+		void storeTimelineEvents(
+			columnId,
+			pendingBatch.timelineKey,
+			events.map(({ event }) => event)
+		);
+
+		const runtime = runtimes[columnId] ?? emptyTimelineRuntime();
+		if (runtime.timelineKey !== pendingBatch.timelineKey || runtime.hasNewerStored) return;
+
+		const runtimeWithEvents = {
+			...runtime,
+			loadedEventsById: {
+				...runtime.loadedEventsById,
+				...Object.fromEntries(events.map(({ event }) => [event.id, event]))
+			}
+		};
+		const nextVisibleEventIds = mergeTimelineEventBatch(
+			runtimeWithEvents,
+			events.flatMap(({ event, phase }) => (phase === 'initial' ? [event.id] : [])),
+			events.flatMap(({ event, phase }) => (phase === 'live' ? [event.id] : []))
+		);
+		const trimmedVisibleEventIds = trimVisibleEventIds(nextVisibleEventIds, 'older');
+		const referencedEvents = [...pendingBatch.referencedEvents.entries()].flatMap(
+			([referenceEventId, event]) =>
+				trimmedVisibleEventIds.includes(referenceEventId) ? [[event.id, event] as const] : []
+		);
+
+		setRuntime(
+			columnId,
+			pruneLoadedEvents({
+				...runtimeWithEvents,
+				visibleEventIds: trimmedVisibleEventIds,
+				loadedEventsById: {
+					...runtimeWithEvents.loadedEventsById,
+					...Object.fromEntries(referencedEvents)
+				},
+				hasOlderStored:
+					runtimeWithEvents.hasOlderStored ||
+					nextVisibleEventIds.length > trimmedVisibleEventIds.length
+			})
+		);
+		void hydrateReferencedEvents(columnId);
+	}
+
+	function deduplicatePendingEvents(events: PendingTimelineEvent[]) {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local lookup, not component state
+		const seenEventIds = new Set<string>();
+		const deduplicatedEvents: PendingTimelineEvent[] = [];
+
+		for (let index = events.length - 1; index >= 0; index -= 1) {
+			const pendingEvent = events[index];
+			if (seenEventIds.has(pendingEvent.event.id)) continue;
+
+			seenEventIds.add(pendingEvent.event.id);
+			deduplicatedEvents.push(pendingEvent);
+		}
+
+		return deduplicatedEvents.reverse();
+	}
+
+	function cancelPendingBatch(columnId: string) {
+		const pendingBatch = pendingBatches.get(columnId);
+		if (!pendingBatch) return;
+
+		clearTimeout(pendingBatch.timeoutId);
+		pendingBatches.delete(columnId);
 	}
 
 	async function hydrateReferencedEvents(columnId: string) {
@@ -306,10 +391,6 @@ export function createTimelineController({ getColumnConfigs, isReady }: Timeline
 			.filter((eventId) => !runtime.loadedEventsById[eventId]);
 	}
 
-	function insertVisibleEventId(runtime: TimelineRuntime, eventId: string) {
-		return mergeVisibleEventIds(runtime, [...runtime.visibleEventIds, eventId]);
-	}
-
 	function mergeVisibleEventIds(runtime: TimelineRuntime, eventIds: string[]) {
 		return mergeTimelineEventIds(runtime, eventIds);
 	}
@@ -355,6 +436,9 @@ export function createTimelineController({ getColumnConfigs, isReady }: Timeline
 			subscription.stop();
 		}
 		subscriptions.clear();
+		for (const columnId of pendingBatches.keys()) {
+			cancelPendingBatch(columnId);
+		}
 	}
 
 	return {

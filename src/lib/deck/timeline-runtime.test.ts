@@ -5,6 +5,7 @@ import {
 	emptyTimelineRuntime,
 	getReferencedEventId,
 	getTimelineRequest,
+	mergeTimelineEventBatch,
 	mergeTimelineEventIds,
 	timelineRuntimeToPosts
 } from './timeline-runtime';
@@ -75,6 +76,67 @@ describe('timeline runtime', () => {
 
 		expect(mergeTimelineEventIds(runtime, [boundaryEvent.id, boundaryEvent.id])).toEqual([
 			boundaryEvent.id
+		]);
+	});
+
+	test('inserts one historical event without reordering the existing timeline', () => {
+		const newest = event('1'.repeat(64), 300);
+		const middle = event('2'.repeat(64), 200);
+		const inserted = event('3'.repeat(64), 250);
+		const oldest = event('4'.repeat(64), 100);
+		const runtime = {
+			...emptyTimelineRuntime(),
+			visibleEventIds: [newest.id, middle.id, oldest.id],
+			loadedEventsById: {
+				[newest.id]: newest,
+				[middle.id]: middle,
+				[inserted.id]: inserted,
+				[oldest.id]: oldest
+			}
+		};
+
+		expect(mergeTimelineEventIds(runtime, [...runtime.visibleEventIds, inserted.id])).toEqual([
+			newest.id,
+			inserted.id,
+			middle.id,
+			oldest.id
+		]);
+	});
+
+	test('merges an event batch while keeping later live arrivals first', () => {
+		const existingLive = event('1'.repeat(64), 500);
+		const existingHistory = event('2'.repeat(64), 300);
+		const initialNewer = event('3'.repeat(64), 400);
+		const initialOlder = event('4'.repeat(64), 200);
+		const firstLive = event('5'.repeat(64), 100);
+		const secondLive = event('6'.repeat(64), 50);
+		const runtime = {
+			...emptyTimelineRuntime(),
+			visibleEventIds: [existingLive.id, existingHistory.id],
+			liveEventIds: [existingLive.id],
+			loadedEventsById: {
+				[existingLive.id]: existingLive,
+				[existingHistory.id]: existingHistory,
+				[initialNewer.id]: initialNewer,
+				[initialOlder.id]: initialOlder,
+				[firstLive.id]: firstLive,
+				[secondLive.id]: secondLive
+			}
+		};
+
+		expect(
+			mergeTimelineEventBatch(
+				runtime,
+				[initialOlder.id, initialNewer.id],
+				[firstLive.id, secondLive.id]
+			)
+		).toEqual([
+			secondLive.id,
+			firstLive.id,
+			existingLive.id,
+			initialNewer.id,
+			existingHistory.id,
+			initialOlder.id
 		]);
 	});
 

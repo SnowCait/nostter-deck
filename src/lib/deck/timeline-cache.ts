@@ -77,13 +77,25 @@ export async function storeTimelineEvent(
 	timelineKey: string,
 	event: Nostr.Event
 ) {
+	await storeTimelineEvents(columnId, timelineKey, [event]);
+}
+
+export async function storeTimelineEvents(
+	columnId: string,
+	timelineKey: string,
+	events: Nostr.Event[]
+) {
+	if (events.length === 0) return;
+
 	await timelineCacheDb.transaction(
 		'rw',
 		timelineCacheDb.events,
 		timelineCacheDb.timelineEvents,
 		async () => {
-			await timelineCacheDb.events.put(toCachedEvent(event));
-			await timelineCacheDb.timelineEvents.put(toCachedTimelineEvent(columnId, timelineKey, event));
+			await timelineCacheDb.events.bulkPut(events.map(toCachedEvent));
+			await timelineCacheDb.timelineEvents.bulkPut(
+				events.map((event) => toCachedTimelineEvent(columnId, timelineKey, event))
+			);
 		}
 	);
 }

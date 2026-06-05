@@ -42,6 +42,14 @@ export function startCustomTimelineSubscription({
 	const subscriptionBoundary = now();
 	const pendingFiltersByAddress = new Map<string, NostrFilter[]>();
 	const subscriptions: Unsubscribable[] = [];
+	let isLoading = false;
+
+	function setLoading(nextIsLoading: boolean) {
+		if (isLoading === nextIsLoading) return;
+
+		isLoading = nextIsLoading;
+		onLoadingChange(nextIsLoading);
+	}
 
 	function addSubscription(subscription: Unsubscribable) {
 		subscriptions.push(subscription);
@@ -205,7 +213,7 @@ export function startCustomTimelineSubscription({
 		}
 	}
 
-	onLoadingChange(true);
+	setLoading(true);
 
 	addSubscription(
 		rxNostr
@@ -213,10 +221,10 @@ export function startCustomTimelineSubscription({
 			.pipe(uniq())
 			.subscribe({
 				next: ({ event }) => {
-					onLoadingChange(false);
+					setLoading(false);
 					handleTimelineEvent(event, 'initial');
 				},
-				complete: () => onLoadingChange(false)
+				complete: () => setLoading(false)
 			})
 	);
 
@@ -225,7 +233,7 @@ export function startCustomTimelineSubscription({
 			.use(liveTimelineReq, { on: { relays: relayUrls } })
 			.pipe(uniq())
 			.subscribe(({ event }) => {
-				onLoadingChange(false);
+				setLoading(false);
 				handleTimelineEvent(event, 'live');
 			})
 	);
@@ -234,7 +242,7 @@ export function startCustomTimelineSubscription({
 		rxNostr.createAllErrorObservable().subscribe(({ from, reason }) => {
 			if (!relayUrls.includes(from)) return;
 
-			onLoadingChange(false);
+			setLoading(false);
 			onError(formatRelayError(from, reason));
 		})
 	);
