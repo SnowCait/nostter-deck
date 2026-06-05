@@ -15,6 +15,7 @@
 	import type { AvatarShape } from '$lib/user-settings';
 	import type * as Nostr from 'nostr-typedef';
 	import ProfileAvatar from './ProfileAvatar.svelte';
+	import NostrQuoteCard from './NostrQuoteCard.svelte';
 
 	type Props = {
 		post: Post;
@@ -76,6 +77,16 @@
 		const profile = getProfile(token.pubkey);
 		const displayName = profile?.display_name ?? profile?.name;
 		return displayName ? `@${displayName}` : `@${npubEncode(token.pubkey).slice(0, 12)}`;
+	}
+
+	function isEventReferenceToken(
+		token: PostContentToken
+	): token is Extract<PostContentToken, { type: 'nostrReference' }> & { eventId: string } {
+		return (
+			token.type === 'nostrReference' &&
+			(token.entityType === 'note' || token.entityType === 'nevent') &&
+			typeof token.eventId === 'string'
+		);
 	}
 
 	function getUrlHostname(url: string) {
@@ -272,14 +283,25 @@
 									{/if}
 								</a>
 							{:else if token.type === 'nostrReference'}
-								<a
-									href={token.href}
-									target="_blank"
-									rel="external noopener noreferrer"
-									class="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-300 dark:hover:text-sky-200"
-								>
-									{getNostrReferenceText(token)}
-								</a>
+								{#if isEventReferenceToken(token)}
+									<NostrQuoteCard
+										href={token.href}
+										eventId={token.eventId}
+										relayHints={token.relayHints ?? []}
+										{textClass}
+										{avatarShape}
+										{getProfile}
+									/>
+								{:else}
+									<a
+										href={token.href}
+										target="_blank"
+										rel="external noopener noreferrer"
+										class="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-300 dark:hover:text-sky-200"
+									>
+										{getNostrReferenceText(token)}
+									</a>
+								{/if}
 							{:else}
 								<span class="whitespace-pre-wrap">{token.text}</span>
 							{/if}

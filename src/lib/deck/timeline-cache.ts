@@ -185,6 +185,10 @@ export async function loadEventsByIds(eventIds: string[]) {
 	);
 }
 
+export async function loadEventById(eventId: string) {
+	return (await timelineCacheDb.events.get(eventId))?.event;
+}
+
 function getTimelineRange(columnId: string, timelineKey: string) {
 	return timelineCacheDb.timelineEvents
 		.where('[columnId+timelineKey+sortCreatedAt+eventId]')

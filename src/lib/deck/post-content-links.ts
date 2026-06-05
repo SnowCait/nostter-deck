@@ -24,6 +24,7 @@ export type PostContentToken =
 			entityType: NostrReferenceEntityType;
 			identifier: string;
 			pubkey?: string;
+			eventId?: string;
 			relayHints?: string[];
 	  };
 
@@ -134,6 +135,14 @@ function parseNostrReferenceData(identifier: string, entityType: NostrReferenceE
 			case 'nprofile':
 				return {
 					pubkey: decoded.data.pubkey,
+					relayHints:
+						decoded.data.relays?.map(normalizeRelay).filter((relay) => relay !== null) ?? []
+				};
+			case 'note':
+				return { eventId: decoded.data };
+			case 'nevent':
+				return {
+					eventId: decoded.data.id,
 					relayHints:
 						decoded.data.relays?.map(normalizeRelay).filter((relay) => relay !== null) ?? []
 				};

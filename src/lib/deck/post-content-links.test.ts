@@ -31,6 +31,17 @@ describe('post content links', () => {
 			nostrNevent,
 			nostrNaddr
 		]);
+		expect(tokens[2]).toMatchObject({
+			entityType: 'note',
+			eventId: '1'.repeat(64)
+		});
+		expect(tokens[2]).not.toHaveProperty('relayHints');
+		expect(tokens[3]).toMatchObject({
+			entityType: 'nevent',
+			eventId: '1'.repeat(64),
+			relayHints: ['wss://relay.example/']
+		});
+		expect(tokens[4]).not.toHaveProperty('eventId');
 	});
 
 	test('does not parse nsec or bare nostr identifiers as links', () => {

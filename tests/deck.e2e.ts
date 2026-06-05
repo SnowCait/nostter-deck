@@ -65,6 +65,11 @@ const nostrNpub = 'nostr:npub142424242424242424242424242424242424242424242424242
 const nostrNprofile =
 	'nostr:nprofile1qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqg924242424242424242424242424242424242424242424242424gv3cla6';
 const nostrFallbackNpub = 'nostr:npub1lllllllllllllllllllllllllllllllllllllllllllllllllllsq7lrjw';
+const nostrNote = 'nostr:note1zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsglnzgl';
+const nostrNevent =
+	'nostr:nevent1qvzqqqqqqypzp242424242424242424242424242424242424242424242424242qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqgq3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyuv4j77';
+const nostrNaddr =
+	'nostr:naddr1qvzqqqr4gupzp242424242424242424242424242424242424242424242424242qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqpmpwf6xjcmvv5hynj0x';
 const imagePreviewUrl = 'https://example.com/image-without-extension';
 const linkPreviewUrl = 'https://example.com/article';
 const pathPreviewUrl = 'https://example.com/path?from=nostter';
@@ -424,11 +429,11 @@ test.describe('nostter deck', () => {
 		await expectColumnOrder(columns, [...columnNames, 'Custom timeline']);
 		await expectColumnWidth(customColumn, standardColumnWidth);
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
-		await expect(customColumn.getByText('Alice Relay', { exact: true })).toBeVisible();
-		await expect(customColumn.locator('img[src^="data:image/gif"]')).toBeVisible();
+		await expect(customColumn.getByText('Alice Relay', { exact: true }).first()).toBeVisible();
 		const profileAvatar = customColumn.getByTestId('post-avatar').first();
+		await expect(profileAvatar).toBeVisible();
 		await profileAvatar.dispatchEvent('error');
-		await expect(customColumn.locator('img[src^="data:image/gif"]')).toHaveCount(0);
+		await expect(profileAvatar.locator('img')).toHaveCount(0);
 		await expect(profileAvatar).toHaveText('A');
 		await expect(profileAvatar).toHaveClass(/rounded-full/);
 		await expect(customColumn.getByText('#nostter')).toHaveCount(1);
@@ -484,6 +489,27 @@ test.describe('nostter deck', () => {
 		await expect(nostrReferenceArticle.locator(`a[href="${nostrFallbackNpub}"]`)).toHaveText(
 			'@npub1lllllll'
 		);
+		const quoteCards = nostrReferenceArticle.getByTestId('nostr-quote');
+		await expect(quoteCards).toHaveCount(4);
+		await expect(quoteCards.filter({ hasText: 'Quoted short text note' })).toHaveCount(2);
+		await expect(quoteCards.filter({ hasText: 'Quoted channel message' })).toHaveCount(1);
+		await expect(quoteCards.filter({ hasText: 'nostr:nevent1qqsrx' })).toHaveCount(1);
+		await expect
+			.poll(async () =>
+				quoteCards.evaluateAll((cards) => cards.map((card) => card.getBoundingClientRect().height))
+			)
+			.toEqual([112, 112, 112, 112]);
+		await expect(nostrReferenceArticle.locator(`a[href="${nostrNote}"]`)).toHaveCount(1);
+		await expect(nostrReferenceArticle.locator(`a[href="${nostrNevent}"]`)).toHaveCount(1);
+		await expect(nostrReferenceArticle.locator(`a[href="${nostrNaddr}"]`)).toHaveText(nostrNaddr);
+		await expect
+			.poll(() =>
+				page.evaluate(
+					(eventId) => window.__nostterFakeRelayEventIdRequests?.[eventId] ?? 0,
+					'1'.repeat(64)
+				)
+			)
+			.toBe(3);
 		const longPostArticle = customColumn
 			.locator('article')
 			.filter({ hasText: 'Long post starts here' });

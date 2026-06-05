@@ -39,6 +39,10 @@ export async function installFakeNostrRelay(page: Page) {
 				'nostr:nevent1qvzqqqqqqypzp242424242424242424242424242424242424242424242424242qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqgq3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyuv4j77';
 			const nostrNaddr =
 				'nostr:naddr1qvzqqqr4gupzp242424242424242424242424242424242424242424242424242qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqpmpwf6xjcmvv5hynj0x';
+			const nostrChannelNevent =
+				'nostr:nevent1qvzqqqqq9gpzpwamhwamhwamhwamhwamhwamhwamhwamhwamhwamhwamhwamhwamqy28wumn8ghj7un9d3shjtnyv9kh2uewd9hsqgpzyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygrzt5kp';
+			const nostrUnavailableNevent =
+				'nostr:nevent1qqsrxvenxvenxvenxvenxvenxvenxvenxvenxvenxvenxvenxvenxvczpwyvz';
 			const nostrFallbackNpub =
 				'nostr:npub1lllllllllllllllllllllllllllllllllllllllllllllllllllsq7lrjw';
 			const nostrNsec = 'nostr:nsec1yg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3qxh9tww';
@@ -62,7 +66,25 @@ export async function installFakeNostrRelay(page: Page) {
 				created_at: textEvent.created_at - 2,
 				kind: shortTextNoteKind,
 				tags: [],
-				content: `NIP-21 references ${nostrNpub} ${nostrNprofile} ${nostrNote} ${nostrNevent} ${nostrNaddr} ${nostrFallbackNpub} ${nostrNsec}`,
+				content: `NIP-21 references ${nostrNpub} ${nostrNprofile} ${nostrNote} ${nostrNevent} ${nostrChannelNevent} ${nostrUnavailableNevent} ${nostrNaddr} ${nostrFallbackNpub} ${nostrNsec}`,
+				sig: '0'.repeat(128)
+			};
+			const quotedTextEvent = {
+				id: '1'.repeat(64),
+				pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+				created_at: textEvent.created_at - 10,
+				kind: shortTextNoteKind,
+				tags: [],
+				content: 'Quoted short text note',
+				sig: '0'.repeat(128)
+			};
+			const quotedChannelEvent = {
+				id: '2'.repeat(64),
+				pubkey: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+				created_at: textEvent.created_at - 20,
+				kind: 42,
+				tags: [['e', '4'.repeat(64), '', 'root']],
+				content: 'Quoted channel message',
 				sig: '0'.repeat(128)
 			};
 			const longTextEvent = {
@@ -394,6 +416,19 @@ export async function installFakeNostrRelay(page: Page) {
 							this.emitMessage(['EVENT', subId, textEvent]);
 							this.emitMessage(['EOSE', subId]);
 						}, 5);
+					}
+
+					for (const quotedEvent of [quotedTextEvent, quotedChannelEvent]) {
+						if (!requestedEventIds.includes(quotedEvent.id)) continue;
+
+						relayEventIdRequests[quotedEvent.id] = (relayEventIdRequests[quotedEvent.id] ?? 0) + 1;
+						setTimeout(() => {
+							this.emitMessage(['EVENT', subId, quotedEvent]);
+						}, 5);
+					}
+
+					if (requestedEventIds.length > 0) {
+						setTimeout(() => this.emitMessage(['EOSE', subId]), 15);
 					}
 
 					function searchPreviewEvent(search: string | undefined) {
