@@ -34,6 +34,7 @@ export type TimelineRequest = {
 
 export const timelinePageSize = 100;
 export const maxVisibleTimelineEvents = 200;
+export const presetTimelineInitialLimit = 20;
 
 export function emptyTimelineRuntime(timelineKey = ''): TimelineRuntime {
 	return {
@@ -72,20 +73,34 @@ export function getTimelineRequest(column: ColumnConfig): TimelineRequest | null
 
 	if (column.sourceKey === 'timeline_follow') {
 		return {
-			filters: [{ kinds: [ShortTextNote], authors: `3:${column.pubkey}:` }],
+			filters: [
+				{
+					kinds: [ShortTextNote],
+					authors: `3:${column.pubkey}:`,
+					limit: presetTimelineInitialLimit
+				}
+			],
 			relays: { type: 'custom', urls: combineRelays([...defaultRelays], column.relays) }
 		};
 	}
 
 	if (column.sourceKey === 'timeline_channel') {
 		return {
-			filters: [{ kinds: [ChannelMessage], '#e': [column.channelId] }],
+			filters: [
+				{
+					kinds: [ChannelMessage],
+					'#e': [column.channelId],
+					limit: presetTimelineInitialLimit
+				}
+			],
 			relays: { type: 'custom', urls: combineRelays([...defaultRelays], column.relays) }
 		};
 	}
 
 	return {
-		filters: [{ kinds: [ShortTextNote], search: column.query, limit: 20 }],
+		filters: [
+			{ kinds: [ShortTextNote], search: column.query, limit: presetTimelineInitialLimit }
+		],
 		relays: { type: 'custom', urls: [...searchRelays] }
 	};
 }

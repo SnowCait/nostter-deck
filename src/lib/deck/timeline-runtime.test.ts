@@ -144,7 +144,33 @@ describe('timeline runtime', () => {
 				width: 'standard'
 			})
 		).toEqual({
-			filters: [{ kinds: [ChannelMessage], '#e': ['4'.repeat(64)] }],
+			filters: [{ kinds: [ChannelMessage], '#e': ['4'.repeat(64)], limit: 20 }],
+			relays: {
+				type: 'custom',
+				urls: expect.arrayContaining(['wss://relay.example/'])
+			}
+		});
+	});
+
+	test('creates a follow timeline request with an initial limit', () => {
+		expect(
+			getTimelineRequest({
+				id: 'follow',
+				type: 'timeline',
+				timelineKind: 'preset',
+				sourceKey: 'timeline_follow',
+				pubkey: '5'.repeat(64),
+				relays: ['wss://relay.example/'],
+				width: 'standard'
+			})
+		).toEqual({
+			filters: [
+				{
+					kinds: [ShortTextNote],
+					authors: `3:${'5'.repeat(64)}:`,
+					limit: 20
+				}
+			],
 			relays: {
 				type: 'custom',
 				urls: expect.arrayContaining(['wss://relay.example/'])
