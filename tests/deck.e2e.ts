@@ -35,6 +35,7 @@ import {
 	iconCenterX,
 	narrowColumnWidth,
 	openDeck,
+	selectColumnType,
 	sidebar,
 	sidebarButtonIcon,
 	sidebarButtonNames,
@@ -121,7 +122,8 @@ test.describe('nostter deck', () => {
 
 		await addColumnPlaceholder.getByRole('button', { name: 'Add column' }).click();
 		await expect(addColumnDialog).toBeVisible();
-		await expect(page.getByLabel('Column type').locator('option')).toHaveText([
+		await page.getByLabel('Column type').click();
+		await expect(page.getByRole('option')).toHaveText([
 			'Follow',
 			'Search',
 			'Channel',
@@ -151,7 +153,7 @@ test.describe('nostter deck', () => {
 		await page.getByRole('button', { name: 'Add column' }).first().click();
 		await expect(page.getByLabel('Website URL')).toHaveCount(0);
 
-		await page.getByLabel('Column type').selectOption('website');
+		await selectColumnType(page, 'website');
 		const saveButton = page.getByRole('button', { name: 'Save' });
 		const urlInput = page.getByLabel('Website URL');
 		await expect(urlInput).toBeVisible();
@@ -184,7 +186,7 @@ test.describe('nostter deck', () => {
 
 		await page.getByRole('button', { name: 'Add column' }).first().click();
 		const addDialog = page.getByRole('dialog', { name: 'Add column' });
-		await expect(page.getByLabel('Column type')).toHaveValue('timeline_follow');
+		await expect(page.getByLabel('Column type')).toHaveText('Follow');
 		const targetInput = addDialog.getByLabel('npub or nprofile');
 		const saveButton = addDialog.getByRole('button', { name: 'Save' });
 		await expect(targetInput).toBeVisible();
@@ -250,7 +252,7 @@ test.describe('nostter deck', () => {
 		const columns = deckColumns(page);
 
 		await page.getByRole('button', { name: 'Add column' }).first().click();
-		await page.getByLabel('Column type').selectOption('timeline_search');
+		await selectColumnType(page, 'timeline_search');
 		const addDialog = page.getByRole('dialog', { name: 'Add column' });
 		const searchInput = addDialog.getByLabel('Search query');
 		const saveButton = addDialog.getByRole('button', { name: 'Save' });
@@ -388,7 +390,7 @@ test.describe('nostter deck', () => {
 		await page.getByRole('button', { name: 'Add column' }).first().click();
 		await expect(page.getByLabel('REQ filters')).toHaveCount(0);
 
-		await page.getByLabel('Column type').selectOption('custom_timeline');
+		await selectColumnType(page, 'custom_timeline');
 		const saveButton = page.getByRole('button', { name: 'Save' });
 		const filtersInput = page.getByLabel('REQ filters');
 		const customRelaysInput = page.getByLabel('Custom relays');
@@ -632,7 +634,7 @@ test.describe('nostter deck', () => {
 		).toBeVisible();
 
 		await page.getByRole('button', { name: 'Add column' }).first().click();
-		await page.getByLabel('Column type').selectOption('custom_timeline');
+		await selectColumnType(page, 'custom_timeline');
 		await page
 			.getByRole('dialog', { name: 'Add column' })
 			.getByRole('button', { name: 'Save' })
@@ -734,7 +736,7 @@ test.describe('nostter deck', () => {
 		];
 
 		await page.getByRole('button', { name: 'Add column' }).first().click();
-		await page.getByLabel('Column type').selectOption('custom_timeline');
+		await selectColumnType(page, 'custom_timeline');
 
 		const saveButton = page.getByRole('button', { name: 'Save' });
 		const filtersInput = page.getByLabel('REQ filters');

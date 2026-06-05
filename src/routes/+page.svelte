@@ -1,66 +1,30 @@
 <script lang="ts">
 	import { onDestroy, onMount, tick } from 'svelte';
 	import { CalendarClock, Image, Plus, Send, Smile, UserRound } from '@lucide/svelte';
+	import AddColumnDialog from '$lib/components/deck/AddColumnDialog.svelte';
 	import DeckColumn from '$lib/components/deck/DeckColumn.svelte';
-	import FilterHelpButton from '$lib/components/deck/FilterHelpButton.svelte';
 	import ProfileAvatar from '$lib/components/deck/ProfileAvatar.svelte';
 	import Sidebar from '$lib/components/deck/Sidebar.svelte';
-	import { createColumnConfigFromDraft, type AddColumnType } from '$lib/deck/add-column';
-	import { getDefaultColumnIconKey } from '$lib/deck/column-icons';
 	import { readColumnConfigs, writeColumnConfigs } from '$lib/deck/column-configs';
-	import { columnSourceKeys } from '$lib/deck/data';
+	import { emptyTimelineRuntime, toRuntimeColumn } from '$lib/deck/timeline-runtime';
+	import { resetSessionTimelineCache } from '$lib/deck/timeline-cache';
+	import { createTimelineController } from '$lib/deck/timeline-controller.svelte';
+	import type { Column, ColumnConfig, ColumnIconKey, ColumnWidth } from '$lib/deck/types';
 	import {
-		emptyTimelineRuntime,
-		getReferencedEventId,
-		getTimelineRequest,
-		getTimelineSignature,
-		isFetchableTimelineColumn,
-		maxVisibleTimelineEvents,
-		mergeTimelineEventIds,
-		timelinePageSize,
-		toRuntimeColumn,
-		type TimelineRuntime
-	} from '$lib/deck/timeline-runtime';
-	import {
-		clearTimelineColumn,
-		hasNewerTimelineEvents,
-		hasOlderTimelineEvents,
-		loadEventsByIds,
-		loadNewerTimelineEvents,
-		loadOlderTimelineEvents,
-		resetSessionTimelineCache,
-		storeEvent,
-		storeTimelineEvent
-	} from '$lib/deck/timeline-cache';
-	import type {
-		Column,
-		ColumnConfig,
-		ColumnIconKey,
-		ColumnWidth,
-		NostrFilter,
-		RelaySelection
-	} from '$lib/deck/types';
-	import { normalizeWebsiteUrl } from '$lib/deck/website-url';
+		saveChannelSettings as saveChannelSettingsConfig,
+		saveCustomTimelineSettings as saveCustomTimelineSettingsConfig,
+		saveFollowSettings as saveFollowSettingsConfig,
+		saveSearchSettings as saveSearchSettingsConfig,
+		updateColumnIcon as updateColumnIconConfig,
+		updateColumnTitle as updateColumnTitleConfig,
+		updateColumnWidth as updateColumnWidthConfig
+	} from '$lib/deck/column-updates';
 	import { textClassByFontSize } from '$lib/font-size';
-	import * as Dialog from '$lib/components/ui/dialog';
-	import { parseNostrFilters } from '$lib/nostr/filters';
-	import {
-		decodeChannelPointer,
-		decodeProfilePointer,
-		type ChannelPointer,
-		type ProfilePointer
-	} from '$lib/nostr/nip19';
+	import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
 	import { getProfile, requestProfiles } from '$lib/nostr/profiles';
-	import { defaultRelays, profileRelays, resolveRelayDraft } from '$lib/nostr/relays';
-	import { startCustomTimelineSubscription, type TimelineEventPhase } from '$lib/nostr/timeline';
+	import { profileRelays } from '$lib/nostr/relays';
 	import { m } from '$lib/paraglide/messages.js';
 	import { readUserSettings, type AvatarShape, type FontSize } from '$lib/user-settings';
-	import type * as Nostr from 'nostr-typedef';
-
-	type CustomTimelineSubscription = {
-		signature: string;
-		stop: () => void;
-	};
 
 	type NostrDeckGlobal = typeof globalThis & {
 		__NOSTTER_DECK_IS_LOGGED_IN__?: boolean;
@@ -68,9 +32,7 @@
 
 	const savedColumnConfigs = readColumnConfigs();
 	const isLoggedIn = (globalThis as NostrDeckGlobal).__NOSTTER_DECK_IS_LOGGED_IN__ === true;
-	const availableColumnSourceKeys = columnSourceKeys;
 	const defaultProfileRelays = [...profileRelays];
-	const defaultColumnType = availableColumnSourceKeys[0] ?? 'timeline_search';
 
 	let columnConfigs = $state<ColumnConfig[]>(savedColumnConfigs.map((column) => ({ ...column })));
 	let activeColumnId = $state(savedColumnConfigs[0]?.id ?? '');
@@ -81,85 +43,25 @@
 	const initialUserSettings = readUserSettings();
 	let fontSize = $state<FontSize>(initialUserSettings.fontSize);
 	let avatarShape = $state<AvatarShape>(initialUserSettings.avatarShape);
-	let selectedColumnType = $state<AddColumnType>(defaultColumnType);
-	let websiteUrl = $state('');
-	let followTarget = $state('');
-	let searchQuery = $state('');
-	let channelTarget = $state('');
-	let customTimelineFilters = $state('[{"kinds":[1],"limit":20}]');
-	let selectedDefaultRelays = $state<string[]>([...defaultRelays]);
-	let customTimelineRelays = $state('');
-	let customTimelineRuntimes = $state<Record<string, TimelineRuntime>>({});
 	let isTimelineCacheReady = $state(false);
-	// eslint-disable-next-line svelte/prefer-svelte-reactivity
-	const customTimelineSubscriptions = new Map<string, CustomTimelineSubscription>();
 
 	const composeMaxLength = 280;
 	const composeLength = $derived(composeText.length);
 	const canSubmitPost = $derived(composeLength > 0 && composeLength <= composeMaxLength);
 	const textClass = $derived(textClassByFontSize[fontSize]);
-	const normalizedWebsiteUrl = $derived(normalizeWebsiteUrl(websiteUrl));
-	const parsedFollowTarget = $derived(decodeProfilePointer(followTarget));
-	const parsedChannelTarget = $derived(decodeChannelPointer(channelTarget));
-	const parsedCustomTimelineFilters = $derived(parseNostrFilters(customTimelineFilters));
-	const selectedDefaultRelaySet = $derived(new Set(selectedDefaultRelays));
-	const parsedCustomTimelineRelays = $derived(
-		resolveRelayDraft(selectedDefaultRelays, customTimelineRelays)
-	);
-	const canSaveColumn = $derived(createColumnConfigFromDraft(getColumnDraft('')) !== null);
+	const timelineController = createTimelineController({
+		getColumnConfigs: () => columnConfigs,
+		isReady: () => isTimelineCacheReady
+	});
 	const columns = $derived<Column[]>(
 		columnConfigs.map((column) =>
 			toRuntimeColumn(
 				column,
-				customTimelineRuntimes[column.id] ?? emptyTimelineRuntime(),
+				timelineController.runtimes[column.id] ?? emptyTimelineRuntime(),
 				getProfile
 			)
 		)
 	);
-
-	$effect(() => {
-		if (!isTimelineCacheReady) return;
-
-		const activeTimelineColumns = columnConfigs.filter(isFetchableTimelineColumn);
-		const activeTimelineColumnIds = new Set(activeTimelineColumns.map((column) => column.id));
-
-		for (const [columnId, subscription] of customTimelineSubscriptions) {
-			if (activeTimelineColumnIds.has(columnId)) continue;
-
-			subscription.stop();
-			customTimelineSubscriptions.delete(columnId);
-			removeCustomTimelineRuntime(columnId);
-		}
-
-		for (const column of activeTimelineColumns) {
-			const request = getTimelineRequest(column);
-			if (!request) continue;
-
-			const filters = $state.snapshot(request.filters);
-			const relays = $state.snapshot(request.relays);
-			const signature = getTimelineSignature({ filters, relays });
-			if (customTimelineSubscriptions.get(column.id)?.signature === signature) continue;
-
-			customTimelineSubscriptions.get(column.id)?.stop();
-			void clearTimelineColumn(column.id, signature);
-			setCustomTimelineRuntime(column.id, emptyTimelineRuntime(signature));
-
-			const subscription = startCustomTimelineSubscription({
-				filters,
-				relays,
-				onEvent: (event, { phase }) => addCustomTimelineEvent(column.id, signature, event, phase),
-				onReferencedEvent: (referenceEventId, event) =>
-					addCustomTimelineReferencedEvent(column.id, referenceEventId, event),
-				onLoadingChange: (isLoading) => updateCustomTimelineRuntime(column.id, { isLoading }),
-				onError: (error) => updateCustomTimelineRuntime(column.id, { error })
-			});
-
-			customTimelineSubscriptions.set(column.id, {
-				signature,
-				stop: subscription.stop
-			});
-		}
-	});
 
 	onMount(() => {
 		void resetSessionTimelineCache().then(() => {
@@ -168,10 +70,7 @@
 	});
 
 	onDestroy(() => {
-		for (const subscription of customTimelineSubscriptions.values()) {
-			subscription.stop();
-		}
-		customTimelineSubscriptions.clear();
+		timelineController.stop();
 	});
 
 	function getColumnId(columnId: string) {
@@ -204,299 +103,8 @@
 		writeColumnConfigs(nextColumnConfigs);
 	}
 
-	function setCustomTimelineRuntime(columnId: string, runtime: TimelineRuntime) {
-		customTimelineRuntimes = {
-			...customTimelineRuntimes,
-			[columnId]: runtime
-		};
-	}
-
-	function updateCustomTimelineRuntime(columnId: string, patch: Partial<TimelineRuntime>) {
-		customTimelineRuntimes = {
-			...customTimelineRuntimes,
-			[columnId]: {
-				...(customTimelineRuntimes[columnId] ?? emptyTimelineRuntime()),
-				...patch
-			}
-		};
-	}
-
-	function removeCustomTimelineRuntime(columnId: string) {
-		const nextRuntimes = { ...customTimelineRuntimes };
-		delete nextRuntimes[columnId];
-		customTimelineRuntimes = nextRuntimes;
-		void clearTimelineColumn(columnId);
-	}
-
-	function addCustomTimelineEvent(
-		columnId: string,
-		timelineKey: string,
-		event: Nostr.Event,
-		phase: TimelineEventPhase
-	) {
-		void storeTimelineEvent(columnId, timelineKey, event);
-		const runtime = customTimelineRuntimes[columnId] ?? emptyTimelineRuntime();
-		if (runtime.timelineKey !== timelineKey) return;
-		if (runtime.hasNewerStored) return;
-
-		const liveEventIds =
-			phase === 'live'
-				? [event.id, ...runtime.liveEventIds.filter((eventId) => eventId !== event.id)]
-				: runtime.liveEventIds;
-		const runtimeWithEvent = {
-			...runtime,
-			liveEventIds,
-			loadedEventsById: {
-				...runtime.loadedEventsById,
-				[event.id]: event
-			}
-		};
-		const nextVisibleEventIds =
-			phase === 'live'
-				? mergeVisibleEventIds(runtimeWithEvent, [event.id, ...runtimeWithEvent.visibleEventIds])
-				: insertVisibleEventId(runtimeWithEvent, event.id);
-		const trimmedVisibleEventIds = trimVisibleEventIds(nextVisibleEventIds, 'older');
-
-		setCustomTimelineRuntime(
-			columnId,
-			pruneLoadedEvents({
-				...runtimeWithEvent,
-				visibleEventIds: trimmedVisibleEventIds,
-				hasOlderStored:
-					runtimeWithEvent.hasOlderStored ||
-					nextVisibleEventIds.length > trimmedVisibleEventIds.length
-			})
-		);
-		void hydrateReferencedEvents(columnId);
-	}
-
-	function addCustomTimelineReferencedEvent(
-		columnId: string,
-		referenceEventId: string,
-		event: Nostr.Event
-	) {
-		void storeEvent(event);
-		const runtime = customTimelineRuntimes[columnId] ?? emptyTimelineRuntime();
-		if (!runtime.visibleEventIds.includes(referenceEventId)) return;
-
-		customTimelineRuntimes = {
-			...customTimelineRuntimes,
-			[columnId]: {
-				...runtime,
-				loadedEventsById: {
-					...runtime.loadedEventsById,
-					[event.id]: event
-				}
-			}
-		};
-	}
-
-	async function hydrateReferencedEvents(columnId: string) {
-		const runtime = customTimelineRuntimes[columnId] ?? emptyTimelineRuntime();
-		const referencedEventIds = getMissingReferencedEventIds(runtime);
-		if (referencedEventIds.length === 0) return;
-
-		const referencedEventsById = await loadEventsByIds(referencedEventIds);
-		const currentRuntime = customTimelineRuntimes[columnId] ?? runtime;
-		setCustomTimelineRuntime(
-			columnId,
-			pruneLoadedEvents({
-				...currentRuntime,
-				loadedEventsById: {
-					...currentRuntime.loadedEventsById,
-					...referencedEventsById
-				}
-			})
-		);
-	}
-
-	async function loadOlderTimelineEventsFromCache(columnId: string) {
-		const runtime = customTimelineRuntimes[columnId] ?? emptyTimelineRuntime();
-		if (runtime.isLoadingOlder || !runtime.hasOlderStored) return;
-
-		const cursor = getVisibleCursor(runtime, 'older');
-		if (!cursor) return;
-
-		updateCustomTimelineRuntime(columnId, { isLoadingOlder: true });
-		const page = await loadOlderTimelineEvents(
-			columnId,
-			runtime.timelineKey,
-			cursor,
-			timelinePageSize
-		);
-		const currentRuntime = customTimelineRuntimes[columnId] ?? runtime;
-		const runtimeWithPage = await withReferencedEvents({
-			...currentRuntime,
-			loadedEventsById: {
-				...currentRuntime.loadedEventsById,
-				...page.eventsById
-			}
-		});
-		const nextVisibleEventIds = mergeVisibleEventIds(runtimeWithPage, [
-			...runtimeWithPage.visibleEventIds,
-			...page.entries.map((entry) => entry.eventId)
-		]);
-		const trimmedVisibleEventIds = trimVisibleEventIds(nextVisibleEventIds, 'newer');
-		const tailCursor = getEventCursor(
-			runtimeWithPage.loadedEventsById[trimmedVisibleEventIds.at(-1) ?? '']
-		);
-
-		setCustomTimelineRuntime(
-			columnId,
-			pruneLoadedEvents({
-				...runtimeWithPage,
-				visibleEventIds: trimmedVisibleEventIds,
-				hasOlderStored: tailCursor
-					? await hasOlderTimelineEvents(columnId, runtime.timelineKey, tailCursor)
-					: false,
-				hasNewerStored:
-					runtimeWithPage.hasNewerStored ||
-					nextVisibleEventIds.length > trimmedVisibleEventIds.length,
-				isLoadingOlder: false
-			})
-		);
-	}
-
-	async function loadNewerTimelineEventsFromCache(columnId: string) {
-		const runtime = customTimelineRuntimes[columnId] ?? emptyTimelineRuntime();
-		if (runtime.isLoadingNewer || !runtime.hasNewerStored) return;
-
-		const cursor = getVisibleCursor(runtime, 'newer');
-		if (!cursor) return;
-
-		updateCustomTimelineRuntime(columnId, { isLoadingNewer: true });
-		const page = await loadNewerTimelineEvents(
-			columnId,
-			runtime.timelineKey,
-			cursor,
-			timelinePageSize
-		);
-		const currentRuntime = customTimelineRuntimes[columnId] ?? runtime;
-		const runtimeWithPage = await withReferencedEvents({
-			...currentRuntime,
-			loadedEventsById: {
-				...currentRuntime.loadedEventsById,
-				...page.eventsById
-			}
-		});
-		const nextVisibleEventIds = mergeVisibleEventIds(runtimeWithPage, [
-			...page.entries.map((entry) => entry.eventId),
-			...runtimeWithPage.visibleEventIds
-		]);
-		const trimmedVisibleEventIds = trimVisibleEventIds(nextVisibleEventIds, 'older');
-		const headCursor = getEventCursor(
-			runtimeWithPage.loadedEventsById[trimmedVisibleEventIds[0] ?? '']
-		);
-
-		setCustomTimelineRuntime(
-			columnId,
-			pruneLoadedEvents({
-				...runtimeWithPage,
-				visibleEventIds: trimmedVisibleEventIds,
-				hasNewerStored: headCursor
-					? await hasNewerTimelineEvents(columnId, runtime.timelineKey, headCursor)
-					: false,
-				hasOlderStored:
-					runtimeWithPage.hasOlderStored ||
-					nextVisibleEventIds.length > trimmedVisibleEventIds.length,
-				isLoadingNewer: false
-			})
-		);
-	}
-
-	async function withReferencedEvents(runtime: TimelineRuntime): Promise<TimelineRuntime> {
-		const referencedEventIds = getMissingReferencedEventIds(runtime);
-		if (referencedEventIds.length === 0) return runtime;
-
-		return {
-			...runtime,
-			loadedEventsById: {
-				...runtime.loadedEventsById,
-				...(await loadEventsByIds(referencedEventIds))
-			}
-		};
-	}
-
-	function getMissingReferencedEventIds(runtime: TimelineRuntime) {
-		return runtime.visibleEventIds
-			.map((eventId) => runtime.loadedEventsById[eventId])
-			.flatMap((event) =>
-				event ? [getReferencedEventId(event)].flatMap((id) => (id ? [id] : [])) : []
-			)
-			.filter((eventId) => !runtime.loadedEventsById[eventId]);
-	}
-
-	function insertVisibleEventId(runtime: TimelineRuntime, eventId: string) {
-		return mergeVisibleEventIds(runtime, [...runtime.visibleEventIds, eventId]);
-	}
-
-	function mergeVisibleEventIds(runtime: TimelineRuntime, eventIds: string[]) {
-		return mergeTimelineEventIds(runtime, eventIds);
-	}
-
-	function trimVisibleEventIds(eventIds: string[], trimSide: 'newer' | 'older') {
-		if (eventIds.length <= maxVisibleTimelineEvents) return eventIds;
-
-		return trimSide === 'newer'
-			? eventIds.slice(eventIds.length - maxVisibleTimelineEvents)
-			: eventIds.slice(0, maxVisibleTimelineEvents);
-	}
-
-	function getVisibleCursor(runtime: TimelineRuntime, side: 'newer' | 'older') {
-		const eventId = side === 'newer' ? runtime.visibleEventIds[0] : runtime.visibleEventIds.at(-1);
-		return getEventCursor(runtime.loadedEventsById[eventId ?? '']);
-	}
-
-	function getEventCursor(event?: Nostr.Event) {
-		return event ? { createdAt: event.created_at, eventId: event.id } : null;
-	}
-
-	function pruneLoadedEvents(runtime: TimelineRuntime): TimelineRuntime {
-		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local lookup, not component state
-		const retainedEventIds = new Set(runtime.visibleEventIds);
-		for (const eventId of runtime.visibleEventIds) {
-			const referencedEventId = getReferencedEventId(runtime.loadedEventsById[eventId]);
-			if (referencedEventId) retainedEventIds.add(referencedEventId);
-		}
-
-		return {
-			...runtime,
-			liveEventIds: runtime.liveEventIds.filter((eventId) => retainedEventIds.has(eventId)),
-			loadedEventsById: Object.fromEntries(
-				Object.entries(runtime.loadedEventsById).filter(([eventId]) =>
-					retainedEventIds.has(eventId)
-				)
-			)
-		};
-	}
-
-	function getColumnDraft(id: string) {
-		return {
-			id,
-			columnType: selectedColumnType,
-			websiteUrl: normalizedWebsiteUrl,
-			followTarget: parsedFollowTarget,
-			searchQuery,
-			channelTarget: parsedChannelTarget,
-			customTimelineFilters: parsedCustomTimelineFilters,
-			customTimelineRelays: parsedCustomTimelineRelays
-		};
-	}
-
 	function openAddColumnDialog() {
-		selectedColumnType = defaultColumnType;
-		websiteUrl = '';
-		followTarget = '';
-		searchQuery = '';
-		channelTarget = '';
-		customTimelineFilters = '[{"kinds":[1],"limit":20}]';
-		selectedDefaultRelays = [...defaultRelays];
-		customTimelineRelays = '';
 		isColumnDialogOpen = true;
-	}
-
-	function closeColumnDialog() {
-		isColumnDialogOpen = false;
 	}
 
 	function toggleComposePanel() {
@@ -509,17 +117,10 @@
 		isComposePanelOpen = false;
 	}
 
-	async function saveColumnDialog() {
-		if (!canSaveColumn) return;
-
-		const id = createColumnId(columnConfigs);
-		const nextColumn = createColumnConfigFromDraft(getColumnDraft(id));
-		if (!nextColumn) return;
-
-		setColumnConfigs([...columnConfigs, nextColumn]);
-		closeColumnDialog();
+	async function saveColumn(column: ColumnConfig) {
+		setColumnConfigs([...columnConfigs, column]);
 		await tick();
-		focusColumn(id);
+		focusColumn(column.id);
 	}
 
 	async function deleteColumn(columnId: string) {
@@ -557,101 +158,38 @@
 	}
 
 	function updateColumnWidth(columnId: string, width: ColumnWidth) {
-		setColumnConfigs(
-			columnConfigs.map((column) => (column.id === columnId ? { ...column, width } : column))
-		);
+		setColumnConfigs(updateColumnWidthConfig(columnConfigs, columnId, width));
 	}
 
 	function updateColumnTitle(columnId: string, title: string) {
-		const nextTitle = title.trim();
-		setColumnConfigs(
-			columnConfigs.map((column) => {
-				if (column.id !== columnId) return column;
-
-				if (!nextTitle) {
-					const nextColumn = { ...column };
-					delete nextColumn.title;
-					return nextColumn;
-				}
-
-				return { ...column, title: nextTitle };
-			})
-		);
+		setColumnConfigs(updateColumnTitleConfig(columnConfigs, columnId, title));
 	}
 
 	function updateColumnIcon(columnId: string, icon: ColumnIconKey | null) {
-		setColumnConfigs(
-			columnConfigs.map((column) => {
-				if (column.id !== columnId) return column;
-
-				if (!icon || icon === getDefaultColumnIconKey(column)) {
-					const nextColumn = { ...column };
-					delete nextColumn.icon;
-					return nextColumn;
-				}
-
-				return { ...column, icon };
-			})
-		);
+		setColumnConfigs(updateColumnIconConfig(columnConfigs, columnId, icon));
 	}
 
 	function saveCustomTimelineSettings(
 		columnId: string,
-		filters: NostrFilter[],
-		relays: RelaySelection
+		filters: Parameters<typeof saveCustomTimelineSettingsConfig>[2],
+		relays: Parameters<typeof saveCustomTimelineSettingsConfig>[3]
 	) {
-		setColumnConfigs(
-			columnConfigs.map((column) =>
-				column.id === columnId && column.type === 'timeline' && column.timelineKind === 'custom'
-					? { ...column, filters, relays }
-					: column
-			)
-		);
+		setColumnConfigs(saveCustomTimelineSettingsConfig(columnConfigs, columnId, filters, relays));
 		openSettingsColumnId = null;
 	}
 
 	function saveFollowSettings(columnId: string, profile: ProfilePointer) {
-		setColumnConfigs(
-			columnConfigs.map((column) =>
-				column.id === columnId &&
-				column.type === 'timeline' &&
-				column.timelineKind === 'preset' &&
-				column.sourceKey === 'timeline_follow'
-					? { ...column, pubkey: profile.pubkey, relays: profile.relays }
-					: column
-			)
-		);
+		setColumnConfigs(saveFollowSettingsConfig(columnConfigs, columnId, profile));
 		openSettingsColumnId = null;
 	}
 
 	function saveSearchSettings(columnId: string, query: string) {
-		const nextQuery = query.trim();
-		if (nextQuery.length === 0) return;
-
-		setColumnConfigs(
-			columnConfigs.map((column) =>
-				column.id === columnId &&
-				column.type === 'timeline' &&
-				column.timelineKind === 'preset' &&
-				column.sourceKey === 'timeline_search'
-					? { ...column, query: nextQuery }
-					: column
-			)
-		);
+		setColumnConfigs(saveSearchSettingsConfig(columnConfigs, columnId, query));
 		openSettingsColumnId = null;
 	}
 
 	function saveChannelSettings(columnId: string, channel: ChannelPointer) {
-		setColumnConfigs(
-			columnConfigs.map((column) =>
-				column.id === columnId &&
-				column.type === 'timeline' &&
-				column.timelineKind === 'preset' &&
-				column.sourceKey === 'timeline_channel'
-					? { ...column, channelId: channel.channelId, relays: channel.relays }
-					: column
-			)
-		);
+		setColumnConfigs(saveChannelSettingsConfig(columnConfigs, columnId, channel));
 		openSettingsColumnId = null;
 	}
 
@@ -669,12 +207,6 @@
 
 	function updateAvatarShape(nextAvatarShape: AvatarShape) {
 		avatarShape = nextAvatarShape;
-	}
-
-	function toggleDefaultRelay(relay: string, isSelected: boolean) {
-		selectedDefaultRelays = isSelected
-			? [...selectedDefaultRelaySet, relay]
-			: selectedDefaultRelays.filter((selectedRelay) => selectedRelay !== relay);
 	}
 </script>
 
@@ -844,8 +376,8 @@
 						onChannelSave={(channel) => saveChannelSettings(column.id, channel)}
 						onCustomTimelineSave={(filters, relays) =>
 							saveCustomTimelineSettings(column.id, filters, relays)}
-						onLoadOlderTimeline={() => void loadOlderTimelineEventsFromCache(column.id)}
-						onLoadNewerTimeline={() => void loadNewerTimelineEventsFromCache(column.id)}
+						onLoadOlderTimeline={() => void timelineController.loadOlder(column.id)}
+						onLoadNewerTimeline={() => void timelineController.loadNewer(column.id)}
 					/>
 				{/each}
 				<div
@@ -868,203 +400,9 @@
 	</section>
 </main>
 
-<Dialog.Root bind:open={isColumnDialogOpen}>
-	<Dialog.Content
-		class="max-w-sm gap-0 rounded-md border border-slate-200 bg-white p-4 text-slate-950 shadow-xl ring-0 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50"
-		showCloseButton={false}
-	>
-		<div class="mb-4 flex items-center justify-between gap-3">
-			<Dialog.Title class={['font-bold', textClass.heading]}>
-				{m.add_column()}
-			</Dialog.Title>
-		</div>
-
-		<label
-			class={['mb-2 block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
-			for="column-type"
-		>
-			{m.column_type()}
-		</label>
-		<select
-			id="column-type"
-			class={[
-				'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
-				textClass.control
-			]}
-			bind:value={selectedColumnType}
-		>
-			{#each availableColumnSourceKeys as sourceKey (sourceKey)}
-				<option value={sourceKey}>{m[sourceKey]()}</option>
-			{/each}
-			<option value="custom_timeline">{m.column_type_custom_timeline()}</option>
-			<option value="website">{m.column_type_website()}</option>
-		</select>
-
-		{#if selectedColumnType === 'timeline_follow'}
-			<label
-				class={[
-					'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
-					textClass.control
-				]}
-				for="follow-target"
-			>
-				{m.follow_target()}
-			</label>
-			<input
-				id="follow-target"
-				class={[
-					'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
-					textClass.control
-				]}
-				bind:value={followTarget}
-			/>
-		{/if}
-
-		{#if selectedColumnType === 'timeline_search'}
-			<label
-				class={[
-					'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
-					textClass.control
-				]}
-				for="search-query"
-			>
-				{m.search_query()}
-			</label>
-			<input
-				id="search-query"
-				class={[
-					'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
-					textClass.control
-				]}
-				bind:value={searchQuery}
-			/>
-		{/if}
-
-		{#if selectedColumnType === 'timeline_channel'}
-			<label
-				class={[
-					'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
-					textClass.control
-				]}
-				for="channel-target"
-			>
-				{m.channel_target()}
-			</label>
-			<input
-				id="channel-target"
-				class={[
-					'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
-					textClass.control
-				]}
-				bind:value={channelTarget}
-			/>
-		{/if}
-
-		{#if selectedColumnType === 'custom_timeline'}
-			<div class="mt-4 mb-2 flex items-center justify-between gap-2">
-				<label
-					class={['block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
-					for="custom-timeline-filters"
-				>
-					{m.custom_timeline_filters()}
-				</label>
-				<FilterHelpButton {textClass} />
-			</div>
-			<textarea
-				id="custom-timeline-filters"
-				class={[
-					'min-h-32 w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
-					textClass.control
-				]}
-				bind:value={customTimelineFilters}
-			></textarea>
-
-			<p class={['mt-4 mb-2 font-semibold text-slate-700 dark:text-slate-300', textClass.control]}>
-				{m.custom_timeline_relays()}
-			</p>
-			<div class="grid gap-2">
-				{#each defaultRelays as relay (relay)}
-					<label
-						class={[
-							'flex min-w-0 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-							textClass.control
-						]}
-					>
-						<input
-							class="size-4 shrink-0 accent-sky-500"
-							type="checkbox"
-							checked={selectedDefaultRelaySet.has(relay)}
-							onchange={(event) =>
-								toggleDefaultRelay(relay, (event.currentTarget as HTMLInputElement).checked)}
-						/>
-						<span class="min-w-0 truncate">{relay}</span>
-					</label>
-				{/each}
-			</div>
-
-			<label
-				class={[
-					'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
-					textClass.control
-				]}
-				for="custom-timeline-relays"
-			>
-				{m.custom_timeline_custom_relays()}
-			</label>
-			<textarea
-				id="custom-timeline-relays"
-				class={[
-					'min-h-24 w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
-					textClass.control
-				]}
-				bind:value={customTimelineRelays}
-			></textarea>
-		{:else if selectedColumnType === 'website'}
-			<label
-				class={[
-					'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
-					textClass.control
-				]}
-				for="website-url"
-			>
-				{m.website_url()}
-			</label>
-			<input
-				id="website-url"
-				class={[
-					'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
-					textClass.control
-				]}
-				type="url"
-				placeholder="https://example.com"
-				bind:value={websiteUrl}
-			/>
-		{/if}
-
-		<div class="mt-5 flex justify-end gap-3">
-			<div class="flex gap-2">
-				<button
-					type="button"
-					class={[
-						'h-9 rounded-md px-3 font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900',
-						textClass.control
-					]}
-					onclick={closeColumnDialog}
-				>
-					{m.cancel()}
-				</button>
-				<button
-					type="button"
-					class={[
-						'h-9 rounded-md bg-sky-500 px-3 font-semibold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300 disabled:dark:bg-slate-800 disabled:dark:text-slate-500',
-						textClass.control
-					]}
-					disabled={!canSaveColumn}
-					onclick={saveColumnDialog}
-				>
-					{m.save()}
-				</button>
-			</div>
-		</div>
-	</Dialog.Content>
-</Dialog.Root>
+<AddColumnDialog
+	bind:isOpen={isColumnDialogOpen}
+	{textClass}
+	createColumnId={() => createColumnId(columnConfigs)}
+	onSave={(column) => void saveColumn(column)}
+/>

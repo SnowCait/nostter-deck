@@ -15,6 +15,16 @@ export const userSettingsStorageKey = 'nostter:user-settings';
 export const columnConfigsStorageKey = 'nostter:column-configs';
 export const defaultRelaySelection = { type: 'default' };
 
+const columnTypeLabels = {
+	timeline_follow: 'Follow',
+	timeline_search: 'Search',
+	timeline_channel: 'Channel',
+	custom_timeline: 'Custom timeline',
+	website: 'Website'
+} as const;
+
+export type ColumnType = keyof typeof columnTypeLabels;
+
 export async function openDeck(page: Page, options: { isLoggedIn?: boolean } = {}) {
 	await page.addInitScript(({ isLoggedIn }) => {
 		const testWindow = window as Window & { __NOSTTER_DECK_IS_LOGGED_IN__?: boolean };
@@ -36,7 +46,7 @@ export async function addPresetColumn(
 	options: { followTarget?: string; query?: string; channelTarget?: string } = {}
 ) {
 	await page.getByRole('button', { name: 'Add column' }).first().click();
-	await page.getByLabel('Column type').selectOption(sourceKey);
+	await selectColumnType(page, sourceKey);
 	if (sourceKey === 'timeline_follow') {
 		await page.getByLabel('npub or nprofile').fill(options.followTarget ?? '');
 	}
@@ -51,7 +61,7 @@ export async function addPresetColumn(
 
 export async function addWebsiteColumn(page: Page, url: string) {
 	await page.getByRole('button', { name: 'Add column' }).first().click();
-	await page.getByLabel('Column type').selectOption('website');
+	await selectColumnType(page, 'website');
 	await page.getByLabel('Website URL').fill(url);
 	await page.getByRole('button', { name: 'Save' }).click();
 }
@@ -61,7 +71,7 @@ export async function addCustomTimelineColumn(
 	options: { filters?: unknown; customRelays?: string } = {}
 ) {
 	await page.getByRole('button', { name: 'Add column' }).first().click();
-	await page.getByLabel('Column type').selectOption('custom_timeline');
+	await selectColumnType(page, 'custom_timeline');
 
 	if (options.filters) {
 		await page.getByLabel('REQ filters').fill(JSON.stringify(options.filters));
@@ -74,6 +84,11 @@ export async function addCustomTimelineColumn(
 		.getByRole('dialog', { name: 'Add column' })
 		.getByRole('button', { name: 'Save' })
 		.click();
+}
+
+export async function selectColumnType(page: Page, columnType: ColumnType) {
+	await page.getByLabel('Column type').click();
+	await page.getByRole('option', { name: columnTypeLabels[columnType], exact: true }).click();
 }
 
 export function deckColumns(page: Page) {
