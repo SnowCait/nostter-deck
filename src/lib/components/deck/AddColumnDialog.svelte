@@ -106,7 +106,7 @@
 
 <Dialog.Root bind:open={isOpen}>
 	<Dialog.Content
-		class="max-w-sm gap-0 rounded-md border border-slate-200 bg-white p-4 text-slate-950 shadow-xl ring-0 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50"
+		class="max-h-[calc(100dvh-2rem)] max-w-sm gap-0 overflow-y-auto overscroll-contain rounded-md border border-slate-200 bg-white p-4 text-slate-950 shadow-xl ring-0 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50"
 		showCloseButton={false}
 	>
 		<div class="mb-4 flex items-center justify-between gap-3">

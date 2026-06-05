@@ -170,7 +170,7 @@
 
 <aside
 	class={[
-		'flex min-h-0 shrink-0 flex-col border-r border-slate-200 bg-white/95 px-2 py-4 transition-[width] duration-200 ease-out dark:border-slate-800 dark:bg-slate-950/95',
+		'flex h-full min-h-0 shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-slate-200 bg-white/95 px-2 py-4 transition-[width] duration-200 ease-out dark:border-slate-800 dark:bg-slate-950/95',
 		isCollapsed ? 'w-[60px]' : 'w-[236px]'
 	]}
 >
@@ -363,7 +363,7 @@
 
 <Dialog.Root bind:open={isSettingsDialogOpen}>
 	<Dialog.Content
-		class="max-w-sm gap-0 rounded-md border border-slate-200 bg-white p-4 text-slate-950 shadow-xl ring-0 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50"
+		class="max-h-[calc(100dvh-2rem)] max-w-sm gap-0 overflow-y-auto overscroll-contain rounded-md border border-slate-200 bg-white p-4 text-slate-950 shadow-xl ring-0 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50"
 		showCloseButton={false}
 	>
 		<div class="mb-4 flex items-center justify-between gap-3">

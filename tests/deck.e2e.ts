@@ -92,6 +92,79 @@ test.describe('nostter deck', () => {
 		await expect(sidebar(page).getByTestId('account-avatar')).toHaveCount(0);
 	});
 
+	test('keeps page scrolling inside app regions on mobile viewports', async ({ page }) => {
+		await installFakeNostrRelay(page);
+
+		for (const viewport of [
+			{ width: 390, height: 844 },
+			{ width: 844, height: 390 },
+			{ width: 768, height: 1024 }
+		]) {
+			await page.setViewportSize(viewport);
+			await openDeck(page, { isLoggedIn: true });
+			await expect
+				.poll(() =>
+					page.evaluate(() => ({
+						innerHeight: window.innerHeight,
+						documentHeight: document.documentElement.scrollHeight,
+						bodyHeight: document.body.scrollHeight,
+						mainHeight: document.querySelector('main')?.getBoundingClientRect().height,
+						scrollY: window.scrollY
+					}))
+				)
+				.toEqual({
+					innerHeight: viewport.height,
+					documentHeight: viewport.height,
+					bodyHeight: viewport.height,
+					mainHeight: viewport.height,
+					scrollY: 0
+				});
+		}
+
+		await page.setViewportSize({ width: 844, height: 390 });
+		await page.getByRole('button', { name: 'Settings' }).click();
+		const settingsDialog = page.getByRole('dialog', { name: 'Settings' });
+		await expect(settingsDialog).toBeVisible();
+		await expect
+			.poll(() => settingsDialog.evaluate((element) => element.scrollHeight > element.clientHeight))
+			.toBe(true);
+		await page.getByRole('button', { name: 'Close' }).click();
+
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		await selectColumnType(page, 'custom_timeline');
+		const addColumnDialog = page.getByRole('dialog', { name: 'Add column' });
+		await expect
+			.poll(() =>
+				addColumnDialog.evaluate((element) => element.scrollHeight > element.clientHeight)
+			)
+			.toBe(true);
+		await addColumnDialog.getByRole('button', { name: 'Save' }).click();
+
+		const column = deckColumns(page).first();
+		await columnOptionsButton(column).click();
+		await expect
+			.poll(() =>
+				column
+					.getByTestId('column-settings-scroll')
+					.evaluate((element) => element.scrollHeight > element.clientHeight)
+			)
+			.toBe(true);
+
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+		await expect
+			.poll(() =>
+				page
+					.getByTestId('compose-panel-scroll')
+					.evaluate((element) => element.scrollHeight > element.clientHeight)
+			)
+			.toBe(true);
+		await expect
+			.poll(() => sidebar(page).evaluate((element) => element.scrollHeight > element.clientHeight))
+			.toBe(true);
+		await expect(page).toHaveURL('/');
+		await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+	});
+
 	test('adds, moves, and deletes a column', async ({ page }) => {
 		await installFakeNostrRelay(page);
 		await openDeck(page);

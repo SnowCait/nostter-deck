@@ -120,10 +120,26 @@
 	* {
 		@apply border-border outline-ring/50;
 	}
+	html,
+	body {
+		height: 100%;
+		overflow: hidden;
+		overscroll-behavior: none;
+	}
 	body {
 		@apply bg-background text-foreground;
 	}
 	html {
 		@apply font-sans;
+	}
+}
+
+.app-shell {
+	height: 100vh;
+}
+
+@supports (height: 100dvh) {
+	.app-shell {
+		height: 100dvh;
 	}
 }

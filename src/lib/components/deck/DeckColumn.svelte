@@ -183,7 +183,8 @@
 
 	{#if isSettingsOpen}
 		<div
-			class="shrink-0 border-b border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/70"
+			class="max-h-[calc(100dvh-3.5rem)] shrink-0 overflow-y-auto overscroll-contain border-b border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/70"
+			data-testid="column-settings-scroll"
 		>
 			{#if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_follow'}
 				<FollowColumnSettings {column} {textClass} onSave={onFollowSave} />

@@ -215,7 +215,7 @@
 </svelte:head>
 
 <main
-	class="flex h-screen min-h-0 bg-[#eef3f7] text-slate-950 dark:bg-slate-950 dark:text-slate-50"
+	class="app-shell flex min-h-0 overflow-hidden bg-[#eef3f7] text-slate-950 dark:bg-slate-950 dark:text-slate-50"
 >
 	<Sidebar
 		{columns}
@@ -257,7 +257,10 @@
 				</button>
 			</header>
 
-			<div class="flex min-h-0 flex-1 flex-col p-4">
+			<div
+				class="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain p-4"
+				data-testid="compose-panel-scroll"
+			>
 				<div
 					class="mb-4 flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900"
 				>
