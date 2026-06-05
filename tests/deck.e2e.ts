@@ -513,7 +513,7 @@ test.describe('nostter deck', () => {
 		await expect(customColumn.getByText('Hello from a custom Nostr timeline')).toHaveCount(1);
 		const postArticle = customColumn.locator('article').first();
 		const imagePreviews = postArticle.locator(
-			`a[data-testid="url-preview"][href="${imagePreviewUrl}"]`
+			`button[data-testid="url-preview"][data-url="${imagePreviewUrl}"]`
 		);
 		await expect(imagePreviews).toHaveCount(2);
 		await expect(imagePreviews.first().locator(`img[src="${imagePreviewUrl}"]`)).toBeVisible();
@@ -548,6 +548,39 @@ test.describe('nostter deck', () => {
 				return imagePreviewWidth < linkPreviewWidth;
 			})
 			.toBe(true);
+		await imagePreviews.first().click();
+		const imageViewer = page.getByRole('dialog', { name: 'Image viewer' });
+		await expect(imageViewer).toBeVisible();
+		await expect(imageViewer.getByText('1 of 2')).toBeVisible();
+		await expect(imageViewer.locator(`img[src="${imagePreviewUrl}"]`)).toBeVisible();
+		await expect(imageViewer.getByRole('button', { name: 'Previous image' })).toBeHidden();
+		await expect(imageViewer.getByRole('button', { name: 'Next image' })).toBeVisible();
+		await expect(imageViewer.getByRole('link', { name: 'Open original image' })).toHaveAttribute(
+			'href',
+			imagePreviewUrl
+		);
+		await expect(imageViewer.getByRole('link', { name: 'Open original image' })).toHaveAttribute(
+			'target',
+			'_blank'
+		);
+		await imageViewer.getByRole('button', { name: 'Next image' }).click();
+		await expect(imageViewer.getByText('2 of 2')).toBeVisible();
+		await page.keyboard.press('ArrowLeft');
+		await expect(imageViewer.getByText('1 of 2')).toBeVisible();
+		const swipeArea = imageViewer.getByRole('group', { name: 'Image viewer' });
+		await swipeArea.evaluate((element) => {
+			for (const [type, clientX] of [
+				['touchstart', 300],
+				['touchend', 100]
+			] as const) {
+				const event = new Event(type, { bubbles: true });
+				Object.defineProperty(event, 'changedTouches', { value: [{ clientX }] });
+				element.dispatchEvent(event);
+			}
+		});
+		await expect(imageViewer.getByText('2 of 2')).toBeVisible();
+		await page.keyboard.press('Escape');
+		await expect(imageViewer).toBeHidden();
 		await expect(postArticle.getByRole('link', { name: 'www.example.com' })).toHaveCount(0);
 		await expect(postArticle.getByRole('link', { name: /^npub/ })).toHaveCount(0);
 		await expect(postArticle.getByRole('button', { name: 'Show more' })).toHaveCount(0);
