@@ -30,6 +30,7 @@ export type MessageKey =
 	| 'expand_sidebar'
 	| 'timeline_follow'
 	| 'timeline_search'
+	| 'timeline_channel'
 	| 'column_type_website'
 	| 'column_type_custom_timeline'
 	| 'add_column'
@@ -42,6 +43,7 @@ export type MessageKey =
 	| 'column_icon_search'
 	| 'column_icon_radio'
 	| 'column_icon_globe'
+	| 'column_icon_messages'
 	| 'column_width'
 	| 'column_width_narrow'
 	| 'column_width_standard'
@@ -49,6 +51,7 @@ export type MessageKey =
 	| 'website_url'
 	| 'follow_target'
 	| 'search_query'
+	| 'channel_target'
 	| 'custom_timeline_filters'
 	| 'custom_timeline_filters_help'
 	| 'custom_timeline_relays'
@@ -78,10 +81,13 @@ export type MessageKey =
 	| 'share'
 	| 'verified';
 
-export type ColumnTitleKey = Extract<MessageKey, 'timeline_follow' | 'timeline_search'>;
+export type ColumnTitleKey = Extract<
+	MessageKey,
+	'timeline_follow' | 'timeline_search' | 'timeline_channel'
+>;
 export type ColumnSourceKey = ColumnTitleKey;
 export type ColumnWidth = 'narrow' | 'standard' | 'wide';
-export type ColumnIconKey = 'users' | 'search' | 'radio' | 'globe';
+export type ColumnIconKey = 'users' | 'search' | 'radio' | 'globe' | 'messages';
 export type NostrFilter = Record<string, unknown>;
 export type RelaySelection = { type: 'default' } | { type: 'custom'; urls: string[] };
 
@@ -122,7 +128,20 @@ export type FollowTimelineColumnConfig = {
 	width: ColumnWidth;
 } & ColumnDisplayConfig;
 
-export type PresetTimelineColumnConfig = FollowTimelineColumnConfig | SearchTimelineColumnConfig;
+export type ChannelTimelineColumnConfig = {
+	id: string;
+	type: 'timeline';
+	timelineKind: 'preset';
+	sourceKey: 'timeline_channel';
+	channelId: string;
+	relays: string[];
+	width: ColumnWidth;
+} & ColumnDisplayConfig;
+
+export type PresetTimelineColumnConfig =
+	| FollowTimelineColumnConfig
+	| SearchTimelineColumnConfig
+	| ChannelTimelineColumnConfig;
 
 export type CustomTimelineColumnConfig = {
 	id: string;

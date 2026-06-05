@@ -19,6 +19,7 @@ import {
 	expectSidebarIconsCentered,
 	expectSidebarWidth,
 	expectStoredAvatarShape,
+	expectStoredChannelColumn,
 	expectStoredColumnConfigWidths,
 	expectStoredColumnIdsAreOpaque,
 	expectStoredFirstColumnDisplay,
@@ -123,6 +124,7 @@ test.describe('nostter deck', () => {
 		await expect(page.getByLabel('Column type').locator('option')).toHaveText([
 			'Follow',
 			'Search',
+			'Channel',
 			'Custom timeline',
 			'Website'
 		]);
@@ -297,6 +299,22 @@ test.describe('nostter deck', () => {
 			searchColumn.getByText('Edited search result from a Nostr search relay')
 		).toBeVisible();
 		await expectStoredSearchColumn(page, 'edited');
+	});
+
+	test('adds and persists a channel preset column', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		const columns = deckColumns(page);
+		const channelId = '4'.repeat(64);
+
+		await addPresetColumn(page, 'timeline_channel', { channelTarget: channelId });
+
+		await expectColumnOrder(columns, [...columnNames, 'Channel']);
+		await expectStoredChannelColumn(page, channelId);
+
+		await page.reload();
+		await expectColumnOrder(columns, [...columnNames, 'Channel']);
+		await expectStoredChannelColumn(page, channelId);
 	});
 
 	test('changes and persists column title and icon', async ({ page }) => {

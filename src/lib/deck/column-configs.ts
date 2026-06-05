@@ -47,6 +47,7 @@ function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 				const pubkey = (candidate as { pubkey?: unknown }).pubkey;
 				const relays = (candidate as { relays?: unknown }).relays;
 				const query = (candidate as { query?: unknown }).query;
+				const channelId = (candidate as { channelId?: unknown }).channelId;
 				if (candidate.sourceKey === 'timeline_follow') {
 					if (typeof pubkey !== 'string' || !/^[0-9a-f]{64}$/i.test(pubkey)) return [];
 					const normalizedRelays =
@@ -79,6 +80,29 @@ function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 						timelineKind: 'preset',
 						sourceKey: candidate.sourceKey,
 						query: query.trim(),
+						width: candidate.width
+					} satisfies ColumnConfig;
+
+					return [
+						{
+							...column,
+							...normalizeColumnDisplayConfig(candidate, getDefaultColumnIconKey(column))
+						}
+					];
+				}
+				if (candidate.sourceKey === 'timeline_channel') {
+					if (typeof channelId !== 'string' || !/^[0-9a-f]{64}$/i.test(channelId)) return [];
+					const normalizedRelays =
+						Array.isArray(relays) && relays.length > 0 ? normalizeRelays(relays) : [];
+					if (!normalizedRelays) return [];
+
+					const column = {
+						id: candidate.id,
+						type: 'timeline',
+						timelineKind: 'preset',
+						sourceKey: candidate.sourceKey,
+						channelId: channelId.toLowerCase(),
+						relays: normalizedRelays,
 						width: candidate.width
 					} satisfies ColumnConfig;
 

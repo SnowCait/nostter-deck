@@ -1,7 +1,8 @@
-import { Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
+import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
 import type {
 	Column,
+	ChannelTimelineColumnConfig,
 	ColumnConfig,
 	CustomTimelineColumnConfig,
 	FollowTimelineColumnConfig,
@@ -52,7 +53,8 @@ export function emptyTimelineRuntime(timelineKey = ''): TimelineRuntime {
 export type FetchableTimelineColumn =
 	| CustomTimelineColumnConfig
 	| FollowTimelineColumnConfig
-	| SearchTimelineColumnConfig;
+	| SearchTimelineColumnConfig
+	| ChannelTimelineColumnConfig;
 
 export function isFetchableTimelineColumn(column: ColumnConfig): column is FetchableTimelineColumn {
 	return column.type === 'timeline';
@@ -71,6 +73,13 @@ export function getTimelineRequest(column: ColumnConfig): TimelineRequest | null
 	if (column.sourceKey === 'timeline_follow') {
 		return {
 			filters: [{ kinds: [ShortTextNote], authors: `3:${column.pubkey}:` }],
+			relays: { type: 'custom', urls: combineRelays([...defaultRelays], column.relays) }
+		};
+	}
+
+	if (column.sourceKey === 'timeline_channel') {
+		return {
+			filters: [{ kinds: [ChannelMessage], '#e': [column.channelId] }],
 			relays: { type: 'custom', urls: combineRelays([...defaultRelays], column.relays) }
 		};
 	}

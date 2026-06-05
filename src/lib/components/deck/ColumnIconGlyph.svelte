@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Globe, Radio, Search, UsersRound } from '@lucide/svelte';
+	import { Globe, MessagesSquare, Radio, Search, UsersRound } from '@lucide/svelte';
 	import type { ColumnIconKey } from '$lib/deck/types';
 
 	type Props = {
@@ -16,6 +16,8 @@
 	<Radio class={iconClass} aria-hidden="true" />
 {:else if iconKey === 'users'}
 	<UsersRound class={iconClass} aria-hidden="true" />
+{:else if iconKey === 'messages'}
+	<MessagesSquare class={iconClass} aria-hidden="true" />
 {:else}
 	<Search class={iconClass} aria-hidden="true" />
 {/if}

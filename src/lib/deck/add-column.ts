@@ -1,5 +1,5 @@
 import type { ColumnConfig, ColumnSourceKey, NostrFilter, RelaySelection } from './types';
-import type { ProfilePointer } from '$lib/nostr/nip19';
+import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
 
 export type AddColumnType = ColumnSourceKey | 'custom_timeline' | 'website';
 
@@ -9,6 +9,7 @@ export type AddColumnDraft = {
 	websiteUrl: string | null;
 	followTarget: ProfilePointer | null;
 	searchQuery: string;
+	channelTarget: ChannelPointer | null;
 	customTimelineFilters: NostrFilter[] | null;
 	customTimelineRelays: RelaySelection | null;
 };
@@ -61,6 +62,20 @@ export function createColumnConfigFromDraft(draft: AddColumnDraft): ColumnConfig
 					timelineKind: 'preset',
 					sourceKey: draft.columnType,
 					query,
+					width: 'standard'
+				}
+			: null;
+	}
+
+	if (draft.columnType === 'timeline_channel') {
+		return draft.channelTarget
+			? {
+					id: draft.id,
+					type: 'timeline',
+					timelineKind: 'preset',
+					sourceKey: draft.columnType,
+					channelId: draft.channelTarget.channelId,
+					relays: draft.channelTarget.relays,
 					width: 'standard'
 				}
 			: null;

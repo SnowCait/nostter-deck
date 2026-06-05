@@ -44,7 +44,12 @@
 	import { textClassByFontSize } from '$lib/font-size';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { parseNostrFilters } from '$lib/nostr/filters';
-	import { decodeProfilePointer, type ProfilePointer } from '$lib/nostr/nip19';
+	import {
+		decodeChannelPointer,
+		decodeProfilePointer,
+		type ChannelPointer,
+		type ProfilePointer
+	} from '$lib/nostr/nip19';
 	import { getProfile, requestProfiles } from '$lib/nostr/profiles';
 	import { defaultRelays, profileRelays, resolveRelayDraft } from '$lib/nostr/relays';
 	import { startCustomTimelineSubscription, type TimelineEventPhase } from '$lib/nostr/timeline';
@@ -80,6 +85,7 @@
 	let websiteUrl = $state('');
 	let followTarget = $state('');
 	let searchQuery = $state('');
+	let channelTarget = $state('');
 	let customTimelineFilters = $state('[{"kinds":[1],"limit":20}]');
 	let selectedDefaultRelays = $state<string[]>([...defaultRelays]);
 	let customTimelineRelays = $state('');
@@ -94,6 +100,7 @@
 	const textClass = $derived(textClassByFontSize[fontSize]);
 	const normalizedWebsiteUrl = $derived(normalizeWebsiteUrl(websiteUrl));
 	const parsedFollowTarget = $derived(decodeProfilePointer(followTarget));
+	const parsedChannelTarget = $derived(decodeChannelPointer(channelTarget));
 	const parsedCustomTimelineFilters = $derived(parseNostrFilters(customTimelineFilters));
 	const selectedDefaultRelaySet = $derived(new Set(selectedDefaultRelays));
 	const parsedCustomTimelineRelays = $derived(
@@ -470,6 +477,7 @@
 			websiteUrl: normalizedWebsiteUrl,
 			followTarget: parsedFollowTarget,
 			searchQuery,
+			channelTarget: parsedChannelTarget,
 			customTimelineFilters: parsedCustomTimelineFilters,
 			customTimelineRelays: parsedCustomTimelineRelays
 		};
@@ -480,6 +488,7 @@
 		websiteUrl = '';
 		followTarget = '';
 		searchQuery = '';
+		channelTarget = '';
 		customTimelineFilters = '[{"kinds":[1],"limit":20}]';
 		selectedDefaultRelays = [...defaultRelays];
 		customTimelineRelays = '';
@@ -626,6 +635,20 @@
 				column.timelineKind === 'preset' &&
 				column.sourceKey === 'timeline_search'
 					? { ...column, query: nextQuery }
+					: column
+			)
+		);
+		openSettingsColumnId = null;
+	}
+
+	function saveChannelSettings(columnId: string, channel: ChannelPointer) {
+		setColumnConfigs(
+			columnConfigs.map((column) =>
+				column.id === columnId &&
+				column.type === 'timeline' &&
+				column.timelineKind === 'preset' &&
+				column.sourceKey === 'timeline_channel'
+					? { ...column, channelId: channel.channelId, relays: channel.relays }
 					: column
 			)
 		);
@@ -818,6 +841,7 @@
 						onWidthChange={(width) => updateColumnWidth(column.id, width)}
 						onFollowSave={(profile) => saveFollowSettings(column.id, profile)}
 						onSearchSave={(query) => saveSearchSettings(column.id, query)}
+						onChannelSave={(channel) => saveChannelSettings(column.id, channel)}
 						onCustomTimelineSave={(filters, relays) =>
 							saveCustomTimelineSettings(column.id, filters, relays)}
 						onLoadOlderTimeline={() => void loadOlderTimelineEventsFromCache(column.id)}
@@ -913,6 +937,26 @@
 					textClass.control
 				]}
 				bind:value={searchQuery}
+			/>
+		{/if}
+
+		{#if selectedColumnType === 'timeline_channel'}
+			<label
+				class={[
+					'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
+					textClass.control
+				]}
+				for="channel-target"
+			>
+				{m.channel_target()}
+			</label>
+			<input
+				id="channel-target"
+				class={[
+					'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+					textClass.control
+				]}
+				bind:value={channelTarget}
 			/>
 		{/if}
 

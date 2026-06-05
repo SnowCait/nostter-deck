@@ -12,9 +12,10 @@
 		RelaySelection
 	} from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
-	import type { ProfilePointer } from '$lib/nostr/nip19';
+	import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape } from '$lib/user-settings';
 	import type * as Nostr from 'nostr-typedef';
+	import ChannelColumnSettings from './ChannelColumnSettings.svelte';
 	import ColumnIcon from './ColumnIcon.svelte';
 	import ColumnIconGlyph from './ColumnIconGlyph.svelte';
 	import CustomTimelineSettings from './CustomTimelineSettings.svelte';
@@ -44,6 +45,7 @@
 		onWidthChange: (width: ColumnWidth) => void;
 		onFollowSave: (profile: ProfilePointer) => void;
 		onSearchSave: (query: string) => void;
+		onChannelSave: (channel: ChannelPointer) => void;
 		onCustomTimelineSave: (filters: NostrFilter[], relays: RelaySelection) => void;
 		onLoadOlderTimeline: () => void;
 		onLoadNewerTimeline: () => void;
@@ -71,6 +73,7 @@
 		onWidthChange,
 		onFollowSave,
 		onSearchSave,
+		onChannelSave,
 		onCustomTimelineSave,
 		onLoadOlderTimeline,
 		onLoadNewerTimeline
@@ -90,6 +93,7 @@
 	const columnIconLabels = {
 		users: () => m.column_icon_users(),
 		search: () => m.column_icon_search(),
+		messages: () => m.column_icon_messages(),
 		radio: () => m.column_icon_radio(),
 		globe: () => m.column_icon_globe()
 	} satisfies Record<ColumnIconKey, () => string>;
@@ -178,6 +182,8 @@
 				<FollowColumnSettings {column} {textClass} onSave={onFollowSave} />
 			{:else if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_search'}
 				<SearchColumnSettings {column} {textClass} onSave={onSearchSave} />
+			{:else if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_channel'}
+				<ChannelColumnSettings {column} {textClass} onSave={onChannelSave} />
 			{:else if column.type === 'timeline' && column.timelineKind === 'custom'}
 				<CustomTimelineSettings {column} {textClass} onSave={onCustomTimelineSave} />
 			{/if}

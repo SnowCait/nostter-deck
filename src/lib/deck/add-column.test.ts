@@ -7,6 +7,7 @@ const baseDraft: AddColumnDraft = {
 	websiteUrl: null,
 	followTarget: null,
 	searchQuery: '',
+	channelTarget: null,
 	customTimelineFilters: null,
 	customTimelineRelays: null
 };
@@ -62,6 +63,24 @@ describe('column config drafts', () => {
 		});
 	});
 
+	test('creates a channel column config', () => {
+		expect(
+			createColumnConfigFromDraft({
+				...baseDraft,
+				columnType: 'timeline_channel',
+				channelTarget: { channelId: 'b'.repeat(64), relays: ['wss://relay.example/'] }
+			})
+		).toEqual({
+			id: 'column-1',
+			type: 'timeline',
+			timelineKind: 'preset',
+			sourceKey: 'timeline_channel',
+			channelId: 'b'.repeat(64),
+			relays: ['wss://relay.example/'],
+			width: 'standard'
+		});
+	});
+
 	test('creates a custom timeline column config', () => {
 		expect(
 			createColumnConfigFromDraft({
@@ -84,6 +103,7 @@ describe('column config drafts', () => {
 		{ columnType: 'website' as const },
 		{ columnType: 'timeline_follow' as const },
 		{ columnType: 'timeline_search' as const, searchQuery: '   ' },
+		{ columnType: 'timeline_channel' as const },
 		{ columnType: 'custom_timeline' as const }
 	])('returns null when required draft data is missing for $columnType', (draft) => {
 		expect(createColumnConfigFromDraft({ ...baseDraft, ...draft })).toBeNull();

@@ -32,8 +32,8 @@ export async function openDeck(page: Page, options: { isLoggedIn?: boolean } = {
 
 export async function addPresetColumn(
 	page: Page,
-	sourceKey: 'timeline_follow' | 'timeline_search',
-	options: { followTarget?: string; query?: string } = {}
+	sourceKey: 'timeline_follow' | 'timeline_search' | 'timeline_channel',
+	options: { followTarget?: string; query?: string; channelTarget?: string } = {}
 ) {
 	await page.getByRole('button', { name: 'Add column' }).first().click();
 	await page.getByLabel('Column type').selectOption(sourceKey);
@@ -42,6 +42,9 @@ export async function addPresetColumn(
 	}
 	if (sourceKey === 'timeline_search') {
 		await page.getByLabel('Search query').fill(options.query ?? 'nostter');
+	}
+	if (sourceKey === 'timeline_channel') {
+		await page.getByLabel('Channel ID or nevent').fill(options.channelTarget ?? '');
 	}
 	await page.getByRole('button', { name: 'Save' }).click();
 }
@@ -339,6 +342,43 @@ export async function expectStoredSearchColumn(page: Page, query: string) {
 			timelineKind: 'preset',
 			sourceKey: 'timeline_search',
 			query,
+			width: 'standard'
+		});
+}
+
+export async function expectStoredChannelColumn(
+	page: Page,
+	channelId: string,
+	relays: string[] = []
+) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				if (!storedValue) return null;
+
+				const column = JSON.parse(storedValue).find(
+					(item: { timelineKind?: string; sourceKey?: string }) =>
+						item.timelineKind === 'preset' && item.sourceKey === 'timeline_channel'
+				);
+				return column
+					? {
+							type: column.type,
+							timelineKind: column.timelineKind,
+							sourceKey: column.sourceKey,
+							channelId: column.channelId,
+							relays: column.relays,
+							width: column.width
+						}
+					: null;
+			}, columnConfigsStorageKey)
+		)
+		.toEqual({
+			type: 'timeline',
+			timelineKind: 'preset',
+			sourceKey: 'timeline_channel',
+			channelId,
+			relays,
 			width: 'standard'
 		});
 }

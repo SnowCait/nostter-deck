@@ -4,6 +4,7 @@ import type * as Nostr from 'nostr-typedef';
 import {
 	emptyTimelineRuntime,
 	getReferencedEventId,
+	getTimelineRequest,
 	mergeTimelineEventIds,
 	timelineRuntimeToPosts
 } from './timeline-runtime';
@@ -129,5 +130,25 @@ describe('timeline runtime', () => {
 				body: channelMessage.content
 			}
 		]);
+	});
+
+	test('creates a channel timeline request', () => {
+		expect(
+			getTimelineRequest({
+				id: 'channel',
+				type: 'timeline',
+				timelineKind: 'preset',
+				sourceKey: 'timeline_channel',
+				channelId: '4'.repeat(64),
+				relays: ['wss://relay.example/'],
+				width: 'standard'
+			})
+		).toEqual({
+			filters: [{ kinds: [ChannelMessage], '#e': ['4'.repeat(64)] }],
+			relays: {
+				type: 'custom',
+				urls: expect.arrayContaining(['wss://relay.example/'])
+			}
+		});
 	});
 });

@@ -93,6 +93,39 @@ describe('column config storage', () => {
 		]);
 	});
 
+	test('normalizes persisted channel columns', () => {
+		storageValues.set(
+			columnConfigsStorageKey,
+			JSON.stringify([
+				{
+					id: 'channel',
+					type: 'timeline',
+					timelineKind: 'preset',
+					sourceKey: 'timeline_channel',
+					channelId: 'A'.repeat(64),
+					relays: ['wss://relay.example'],
+					width: 'standard',
+					title: ' Channel ',
+					icon: 'radio'
+				}
+			])
+		);
+
+		expect(readColumnConfigs()).toEqual([
+			{
+				id: 'channel',
+				type: 'timeline',
+				timelineKind: 'preset',
+				sourceKey: 'timeline_channel',
+				channelId: 'a'.repeat(64),
+				relays: ['wss://relay.example/'],
+				width: 'standard',
+				title: 'Channel',
+				icon: 'radio'
+			}
+		]);
+	});
+
 	test('normalizes persisted website columns', () => {
 		storageValues.set(
 			columnConfigsStorageKey,
@@ -129,6 +162,14 @@ describe('column config storage', () => {
 					timelineKind: 'preset',
 					sourceKey: 'timeline_search',
 					query: '   ',
+					width: 'standard'
+				},
+				{
+					id: 'bad-channel',
+					type: 'timeline',
+					timelineKind: 'preset',
+					sourceKey: 'timeline_channel',
+					channelId: 'bad',
 					width: 'standard'
 				}
 			])
