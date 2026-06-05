@@ -36,6 +36,7 @@ import {
 	narrowColumnWidth,
 	openDeck,
 	selectColumnType,
+	selectDropdownOption,
 	sidebar,
 	sidebarButtonIcon,
 	sidebarButtonNames,
@@ -797,16 +798,11 @@ test.describe('nostter deck', () => {
 
 		await columnOptionsButton(columns.first()).click();
 		const widthSelect = columns.first().getByLabel('Column width');
-		await expect(widthSelect).toHaveValue('standard');
-		await expect
-			.poll(async () =>
-				widthSelect
-					.locator('option')
-					.evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value))
-			)
-			.toEqual(['wide', 'standard', 'narrow']);
+		await expect(widthSelect).toHaveText('Standard');
+		await widthSelect.click();
+		await expect(page.getByRole('option')).toHaveText(['Wide', 'Standard', 'Narrow']);
 
-		await widthSelect.selectOption('wide');
+		await page.getByRole('option', { name: 'Wide', exact: true }).click();
 		await expectColumnWidth(columns.first(), wideColumnWidth);
 		await expectColumnWidth(columns.nth(1), standardColumnWidth);
 		await expectStoredColumnConfigWidths(page, ['wide', 'standard']);
@@ -816,9 +812,9 @@ test.describe('nostter deck', () => {
 		await expectColumnWidth(columns.first(), wideColumnWidth);
 		await expectColumnWidth(columns.nth(1), standardColumnWidth);
 		await columnOptionsButton(columns.first()).click();
-		await expect(columns.first().getByLabel('Column width')).toHaveValue('wide');
+		await expect(columns.first().getByLabel('Column width')).toHaveText('Wide');
 
-		await columns.first().getByLabel('Column width').selectOption('narrow');
+		await selectDropdownOption(page, columns.first().getByLabel('Column width'), 'Narrow');
 		await expectColumnWidth(columns.first(), narrowColumnWidth);
 		await expectStoredColumnConfigWidths(page, ['narrow', 'standard']);
 	});
@@ -834,7 +830,7 @@ test.describe('nostter deck', () => {
 		await expectColumnWidth(columns.nth(1), standardColumnWidth);
 
 		await columnOptionsButton(columns.nth(1)).click();
-		await columns.nth(1).getByLabel('Column width').selectOption('wide');
+		await selectDropdownOption(page, columns.nth(1).getByLabel('Column width'), 'Wide');
 		await columns.nth(1).getByRole('button', { name: 'Move column left' }).click();
 		await expectColumnOrder(columns, ['example.com', 'Search']);
 		await expectStoredColumnConfigWidths(page, ['wide', 'standard']);
@@ -907,16 +903,16 @@ test.describe('nostter deck', () => {
 
 		await page.getByRole('button', { name: 'Settings' }).click();
 		await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
-		await expect(page.getByLabel('Language')).toHaveValue('en');
+		await expect(page.getByLabel('Language')).toHaveText('EN');
 
-		await page.getByLabel('Language').selectOption('ja');
+		await selectDropdownOption(page, page.getByLabel('Language'), 'JA');
 		await expect(sidebar(page).getByRole('button', { name: '設定', exact: true })).toBeVisible();
 
 		await sidebar(page).getByRole('button', { name: '設定', exact: true }).click();
 		await expect(page.getByRole('dialog', { name: '設定' })).toBeVisible();
-		await expect(page.getByLabel('言語')).toHaveValue('ja');
+		await expect(page.getByLabel('言語')).toHaveText('JA');
 
-		await page.getByLabel('言語').selectOption('en');
+		await selectDropdownOption(page, page.getByLabel('言語'), 'EN');
 		await expect(page.getByRole('button', { name: 'Settings' })).toBeVisible();
 
 		await page.getByRole('button', { name: 'Settings' }).click();
@@ -945,10 +941,10 @@ test.describe('nostter deck', () => {
 		await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
 		await expect(page.getByText('General')).toBeVisible();
 		await expect(page.getByText('Appearance')).toBeVisible();
-		await expect(page.getByLabel('Theme')).toHaveValue('system');
-		await expect(page.getByLabel('Font size')).toHaveValue('medium');
+		await expect(page.getByLabel('Theme')).toHaveText('System');
+		await expect(page.getByLabel('Font size')).toHaveText('Standard');
 
-		await page.getByLabel('Theme').selectOption('dark');
+		await selectDropdownOption(page, page.getByLabel('Theme'), 'Dark');
 		await expect(page.locator('html')).toHaveClass(/dark/);
 		await expectStoredThemePreference(page, 'dark');
 		await expectThemeNotStoredInUiState(page);
@@ -957,9 +953,9 @@ test.describe('nostter deck', () => {
 		await page.reload();
 		await expect(page.locator('html')).toHaveClass(/dark/);
 		await page.getByRole('button', { name: 'Settings' }).click();
-		await expect(page.getByLabel('Theme')).toHaveValue('dark');
+		await expect(page.getByLabel('Theme')).toHaveText('Dark');
 
-		await page.getByLabel('Theme').selectOption('light');
+		await selectDropdownOption(page, page.getByLabel('Theme'), 'Light');
 		await expect(page.locator('html')).not.toHaveClass(/dark/);
 		await expectStoredThemePreference(page, 'light');
 		await expectThemeNotStoredInUiState(page);
@@ -978,29 +974,24 @@ test.describe('nostter deck', () => {
 		const fontSizeLabel = page.getByText('Font size');
 		const mediumSettingsFontSize = await fontSizePx(fontSizeLabel);
 
-		await expect(fontSizeSelect).toHaveValue('medium');
-		await expect
-			.poll(async () =>
-				fontSizeSelect
-					.locator('option')
-					.evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value))
-			)
-			.toEqual(['large', 'medium', 'small']);
+		await expect(fontSizeSelect).toHaveText('Standard');
+		await fontSizeSelect.click();
+		await expect(page.getByRole('option')).toHaveText(['Larger', 'Standard', 'Smaller']);
 
-		await fontSizeSelect.selectOption('small');
+		await page.getByRole('option', { name: 'Smaller', exact: true }).click();
 		await expectStoredFontSize(page, 'small');
 		await expectFontSizeNotStoredInUiState(page);
 		await expect.poll(() => fontSizePx(postBody)).toBeLessThan(mediumFontSize);
 		await expect.poll(() => fontSizePx(fontSizeLabel)).toBeLessThan(mediumSettingsFontSize);
 
-		await fontSizeSelect.selectOption('large');
+		await selectDropdownOption(page, fontSizeSelect, 'Larger');
 		await expectStoredFontSize(page, 'large');
 		await expect.poll(() => fontSizePx(postBody)).toBeGreaterThan(mediumFontSize);
 		await expect.poll(() => fontSizePx(fontSizeLabel)).toBeGreaterThan(mediumSettingsFontSize);
 
 		await page.reload();
 		await page.getByRole('button', { name: 'Settings' }).click();
-		await expect(page.getByLabel('Font size')).toHaveValue('large');
+		await expect(page.getByLabel('Font size')).toHaveText('Larger');
 		await expectStoredFontSize(page, 'large');
 	});
 
@@ -1022,16 +1013,11 @@ test.describe('nostter deck', () => {
 
 		await page.getByRole('button', { name: 'Settings' }).click();
 		const avatarShapeSelect = page.getByLabel('Profile icon');
-		await expect(avatarShapeSelect).toHaveValue('circle');
-		await expect
-			.poll(async () =>
-				avatarShapeSelect
-					.locator('option')
-					.evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value))
-			)
-			.toEqual(['circle', 'square']);
+		await expect(avatarShapeSelect).toHaveText('Circle');
+		await avatarShapeSelect.click();
+		await expect(page.getByRole('option')).toHaveText(['Circle', 'Square']);
 
-		await avatarShapeSelect.selectOption('square');
+		await page.getByRole('option', { name: 'Square', exact: true }).click();
 		await expectStoredAvatarShape(page, 'square');
 		await expectAvatarShapeNotStoredInUiState(page);
 		await expect(postAvatar).toHaveClass(/rounded-md/);
@@ -1046,7 +1032,7 @@ test.describe('nostter deck', () => {
 		await page.reload();
 		await expect(page.getByTestId('post-avatar').first()).toHaveClass(/rounded-md/);
 		await page.getByRole('button', { name: 'Settings' }).click();
-		await expect(page.getByLabel('Profile icon')).toHaveValue('square');
+		await expect(page.getByLabel('Profile icon')).toHaveText('Square');
 		await expectStoredAvatarShape(page, 'square');
 	});
 

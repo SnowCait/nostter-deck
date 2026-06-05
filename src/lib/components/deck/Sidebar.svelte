@@ -15,6 +15,7 @@
 	import { getLocale, locales, setLocale } from '$lib/paraglide/runtime.js';
 	import { getColumnTitle } from '$lib/deck/column-title';
 	import * as Dialog from '$lib/components/ui/dialog';
+	import * as Select from '$lib/components/ui/select';
 	import type { Column } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import { readUiState, updateUiState } from '$lib/ui-state';
@@ -60,7 +61,7 @@
 		onAvatarShapeChange,
 		onSelectColumn
 	}: Props = $props();
-	const currentLocale = getLocale();
+	let currentLocale = $state<AppLocale>(getLocale());
 	let isCollapsed = $state(readUiState().sidebarCollapsed);
 	let themePreference = $state(readUserSettings().theme);
 	let isSettingsDialogOpen = $state(false);
@@ -85,6 +86,28 @@
 		circle: () => m.avatar_shape_circle(),
 		square: () => m.avatar_shape_square()
 	} satisfies Record<AvatarShape, () => string>;
+	const localeOptions = $derived(locales.map((value) => ({ value, label: localeLabels[value] })));
+	const themeOptions = $derived(
+		themePreferences.map((value) => ({ value, label: themeLabels[value]() }))
+	);
+	const fontSizeOptions = $derived(
+		fontSizePreferences.map((value) => ({ value, label: fontSizeLabels[value]() }))
+	);
+	const avatarShapeOptions = $derived(
+		avatarShapePreferences.map((value) => ({ value, label: avatarShapeLabels[value]() }))
+	);
+	const selectedLocaleLabel = $derived(
+		localeOptions.find(({ value }) => value === currentLocale)?.label ?? ''
+	);
+	const selectedThemeLabel = $derived(
+		themeOptions.find(({ value }) => value === themePreference)?.label ?? ''
+	);
+	const selectedFontSizeLabel = $derived(
+		fontSizeOptions.find(({ value }) => value === fontSize)?.label ?? ''
+	);
+	const selectedAvatarShapeLabel = $derived(
+		avatarShapeOptions.find(({ value }) => value === avatarShape)?.label ?? ''
+	);
 
 	const sidebarToggleLabel = () => (isCollapsed ? m.expand_sidebar() : m.collapse_sidebar());
 	const sidebarLabelClass = () =>
@@ -110,13 +133,14 @@
 		isSettingsDialogOpen = false;
 	}
 
-	function selectLocale(event: Event) {
-		const selectedLocale = (event.currentTarget as HTMLSelectElement).value as AppLocale;
+	function selectLocale(value: string) {
+		const selectedLocale = value as AppLocale;
+		currentLocale = selectedLocale;
 		setLocale(selectedLocale);
 	}
 
-	function selectTheme(event: Event) {
-		const selectedTheme = (event.currentTarget as HTMLSelectElement).value as ThemePreference;
+	function selectTheme(value: string) {
+		const selectedTheme = value as ThemePreference;
 		themePreference = selectedTheme;
 		updateUserSettings((currentSettings) => ({
 			...currentSettings,
@@ -125,8 +149,8 @@
 		applyThemePreference(selectedTheme);
 	}
 
-	function selectFontSize(event: Event) {
-		const selectedFontSize = (event.currentTarget as HTMLSelectElement).value as FontSize;
+	function selectFontSize(value: string) {
+		const selectedFontSize = value as FontSize;
 		updateUserSettings((currentSettings) => ({
 			...currentSettings,
 			fontSize: selectedFontSize
@@ -134,8 +158,8 @@
 		onFontSizeChange(selectedFontSize);
 	}
 
-	function selectAvatarShape(event: Event) {
-		const selectedAvatarShape = (event.currentTarget as HTMLSelectElement).value as AvatarShape;
+	function selectAvatarShape(value: string) {
+		const selectedAvatarShape = value as AvatarShape;
 		updateUserSettings((currentSettings) => ({
 			...currentSettings,
 			avatarShape: selectedAvatarShape
@@ -372,6 +396,7 @@
 				{m.settings_general()}
 			</h3>
 			<label
+				id="locale-label"
 				class={[
 					'mb-2 flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-300',
 					textClass.label
@@ -381,19 +406,28 @@
 				<Languages class="size-4 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden="true" />
 				<span>{m.language_switcher()}</span>
 			</label>
-			<select
-				id="locale"
-				class={[
-					'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
-					textClass.control
-				]}
+			<Select.Root
+				type="single"
+				items={localeOptions}
 				value={currentLocale}
-				onchange={selectLocale}
+				onValueChange={selectLocale}
 			>
-				{#each locales as locale (locale)}
-					<option value={locale}>{localeLabels[locale]}</option>
-				{/each}
-			</select>
+				<Select.Trigger
+					id="locale"
+					aria-labelledby="locale-label"
+					class={[
+						'h-10 w-full border-slate-300 bg-white px-3 text-slate-950 shadow-none focus-visible:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-900 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-950',
+						textClass.control
+					]}
+				>
+					<span class="truncate">{selectedLocaleLabel}</span>
+				</Select.Trigger>
+				<Select.Content class="z-[60]">
+					{#each localeOptions as option (option.value)}
+						<Select.Item value={option.value} label={option.label} />
+					{/each}
+				</Select.Content>
+			</Select.Root>
 		</section>
 
 		<section class="mt-5" aria-labelledby="settings-appearance-title">
@@ -407,6 +441,7 @@
 				{m.settings_appearance()}
 			</h3>
 			<label
+				id="theme-label"
 				class={[
 					'mb-2 flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-300',
 					textClass.label
@@ -416,21 +451,31 @@
 				<SunMoon class="size-4 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden="true" />
 				<span>{m.theme_switcher()}</span>
 			</label>
-			<select
-				id="theme"
-				class={[
-					'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
-					textClass.control
-				]}
+			<Select.Root
+				type="single"
+				items={themeOptions}
 				value={themePreference}
-				onchange={selectTheme}
+				onValueChange={selectTheme}
 			>
-				{#each themePreferences as theme (theme)}
-					<option value={theme}>{themeLabels[theme]()}</option>
-				{/each}
-			</select>
+				<Select.Trigger
+					id="theme"
+					aria-labelledby="theme-label"
+					class={[
+						'h-10 w-full border-slate-300 bg-white px-3 text-slate-950 shadow-none focus-visible:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-900 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-950',
+						textClass.control
+					]}
+				>
+					<span class="truncate">{selectedThemeLabel}</span>
+				</Select.Trigger>
+				<Select.Content class="z-[60]">
+					{#each themeOptions as option (option.value)}
+						<Select.Item value={option.value} label={option.label} />
+					{/each}
+				</Select.Content>
+			</Select.Root>
 
 			<label
+				id="font-size-label"
 				class={[
 					'mt-4 mb-2 flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-300',
 					textClass.label
@@ -443,21 +488,31 @@
 				/>
 				<span>{m.font_size_switcher()}</span>
 			</label>
-			<select
-				id="font-size"
-				class={[
-					'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
-					textClass.control
-				]}
+			<Select.Root
+				type="single"
+				items={fontSizeOptions}
 				value={fontSize}
-				onchange={selectFontSize}
+				onValueChange={selectFontSize}
 			>
-				{#each fontSizePreferences as size (size)}
-					<option value={size}>{fontSizeLabels[size]()}</option>
-				{/each}
-			</select>
+				<Select.Trigger
+					id="font-size"
+					aria-labelledby="font-size-label"
+					class={[
+						'h-10 w-full border-slate-300 bg-white px-3 text-slate-950 shadow-none focus-visible:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-900 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-950',
+						textClass.control
+					]}
+				>
+					<span class="truncate">{selectedFontSizeLabel}</span>
+				</Select.Trigger>
+				<Select.Content class="z-[60]">
+					{#each fontSizeOptions as option (option.value)}
+						<Select.Item value={option.value} label={option.label} />
+					{/each}
+				</Select.Content>
+			</Select.Root>
 
 			<label
+				id="avatar-shape-label"
 				class={[
 					'mt-4 mb-2 flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-300',
 					textClass.label
@@ -470,19 +525,28 @@
 				/>
 				<span>{m.avatar_shape_switcher()}</span>
 			</label>
-			<select
-				id="avatar-shape"
-				class={[
-					'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
-					textClass.control
-				]}
+			<Select.Root
+				type="single"
+				items={avatarShapeOptions}
 				value={avatarShape}
-				onchange={selectAvatarShape}
+				onValueChange={selectAvatarShape}
 			>
-				{#each avatarShapePreferences as shape (shape)}
-					<option value={shape}>{avatarShapeLabels[shape]()}</option>
-				{/each}
-			</select>
+				<Select.Trigger
+					id="avatar-shape"
+					aria-labelledby="avatar-shape-label"
+					class={[
+						'h-10 w-full border-slate-300 bg-white px-3 text-slate-950 shadow-none focus-visible:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-900 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-950',
+						textClass.control
+					]}
+				>
+					<span class="truncate">{selectedAvatarShapeLabel}</span>
+				</Select.Trigger>
+				<Select.Content class="z-[60]">
+					{#each avatarShapeOptions as option (option.value)}
+						<Select.Item value={option.value} label={option.label} />
+					{/each}
+				</Select.Content>
+			</Select.Root>
 		</section>
 	</Dialog.Content>
 </Dialog.Root>

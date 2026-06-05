@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { ArrowLeft, ArrowRight, SlidersHorizontal, Trash2 } from '@lucide/svelte';
+	import * as Select from '$lib/components/ui/select';
 	import { m } from '$lib/paraglide/messages.js';
 	import { columnIconKeys, getDefaultColumnIconKey } from '$lib/deck/column-icons';
 	import { getColumnTitle } from '$lib/deck/column-title';
@@ -90,6 +91,12 @@
 		standard: () => m.column_width_standard(),
 		wide: () => m.column_width_wide()
 	} satisfies Record<ColumnWidth, () => string>;
+	const columnWidthOptions = $derived(
+		columnWidths.map((value) => ({ value, label: columnWidthLabels[value]() }))
+	);
+	const selectedColumnWidthLabel = $derived(
+		columnWidthOptions.find(({ value }) => value === column.width)?.label ?? ''
+	);
 	const columnIconLabels = {
 		users: () => m.column_icon_users(),
 		search: () => m.column_icon_search(),
@@ -109,8 +116,8 @@
 		'flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 disabled:dark:hover:bg-transparent';
 	let timelineScrollElement: HTMLDivElement | undefined = $state();
 
-	function selectColumnWidth(event: Event) {
-		onWidthChange((event.currentTarget as HTMLSelectElement).value as ColumnWidth);
+	function selectColumnWidth(value: string) {
+		onWidthChange(value as ColumnWidth);
 	}
 
 	function inputColumnTitle(event: Event) {
@@ -240,24 +247,34 @@
 			</div>
 
 			<label
+				id={`column-width-label-${column.id}`}
 				class={['mb-2 block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
 				for={`column-width-${column.id}`}
 			>
 				{m.column_width()}
 			</label>
-			<select
-				id={`column-width-${column.id}`}
-				class={[
-					'mb-3 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
-					textClass.control
-				]}
+			<Select.Root
+				type="single"
+				items={columnWidthOptions}
 				value={column.width}
-				onchange={selectColumnWidth}
+				onValueChange={selectColumnWidth}
 			>
-				{#each columnWidths as width (width)}
-					<option value={width}>{columnWidthLabels[width]()}</option>
-				{/each}
-			</select>
+				<Select.Trigger
+					id={`column-width-${column.id}`}
+					aria-labelledby={`column-width-label-${column.id}`}
+					class={[
+						'mb-3 h-10 w-full border-slate-300 bg-white px-3 text-slate-950 shadow-none focus-visible:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-900 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-950',
+						textClass.control
+					]}
+				>
+					<span class="truncate">{selectedColumnWidthLabel}</span>
+				</Select.Trigger>
+				<Select.Content class="z-[60]">
+					{#each columnWidthOptions as option (option.value)}
+						<Select.Item value={option.value} label={option.label} />
+					{/each}
+				</Select.Content>
+			</Select.Root>
 
 			<div class="grid grid-cols-2 gap-2">
 				<button

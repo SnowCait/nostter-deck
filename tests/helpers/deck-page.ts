@@ -87,8 +87,12 @@ export async function addCustomTimelineColumn(
 }
 
 export async function selectColumnType(page: Page, columnType: ColumnType) {
-	await page.getByLabel('Column type').click();
-	await page.getByRole('option', { name: columnTypeLabels[columnType], exact: true }).click();
+	await selectDropdownOption(page, page.getByLabel('Column type'), columnTypeLabels[columnType]);
+}
+
+export async function selectDropdownOption(page: Page, trigger: Locator, optionLabel: string) {
+	await trigger.click();
+	await page.getByRole('option', { name: optionLabel, exact: true }).click();
 }
 
 export function deckColumns(page: Page) {
