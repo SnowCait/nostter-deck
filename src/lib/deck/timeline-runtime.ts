@@ -98,9 +98,7 @@ export function getTimelineRequest(column: ColumnConfig): TimelineRequest | null
 	}
 
 	return {
-		filters: [
-			{ kinds: [ShortTextNote], search: column.query, limit: presetTimelineInitialLimit }
-		],
+		filters: [{ kinds: [ShortTextNote], search: column.query, limit: presetTimelineInitialLimit }],
 		relays: { type: 'custom', urls: [...searchRelays] }
 	};
 }
