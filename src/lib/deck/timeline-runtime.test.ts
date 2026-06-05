@@ -1,10 +1,11 @@
 import { describe, expect, test } from 'vitest';
-import { Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
+import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
 import {
 	emptyTimelineRuntime,
 	getReferencedEventId,
-	mergeTimelineEventIds
+	mergeTimelineEventIds,
+	timelineRuntimeToPosts
 } from './timeline-runtime';
 
 function event(
@@ -108,5 +109,25 @@ describe('timeline runtime', () => {
 		});
 
 		expect(getReferencedEventId(note)).toBeNull();
+	});
+
+	test('converts channel messages to posts', () => {
+		const channelMessage = event('4'.repeat(64), 100, {
+			kind: ChannelMessage
+		});
+		const runtime = {
+			...emptyTimelineRuntime(),
+			visibleEventIds: [channelMessage.id],
+			loadedEventsById: {
+				[channelMessage.id]: channelMessage
+			}
+		};
+
+		expect(timelineRuntimeToPosts(runtime, () => undefined)).toMatchObject([
+			{
+				id: channelMessage.id,
+				body: channelMessage.content
+			}
+		]);
 	});
 });

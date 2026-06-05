@@ -1,4 +1,4 @@
-import { ShortTextNote } from 'nostr-tools/kinds';
+import { ChannelMessage, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
 import type { Post, PostContext } from '$lib/deck/types';
 
@@ -32,7 +32,7 @@ export function repostEventToPost(
 		}
 	} satisfies PostContext;
 
-	if (!repostedEvent || repostedEvent.kind !== ShortTextNote) {
+	if (!repostedEvent || !isTextLikePostEvent(repostedEvent)) {
 		return {
 			...createPost(repostEvent, repostProfile),
 			body: '',
@@ -73,7 +73,7 @@ export function reactionEventToPost(
 				}
 	} satisfies PostContext;
 
-	if (!reactedEvent || reactedEvent.kind !== ShortTextNote) {
+	if (!reactedEvent || !isTextLikePostEvent(reactedEvent)) {
 		return {
 			...createPost(reactionEvent, reactionProfile),
 			body: '',
@@ -117,7 +117,18 @@ function getReplyContexts(event: Nostr.Event): PostContext[] {
 	return isReplyEvent(event) ? [{ icon: 'reply', message: { key: 'replying_to' } }] : [];
 }
 
+function isTextLikePostEvent(event: Nostr.Event) {
+	return event.kind === ShortTextNote || event.kind === ChannelMessage;
+}
+
 function isReplyEvent(event: Nostr.Event) {
+	if (event.kind === ShortTextNote) return isShortTextNoteReplyEvent(event);
+	if (event.kind === ChannelMessage) return isChannelMessageReplyEvent(event);
+
+	return false;
+}
+
+function isShortTextNoteReplyEvent(event: Nostr.Event) {
 	const eventTags = event.tags.filter((tag) => tag[0] === 'e' && tag[1]);
 	if (eventTags.length === 0) return false;
 
@@ -127,6 +138,13 @@ function isReplyEvent(event: Nostr.Event) {
 	}
 
 	return true;
+}
+
+function isChannelMessageReplyEvent(event: Nostr.Event) {
+	const eventTags = event.tags.filter((tag) => tag[0] === 'e' && tag[1]);
+	if (eventTags.length === 0) return false;
+
+	return eventTags.some((tag) => tag[3] === 'reply') || eventTags.length >= 2;
 }
 
 function getReactionContent(event: Nostr.Event) {

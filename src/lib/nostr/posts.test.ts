@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
+import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
 import { eventToPost, reactionEventToPost, repostEventToPost } from './posts';
 
@@ -127,6 +127,31 @@ describe('posts', () => {
 		});
 	});
 
+	test('formats channel message reaction targets', () => {
+		const reaction = event({
+			id: '2'.repeat(64),
+			pubkey: reactionPubkey,
+			kind: Reaction,
+			content: '+'
+		});
+
+		expect(
+			reactionEventToPost(reaction, event({ kind: ChannelMessage }), getProfile)
+		).toMatchObject({
+			body: 'Target note',
+			author: 'Bob',
+			contexts: [
+				{
+					icon: 'heart',
+					message: {
+						key: 'reacted_by_like',
+						params: { name: 'Alice' }
+					}
+				}
+			]
+		});
+	});
+
 	test('formats repost context', () => {
 		const repost = event({
 			id: '3'.repeat(64),
@@ -200,6 +225,29 @@ describe('posts', () => {
 		});
 	});
 
+	test('formats channel message repost targets', () => {
+		const repost = event({
+			id: '3'.repeat(64),
+			pubkey: repostPubkey,
+			kind: Repost,
+			content: ''
+		});
+
+		expect(repostEventToPost(repost, event({ kind: ChannelMessage }), getProfile)).toMatchObject({
+			body: 'Target note',
+			author: 'Bob',
+			contexts: [
+				{
+					icon: 'repost',
+					message: {
+						key: 'reposted_by',
+						params: { name: 'Carol' }
+					}
+				}
+			]
+		});
+	});
+
 	test('marks NIP-10 reply tags as replies', () => {
 		expect(eventToPost(event({ tags: [['e', '4'.repeat(64), '', 'reply']] }))).toMatchObject({
 			contexts: [{ icon: 'reply', message: { key: 'replying_to' } }]
@@ -220,5 +268,48 @@ describe('posts', () => {
 
 	test('does not treat q tags as replies', () => {
 		expect(eventToPost(event({ tags: [['q', '4'.repeat(64)]] }))).not.toHaveProperty('contexts');
+	});
+
+	test('formats channel messages as posts', () => {
+		expect(eventToPost(event({ kind: ChannelMessage }), getProfile(targetPubkey))).toMatchObject({
+			body: 'Target note',
+			author: 'Bob'
+		});
+	});
+
+	test('does not treat channel root tags as replies', () => {
+		expect(
+			eventToPost(event({ kind: ChannelMessage, tags: [['e', '4'.repeat(64), '', 'root']] }))
+		).not.toHaveProperty('contexts');
+	});
+
+	test('marks channel reply tags as replies', () => {
+		expect(
+			eventToPost(event({ kind: ChannelMessage, tags: [['e', '4'.repeat(64), '', 'reply']] }))
+		).toMatchObject({
+			contexts: [{ icon: 'reply', message: { key: 'replying_to' } }]
+		});
+	});
+
+	test('marks the second channel e tag as a reply', () => {
+		expect(
+			eventToPost(
+				event({
+					kind: ChannelMessage,
+					tags: [
+						['e', '4'.repeat(64), '', 'root'],
+						['e', '5'.repeat(64)]
+					]
+				})
+			)
+		).toMatchObject({
+			contexts: [{ icon: 'reply', message: { key: 'replying_to' } }]
+		});
+	});
+
+	test('does not treat channel q tags as replies', () => {
+		expect(
+			eventToPost(event({ kind: ChannelMessage, tags: [['q', '4'.repeat(64)]] }))
+		).not.toHaveProperty('contexts');
 	});
 });
