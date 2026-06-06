@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
-import { eventToPost, reactionEventToPost, repostEventToPost } from './posts';
+import { eventToPost, getThreadReference, reactionEventToPost, repostEventToPost } from './posts';
 
 const reactionPubkey = 'a'.repeat(64);
 const targetPubkey = 'b'.repeat(64);
@@ -264,6 +264,37 @@ describe('posts', () => {
 		expect(eventToPost(event({ tags: [['e', '4'.repeat(64)]] }))).toMatchObject({
 			contexts: [{ icon: 'reply', message: { key: 'replying_to' } }]
 		});
+	});
+
+	test('resolves marked NIP-10 root and parent references', () => {
+		const rootId = '4'.repeat(64);
+		const parentId = '5'.repeat(64);
+		const reply = event({
+			tags: [
+				['e', rootId, 'wss://root.example/', 'root'],
+				['e', parentId, 'wss://parent.example/', 'reply']
+			]
+		});
+
+		expect(getThreadReference(reply)).toEqual({
+			event: reply,
+			rootId,
+			parentId,
+			relayHints: ['wss://root.example/', 'wss://parent.example/']
+		});
+	});
+
+	test('resolves deprecated NIP-10 first-root and last-parent references', () => {
+		const rootId = '4'.repeat(64);
+		const parentId = '5'.repeat(64);
+		const reply = event({
+			tags: [
+				['e', rootId],
+				['e', parentId]
+			]
+		});
+
+		expect(getThreadReference(reply)).toMatchObject({ rootId, parentId });
 	});
 
 	test('does not treat q tags as replies', () => {

@@ -69,6 +69,30 @@ export async function installFakeNostrRelay(page: Page) {
 				content: `NIP-21 references ${nostrNpub} ${nostrNprofile} ${nostrNote} ${nostrNevent} ${nostrChannelNevent} ${nostrUnavailableNevent} ${nostrNaddr} ${nostrFallbackNpub} ${nostrNsec}`,
 				sig: '0'.repeat(128)
 			};
+			const threadReplyEvent = {
+				id: 'event-thread-reply',
+				pubkey: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+				created_at: textEvent.created_at + 10,
+				kind: shortTextNoteKind,
+				tags: [
+					['e', textEvent.id, '', 'root'],
+					['e', textEvent.id, '', 'reply']
+				],
+				content: 'Direct thread reply',
+				sig: '0'.repeat(128)
+			};
+			const nestedThreadReplyEvent = {
+				id: 'event-thread-nested-reply',
+				pubkey: textEvent.pubkey,
+				created_at: textEvent.created_at + 20,
+				kind: shortTextNoteKind,
+				tags: [
+					['e', textEvent.id, '', 'root'],
+					['e', threadReplyEvent.id, '', 'reply']
+				],
+				content: 'Nested thread reply',
+				sig: '0'.repeat(128)
+			};
 			const quotedTextEvent = {
 				id: '1'.repeat(64),
 				pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -275,6 +299,7 @@ export async function installFakeNostrRelay(page: Page) {
 						authors?: string[];
 						ids?: string[];
 						'#d'?: string[];
+						'#e'?: string[];
 						search?: string;
 						since?: number;
 						until?: number;
@@ -294,6 +319,10 @@ export async function installFakeNostrRelay(page: Page) {
 							(!filter.authors || filter.authors.includes(textEvent.pubkey))
 					);
 					const requestedEventIds = filters.flatMap((filter) => filter.ids ?? []);
+					const requestsThreadEvents = filters.some(
+						(filter) =>
+							filter.kinds?.includes(shortTextNoteKind) && filter['#e']?.includes(textEvent.id)
+					);
 					for (const filter of filters) {
 						if (
 							filter.search ||
@@ -370,6 +399,14 @@ export async function installFakeNostrRelay(page: Page) {
 							this.emitMessage(['EVENT', subId, textEvent]);
 							this.emitMessage(['EVENT', subId, longTextEvent]);
 							this.emitMessage(['EVENT', subId, nostrReferenceEvent]);
+						}, 5);
+					}
+
+					if (requestsThreadEvents) {
+						setTimeout(() => {
+							this.emitMessage(['EVENT', subId, nestedThreadReplyEvent]);
+							this.emitMessage(['EVENT', subId, threadReplyEvent]);
+							this.emitMessage(['EOSE', subId]);
 						}, 5);
 					}
 

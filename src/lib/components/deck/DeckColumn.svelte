@@ -50,6 +50,7 @@
 		onCustomTimelineSave: (filters: NostrFilter[], relays: RelaySelection) => void;
 		onLoadOlderTimeline: () => void;
 		onLoadNewerTimeline: () => void;
+		onOpenThread: (post: import('$lib/deck/types').Post) => void;
 	};
 
 	const {
@@ -77,7 +78,8 @@
 		onChannelSave,
 		onCustomTimelineSave,
 		onLoadOlderTimeline,
-		onLoadNewerTimeline
+		onLoadNewerTimeline,
+		onOpenThread
 	}: Props = $props();
 
 	const columnWidthClassByWidth = {
@@ -340,6 +342,7 @@
 				{profileRelays}
 				onLoadOlder={onLoadOlderTimeline}
 				onLoadNewer={onLoadNewerTimeline}
+				{onOpenThread}
 			/>
 		{/if}
 	</div>

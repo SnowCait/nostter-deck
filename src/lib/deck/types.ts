@@ -1,3 +1,5 @@
+import type * as Nostr from 'nostr-typedef';
+
 export type MessageKey =
 	| 'app_title'
 	| 'nav_home'
@@ -70,6 +72,10 @@ export type MessageKey =
 	| 'move_column_right'
 	| 'column_options'
 	| 'reply'
+	| 'thread'
+	| 'thread_loading'
+	| 'thread_empty'
+	| 'thread_error'
 	| 'repost'
 	| 'replying_to'
 	| 'reposted_by'
@@ -180,11 +186,22 @@ export type Post = {
 	};
 	contexts?: PostContext[];
 	unavailableMessage?: PostMessage;
+	thread?: {
+		event: Nostr.Event;
+		rootId: string;
+		parentId?: string;
+		relayHints: string[];
+	};
 	attachment?: {
 		label: string;
 		title: string;
 		body: string;
 	};
+};
+
+export type ThreadPost = {
+	post: Post;
+	depth: number;
 };
 
 export type PresetTimelineColumn = PresetTimelineColumnConfig & {

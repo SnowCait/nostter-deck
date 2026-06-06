@@ -3,13 +3,25 @@
 	import { CalendarClock, Image, Plus, Send, Smile, UserRound } from '@lucide/svelte';
 	import AddColumnDialog from '$lib/components/deck/AddColumnDialog.svelte';
 	import DeckColumn from '$lib/components/deck/DeckColumn.svelte';
+	import ThreadColumn from '$lib/components/deck/ThreadColumn.svelte';
 	import ProfileAvatar from '$lib/components/deck/ProfileAvatar.svelte';
 	import Sidebar from '$lib/components/deck/Sidebar.svelte';
 	import { readColumnConfigs, writeColumnConfigs } from '$lib/deck/column-configs';
-	import { emptyTimelineRuntime, toRuntimeColumn } from '$lib/deck/timeline-runtime';
+	import {
+		emptyTimelineRuntime,
+		getTimelineRequest,
+		toRuntimeColumn
+	} from '$lib/deck/timeline-runtime';
 	import { resetSessionTimelineCache } from '$lib/deck/timeline-cache';
 	import { createTimelineController } from '$lib/deck/timeline-controller.svelte';
-	import type { Column, ColumnConfig, ColumnIconKey, ColumnWidth } from '$lib/deck/types';
+	import type {
+		Column,
+		ColumnConfig,
+		ColumnIconKey,
+		ColumnWidth,
+		Post,
+		ThreadPost
+	} from '$lib/deck/types';
 	import {
 		saveChannelSettings as saveChannelSettingsConfig,
 		saveCustomTimelineSettings as saveCustomTimelineSettingsConfig,
@@ -22,9 +34,12 @@
 	import { textClassByFontSize } from '$lib/font-size';
 	import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
 	import { getProfile, requestProfiles } from '$lib/nostr/profiles';
-	import { profileRelays } from '$lib/nostr/relays';
+	import { eventToPost, getThreadReference } from '$lib/nostr/posts';
+	import { profileRelays, resolveRelaySelection } from '$lib/nostr/relays';
+	import { buildThreadEvents, startThreadSubscription } from '$lib/nostr/thread';
 	import { m } from '$lib/paraglide/messages.js';
 	import { readUserSettings, type AvatarShape, type FontSize } from '$lib/user-settings';
+	import type * as Nostr from 'nostr-typedef';
 
 	type NostrDeckGlobal = typeof globalThis & {
 		__NOSTTER_DECK_IS_LOGGED_IN__?: boolean;
@@ -44,6 +59,13 @@
 	let fontSize = $state<FontSize>(initialUserSettings.fontSize);
 	let avatarShape = $state<AvatarShape>(initialUserSettings.avatarShape);
 	let isTimelineCacheReady = $state(false);
+	let threadSourceColumnId = $state<string | null>(null);
+	let threadSelectedEvent = $state<Nostr.Event | null>(null);
+	let threadEvents = $state<Nostr.Event[]>([]);
+	let isThreadLoading = $state(false);
+	let threadError = $state<string | null>(null);
+	let threadSubscription: { stop: () => void } | null = null;
+	let threadRequestId = 0;
 
 	const composeMaxLength = 280;
 	const composeLength = $derived(composeText.length);
@@ -62,6 +84,17 @@
 			)
 		)
 	);
+	const threadPosts = $derived<ThreadPost[]>(
+		threadSelectedEvent
+			? buildThreadEvents(
+					threadEvents,
+					getThreadReference(threadSelectedEvent)?.rootId ?? threadSelectedEvent.id
+				).map(({ event, depth }) => ({
+					post: eventToPost(event, getProfile(event.pubkey)),
+					depth
+				}))
+			: []
+	);
 
 	onMount(() => {
 		void resetSessionTimelineCache().then(() => {
@@ -71,6 +104,7 @@
 
 	onDestroy(() => {
 		timelineController.stop();
+		threadSubscription?.stop();
 	});
 
 	function getColumnId(columnId: string) {
@@ -84,7 +118,7 @@
 		columnElement?.scrollIntoView({
 			behavior: 'smooth',
 			block: 'nearest',
-			inline: 'start'
+			inline: 'nearest'
 		});
 		columnElement?.focus({ preventScroll: true });
 	}
@@ -129,6 +163,7 @@
 
 		const nextColumns = columnConfigs.filter((column) => column.id !== columnId);
 		setColumnConfigs(nextColumns);
+		if (threadSourceColumnId === columnId) closeThreadColumn(false);
 		openSettingsColumnId = null;
 
 		if (activeColumnId !== columnId) return;
@@ -139,6 +174,59 @@
 		if (nextActiveColumn) {
 			await tick();
 			focusColumn(nextActiveColumn.id);
+		}
+	}
+
+	async function openThreadColumn(sourceColumnId: string, post: Post) {
+		if (!post.thread) return;
+
+		threadSubscription?.stop();
+		const requestId = ++threadRequestId;
+		threadSourceColumnId = sourceColumnId;
+		threadSelectedEvent = post.thread.event;
+		threadEvents = [post.thread.event];
+		threadError = null;
+		isThreadLoading = true;
+
+		const sourceColumn = columnConfigs.find((column) => column.id === sourceColumnId);
+		const request = sourceColumn ? getTimelineRequest(sourceColumn) : null;
+		const relays = request ? resolveRelaySelection(request.relays) : [];
+		threadSubscription = startThreadSubscription({
+			selectedEvent: post.thread.event,
+			relays,
+			onEvents: (events) => {
+				if (threadRequestId !== requestId) return;
+				threadEvents = events;
+			},
+			onLoadingChange: (isLoading) => {
+				if (threadRequestId !== requestId) return;
+				isThreadLoading = isLoading;
+			},
+			onError: (message) => {
+				if (threadRequestId !== requestId) return;
+				threadError = message;
+				isThreadLoading = false;
+			}
+		});
+
+		await tick();
+		focusColumn('thread');
+	}
+
+	async function closeThreadColumn(restoreFocus = true) {
+		const sourceColumnId = threadSourceColumnId;
+		threadRequestId += 1;
+		threadSubscription?.stop();
+		threadSubscription = null;
+		threadSourceColumnId = null;
+		threadSelectedEvent = null;
+		threadEvents = [];
+		threadError = null;
+		isThreadLoading = false;
+
+		if (restoreFocus && sourceColumnId && columnConfigs.some(({ id }) => id === sourceColumnId)) {
+			await tick();
+			focusColumn(sourceColumnId);
 		}
 	}
 
@@ -367,6 +455,7 @@
 						{getProfile}
 						{requestProfiles}
 						profileRelays={defaultProfileRelays}
+						onOpenThread={(post) => void openThreadColumn(column.id, post)}
 						onToggleSettings={() => toggleColumnSettings(column.id)}
 						onDelete={() => deleteColumn(column.id)}
 						onMoveLeft={() => moveColumn(column.id, -1)}
@@ -382,6 +471,22 @@
 						onLoadOlderTimeline={() => void timelineController.loadOlder(column.id)}
 						onLoadNewerTimeline={() => void timelineController.loadNewer(column.id)}
 					/>
+					{#if threadSourceColumnId === column.id}
+						<ThreadColumn
+							id={getColumnId('thread')}
+							posts={threadPosts}
+							isLoading={isThreadLoading}
+							error={threadError}
+							{isLoggedIn}
+							{textClass}
+							{avatarShape}
+							{getProfile}
+							{requestProfiles}
+							profileRelays={defaultProfileRelays}
+							onClose={() => void closeThreadColumn()}
+							onOpenThread={(post) => void openThreadColumn(column.id, post)}
+						/>
+					{/if}
 				{/each}
 				<div
 					data-testid="column-add-placeholder"

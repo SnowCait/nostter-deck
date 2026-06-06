@@ -96,6 +96,7 @@ export function reactionEventToPost(
 function createPost(event: Nostr.Event, profile?: Nostr.Content.Metadata): Post {
 	const author = createPostAuthor(event.pubkey, profile);
 	const contexts = getReplyContexts(event);
+	const thread = getThreadReference(event);
 
 	return {
 		id: event.id,
@@ -109,7 +110,33 @@ function createPost(event: Nostr.Event, profile?: Nostr.Content.Metadata): Post 
 			reposts: '0',
 			likes: '0'
 		},
-		...(contexts.length > 0 ? { contexts } : {})
+		...(contexts.length > 0 ? { contexts } : {}),
+		...(thread ? { thread } : {})
+	};
+}
+
+export function getThreadReference(event: Nostr.Event): Post['thread'] | null {
+	if (event.kind !== ShortTextNote) return null;
+
+	const eventTags = event.tags.filter((tag) => tag[0] === 'e' && tag[1]);
+	if (eventTags.length === 0) {
+		return { event, rootId: event.id, relayHints: [] };
+	}
+
+	const rootTag = eventTags.find((tag) => tag[3] === 'root');
+	const replyTag = eventTags.findLast((tag) => tag[3] === 'reply');
+	const hasMarkers = eventTags.some((tag) => tag[3] === 'root' || tag[3] === 'reply');
+	const resolvedRootTag = rootTag ?? (hasMarkers ? replyTag : eventTags[0]);
+	const resolvedReplyTag = replyTag ?? (eventTags.length > 1 ? eventTags.at(-1) : undefined);
+	const relayHints = eventTags.flatMap((tag) => (tag[2] ? [tag[2]] : []));
+
+	return {
+		event,
+		rootId: resolvedRootTag?.[1] ?? event.id,
+		...(resolvedReplyTag?.[1] && resolvedReplyTag[1] !== event.id
+			? { parentId: resolvedReplyTag[1] }
+			: {}),
+		relayHints: [...new Set(relayHints)]
 	};
 }
 

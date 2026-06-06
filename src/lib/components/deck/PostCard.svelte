@@ -26,6 +26,7 @@
 		getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
+		onOpenThread?: (post: Post) => void;
 	};
 
 	const {
@@ -35,7 +36,8 @@
 		avatarShape,
 		getProfile,
 		requestProfiles,
-		profileRelays
+		profileRelays,
+		onOpenThread
 	}: Props = $props();
 	const bodyTokens = $derived(linkifyPostContent(post.body));
 	let isBodyExpanded = $state(false);
@@ -160,10 +162,45 @@
 				return m.reaction_event_unavailable();
 		}
 	}
+
+	function isNestedInteractiveTarget(
+		target: EventTarget | null,
+		currentTarget: EventTarget | null
+	) {
+		if (!(target instanceof Element)) return false;
+
+		const interactiveElement = target.closest(
+			'a, button, input, select, textarea, [role="button"]'
+		);
+		return interactiveElement !== null && interactiveElement !== currentTarget;
+	}
+
+	function openThreadFromCard(event: MouseEvent) {
+		if (!post.thread || isNestedInteractiveTarget(event.target, event.currentTarget)) return;
+
+		onOpenThread?.(post);
+	}
+
+	function openThreadFromKeyboard(event: KeyboardEvent) {
+		if (!post.thread || event.target !== event.currentTarget) return;
+		if (event.key !== 'Enter' && event.key !== ' ') return;
+
+		event.preventDefault();
+		onOpenThread?.(post);
+	}
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <article
-	class="border-b border-slate-200 p-3 transition hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/80"
+	role={post.thread ? 'button' : undefined}
+	tabindex={post.thread ? 0 : undefined}
+	aria-label={post.thread ? m.thread() : undefined}
+	class={[
+		'border-b border-slate-200 p-3 transition hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/80',
+		post.thread ? 'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-sky-500' : ''
+	]}
+	onclick={openThreadFromCard}
+	onkeydown={openThreadFromKeyboard}
 >
 	{#if post.contexts}
 		{#each post.contexts as context, index (`${context.icon}:${context.message.key}:${index}`)}
