@@ -33,6 +33,7 @@ import {
 	expectThemeNotStoredInUiState,
 	fontSizePx,
 	iconCenterX,
+	mutedUsersStorageKey,
 	narrowColumnWidth,
 	openDeck,
 	selectColumnType,
@@ -697,7 +698,7 @@ test.describe('nostter deck', () => {
 		await expect
 			.poll(async () => longPostBody.evaluate((element) => element.clientHeight))
 			.toBeLessThanOrEqual(192);
-		await expect(postArticle.getByRole('button', { name: 'Column options' })).toHaveCount(0);
+		await expect(postArticle.getByRole('button', { name: 'Post menu' })).toBeVisible();
 		await expect(postArticle.getByRole('button', { name: 'Reply' })).toHaveCount(0);
 		await expect(postArticle.getByRole('button', { name: 'Repost' })).toHaveCount(0);
 		await expect(postArticle.getByRole('button', { name: 'Like' })).toHaveCount(0);
@@ -886,6 +887,131 @@ test.describe('nostter deck', () => {
 				)
 			)
 			.toBeGreaterThan(0);
+	});
+
+	test('mutes a user locally and restores posts from settings', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], limit: 20 }]
+		});
+
+		const customColumn = deckColumns(page).first();
+		const aliceArticle = customColumn
+			.getByText('Hello from a custom Nostr timeline', { exact: false })
+			.first()
+			.locator('xpath=ancestor::article');
+		await aliceArticle.getByRole('button', { name: 'Post menu' }).click();
+		await page.getByRole('button', { name: 'Mute Alice Relay' }).click();
+
+		await expect(
+			customColumn.getByText('Hello from a custom Nostr timeline', { exact: false })
+		).toHaveCount(0);
+		await expect
+			.poll(() =>
+				page.evaluate(
+					({ key, pubkey }) => JSON.parse(localStorage.getItem(key) ?? '[]').includes(pubkey),
+					{ key: mutedUsersStorageKey, pubkey: textEventPubkey }
+				)
+			)
+			.toBe(true);
+
+		await page.reload();
+		await expect(
+			customColumn.getByText('Hello from a custom Nostr timeline', { exact: false })
+		).toHaveCount(0);
+
+		await page.getByRole('button', { name: 'Settings' }).click();
+		const settingsDialog = page.getByRole('dialog', { name: 'Settings' });
+		await expect(page.getByRole('heading', { name: 'Muted users' })).toBeVisible();
+		const unmuteButton = page.getByRole('button', { name: 'Unmute Alice Relay' });
+		await expect(unmuteButton).toHaveAttribute('title', 'Unmute Alice Relay');
+		await expect(unmuteButton).toHaveText('Unmute');
+		await expect
+			.poll(() => settingsDialog.evaluate((element) => element.scrollWidth <= element.clientWidth))
+			.toBe(true);
+		await page.setViewportSize({ width: 360, height: 640 });
+		await expect
+			.poll(() => settingsDialog.evaluate((element) => element.scrollWidth <= element.clientWidth))
+			.toBe(true);
+		await unmuteButton.click();
+
+		await expect(
+			customColumn.getByText('Hello from a custom Nostr timeline', { exact: false })
+		).toBeVisible();
+		await expect
+			.poll(() =>
+				page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '[]'), mutedUsersStorageKey)
+			)
+			.toEqual([]);
+	});
+
+	test('reveals muted references and thread posts without unmuting the user', async ({ page }) => {
+		await page.addInitScript(
+			({ key, pubkey }) => localStorage.setItem(key, JSON.stringify([pubkey])),
+			{ key: mutedUsersStorageKey, pubkey: textEventPubkey }
+		);
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [Repost], limit: 20 }]
+		});
+		const repostColumn = deckColumns(page).first();
+		await expect(repostColumn.getByTestId('muted-post')).toHaveCount(2);
+		await repostColumn
+			.getByTestId('muted-post')
+			.first()
+			.getByRole('button', { name: 'Show post' })
+			.click();
+		await expect(
+			repostColumn.getByText('Hello from a custom Nostr timeline', { exact: false })
+		).toHaveCount(1);
+
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], limit: 20 }]
+		});
+		const notesColumn = deckColumns(page).nth(1);
+		const referencesArticle = notesColumn
+			.locator('article')
+			.filter({ hasText: 'NIP-21 references' });
+		await expect(referencesArticle.getByTestId('muted-quote')).toHaveCount(2);
+		await referencesArticle
+			.getByTestId('muted-quote')
+			.first()
+			.getByRole('button', { name: 'Show quote' })
+			.click();
+		await expect(referencesArticle.getByText('Quoted short text note')).toHaveCount(1);
+
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], search: 'thread-entry', limit: 20 }]
+		});
+		const threadSourceColumn = deckColumns(page).nth(2);
+		await threadSourceColumn
+			.getByText('Direct thread reply')
+			.first()
+			.locator('xpath=ancestor::article')
+			.getByRole('button', { name: 'Open thread' })
+			.click();
+
+		const threadColumn = page.getByTestId('thread-column');
+		await expect(threadColumn.getByTestId('muted-post')).toHaveCount(2);
+		await expect(threadColumn.getByText('Direct thread reply')).toBeVisible();
+		await expect(threadColumn.locator('[data-thread-depth="2"]')).toContainText('Muted post');
+		await threadColumn
+			.locator('[data-thread-depth="2"]')
+			.getByRole('button', { name: 'Show post' })
+			.click();
+		await expect(threadColumn.getByText('Nested thread reply')).toBeVisible();
+
+		await expect
+			.poll(() =>
+				page.evaluate(
+					({ key, pubkey }) => JSON.parse(localStorage.getItem(key) ?? '[]').includes(pubkey),
+					{ key: mutedUsersStorageKey, pubkey: textEventPubkey }
+				)
+			)
+			.toBe(true);
 	});
 
 	test('opens a NIP-10 thread next to its source column', async ({ page }) => {
@@ -1312,7 +1438,7 @@ test.describe('nostter deck', () => {
 		const postArticle = page.locator('article').first();
 		await expect(postAvatar).toHaveClass(/rounded-full/);
 		await expect(sidebarAvatar).toHaveClass(/rounded-full/);
-		await expect(postArticle.getByRole('button', { name: 'Column options' })).toBeVisible();
+		await expect(postArticle.getByRole('button', { name: 'Post menu' })).toBeVisible();
 		await expect(postArticle.getByRole('button', { name: 'Reply' })).toBeVisible();
 		await expect(postArticle.getByRole('button', { name: 'Repost' })).toBeVisible();
 		await expect(postArticle.getByRole('button', { name: 'Like' })).toBeVisible();

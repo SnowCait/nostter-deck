@@ -194,6 +194,68 @@ describe('timeline runtime', () => {
 		]);
 	});
 
+	test('hides direct posts from muted authors but keeps reference placeholders', () => {
+		const mutedPubkey = 'a'.repeat(64);
+		const direct = event('4'.repeat(64), 200);
+		const repost = event('5'.repeat(64), 100, {
+			kind: Repost,
+			tags: [
+				['e', direct.id],
+				['p', mutedPubkey]
+			]
+		});
+		const runtime = {
+			...emptyTimelineRuntime(),
+			visibleEventIds: [direct.id, repost.id],
+			loadedEventsById: {
+				[direct.id]: direct,
+				[repost.id]: repost
+			}
+		};
+
+		expect(
+			timelineRuntimeToPosts(
+				runtime,
+				() => undefined,
+				(pubkey) => pubkey === mutedPubkey
+			)
+		).toMatchObject([
+			{
+				id: repost.id,
+				referenceType: 'repost',
+				mutePubkeys: [mutedPubkey]
+			}
+		]);
+	});
+
+	test('tracks unresolved and unavailable reference display states without changing order', () => {
+		const referencedEventId = '9'.repeat(64);
+		const repost = event('5'.repeat(64), 200, {
+			kind: Repost,
+			tags: [['e', referencedEventId]]
+		});
+		const direct = event('6'.repeat(64), 100, { kind: ChannelMessage });
+		const runtime = {
+			...emptyTimelineRuntime(),
+			visibleEventIds: [repost.id, direct.id],
+			loadedEventsById: {
+				[repost.id]: repost,
+				[direct.id]: direct
+			}
+		};
+
+		expect(timelineRuntimeToPosts(runtime, () => undefined)).toMatchObject([
+			{ id: repost.id, referenceStatus: 'loading' },
+			{ id: direct.id }
+		]);
+		expect(
+			timelineRuntimeToPosts(
+				{ ...runtime, unavailableReferenceEventIds: [repost.id] },
+				() => undefined
+			)
+		).toMatchObject([{ id: repost.id, referenceStatus: 'unavailable' }, { id: direct.id }]);
+	});
+
 	test('creates a channel timeline request', () => {
 		expect(
 			getTimelineRequest({

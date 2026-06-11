@@ -48,6 +48,7 @@ type PendingTimelineBatch = {
 	timelineKey: string;
 	events: PendingTimelineEvent[];
 	referencedEvents: Map<string, Nostr.Event>;
+	unavailableReferenceEventIds: string[];
 	timeoutId: ReturnType<typeof setTimeout>;
 };
 
@@ -96,6 +97,8 @@ export function createTimelineController({ getColumnConfigs, isReady }: Timeline
 				onEvent: (event, { phase }) => addEvent(column.id, signature, event, phase),
 				onReferencedEvent: (referenceEventId, event) =>
 					addReferencedEvent(column.id, referenceEventId, event),
+				onReferencedEventUnavailable: (referenceEventId) =>
+					markReferencedEventUnavailable(column.id, referenceEventId),
 				onLoadingChange: (isLoading) => updateRuntime(column.id, { isLoading }),
 				onError: (error) => updateRuntime(column.id, { error })
 			});
@@ -154,6 +157,7 @@ export function createTimelineController({ getColumnConfigs, isReady }: Timeline
 			timelineKey,
 			events: [{ event, phase }],
 			referencedEvents,
+			unavailableReferenceEventIds: [],
 			timeoutId: setTimeout(() => flushPendingBatch(columnId), timelineEventBatchDelayMs)
 		};
 		pendingBatches.set(columnId, nextBatch);
@@ -177,9 +181,31 @@ export function createTimelineController({ getColumnConfigs, isReady }: Timeline
 				loadedEventsById: {
 					...runtime.loadedEventsById,
 					[event.id]: event
-				}
+				},
+				unavailableReferenceEventIds: runtime.unavailableReferenceEventIds.filter(
+					(eventId) => eventId !== referenceEventId
+				)
 			}
 		};
+	}
+
+	function markReferencedEventUnavailable(columnId: string, referenceEventId: string) {
+		const pendingBatch = pendingBatches.get(columnId);
+		if (pendingBatch?.events.some(({ event }) => event.id === referenceEventId)) {
+			if (!pendingBatch.unavailableReferenceEventIds.includes(referenceEventId)) {
+				pendingBatch.unavailableReferenceEventIds.push(referenceEventId);
+			}
+			return;
+		}
+
+		const runtime = runtimes[columnId] ?? emptyTimelineRuntime();
+		if (!runtime.visibleEventIds.includes(referenceEventId)) return;
+
+		updateRuntime(columnId, {
+			unavailableReferenceEventIds: runtime.unavailableReferenceEventIds.includes(referenceEventId)
+				? runtime.unavailableReferenceEventIds
+				: [...runtime.unavailableReferenceEventIds, referenceEventId]
+		});
 	}
 
 	function flushPendingBatch(columnId: string) {
@@ -202,7 +228,13 @@ export function createTimelineController({ getColumnConfigs, isReady }: Timeline
 			loadedEventsById: {
 				...runtime.loadedEventsById,
 				...Object.fromEntries(events.map(({ event }) => [event.id, event]))
-			}
+			},
+			unavailableReferenceEventIds: [
+				...runtime.unavailableReferenceEventIds,
+				...pendingBatch.unavailableReferenceEventIds.filter(
+					(eventId) => !runtime.unavailableReferenceEventIds.includes(eventId)
+				)
+			]
 		};
 		const nextVisibleEventIds = mergeTimelineEventBatch(
 			runtimeWithEvents,
@@ -423,6 +455,9 @@ export function createTimelineController({ getColumnConfigs, isReady }: Timeline
 		return {
 			...runtime,
 			liveEventIds: runtime.liveEventIds.filter((eventId) => retainedEventIds.has(eventId)),
+			unavailableReferenceEventIds: runtime.unavailableReferenceEventIds.filter((eventId) =>
+				retainedEventIds.has(eventId)
+			),
 			loadedEventsById: Object.fromEntries(
 				Object.entries(runtime.loadedEventsById).filter(([eventId]) =>
 					retainedEventIds.has(eventId)

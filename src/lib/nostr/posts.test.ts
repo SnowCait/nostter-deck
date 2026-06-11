@@ -1,7 +1,13 @@
 import { describe, expect, test } from 'vitest';
 import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
-import { eventToPost, getThreadReference, reactionEventToPost, repostEventToPost } from './posts';
+import {
+	eventToPost,
+	getReferencedPubkey,
+	getThreadReference,
+	reactionEventToPost,
+	repostEventToPost
+} from './posts';
 
 const reactionPubkey = 'a'.repeat(64);
 const targetPubkey = 'b'.repeat(64);
@@ -28,6 +34,36 @@ function getProfile(pubkey: string): Nostr.Content.Metadata | undefined {
 }
 
 describe('posts', () => {
+	test('uses the last valid p tag as the referenced pubkey', () => {
+		expect(
+			getReferencedPubkey(
+				event({
+					tags: [
+						['p', reactionPubkey],
+						['p', 'invalid'],
+						['p', targetPubkey.toUpperCase()]
+					]
+				})
+			)
+		).toBe(targetPubkey);
+	});
+
+	test('uses the resolved author instead of the hinted author for reference mute candidates', () => {
+		const repost = event({
+			pubkey: repostPubkey,
+			kind: Repost,
+			tags: [['p', reactionPubkey]]
+		});
+
+		expect(
+			repostEventToPost(repost, event({ pubkey: targetPubkey }), getProfile).mutePubkeys
+		).toEqual([repostPubkey, targetPubkey]);
+		expect(repostEventToPost(repost, undefined, getProfile).mutePubkeys).toEqual([
+			repostPubkey,
+			reactionPubkey
+		]);
+	});
+
 	test.each(['+', ''])('formats %s reaction as a like', (content) => {
 		const reaction = event({
 			id: '2'.repeat(64),

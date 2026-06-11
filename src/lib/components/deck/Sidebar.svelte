@@ -9,8 +9,10 @@
 		Settings,
 		SlidersHorizontal,
 		SunMoon,
+		VolumeX,
 		UserRound
 	} from '@lucide/svelte';
+	import { npubEncode } from 'nostr-tools/nip19';
 	import { m } from '$lib/paraglide/messages.js';
 	import { getLocale, locales, setLocale } from '$lib/paraglide/runtime.js';
 	import { getColumnTitle } from '$lib/deck/column-title';
@@ -18,6 +20,7 @@
 	import * as Select from '$lib/components/ui/select';
 	import type { Column } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
+	import type * as Nostr from 'nostr-typedef';
 	import { readUiState, updateUiState } from '$lib/ui-state';
 	import {
 		applyThemePreference,
@@ -47,6 +50,11 @@
 		onAvatarShapeChange: (avatarShape: AvatarShape) => void;
 		onSelectColumn: (columnId: string) => void;
 		onReorderColumn: (columnId: string, targetIndex: number) => void;
+		mutedPubkeys: string[];
+		getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined;
+		requestProfiles: (pubkeys: string[], relays: string[]) => void;
+		profileRelays: string[];
+		onUnmuteUser: (pubkey: string) => void;
 	};
 
 	const {
@@ -61,7 +69,12 @@
 		onFontSizeChange,
 		onAvatarShapeChange,
 		onSelectColumn,
-		onReorderColumn
+		onReorderColumn,
+		mutedPubkeys,
+		getProfile,
+		requestProfiles,
+		profileRelays,
+		onUnmuteUser
 	}: Props = $props();
 	let currentLocale = $state<AppLocale>(getLocale());
 	let isCollapsed = $state(readUiState().sidebarCollapsed);
@@ -132,6 +145,11 @@
 	function openSettingsDialog() {
 		isSettingsDialogOpen = true;
 	}
+
+	$effect(() => {
+		if (!isSettingsDialogOpen || mutedPubkeys.length === 0) return;
+		requestProfiles(mutedPubkeys, profileRelays);
+	});
 
 	function closeSettingsDialog() {
 		isSettingsDialogOpen = false;
@@ -214,6 +232,11 @@
 	function clearColumnDrag() {
 		draggedColumnId = null;
 		dropTarget = null;
+	}
+
+	function getMutedUserName(pubkey: string) {
+		const profile = getProfile(pubkey);
+		return profile?.display_name ?? profile?.name ?? npubEncode(pubkey).slice(0, 16);
 	}
 </script>
 
@@ -428,8 +451,9 @@
 
 <Dialog.Root bind:open={isSettingsDialogOpen}>
 	<Dialog.Content
-		class="max-h-[calc(100dvh-2rem)] max-w-sm gap-0 overflow-y-auto overscroll-contain rounded-md border border-slate-200 bg-white p-4 text-slate-950 shadow-xl ring-0 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50"
+		class="max-h-[calc(100dvh-2rem)] max-w-sm gap-0 overflow-x-hidden overflow-y-auto overscroll-contain rounded-md border border-slate-200 bg-white p-4 text-slate-950 shadow-xl ring-0 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50"
 		showCloseButton={false}
+		overlayProps={{ onclick: closeSettingsDialog }}
 	>
 		<div class="mb-4 flex items-center justify-between gap-3">
 			<div class="flex min-w-0 items-center gap-2">
@@ -612,6 +636,60 @@
 					{/each}
 				</Select.Content>
 			</Select.Root>
+		</section>
+
+		<section class="mt-5 min-w-0" aria-labelledby="settings-muted-users-title">
+			<h3
+				id="settings-muted-users-title"
+				class={[
+					'mb-3 flex items-center gap-2 font-bold tracking-wide text-slate-500 uppercase dark:text-slate-400',
+					textClass.section
+				]}
+			>
+				<VolumeX class="size-4 shrink-0" aria-hidden="true" />
+				<span>{m.settings_muted_users()}</span>
+			</h3>
+			{#if mutedPubkeys.length === 0}
+				<p class={['text-slate-500 dark:text-slate-400', textClass.body]}>
+					{m.muted_users_empty()}
+				</p>
+			{:else}
+				<div class="flex w-full min-w-0 flex-col gap-2">
+					{#each mutedPubkeys as pubkey (pubkey)}
+						{@const profile = getProfile(pubkey)}
+						{@const name = getMutedUserName(pubkey)}
+						<div
+							class="flex w-full min-w-0 items-center gap-3 rounded-md border border-slate-200 p-2 dark:border-slate-800"
+						>
+							<ProfileAvatar
+								shape={avatarShape}
+								sizeClass="size-9"
+								imageUrl={profile?.picture}
+								fallbackText={name.slice(0, 1)}
+								fallbackClass="bg-slate-500 text-sm font-bold text-white"
+							/>
+							<div class="min-w-0 flex-1">
+								<p class={['truncate font-semibold', textClass.account]}>{name}</p>
+								<p class={['truncate text-slate-500 dark:text-slate-400', textClass.meta]}>
+									{npubEncode(pubkey)}
+								</p>
+							</div>
+							<button
+								type="button"
+								class={[
+									'shrink-0 rounded-md px-2 py-1 font-semibold text-sky-600 transition hover:bg-sky-50 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none dark:text-sky-300 dark:hover:bg-sky-950/40',
+									textClass.meta
+								]}
+								aria-label={m.unmute_user({ name })}
+								title={m.unmute_user({ name })}
+								onclick={() => onUnmuteUser(pubkey)}
+							>
+								{m.unmute()}
+							</button>
+						</div>
+					{/each}
+				</div>
+			{/if}
 		</section>
 	</Dialog.Content>
 </Dialog.Root>

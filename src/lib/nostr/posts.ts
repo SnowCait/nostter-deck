@@ -24,6 +24,7 @@ export function repostEventToPost(
 ): Post {
 	const repostProfile = getProfile(repostEvent.pubkey);
 	const repostAuthor = createPostAuthor(repostEvent.pubkey, repostProfile);
+	const mutePubkeys = getReferenceMutePubkeys(repostEvent, repostedEvent);
 	const context = {
 		icon: 'repost',
 		message: {
@@ -37,6 +38,8 @@ export function repostEventToPost(
 			...createPost(repostEvent, repostProfile),
 			body: '',
 			tags: [],
+			mutePubkeys,
+			referenceType: 'repost',
 			contexts: [context],
 			unavailableMessage: { key: 'reposted_event_unavailable' }
 		};
@@ -48,6 +51,8 @@ export function repostEventToPost(
 		...repostedPost,
 		id: repostEvent.id,
 		time: formatRelativeTime(repostEvent.created_at),
+		mutePubkeys,
+		referenceType: 'repost',
 		contexts: [context, ...(repostedPost.contexts ?? [])]
 	};
 }
@@ -60,6 +65,7 @@ export function reactionEventToPost(
 	const reactionProfile = getProfile(reactionEvent.pubkey);
 	const reactionContent = getReactionContent(reactionEvent);
 	const reactionAuthor = createPostAuthor(reactionEvent.pubkey, reactionProfile);
+	const mutePubkeys = getReferenceMutePubkeys(reactionEvent, reactedEvent);
 	const context = {
 		icon: 'heart',
 		message: isLikeReaction(reactionEvent.content)
@@ -78,6 +84,8 @@ export function reactionEventToPost(
 			...createPost(reactionEvent, reactionProfile),
 			body: '',
 			tags: [],
+			mutePubkeys,
+			referenceType: 'reaction',
 			contexts: [context],
 			unavailableMessage: { key: 'reaction_event_unavailable' }
 		};
@@ -89,6 +97,8 @@ export function reactionEventToPost(
 		...reactedPost,
 		id: reactionEvent.id,
 		time: formatRelativeTime(reactionEvent.created_at),
+		mutePubkeys,
+		referenceType: 'reaction',
 		contexts: [context, ...(reactedPost.contexts ?? [])]
 	};
 }
@@ -104,6 +114,7 @@ function createPost(event: Nostr.Event, profile?: Nostr.Content.Metadata): Post 
 		time: formatRelativeTime(event.created_at),
 		body: event.content,
 		tags: getDisplayHashtags(event.tags),
+		mutePubkeys: [event.pubkey],
 		verified: false,
 		stats: {
 			replies: '0',
@@ -113,6 +124,28 @@ function createPost(event: Nostr.Event, profile?: Nostr.Content.Metadata): Post 
 		...(contexts.length > 0 ? { contexts } : {}),
 		...(thread ? { thread } : {})
 	};
+}
+
+export function getReferencedPubkey(event: Nostr.Event) {
+	for (let index = event.tags.length - 1; index >= 0; index -= 1) {
+		const tag = event.tags[index];
+		if (tag[0] === 'p' && tag[1] && /^[0-9a-f]{64}$/i.test(tag[1])) {
+			return tag[1].toLowerCase();
+		}
+	}
+
+	return null;
+}
+
+function getReferenceMutePubkeys(referenceEvent: Nostr.Event, referencedEvent?: Nostr.Event) {
+	return [
+		...new Set(
+			[
+				referenceEvent.pubkey,
+				referencedEvent?.pubkey ?? getReferencedPubkey(referenceEvent)
+			].flatMap((pubkey) => (pubkey ? [pubkey.toLowerCase()] : []))
+		)
+	];
 }
 
 export function getThreadReference(event: Nostr.Event): Post['thread'] | null {

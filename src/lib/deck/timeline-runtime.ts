@@ -19,6 +19,7 @@ export type TimelineRuntime = {
 	visibleEventIds: string[];
 	liveEventIds: string[];
 	loadedEventsById: Record<string, Nostr.Event>;
+	unavailableReferenceEventIds: string[];
 	hasOlderStored: boolean;
 	hasNewerStored: boolean;
 	isLoadingOlder: boolean;
@@ -42,6 +43,7 @@ export function emptyTimelineRuntime(timelineKey = ''): TimelineRuntime {
 		visibleEventIds: [],
 		liveEventIds: [],
 		loadedEventsById: {},
+		unavailableReferenceEventIds: [],
 		hasOlderStored: false,
 		hasNewerStored: false,
 		isLoadingOlder: false,
@@ -260,34 +262,39 @@ export function getReferencedEventId(event: Nostr.Event) {
 
 export function timelineRuntimeToPosts(
 	runtime: TimelineRuntime,
-	getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined
+	getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined,
+	isMuted: (pubkey: string) => boolean = () => false
 ) {
 	return runtime.visibleEventIds.flatMap((eventId) => {
 		const event = runtime.loadedEventsById[eventId];
 		if (!event) return [];
 
-		return [
+		const referencedEventId = getReferencedEventId(event);
+		const referencedEvent = runtime.loadedEventsById[referencedEventId ?? ''];
+		const post =
 			event.kind === Repost
-				? repostEventToPost(
-						event,
-						runtime.loadedEventsById[getReferencedEventId(event) ?? ''],
-						getProfile
-					)
+				? repostEventToPost(event, referencedEvent, getProfile)
 				: event.kind === Reaction
-					? reactionEventToPost(
-							event,
-							runtime.loadedEventsById[getReferencedEventId(event) ?? ''],
-							getProfile
-						)
-					: eventToPost(event, getProfile(event.pubkey))
-		];
+					? reactionEventToPost(event, referencedEvent, getProfile)
+					: eventToPost(event, getProfile(event.pubkey));
+		if (post.referenceType) {
+			post.referenceStatus = referencedEvent
+				? 'loaded'
+				: runtime.unavailableReferenceEventIds.includes(event.id)
+					? 'unavailable'
+					: 'loading';
+		}
+		if (!post.referenceType && post.mutePubkeys.some(isMuted)) return [];
+
+		return [post];
 	});
 }
 
 export function toRuntimeColumn(
 	column: ColumnConfig,
 	runtime: TimelineRuntime,
-	getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined
+	getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined,
+	isMuted: (pubkey: string) => boolean = () => false
 ): Column {
 	if (!isFetchableTimelineColumn(column)) {
 		return { ...column };
@@ -295,7 +302,7 @@ export function toRuntimeColumn(
 
 	return {
 		...column,
-		posts: timelineRuntimeToPosts(runtime, getProfile),
+		posts: timelineRuntimeToPosts(runtime, getProfile, isMuted),
 		hasOlderStored: runtime.hasOlderStored,
 		hasNewerStored: runtime.hasNewerStored,
 		isLoadingOlder: runtime.isLoadingOlder,

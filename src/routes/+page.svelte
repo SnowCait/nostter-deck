@@ -33,6 +33,12 @@
 		updateColumnWidth as updateColumnWidthConfig
 	} from '$lib/deck/column-updates';
 	import { textClassByFontSize } from '$lib/font-size';
+	import {
+		addMutedPubkey,
+		readMutedPubkeys,
+		removeMutedPubkey,
+		writeMutedPubkeys
+	} from '$lib/muted-users';
 	import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
 	import { getProfile, requestProfiles } from '$lib/nostr/profiles';
 	import { eventToPost, getThreadReference } from '$lib/nostr/posts';
@@ -76,6 +82,7 @@
 	let threadError = $state<string | null>(null);
 	let threadSubscription: { stop: () => void } | null = null;
 	let threadRequestId = 0;
+	let mutedPubkeys = $state(readMutedPubkeys());
 
 	const composeMaxLength = 280;
 	const composeLength = $derived(composeText.length);
@@ -90,7 +97,8 @@
 			toRuntimeColumn(
 				column,
 				timelineController.runtimes[column.id] ?? emptyTimelineRuntime(),
-				getProfile
+				getProfile,
+				isMutedUser
 			)
 		)
 	);
@@ -101,7 +109,8 @@
 					getThreadReference(threadSelectedEvent)?.rootId ?? threadSelectedEvent.id
 				).map(({ event, depth }) => ({
 					post: eventToPost(event, getProfile(event.pubkey)),
-					depth
+					depth,
+					isMuted: isMutedUser(event.pubkey)
 				}))
 			: []
 	);
@@ -145,6 +154,20 @@
 	function setColumnConfigs(nextColumnConfigs: ColumnConfig[]) {
 		columnConfigs = nextColumnConfigs;
 		writeColumnConfigs(nextColumnConfigs);
+	}
+
+	function isMutedUser(pubkey: string) {
+		return mutedPubkeys.includes(pubkey);
+	}
+
+	function muteUser(pubkey: string) {
+		mutedPubkeys = addMutedPubkey(mutedPubkeys, pubkey);
+		writeMutedPubkeys(mutedPubkeys);
+	}
+
+	function unmuteUser(pubkey: string) {
+		mutedPubkeys = removeMutedPubkey(mutedPubkeys, pubkey);
+		writeMutedPubkeys(mutedPubkeys);
 	}
 
 	function openAddColumnDialog() {
@@ -373,6 +396,11 @@
 		onAvatarShapeChange={updateAvatarShape}
 		onSelectColumn={focusColumn}
 		onReorderColumn={reorderColumn}
+		{mutedPubkeys}
+		{getProfile}
+		{requestProfiles}
+		profileRelays={defaultProfileRelays}
+		onUnmuteUser={unmuteUser}
 	/>
 
 	{#if isLoggedIn && isComposePanelOpen}
@@ -511,6 +539,8 @@
 						{getProfile}
 						{requestProfiles}
 						profileRelays={defaultProfileRelays}
+						{isMutedUser}
+						onMuteUser={muteUser}
 						onOpenProfile={(profile) => void openProfileColumn(column.id, profile)}
 						onOpenThread={(post) => void openThreadColumn(column.id, post)}
 						onToggleSettings={() => toggleColumnSettings(column.id)}
@@ -541,6 +571,8 @@
 								{getProfile}
 								{requestProfiles}
 								profileRelays={defaultProfileRelays}
+								{isMutedUser}
+								onMuteUser={muteUser}
 								onClose={() => void closeDetailColumn()}
 								onOpenProfile={(profile) => void openProfileColumn(column.id, profile)}
 								onOpenThread={(post) => void openThreadColumn(column.id, post)}

@@ -13,6 +13,7 @@ export const sidebarCenterTolerance = 1;
 export const uiStateStorageKey = 'nostter:ui-state';
 export const userSettingsStorageKey = 'nostter:user-settings';
 export const columnConfigsStorageKey = 'nostter:column-configs';
+export const mutedUsersStorageKey = 'nostter:muted-users';
 export const defaultRelaySelection = { type: 'default' };
 
 const columnTypeLabels = {

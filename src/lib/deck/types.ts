@@ -14,6 +14,7 @@ export type MessageKey =
 	| 'compose_placeholder'
 	| 'settings_general'
 	| 'settings_appearance'
+	| 'settings_muted_users'
 	| 'language_switcher'
 	| 'theme_switcher'
 	| 'theme_system'
@@ -71,6 +72,16 @@ export type MessageKey =
 	| 'move_column_left'
 	| 'move_column_right'
 	| 'column_options'
+	| 'post_options'
+	| 'mute_user'
+	| 'unmute'
+	| 'unmute_user'
+	| 'muted_users_empty'
+	| 'muted_post'
+	| 'show_muted_post'
+	| 'referenced_post_loading'
+	| 'muted_quote'
+	| 'show_muted_quote'
 	| 'reply'
 	| 'open_profile'
 	| 'open_thread'
@@ -186,6 +197,9 @@ export type Post = {
 	body: string;
 	accent: string;
 	tags: string[];
+	mutePubkeys: string[];
+	referenceType?: 'repost' | 'reaction';
+	referenceStatus?: 'loading' | 'loaded' | 'unavailable';
 	verified?: boolean;
 	stats: {
 		replies: string;
@@ -210,6 +224,7 @@ export type Post = {
 export type ThreadPost = {
 	post: Post;
 	depth: number;
+	isMuted: boolean;
 };
 
 export type PresetTimelineColumn = PresetTimelineColumnConfig & {

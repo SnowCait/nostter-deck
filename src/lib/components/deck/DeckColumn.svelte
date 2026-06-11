@@ -37,6 +37,8 @@
 		getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
+		isMutedUser: (pubkey: string) => boolean;
+		onMuteUser: (pubkey: string) => void;
 		onToggleSettings: () => void;
 		onDelete: () => void;
 		onMoveLeft: () => void;
@@ -67,6 +69,8 @@
 		getProfile,
 		requestProfiles,
 		profileRelays,
+		isMutedUser,
+		onMuteUser,
 		onToggleSettings,
 		onDelete,
 		onMoveLeft,
@@ -342,6 +346,8 @@
 				{getProfile}
 				{requestProfiles}
 				{profileRelays}
+				{isMutedUser}
+				{onMuteUser}
 				onLoadOlder={onLoadOlderTimeline}
 				onLoadNewer={onLoadNewerTimeline}
 				{onOpenProfile}

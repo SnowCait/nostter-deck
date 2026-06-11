@@ -22,6 +22,7 @@ type CustomTimelineSubscriptionOptions = {
 	relays: RelaySelection;
 	onEvent: (event: Nostr.Event, meta: { phase: TimelineEventPhase }) => void;
 	onReferencedEvent: (referenceEventId: string, event: Nostr.Event) => void;
+	onReferencedEventUnavailable: (referenceEventId: string) => void;
 	onLoadingChange: (isLoading: boolean) => void;
 	onError: (message: string) => void;
 };
@@ -31,6 +32,7 @@ export function startCustomTimelineSubscription({
 	relays,
 	onEvent,
 	onReferencedEvent,
+	onReferencedEventUnavailable,
 	onLoadingChange,
 	onError
 }: CustomTimelineSubscriptionOptions) {
@@ -170,17 +172,20 @@ export function startCustomTimelineSubscription({
 		if (!referencedEventId) return;
 
 		const referenceReq = createRxBackwardReq();
+		let hasReferencedEvent = false;
 		let removeSubscription = () => {};
 		const subscription = rxNostr
 			.use(referenceReq)
 			.pipe(uniq())
 			.subscribe({
 				next: ({ event }) => {
+					hasReferencedEvent = true;
 					onReferencedEvent(referenceEvent.id, event);
 					requestProfiles([event.pubkey], profileRelayUrls);
 				},
 				complete: () => {
 					removeSubscription();
+					if (!hasReferencedEvent) onReferencedEventUnavailable(referenceEvent.id);
 				}
 			});
 

@@ -19,6 +19,8 @@
 		getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
+		isMutedUser: (pubkey: string) => boolean;
+		onMuteUser: (pubkey: string) => void;
 		onClose: () => void;
 		onOpenProfile: (profile: ProfilePointer) => void;
 		onOpenThread: (post: Post) => void;
@@ -35,6 +37,8 @@
 		getProfile,
 		requestProfiles,
 		profileRelays,
+		isMutedUser,
+		onMuteUser,
 		onClose,
 		onOpenProfile,
 		onOpenThread
@@ -103,6 +107,9 @@
 						{getProfile}
 						{requestProfiles}
 						{profileRelays}
+						isMuted={item.isMuted}
+						{isMutedUser}
+						{onMuteUser}
 						{onOpenProfile}
 						{onOpenThread}
 					/>
