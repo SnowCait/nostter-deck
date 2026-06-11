@@ -12,12 +12,13 @@ declare global {
 		__nostterFakeRelayEventIdRequests?: Record<string, number>;
 		__nostterFakeRelaySearchRequests?: Record<string, number>;
 		__nostterFakeRelayTimelineAuthorRequests?: Record<string, number>;
+		__nostterFakeRelayNip11Requests?: string[];
 	}
 }
 
-export async function installFakeNostrRelay(page: Page) {
+export async function installFakeNostrRelay(page: Page, options: { failNip11?: boolean } = {}) {
 	await page.addInitScript(
-		({ reactionKind, repostKind, shortTextNoteKind }) => {
+		({ failNip11, reactionKind, repostKind, shortTextNoteKind }) => {
 			const relayConnections: Record<string, number> = {};
 			const relayProfileRequests: Record<string, number> = {};
 			const relayProfileAuthorRequests: Record<string, number> = {};
@@ -25,6 +26,22 @@ export async function installFakeNostrRelay(page: Page) {
 			const relayEventIdRequests: Record<string, number> = {};
 			const relaySearchRequests: Record<string, number> = {};
 			const relayTimelineAuthorRequests: Record<string, number> = {};
+			const relayNip11Requests: string[] = [];
+			const nativeFetch = window.fetch.bind(window);
+			window.fetch = async (input, init) => {
+				const request = input instanceof Request ? input : null;
+				const headers = new Headers(init?.headers ?? request?.headers);
+				if (headers.get('Accept') === 'application/nostr+json') {
+					relayNip11Requests.push(request?.url ?? String(input));
+					if (failNip11) throw new TypeError('Failed to fetch');
+
+					return new Response('{}', {
+						headers: { 'Content-Type': 'application/nostr+json' }
+					});
+				}
+
+				return nativeFetch(input, init);
+			};
 			const contactListAuthorPubkey =
 				'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 			const addressableListAuthorPubkey =
@@ -548,8 +565,10 @@ export async function installFakeNostrRelay(page: Page) {
 			window.__nostterFakeRelayEventIdRequests = relayEventIdRequests;
 			window.__nostterFakeRelaySearchRequests = relaySearchRequests;
 			window.__nostterFakeRelayTimelineAuthorRequests = relayTimelineAuthorRequests;
+			window.__nostterFakeRelayNip11Requests = relayNip11Requests;
 		},
 		{
+			failNip11: options.failNip11 === true,
 			reactionKind: Reaction,
 			repostKind: Repost,
 			shortTextNoteKind: ShortTextNote

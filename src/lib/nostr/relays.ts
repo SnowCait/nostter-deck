@@ -11,12 +11,34 @@ export const profileRelays = [
 
 const defaultRelaySet = new Set<string>(defaultRelays);
 
+function isLoopbackHostname(hostname: string) {
+	if (
+		hostname === 'localhost' ||
+		hostname === 'localhost.' ||
+		hostname.endsWith('.localhost') ||
+		hostname.endsWith('.localhost.')
+	) {
+		return true;
+	}
+
+	if (hostname === '[::1]') return true;
+
+	const ipv4Parts = hostname.split('.');
+	return (
+		ipv4Parts.length === 4 &&
+		ipv4Parts.every((part) => /^\d+$/.test(part)) &&
+		Number(ipv4Parts[0]) === 127
+	);
+}
+
 export function normalizeRelay(value: unknown): string | null {
 	if (typeof value !== 'string') return null;
 
 	try {
 		const url = new URL(value.trim());
-		return url.protocol === 'wss:' ? url.href : null;
+		return url.protocol === 'wss:' || (url.protocol === 'ws:' && isLoopbackHostname(url.hostname))
+			? url.href
+			: null;
 	} catch {
 		return null;
 	}

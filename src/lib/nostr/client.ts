@@ -14,7 +14,6 @@ export function getNostrClient() {
 		nostrClient = createRxNostr({
 			verifier,
 			skipVerify: globalThis.__NOSTTER_DECK_SKIP_NOSTR_VERIFY__ === true,
-			skipFetchNip11: true,
 			websocketCtor: globalThis.__NOSTTER_DECK_WEBSOCKET_CTOR__
 		});
 	}

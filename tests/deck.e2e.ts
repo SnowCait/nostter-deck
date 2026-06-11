@@ -843,6 +843,42 @@ test.describe('nostter deck', () => {
 			.toEqual(expectedProfileRelayConnections);
 	});
 
+	test('allows loopback relays and requests their NIP-11 information', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		const localRelay = 'ws://localhost:4869/';
+
+		await addCustomTimelineColumn(page, { customRelays: localRelay });
+		await expect
+			.poll(() =>
+				page.evaluate(
+					(url) => window.__nostterFakeRelayNip11Requests?.includes(url) ?? false,
+					'http://localhost:4869/'
+				)
+			)
+			.toBe(true);
+		await expectStoredCustomTimelineColumn(page, undefined, {
+			type: 'custom',
+			urls: [...defaultRelays, localRelay]
+		});
+
+		await page.reload();
+		const customColumn = deckColumns(page).first();
+		await columnOptionsButton(customColumn).click();
+		await expect(customColumn.getByLabel('Custom relays')).toHaveValue(localRelay);
+	});
+
+	test('continues loading timelines when NIP-11 requests fail', async ({ page }) => {
+		await installFakeNostrRelay(page, { failNip11: true });
+		await openDeck(page);
+
+		await addCustomTimelineColumn(page);
+
+		await expect(
+			deckColumns(page).first().getByText('Hello from a custom Nostr timeline')
+		).toBeVisible();
+	});
+
 	test('batches profile requests for timeline event authors', async ({ page }) => {
 		await installFakeNostrRelay(page);
 		await openDeck(page);

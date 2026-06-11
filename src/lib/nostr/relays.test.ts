@@ -11,17 +11,29 @@ import {
 describe('nostr relays', () => {
 	test.each([
 		['wss://relay.example', 'wss://relay.example/'],
-		[' wss://relay.example/path ', 'wss://relay.example/path']
+		[' wss://relay.example/path ', 'wss://relay.example/path'],
+		['ws://localhost:4869', 'ws://localhost:4869/'],
+		['ws://relay.localhost:4869/path', 'ws://relay.localhost:4869/path'],
+		['ws://127.0.0.1:4869', 'ws://127.0.0.1:4869/'],
+		['ws://127.255.255.254:4869', 'ws://127.255.255.254:4869/'],
+		['ws://127.1:4869', 'ws://127.0.0.1:4869/'],
+		['ws://[::1]:4869', 'ws://[::1]:4869/']
 	])('normalizes %s', (value, expected) => {
 		expect(normalizeRelay(value)).toBe(expected);
 	});
 
-	test.each(['https://relay.example', 'http://relay.example', 'ws://relay.example', 'not a url'])(
-		'rejects %s',
-		(value) => {
-			expect(normalizeRelay(value)).toBeNull();
-		}
-	);
+	test.each([
+		'https://relay.example',
+		'http://relay.example',
+		'ws://relay.example',
+		'ws://relay.local',
+		'ws://192.168.1.2',
+		'ws://10.0.0.2',
+		'ws://[::2]',
+		'not a url'
+	])('rejects %s', (value) => {
+		expect(normalizeRelay(value)).toBeNull();
+	});
 
 	test('deduplicates normalized relay arrays', () => {
 		expect(normalizeRelays(['wss://relay.example', 'wss://relay.example/'])).toEqual([
