@@ -34,6 +34,7 @@
 		getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
+		onOpenProfile?: (post: Post) => void;
 		onOpenThread?: (post: Post) => void;
 	};
 
@@ -45,6 +46,7 @@
 		getProfile,
 		requestProfiles,
 		profileRelays,
+		onOpenProfile,
 		onOpenThread
 	}: Props = $props();
 	const bodyTokens = $derived(linkifyPostContent(post.body));
@@ -215,19 +217,38 @@
 	{/if}
 
 	<div class="flex gap-3">
-		<ProfileAvatar
-			shape={avatarShape}
-			sizeClass="size-10"
-			imageUrl={post.avatarUrl}
-			fallbackText={post.author.slice(0, 1)}
-			fallbackClass={`${post.accent} text-sm font-bold text-white`}
-			testId="post-avatar"
-		/>
+		<button
+			type="button"
+			class="h-fit shrink-0 rounded-full focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-offset-slate-950"
+			title={m.open_profile({ name: post.author })}
+			aria-label={m.open_profile({ name: post.author })}
+			onclick={() => onOpenProfile?.(post)}
+		>
+			<ProfileAvatar
+				shape={avatarShape}
+				sizeClass="size-10"
+				imageUrl={post.avatarUrl}
+				fallbackText={post.author.slice(0, 1)}
+				fallbackClass={`${post.accent} text-sm font-bold text-white`}
+				testId="post-avatar"
+			/>
+		</button>
 		<div class="min-w-0 flex-1">
 			<div class="flex items-start justify-between gap-2">
 				<div class="min-w-0">
 					<div class="flex min-w-0 items-center gap-1.5">
-						<p class={['truncate font-bold', textClass.account]}>{post.author}</p>
+						<button
+							type="button"
+							class={[
+								'truncate rounded-sm text-left font-bold hover:underline focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none',
+								textClass.account
+							]}
+							title={m.open_profile({ name: post.author })}
+							aria-label={m.open_profile({ name: post.author })}
+							onclick={() => onOpenProfile?.(post)}
+						>
+							{post.author}
+						</button>
 						{#if post.verified ?? true}
 							<ShieldCheck class="size-4 shrink-0 text-sky-500" aria-label={m.verified()} />
 						{/if}

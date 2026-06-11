@@ -72,7 +72,13 @@ export type MessageKey =
 	| 'move_column_right'
 	| 'column_options'
 	| 'reply'
+	| 'open_profile'
 	| 'open_thread'
+	| 'profile'
+	| 'profile_about'
+	| 'profile_nip05'
+	| 'profile_website'
+	| 'profile_metadata_unavailable'
 	| 'thread'
 	| 'thread_loading'
 	| 'thread_empty'
@@ -172,6 +178,7 @@ export type ColumnConfig = TimelineColumnConfig | WebsiteColumnConfig;
 
 export type Post = {
 	id?: string;
+	pubkey: string;
 	author: string;
 	handle: string;
 	avatarUrl?: string;

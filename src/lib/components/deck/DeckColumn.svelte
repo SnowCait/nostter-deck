@@ -50,6 +50,7 @@
 		onCustomTimelineSave: (filters: NostrFilter[], relays: RelaySelection) => void;
 		onLoadOlderTimeline: () => void;
 		onLoadNewerTimeline: () => void;
+		onOpenProfile: (post: import('$lib/deck/types').Post) => void;
 		onOpenThread: (post: import('$lib/deck/types').Post) => void;
 	};
 
@@ -79,6 +80,7 @@
 		onCustomTimelineSave,
 		onLoadOlderTimeline,
 		onLoadNewerTimeline,
+		onOpenProfile,
 		onOpenThread
 	}: Props = $props();
 
@@ -342,6 +344,7 @@
 				{profileRelays}
 				onLoadOlder={onLoadOlderTimeline}
 				onLoadNewer={onLoadNewerTimeline}
+				{onOpenProfile}
 				{onOpenThread}
 			/>
 		{/if}

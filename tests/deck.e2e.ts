@@ -850,8 +850,65 @@ test.describe('nostter deck', () => {
 			'thread-column'
 		);
 
-		await threadColumn.getByRole('button', { name: 'Close' }).click();
+		await replyArticle.getByRole('button', { name: 'Open thread' }).click();
 		await expect(threadColumn).toHaveCount(0);
+	});
+
+	test('opens and toggles a profile next to its source column', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], limit: 20 }]
+		});
+
+		const sourceColumn = deckColumns(page).first();
+		const article = sourceColumn
+			.getByText('Hello from a custom Nostr timeline', { exact: false })
+			.first()
+			.locator('xpath=ancestor::article');
+		const profileButtons = article.getByRole('button', { name: "Open Alice Relay's profile" });
+		await expect(profileButtons).toHaveCount(2);
+		await profileButtons.first().click();
+
+		const profileColumn = page.getByTestId('profile-column');
+		await expect(profileColumn).toBeVisible();
+		await expect(sourceColumn.locator('xpath=following-sibling::*[1]')).toHaveAttribute(
+			'data-testid',
+			'profile-column'
+		);
+		await expect(profileColumn.getByRole('heading', { name: 'Alice Relay' })).toBeVisible();
+		await expect(profileColumn.getByText('Alice profile from the relay')).toBeVisible();
+		await expect(profileColumn.getByText('alice@example.com')).toBeVisible();
+		await expect(
+			profileColumn.getByRole('link', { name: 'https://example.com/alice' })
+		).toHaveAttribute('href', 'https://example.com/alice');
+		await expect(profileColumn.getByTestId('profile-npub')).toHaveText(npubEncode(textEventPubkey));
+
+		await profileButtons.last().click();
+		await expect(profileColumn).toHaveCount(0);
+	});
+
+	test('replaces the temporary profile column with a thread column', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], search: 'thread-entry', limit: 20 }]
+		});
+
+		const sourceColumn = deckColumns(page).first();
+		const replyArticle = sourceColumn
+			.getByText('Direct thread reply')
+			.first()
+			.locator('xpath=ancestor::article');
+		await replyArticle
+			.getByRole('button', { name: /Open .* profile/ })
+			.first()
+			.click();
+		await expect(page.getByTestId('profile-column')).toBeVisible();
+
+		await replyArticle.getByRole('button', { name: 'Open thread' }).click();
+		await expect(page.getByTestId('profile-column')).toHaveCount(0);
+		await expect(page.getByTestId('thread-column')).toBeVisible();
 	});
 
 	test('keeps reply actions separate from thread navigation', async ({ page }) => {
@@ -873,6 +930,9 @@ test.describe('nostter deck', () => {
 		await threadButton.focus();
 		await threadButton.press('Enter');
 		await expect(page.getByTestId('thread-column')).toBeVisible();
+		await threadButton.focus();
+		await threadButton.press('Enter');
+		await expect(page.getByTestId('thread-column')).toHaveCount(0);
 	});
 
 	test('keeps a bounded timeline window backed by IndexedDB', async ({ page }) => {

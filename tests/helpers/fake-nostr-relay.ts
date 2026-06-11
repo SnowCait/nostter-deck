@@ -231,7 +231,11 @@ export async function installFakeNostrRelay(page: Page) {
 				tags: [],
 				content: JSON.stringify({
 					display_name: 'Alice Relay',
-					picture: profilePictureUrl
+					picture: profilePictureUrl,
+					banner: profilePictureUrl,
+					about: 'Alice profile from the relay',
+					nip05: 'alice@example.com',
+					website: 'https://example.com/alice'
 				}),
 				sig: '0'.repeat(128)
 			};

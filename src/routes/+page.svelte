@@ -3,6 +3,7 @@
 	import { CalendarClock, Image, Plus, Send, Smile, UserRound } from '@lucide/svelte';
 	import AddColumnDialog from '$lib/components/deck/AddColumnDialog.svelte';
 	import DeckColumn from '$lib/components/deck/DeckColumn.svelte';
+	import ProfileColumn from '$lib/components/deck/ProfileColumn.svelte';
 	import ThreadColumn from '$lib/components/deck/ThreadColumn.svelte';
 	import ProfileAvatar from '$lib/components/deck/ProfileAvatar.svelte';
 	import Sidebar from '$lib/components/deck/Sidebar.svelte';
@@ -35,7 +36,12 @@
 	import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
 	import { getProfile, requestProfiles } from '$lib/nostr/profiles';
 	import { eventToPost, getThreadReference } from '$lib/nostr/posts';
-	import { profileRelays, resolveRelaySelection } from '$lib/nostr/relays';
+	import {
+		combineRelays,
+		defaultRelays,
+		profileRelays,
+		resolveRelaySelection
+	} from '$lib/nostr/relays';
 	import { buildThreadEvents, startThreadSubscription } from '$lib/nostr/thread';
 	import { m } from '$lib/paraglide/messages.js';
 	import { readUserSettings, type AvatarShape, type FontSize } from '$lib/user-settings';
@@ -44,6 +50,10 @@
 	type NostrDeckGlobal = typeof globalThis & {
 		__NOSTTER_DECK_IS_LOGGED_IN__?: boolean;
 	};
+
+	type DetailColumn =
+		| { type: 'thread'; sourceColumnId: string; eventId: string }
+		| { type: 'profile'; sourceColumnId: string; pubkey: string };
 
 	const savedColumnConfigs = readColumnConfigs();
 	const isLoggedIn = (globalThis as NostrDeckGlobal).__NOSTTER_DECK_IS_LOGGED_IN__ === true;
@@ -59,7 +69,7 @@
 	let fontSize = $state<FontSize>(initialUserSettings.fontSize);
 	let avatarShape = $state<AvatarShape>(initialUserSettings.avatarShape);
 	let isTimelineCacheReady = $state(false);
-	let threadSourceColumnId = $state<string | null>(null);
+	let detailColumn = $state<DetailColumn | null>(null);
 	let threadSelectedEvent = $state<Nostr.Event | null>(null);
 	let threadEvents = $state<Nostr.Event[]>([]);
 	let isThreadLoading = $state(false);
@@ -163,7 +173,7 @@
 
 		const nextColumns = columnConfigs.filter((column) => column.id !== columnId);
 		setColumnConfigs(nextColumns);
-		if (threadSourceColumnId === columnId) closeThreadColumn(false);
+		if (detailColumn?.sourceColumnId === columnId) closeDetailColumn(false);
 		openSettingsColumnId = null;
 
 		if (activeColumnId !== columnId) return;
@@ -179,10 +189,14 @@
 
 	async function openThreadColumn(sourceColumnId: string, post: Post) {
 		if (!post.thread) return;
+		if (detailColumn?.type === 'thread' && detailColumn.eventId === post.thread.event.id) {
+			await closeDetailColumn();
+			return;
+		}
 
 		threadSubscription?.stop();
 		const requestId = ++threadRequestId;
-		threadSourceColumnId = sourceColumnId;
+		detailColumn = { type: 'thread', sourceColumnId, eventId: post.thread.event.id };
 		threadSelectedEvent = post.thread.event;
 		threadEvents = [post.thread.event];
 		threadError = null;
@@ -213,12 +227,39 @@
 		focusColumn('thread');
 	}
 
-	async function closeThreadColumn(restoreFocus = true) {
-		const sourceColumnId = threadSourceColumnId;
+	async function openProfileColumn(sourceColumnId: string, post: Post) {
+		if (detailColumn?.type === 'profile' && detailColumn.pubkey === post.pubkey) {
+			await closeDetailColumn();
+			return;
+		}
+
 		threadRequestId += 1;
 		threadSubscription?.stop();
 		threadSubscription = null;
-		threadSourceColumnId = null;
+		threadSelectedEvent = null;
+		threadEvents = [];
+		threadError = null;
+		isThreadLoading = false;
+
+		const sourceColumn = columnConfigs.find((column) => column.id === sourceColumnId);
+		const request = sourceColumn ? getTimelineRequest(sourceColumn) : null;
+		const sourceRelays = request ? resolveRelaySelection(request.relays) : [];
+		requestProfiles(
+			[post.pubkey],
+			combineRelays(sourceRelays, [...defaultRelays], defaultProfileRelays)
+		);
+		detailColumn = { type: 'profile', sourceColumnId, pubkey: post.pubkey };
+
+		await tick();
+		focusColumn('profile');
+	}
+
+	async function closeDetailColumn(restoreFocus = true) {
+		const sourceColumnId = detailColumn?.sourceColumnId;
+		threadRequestId += 1;
+		threadSubscription?.stop();
+		threadSubscription = null;
+		detailColumn = null;
 		threadSelectedEvent = null;
 		threadEvents = [];
 		threadError = null;
@@ -455,6 +496,7 @@
 						{getProfile}
 						{requestProfiles}
 						profileRelays={defaultProfileRelays}
+						onOpenProfile={(post) => void openProfileColumn(column.id, post)}
 						onOpenThread={(post) => void openThreadColumn(column.id, post)}
 						onToggleSettings={() => toggleColumnSettings(column.id)}
 						onDelete={() => deleteColumn(column.id)}
@@ -471,21 +513,33 @@
 						onLoadOlderTimeline={() => void timelineController.loadOlder(column.id)}
 						onLoadNewerTimeline={() => void timelineController.loadNewer(column.id)}
 					/>
-					{#if threadSourceColumnId === column.id}
-						<ThreadColumn
-							id={getColumnId('thread')}
-							posts={threadPosts}
-							isLoading={isThreadLoading}
-							error={threadError}
-							{isLoggedIn}
-							{textClass}
-							{avatarShape}
-							{getProfile}
-							{requestProfiles}
-							profileRelays={defaultProfileRelays}
-							onClose={() => void closeThreadColumn()}
-							onOpenThread={(post) => void openThreadColumn(column.id, post)}
-						/>
+					{#if detailColumn?.sourceColumnId === column.id}
+						{#if detailColumn.type === 'thread'}
+							<ThreadColumn
+								id={getColumnId('thread')}
+								posts={threadPosts}
+								isLoading={isThreadLoading}
+								error={threadError}
+								{isLoggedIn}
+								{textClass}
+								{avatarShape}
+								{getProfile}
+								{requestProfiles}
+								profileRelays={defaultProfileRelays}
+								onClose={() => void closeDetailColumn()}
+								onOpenProfile={(post) => void openProfileColumn(column.id, post)}
+								onOpenThread={(post) => void openThreadColumn(column.id, post)}
+							/>
+						{:else}
+							<ProfileColumn
+								id={getColumnId('profile')}
+								pubkey={detailColumn.pubkey}
+								{textClass}
+								{avatarShape}
+								{getProfile}
+								onClose={() => void closeDetailColumn()}
+							/>
+						{/if}
 					{/if}
 				{/each}
 				<div

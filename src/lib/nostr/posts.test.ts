@@ -38,6 +38,7 @@ describe('posts', () => {
 
 		expect(reactionEventToPost(reaction, event({}), getProfile)).toMatchObject({
 			body: 'Target note',
+			pubkey: targetPubkey,
 			author: 'Bob',
 			contexts: [
 				{

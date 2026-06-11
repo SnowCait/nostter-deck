@@ -19,6 +19,7 @@
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
 		onClose: () => void;
+		onOpenProfile: (post: Post) => void;
 		onOpenThread: (post: Post) => void;
 	};
 
@@ -34,6 +35,7 @@
 		requestProfiles,
 		profileRelays,
 		onClose,
+		onOpenProfile,
 		onOpenThread
 	}: Props = $props();
 </script>
@@ -100,6 +102,7 @@
 						{getProfile}
 						{requestProfiles}
 						{profileRelays}
+						{onOpenProfile}
 						{onOpenThread}
 					/>
 				</div>

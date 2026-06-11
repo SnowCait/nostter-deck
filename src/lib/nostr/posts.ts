@@ -191,6 +191,7 @@ function createPostAuthor(pubkey: string, profile?: Nostr.Content.Metadata) {
 	const displayName = profile?.display_name ?? profile?.name;
 
 	return {
+		pubkey,
 		author: displayName || shortenPubkey(pubkey),
 		handle: shortenPubkey(pubkey),
 		avatarUrl: profile?.picture,

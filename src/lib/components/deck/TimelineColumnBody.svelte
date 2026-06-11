@@ -17,6 +17,7 @@
 		profileRelays: string[];
 		onLoadOlder: () => void;
 		onLoadNewer: () => void;
+		onOpenProfile: (post: import('$lib/deck/types').Post) => void;
 		onOpenThread: (post: import('$lib/deck/types').Post) => void;
 	};
 
@@ -31,6 +32,7 @@
 		profileRelays,
 		onLoadOlder,
 		onLoadNewer,
+		onOpenProfile,
 		onOpenThread
 	}: Props = $props();
 	let newerSentinel: HTMLDivElement | undefined = $state();
@@ -100,6 +102,7 @@
 			{getProfile}
 			{requestProfiles}
 			{profileRelays}
+			{onOpenProfile}
 			{onOpenThread}
 		/>
 	{/each}
