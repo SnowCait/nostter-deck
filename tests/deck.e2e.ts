@@ -38,6 +38,7 @@ import {
 	selectColumnType,
 	selectDropdownOption,
 	sidebar,
+	sidebarButton,
 	sidebarButtonIcon,
 	sidebarButtonNames,
 	sidebarCenterTolerance,
@@ -188,6 +189,53 @@ test.describe('nostter deck', () => {
 
 		await columns.nth(1).getByRole('button', { name: 'Delete column' }).click();
 		await expectColumnOrder(columns, ['Search']);
+	});
+
+	test('reorders columns by dragging sidebar icons', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		const columns = deckColumns(page);
+
+		await addPresetColumn(page, 'timeline_search');
+		await addWebsiteColumn(page, 'example.com');
+		await expectColumnOrder(columns, ['Search', 'example.com']);
+
+		const sidebarColumns = sidebar(page).getByTestId('sidebar-column');
+		const searchSidebarColumn = sidebarButton(page, 'Search');
+		const websiteSidebarColumn = sidebarButton(page, 'example.com');
+		const websiteBox = await websiteSidebarColumn.boundingBox();
+		expect(websiteBox).not.toBeNull();
+
+		await searchSidebarColumn
+			.getByTestId('sidebar-column-drag-handle')
+			.dragTo(websiteSidebarColumn, {
+				targetPosition: { x: websiteBox!.width / 2, y: websiteBox!.height - 1 }
+			});
+
+		await expectColumnOrder(columns, ['example.com', 'Search']);
+		await expect(sidebarColumns).toHaveText(['example.com', 'Search']);
+
+		await page.reload();
+		await expectColumnOrder(columns, ['example.com', 'Search']);
+		await expect(sidebarColumns).toHaveText(['example.com', 'Search']);
+
+		await page.getByRole('button', { name: 'Collapse sidebar' }).click();
+		await expectSidebarWidth(page, sidebarCollapsedWidth);
+		const collapsedWebsiteColumn = sidebarButton(page, 'example.com');
+		const collapsedWebsiteBox = await collapsedWebsiteColumn.boundingBox();
+		expect(collapsedWebsiteBox).not.toBeNull();
+
+		await sidebarButton(page, 'Search')
+			.getByTestId('sidebar-column-drag-handle')
+			.dragTo(collapsedWebsiteColumn, {
+				targetPosition: { x: collapsedWebsiteBox!.width / 2, y: 1 }
+			});
+
+		await expectColumnOrder(columns, ['Search', 'example.com']);
+		await expect(sidebarColumns).toHaveText(['Search', 'example.com']);
+
+		await sidebarButton(page, 'Search').click();
+		await expect(sidebarButton(page, 'Search')).toHaveAttribute('aria-current', 'page');
 	});
 
 	test('opens the column add dialog only from the right edge plus button', async ({ page }) => {

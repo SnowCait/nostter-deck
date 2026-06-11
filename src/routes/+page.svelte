@@ -286,6 +286,20 @@
 		focusColumn(columnId);
 	}
 
+	function reorderColumn(columnId: string, targetIndex: number) {
+		const currentIndex = columnConfigs.findIndex((column) => column.id === columnId);
+		if (currentIndex < 0) return;
+
+		const nextColumns = [...columnConfigs];
+		const [column] = nextColumns.splice(currentIndex, 1);
+		const adjustedTargetIndex = currentIndex < targetIndex ? targetIndex - 1 : targetIndex;
+		const nextIndex = Math.max(0, Math.min(adjustedTargetIndex, nextColumns.length));
+		if (nextIndex === currentIndex) return;
+
+		nextColumns.splice(nextIndex, 0, column);
+		setColumnConfigs(nextColumns);
+	}
+
 	function updateColumnWidth(columnId: string, width: ColumnWidth) {
 		setColumnConfigs(updateColumnWidthConfig(columnConfigs, columnId, width));
 	}
@@ -358,6 +372,7 @@
 		onFontSizeChange={updateFontSize}
 		onAvatarShapeChange={updateAvatarShape}
 		onSelectColumn={focusColumn}
+		onReorderColumn={reorderColumn}
 	/>
 
 	{#if isLoggedIn && isComposePanelOpen}
