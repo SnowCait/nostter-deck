@@ -72,6 +72,7 @@ export type MessageKey =
 	| 'move_column_right'
 	| 'column_options'
 	| 'reply'
+	| 'open_thread'
 	| 'thread'
 	| 'thread_loading'
 	| 'thread_empty'

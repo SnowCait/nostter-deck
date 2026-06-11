@@ -1,5 +1,13 @@
 <script lang="ts">
-	import { Heart, MessageCircle, Ellipsis, Repeat2, Share, ShieldCheck } from '@lucide/svelte';
+	import {
+		ChevronRight,
+		Heart,
+		MessageCircle,
+		Ellipsis,
+		Repeat2,
+		Share,
+		ShieldCheck
+	} from '@lucide/svelte';
 	import { npubEncode } from 'nostr-tools/nip19';
 	import { linkifyPostContent, type PostContentToken } from '$lib/deck/post-content-links';
 	import {
@@ -162,63 +170,47 @@
 				return m.reaction_event_unavailable();
 		}
 	}
-
-	function isNestedInteractiveTarget(
-		target: EventTarget | null,
-		currentTarget: EventTarget | null
-	) {
-		if (!(target instanceof Element)) return false;
-
-		const interactiveElement = target.closest(
-			'a, button, input, select, textarea, [role="button"]'
-		);
-		return interactiveElement !== null && interactiveElement !== currentTarget;
-	}
-
-	function openThreadFromCard(event: MouseEvent) {
-		if (!post.thread || isNestedInteractiveTarget(event.target, event.currentTarget)) return;
-
-		onOpenThread?.(post);
-	}
-
-	function openThreadFromKeyboard(event: KeyboardEvent) {
-		if (!post.thread || event.target !== event.currentTarget) return;
-		if (event.key !== 'Enter' && event.key !== ' ') return;
-
-		event.preventDefault();
-		onOpenThread?.(post);
-	}
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <article
-	role={post.thread ? 'button' : undefined}
-	tabindex={post.thread ? 0 : undefined}
-	aria-label={post.thread ? m.thread() : undefined}
-	class={[
-		'border-b border-slate-200 p-3 transition hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/80',
-		post.thread ? 'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-sky-500' : ''
-	]}
-	onclick={openThreadFromCard}
-	onkeydown={openThreadFromKeyboard}
+	class="border-b border-slate-200 p-3 transition hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/80"
 >
 	{#if post.contexts}
 		{#each post.contexts as context, index (`${context.icon}:${context.message.key}:${index}`)}
-			<div
-				class={[
-					'mb-2 flex min-w-0 items-center gap-1.5 pl-[3.25rem] font-semibold text-slate-500 dark:text-slate-400',
-					textClass.meta
-				]}
-			>
-				{#if context.icon === 'repost'}
-					<Repeat2 class="size-4 shrink-0" aria-hidden="true" />
-				{:else if context.icon === 'heart'}
-					<Heart class="size-4 shrink-0" aria-hidden="true" />
-				{:else if context.icon === 'reply'}
+			{#if context.icon === 'reply' && post.thread}
+				<button
+					type="button"
+					class={[
+						'mb-2 flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 pr-1 pl-[3.25rem] font-semibold text-slate-500 transition hover:bg-sky-50 hover:text-sky-700 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none dark:text-slate-400 dark:hover:bg-sky-950/40 dark:hover:text-sky-300',
+						textClass.meta
+					]}
+					title={m.open_thread()}
+					aria-label={m.open_thread()}
+					onclick={() => onOpenThread?.(post)}
+				>
 					<MessageCircle class="size-4 shrink-0" aria-hidden="true" />
-				{/if}
-				<span class="truncate">{formatPostMessage(context.message)}</span>
-			</div>
+					<span class="min-w-0 flex-1 truncate text-left">
+						{formatPostMessage(context.message)}
+					</span>
+					<ChevronRight class="size-4 shrink-0" aria-hidden="true" />
+				</button>
+			{:else}
+				<div
+					class={[
+						'mb-2 flex min-w-0 items-center gap-1.5 pl-[3.25rem] font-semibold text-slate-500 dark:text-slate-400',
+						textClass.meta
+					]}
+				>
+					{#if context.icon === 'repost'}
+						<Repeat2 class="size-4 shrink-0" aria-hidden="true" />
+					{:else if context.icon === 'heart'}
+						<Heart class="size-4 shrink-0" aria-hidden="true" />
+					{:else if context.icon === 'reply'}
+						<MessageCircle class="size-4 shrink-0" aria-hidden="true" />
+					{/if}
+					<span class="truncate">{formatPostMessage(context.message)}</span>
+				</div>
+			{/if}
 		{/each}
 	{/if}
 

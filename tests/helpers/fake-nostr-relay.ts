@@ -423,7 +423,11 @@ export async function installFakeNostrRelay(page: Page) {
 							this.emitMessage([
 								'EVENT',
 								subId,
-								search === 'edited' ? editedSearchEvent : textEvent
+								search === 'edited'
+									? editedSearchEvent
+									: search === 'thread-entry'
+										? threadReplyEvent
+										: textEvent
 							]);
 						}, 5);
 					}
@@ -470,6 +474,7 @@ export async function installFakeNostrRelay(page: Page) {
 
 					function searchPreviewEvent(search: string | undefined) {
 						if (search === 'bulk') return bulkEvents[0] ?? textEvent;
+						if (search === 'thread-entry') return threadReplyEvent;
 						return search === 'edited' ? editedSearchEvent : textEvent;
 					}
 

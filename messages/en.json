@@ -79,6 +79,7 @@
 	"move_column_right": "Move column right",
 	"column_options": "Column options",
 	"reply": "Reply",
+	"open_thread": "Open thread",
 	"thread": "Thread",
 	"thread_loading": "Loading thread...",
 	"thread_empty": "No thread events found",

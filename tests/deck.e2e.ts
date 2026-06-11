@@ -827,14 +827,16 @@ test.describe('nostter deck', () => {
 	test('opens a NIP-10 thread next to its source column', async ({ page }) => {
 		await installFakeNostrRelay(page);
 		await openDeck(page);
-		await addCustomTimelineColumn(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], search: 'thread-entry', limit: 20 }]
+		});
 
 		const sourceColumn = deckColumns(page).first();
-		const rootArticle = sourceColumn
-			.getByText('Hello from a custom Nostr timeline')
+		const replyArticle = sourceColumn
+			.getByText('Direct thread reply')
 			.first()
 			.locator('xpath=ancestor::article');
-		await rootArticle.getByTestId('post-body').click({ position: { x: 4, y: 4 } });
+		await replyArticle.getByRole('button', { name: 'Open thread' }).click();
 
 		const threadColumn = page.getByTestId('thread-column');
 		await expect(threadColumn).toBeVisible();
@@ -855,18 +857,21 @@ test.describe('nostter deck', () => {
 	test('keeps reply actions separate from thread navigation', async ({ page }) => {
 		await installFakeNostrRelay(page);
 		await openDeck(page, { isLoggedIn: true });
-		await addCustomTimelineColumn(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], search: 'thread-entry', limit: 20 }]
+		});
 
-		const rootArticle = deckColumns(page)
+		const replyArticle = deckColumns(page)
 			.first()
-			.getByText('Hello from a custom Nostr timeline')
+			.getByText('Direct thread reply')
 			.first()
 			.locator('xpath=ancestor::article');
-		await rootArticle.getByRole('button', { name: 'Reply' }).click();
+		await replyArticle.getByRole('button', { name: 'Reply' }).click();
 		await expect(page.getByTestId('thread-column')).toHaveCount(0);
 
-		await rootArticle.focus();
-		await rootArticle.press('Enter');
+		const threadButton = replyArticle.getByRole('button', { name: 'Open thread' });
+		await threadButton.focus();
+		await threadButton.press('Enter');
 		await expect(page.getByTestId('thread-column')).toBeVisible();
 	});
 
