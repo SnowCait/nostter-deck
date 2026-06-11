@@ -50,7 +50,7 @@
 		onCustomTimelineSave: (filters: NostrFilter[], relays: RelaySelection) => void;
 		onLoadOlderTimeline: () => void;
 		onLoadNewerTimeline: () => void;
-		onOpenProfile: (post: import('$lib/deck/types').Post) => void;
+		onOpenProfile: (profile: ProfilePointer) => void;
 		onOpenThread: (post: import('$lib/deck/types').Post) => void;
 	};
 

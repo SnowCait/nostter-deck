@@ -2,6 +2,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import type { TimelineColumn } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
+	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape } from '$lib/user-settings';
 	import type * as Nostr from 'nostr-typedef';
 	import PostCard from './PostCard.svelte';
@@ -17,7 +18,7 @@
 		profileRelays: string[];
 		onLoadOlder: () => void;
 		onLoadNewer: () => void;
-		onOpenProfile: (post: import('$lib/deck/types').Post) => void;
+		onOpenProfile: (profile: ProfilePointer) => void;
 		onOpenThread: (post: import('$lib/deck/types').Post) => void;
 	};
 

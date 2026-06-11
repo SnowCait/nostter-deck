@@ -588,13 +588,29 @@ test.describe('nostter deck', () => {
 			.locator('article')
 			.filter({ hasText: 'NIP-21 references' });
 		for (const nostrUri of [nostrNpub, nostrNprofile]) {
-			await expect(nostrReferenceArticle.locator(`a[href="${nostrUri}"]`)).toHaveText(
-				'@Alice Relay'
-			);
+			await expect(nostrReferenceArticle.locator(`a[href="${nostrUri}"]`)).toHaveCount(0);
 		}
-		await expect(nostrReferenceArticle.locator(`a[href="${nostrFallbackNpub}"]`)).toHaveText(
-			'@npub1lllllll'
-		);
+		const profileMentions = nostrReferenceArticle
+			.getByTestId('post-body')
+			.getByRole('button', { name: "Open Alice Relay's profile" });
+		await expect(profileMentions).toHaveCount(2);
+		await expect(profileMentions.first()).toHaveText('@Alice Relay');
+		await expect(profileMentions.last()).toHaveText('@Alice Relay');
+		await expect(
+			nostrReferenceArticle
+				.getByTestId('post-body')
+				.getByRole('button', { name: "Open npub1lllllll's profile" })
+		).toHaveText('@npub1lllllll');
+
+		for (const profileMention of [profileMentions.first(), profileMentions.last()]) {
+			await profileMention.click();
+			const profileColumn = page.getByTestId('profile-column');
+			await expect(profileColumn).toBeVisible();
+			await expect(profileColumn.getByRole('heading', { name: 'Alice Relay' })).toBeVisible();
+			await profileMention.click();
+			await expect(profileColumn).toHaveCount(0);
+		}
+		await expect(customColumn.locator(`a[href="${nostrFallbackNpub}"]`)).toHaveCount(0);
 		const quoteCards = nostrReferenceArticle.getByTestId('nostr-quote');
 		await expect(quoteCards).toHaveCount(4);
 		await expect(quoteCards.filter({ hasText: 'Quoted short text note' })).toHaveCount(2);

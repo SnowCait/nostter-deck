@@ -20,6 +20,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Post, PostMessage } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
+	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape } from '$lib/user-settings';
 	import type * as Nostr from 'nostr-typedef';
 	import ProfileAvatar from './ProfileAvatar.svelte';
@@ -34,7 +35,7 @@
 		getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
-		onOpenProfile?: (post: Post) => void;
+		onOpenProfile?: (profile: ProfilePointer) => void;
 		onOpenThread?: (post: Post) => void;
 	};
 
@@ -96,9 +97,25 @@
 	function getNostrReferenceText(token: Extract<PostContentToken, { type: 'nostrReference' }>) {
 		if (!isProfileReferenceToken(token)) return token.text;
 
+		return `@${getProfileReferenceName(token)}`;
+	}
+
+	function getProfileReferenceName(
+		token: Extract<PostContentToken, { type: 'nostrReference' }> & { pubkey: string }
+	) {
 		const profile = getProfile(token.pubkey);
 		const displayName = profile?.display_name ?? profile?.name;
-		return displayName ? `@${displayName}` : `@${npubEncode(token.pubkey).slice(0, 12)}`;
+		return displayName ?? npubEncode(token.pubkey).slice(0, 12);
+	}
+
+	function openPostAuthorProfile() {
+		onOpenProfile?.({ pubkey: post.pubkey, relays: [] });
+	}
+
+	function openMentionedProfile(
+		token: Extract<PostContentToken, { type: 'nostrReference' }> & { pubkey: string }
+	) {
+		onOpenProfile?.({ pubkey: token.pubkey, relays: token.relayHints ?? [] });
 	}
 
 	function isEventReferenceToken(
@@ -222,7 +239,7 @@
 			class="h-fit shrink-0 rounded-full focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:outline-none dark:focus-visible:ring-offset-slate-950"
 			title={m.open_profile({ name: post.author })}
 			aria-label={m.open_profile({ name: post.author })}
-			onclick={() => onOpenProfile?.(post)}
+			onclick={openPostAuthorProfile}
 		>
 			<ProfileAvatar
 				shape={avatarShape}
@@ -245,7 +262,7 @@
 							]}
 							title={m.open_profile({ name: post.author })}
 							aria-label={m.open_profile({ name: post.author })}
-							onclick={() => onOpenProfile?.(post)}
+							onclick={openPostAuthorProfile}
 						>
 							{post.author}
 						</button>
@@ -374,6 +391,16 @@
 										{avatarShape}
 										{getProfile}
 									/>
+								{:else if isProfileReferenceToken(token)}
+									<button
+										type="button"
+										title={m.open_profile({ name: getProfileReferenceName(token) })}
+										aria-label={m.open_profile({ name: getProfileReferenceName(token) })}
+										class="font-medium text-sky-600 hover:text-sky-700 hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none dark:text-sky-300 dark:hover:text-sky-200"
+										onclick={() => openMentionedProfile(token)}
+									>
+										{getNostrReferenceText(token)}
+									</button>
 								{:else}
 									<a
 										href={token.href}

@@ -227,8 +227,8 @@
 		focusColumn('thread');
 	}
 
-	async function openProfileColumn(sourceColumnId: string, post: Post) {
-		if (detailColumn?.type === 'profile' && detailColumn.pubkey === post.pubkey) {
+	async function openProfileColumn(sourceColumnId: string, profile: ProfilePointer) {
+		if (detailColumn?.type === 'profile' && detailColumn.pubkey === profile.pubkey) {
 			await closeDetailColumn();
 			return;
 		}
@@ -245,10 +245,10 @@
 		const request = sourceColumn ? getTimelineRequest(sourceColumn) : null;
 		const sourceRelays = request ? resolveRelaySelection(request.relays) : [];
 		requestProfiles(
-			[post.pubkey],
-			combineRelays(sourceRelays, [...defaultRelays], defaultProfileRelays)
+			[profile.pubkey],
+			combineRelays(sourceRelays, profile.relays, [...defaultRelays], defaultProfileRelays)
 		);
-		detailColumn = { type: 'profile', sourceColumnId, pubkey: post.pubkey };
+		detailColumn = { type: 'profile', sourceColumnId, pubkey: profile.pubkey };
 
 		await tick();
 		focusColumn('profile');
@@ -496,7 +496,7 @@
 						{getProfile}
 						{requestProfiles}
 						profileRelays={defaultProfileRelays}
-						onOpenProfile={(post) => void openProfileColumn(column.id, post)}
+						onOpenProfile={(profile) => void openProfileColumn(column.id, profile)}
 						onOpenThread={(post) => void openThreadColumn(column.id, post)}
 						onToggleSettings={() => toggleColumnSettings(column.id)}
 						onDelete={() => deleteColumn(column.id)}
@@ -527,7 +527,7 @@
 								{requestProfiles}
 								profileRelays={defaultProfileRelays}
 								onClose={() => void closeDetailColumn()}
-								onOpenProfile={(post) => void openProfileColumn(column.id, post)}
+								onOpenProfile={(profile) => void openProfileColumn(column.id, profile)}
 								onOpenThread={(post) => void openThreadColumn(column.id, post)}
 							/>
 						{:else}
