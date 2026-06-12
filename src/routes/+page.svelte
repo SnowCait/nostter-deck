@@ -774,7 +774,6 @@
 						{column}
 						id={getColumnId(column.id)}
 						{isLoggedIn}
-						isFocused={activeColumnId === column.id}
 						isSettingsOpen={openSettingsColumnId === column.id}
 						canMoveLeft={columnIndex > 0}
 						canMoveRight={columnIndex >= 0 && columnIndex < columnConfigs.length - 1}

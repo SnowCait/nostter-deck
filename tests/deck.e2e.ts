@@ -1396,6 +1396,18 @@ test.describe('nostter deck', () => {
 		expect(firstColumnFirstPostKey).toBeTruthy();
 		await expect(focusedPost).toHaveCount(1);
 		await expect(focusedPost).toHaveAttribute('data-post-key', firstColumnFirstPostKey!);
+		await expect(columns.nth(0)).toHaveCSS('box-shadow', 'none');
+		const selectedPostBackground = await focusedPost
+			.locator(':scope > article')
+			.evaluate((article) => getComputedStyle(article).backgroundColor);
+		const unselectedPostBackground = await columns
+			.nth(0)
+			.locator('[data-deck-post]')
+			.nth(1)
+			.locator(':scope > article')
+			.evaluate((article) => getComputedStyle(article).backgroundColor);
+		expect(selectedPostBackground).not.toBe(unselectedPostBackground);
+		await expect(focusedPost).toHaveCSS('box-shadow', 'none');
 
 		await page.keyboard.press('j');
 		focusedPost = page.locator('[data-deck-post]:focus');

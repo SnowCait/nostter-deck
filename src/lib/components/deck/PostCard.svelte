@@ -266,7 +266,7 @@
 	data-post-key={keyboardNavigationKey}
 	tabindex="-1"
 	aria-keyshortcuts="H J K L ArrowLeft ArrowDown ArrowUp ArrowRight Enter P"
-	class="outline-none focus-visible:relative focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-inset"
+	class="outline-none [&:focus-visible>*]:bg-slate-100 dark:[&:focus-visible>*]:bg-slate-900"
 >
 	{#if !isPostVisible}
 		<MutedContentPlaceholder

@@ -28,7 +28,6 @@
 		column: Column;
 		id: string;
 		isLoggedIn: boolean;
-		isFocused: boolean;
 		isSettingsOpen: boolean;
 		canMoveLeft: boolean;
 		canMoveRight: boolean;
@@ -60,7 +59,6 @@
 		column,
 		id,
 		isLoggedIn,
-		isFocused,
 		isSettingsOpen,
 		canMoveLeft,
 		canMoveRight,
@@ -161,9 +159,8 @@
 	data-column-id={column.id}
 	tabindex="-1"
 	class={[
-		'flex h-full flex-col overflow-hidden border-r border-slate-200 bg-white transition-[width,box-shadow] outline-none dark:border-slate-800 dark:bg-slate-950',
-		columnWidthClassByWidth[column.width],
-		isFocused ? 'relative z-10 shadow-[inset_0_0_0_2px_rgba(14,165,233,0.45)]' : ''
+		'flex h-full flex-col overflow-hidden border-r border-slate-200 bg-white transition-[width] outline-none dark:border-slate-800 dark:bg-slate-950',
+		columnWidthClassByWidth[column.width]
 	]}
 >
 	<header
