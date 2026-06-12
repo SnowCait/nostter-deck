@@ -111,10 +111,6 @@
 		if (!isOpen) isMutedUsersExpanded = false;
 	});
 
-	function close() {
-		isOpen = false;
-	}
-
 	function selectLocale(value: string) {
 		const selectedLocale = value as AppLocale;
 		currentLocale = selectedLocale;
@@ -158,26 +154,15 @@
 <Dialog.Root bind:open={isOpen}>
 	<Dialog.Content
 		class="max-h-[calc(100dvh-2rem)] max-w-sm gap-0 overflow-x-hidden overflow-y-auto overscroll-contain rounded-md border border-slate-200 bg-white p-4 text-slate-950 shadow-xl ring-0 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50"
-		showCloseButton={false}
-		overlayProps={{ onclick: close }}
+		closeLabel={m.close()}
 	>
-		<div class="mb-4 flex items-center justify-between gap-3">
+		<div class="mb-4 flex items-center justify-between gap-3 pr-10">
 			<div class="flex min-w-0 items-center gap-2">
 				<Settings class="size-4 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden="true" />
 				<Dialog.Title class={['min-w-0 truncate font-bold', textClass.title]}>
 					{m.nav_settings()}
 				</Dialog.Title>
 			</div>
-			<button
-				type="button"
-				class={[
-					'h-9 rounded-md px-3 font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900',
-					textClass.control
-				]}
-				onclick={close}
-			>
-				{m.close()}
-			</button>
 		</div>
 
 		<section aria-labelledby="settings-general-title">

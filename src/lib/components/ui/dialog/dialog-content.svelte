@@ -15,17 +15,23 @@
 		overlayProps,
 		children,
 		showCloseButton = true,
+		closeLabel = 'Close',
 		...restProps
 	}: WithoutChildrenOrChild<DialogPrimitive.ContentProps> & {
 		portalProps?: WithoutChildrenOrChild<ComponentProps<typeof DialogPortal>>;
 		overlayProps?: ComponentProps<typeof Dialog.Overlay>;
 		children: Snippet;
 		showCloseButton?: boolean;
+		closeLabel?: string;
 	} = $props();
 </script>
 
 <DialogPortal {...portalProps}>
-	<Dialog.Overlay {...overlayProps} />
+	<DialogPrimitive.Close>
+		{#snippet child({ props })}
+			<Dialog.Overlay {...overlayProps} {...props} />
+		{/snippet}
+	</DialogPrimitive.Close>
 	<DialogPrimitive.Content
 		bind:ref
 		data-slot="dialog-content"
@@ -41,7 +47,7 @@
 				{#snippet child({ props })}
 					<Button variant="ghost" class="absolute top-4 right-4" size="icon-sm" {...props}>
 						<XIcon />
-						<span class="sr-only">Close</span>
+						<span class="sr-only">{closeLabel}</span>
 					</Button>
 				{/snippet}
 			</DialogPrimitive.Close>

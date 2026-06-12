@@ -332,6 +332,21 @@ test.describe('nostter deck', () => {
 		await expect(addColumnDialog).toHaveCount(0);
 	});
 
+	test('cancels the column add dialog without saving', async ({ page }) => {
+		await openDeck(page);
+
+		const addColumnButton = page.getByRole('button', { name: 'Add column' }).first();
+		await addColumnButton.click();
+		const addColumnDialog = page.getByRole('dialog', { name: 'Add column' });
+		await selectColumnType(page, 'website');
+		await addColumnDialog.getByLabel('Website URL').fill('https://example.com');
+		await addColumnDialog.getByRole('button', { name: 'Cancel' }).click();
+
+		await expect(addColumnDialog).toHaveCount(0);
+		await expect(deckColumns(page)).toHaveCount(0);
+		await expect(addColumnButton).toBeFocused();
+	});
+
 	test('adds and persists a website column', async ({ page }) => {
 		await openDeck(page);
 		const columns = deckColumns(page);
@@ -1562,9 +1577,9 @@ test.describe('nostter deck', () => {
 		await expect(addColumnButton).toBeFocused();
 
 		await pressKeyboardShortcuts(page);
-		await expect(shortcutsDialog).toBeVisible();
-		await page.mouse.click(10, 10);
+		await shortcutsDialog.getByRole('button', { name: 'Close' }).click();
 		await expect(shortcutsDialog).toHaveCount(0);
+		await expect(addColumnButton).toBeFocused();
 	});
 
 	test('does not open keyboard shortcuts from inputs or over another dialog', async ({ page }) => {
@@ -1594,7 +1609,9 @@ test.describe('nostter deck', () => {
 		await settingsButton.click();
 		const settingsDialog = page.getByRole('dialog', { name: '設定' });
 		await expect(settingsDialog).toBeVisible();
-		await settingsDialog.getByRole('button', { name: '閉じる' }).click();
+		const closeSettingsButton = settingsDialog.getByRole('button', { name: '閉じる' });
+		await expect(closeSettingsButton).toBeVisible();
+		await closeSettingsButton.click();
 
 		await pressKeyboardShortcuts(page);
 		const shortcutsDialog = page.getByRole('dialog', { name: 'キーボードショートカット' });

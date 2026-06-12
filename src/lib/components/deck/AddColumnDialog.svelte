@@ -89,10 +89,6 @@
 			: selectedDefaultRelays.filter((selectedRelay) => selectedRelay !== relay);
 	}
 
-	function close() {
-		isOpen = false;
-	}
-
 	function save() {
 		if (!canSaveColumn) return;
 
@@ -100,16 +96,16 @@
 		if (!nextColumn) return;
 
 		onSave(nextColumn);
-		close();
+		isOpen = false;
 	}
 </script>
 
 <Dialog.Root bind:open={isOpen}>
 	<Dialog.Content
 		class="max-h-[calc(100dvh-2rem)] max-w-sm gap-0 overflow-y-auto overscroll-contain rounded-md border border-slate-200 bg-white p-4 text-slate-950 shadow-xl ring-0 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50"
-		showCloseButton={false}
+		closeLabel={m.close()}
 	>
-		<div class="mb-4 flex items-center justify-between gap-3">
+		<div class="mb-4 flex items-center justify-between gap-3 pr-10">
 			<Dialog.Title class={['font-bold', textClass.heading]}>
 				{m.add_column()}
 			</Dialog.Title>
@@ -283,16 +279,14 @@
 
 		<div class="mt-5 flex justify-end gap-3">
 			<div class="flex gap-2">
-				<button
-					type="button"
+				<Dialog.Close
 					class={[
 						'h-9 rounded-md px-3 font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900',
 						textClass.control
 					]}
-					onclick={close}
 				>
 					{m.cancel()}
-				</button>
+				</Dialog.Close>
 				<button
 					type="button"
 					class={[
