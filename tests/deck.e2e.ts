@@ -239,7 +239,7 @@ test.describe('nostter deck', () => {
 		await expect(sidebarButton(page, 'Search')).toHaveAttribute('aria-current', 'page');
 	});
 
-	test('opens the column add dialog only from the right edge plus button', async ({ page }) => {
+	test('shows the right edge add UI only while there are no columns', async ({ page }) => {
 		await openDeck(page);
 
 		const addColumnDialog = page.getByRole('dialog', { name: 'Add column' });
@@ -258,6 +258,16 @@ test.describe('nostter deck', () => {
 			'Custom timeline',
 			'Website'
 		]);
+
+		await page.getByRole('option', { name: 'Website' }).click();
+		await page.getByLabel('Website URL').fill('example.com');
+		await addColumnDialog.getByRole('button', { name: 'Save' }).click();
+		await expect(addColumnPlaceholder).toHaveCount(0);
+
+		const column = deckColumns(page).first();
+		await columnOptionsButton(column).click();
+		await column.getByRole('button', { name: 'Delete column' }).click();
+		await expect(addColumnPlaceholder).toBeVisible();
 	});
 
 	test('closes the column add dialog from the backdrop only', async ({ page }) => {
