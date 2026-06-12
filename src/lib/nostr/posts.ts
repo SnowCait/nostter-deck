@@ -113,6 +113,7 @@ function createPost(event: Nostr.Event, profile?: Profile): Post {
 	const author = createPostAuthor(event.pubkey, profile);
 	const contexts = getReplyContexts(event);
 	const thread = getThreadReference(event);
+	const contentWarning = getContentWarning(event.tags);
 
 	return {
 		id: event.id,
@@ -125,6 +126,7 @@ function createPost(event: Nostr.Event, profile?: Profile): Post {
 				: [],
 		tags: getDisplayHashtags(event.tags),
 		mutePubkeys: [event.pubkey],
+		...(contentWarning ? { contentWarning } : {}),
 		verified: false,
 		stats: {
 			replies: '0',
@@ -134,6 +136,14 @@ function createPost(event: Nostr.Event, profile?: Profile): Post {
 		...(contexts.length > 0 ? { contexts } : {}),
 		...(thread ? { thread } : {})
 	};
+}
+
+export function getContentWarning(tags: Nostr.Event['tags']): Post['contentWarning'] | null {
+	const tag = tags.find(([name]) => name === 'content-warning');
+	if (!tag) return null;
+
+	const reason = tag[1]?.trim();
+	return reason ? { reason } : {};
 }
 
 export function getReferencedPubkey(event: Nostr.Event) {

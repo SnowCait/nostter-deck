@@ -86,6 +86,9 @@ export type MessageKey =
 	| 'referenced_post_loading'
 	| 'muted_quote'
 	| 'show_muted_quote'
+	| 'sensitive_content'
+	| 'content_warning_reason'
+	| 'show_sensitive_content'
 	| 'reply'
 	| 'open_profile'
 	| 'open_thread'
@@ -213,6 +216,9 @@ export type Post = {
 	accent: string;
 	tags: string[];
 	mutePubkeys: string[];
+	contentWarning?: {
+		reason?: string;
+	};
 	referenceType?: 'repost' | 'reaction';
 	referenceStatus?: 'loading' | 'loaded' | 'unavailable';
 	verified?: boolean;

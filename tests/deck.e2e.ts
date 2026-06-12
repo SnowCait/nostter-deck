@@ -995,6 +995,95 @@ test.describe('nostter deck', () => {
 			.toBeGreaterThan(0);
 	});
 
+	test('hides and reveals NIP-36 content across timeline, profile, thread, and quotes', async ({
+		page
+	}) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], search: 'sensitive', limit: 20 }]
+		});
+
+		const sensitiveColumn = deckColumns(page).first();
+		const warning = sensitiveColumn.getByTestId('content-warning');
+		await expect(warning).toContainText('Sensitive content');
+		await expect(warning).toContainText('Graphic imagery');
+		await expect(sensitiveColumn.getByText('Sensitive timeline body')).toHaveCount(0);
+		await expect(sensitiveColumn.getByText('#hidden-sensitive-tag')).toHaveCount(0);
+		await expect
+			.poll(() =>
+				page.evaluate(() => window.__nostterFakeRelayEventIdRequests?.['6'.repeat(64)] ?? 0)
+			)
+			.toBe(0);
+
+		await warning.getByRole('button', { name: 'Show content' }).click();
+		await expect(
+			sensitiveColumn.getByText('Sensitive timeline body', { exact: false })
+		).toBeVisible();
+		await expect(sensitiveColumn.getByText('#hidden-sensitive-tag')).toBeVisible();
+		const quoteWarning = sensitiveColumn.getByTestId('content-warning-quote');
+		await expect(quoteWarning).toContainText('Spoiler');
+		await expect(sensitiveColumn.getByText('Sensitive quoted note')).toHaveCount(0);
+		await quoteWarning.getByRole('button', { name: 'Show content' }).click();
+		await expect(sensitiveColumn.getByText('Sensitive quoted note')).toBeVisible();
+
+		await sensitiveColumn
+			.getByRole('button', { name: /Open Alice Relay's profile/ })
+			.first()
+			.click();
+		const profileColumn = page.getByTestId('profile-column');
+		await expect(profileColumn.getByTestId('content-warning')).toBeVisible();
+		await expect(profileColumn.getByText('Sensitive timeline body', { exact: false })).toHaveCount(
+			0
+		);
+
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], search: 'thread-entry', limit: 20 }]
+		});
+		const threadSourceColumn = deckColumns(page).nth(2);
+		await threadSourceColumn
+			.getByText('Direct thread reply')
+			.locator('xpath=ancestor::article')
+			.getByRole('button', { name: 'Open thread' })
+			.click();
+		const threadColumn = page.getByTestId('thread-column');
+		const threadWarning = threadColumn.getByTestId('content-warning');
+		await expect(threadWarning).toBeVisible();
+		await expect(threadColumn.getByText('Sensitive thread reply')).toHaveCount(0);
+		await threadWarning.getByRole('button', { name: 'Show content' }).click();
+		await expect(threadColumn.getByText('Sensitive thread reply')).toBeVisible();
+
+		await page.reload();
+		await expect(deckColumns(page).first().getByTestId('content-warning')).toBeVisible();
+		await expect(
+			deckColumns(page).first().getByText('Sensitive timeline body', { exact: false })
+		).toHaveCount(0);
+	});
+
+	test('requires separate reveals for muted and NIP-36 content', async ({ page }) => {
+		await page.addInitScript(
+			({ key, pubkey }) => localStorage.setItem(key, JSON.stringify([pubkey])),
+			{ key: mutedUsersStorageKey, pubkey: textEventPubkey }
+		);
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [Repost], search: 'sensitive-repost', limit: 20 }]
+		});
+
+		const column = deckColumns(page).first();
+		await expect(column.getByTestId('muted-post').first()).toBeVisible();
+		await expect(column.getByTestId('content-warning')).toHaveCount(0);
+		for (let index = 0; index < 3; index += 1) {
+			if ((await column.getByTestId('content-warning').count()) > 0) break;
+			const nextMutedPost = column.getByTestId('muted-post').first();
+			if ((await nextMutedPost.count()) === 0) break;
+			await nextMutedPost.getByRole('button', { name: 'Show post' }).click();
+		}
+		await expect(column.getByTestId('content-warning')).toBeVisible();
+		await expect(column.getByText('Sensitive timeline body', { exact: false })).toHaveCount(0);
+	});
+
 	test('mutes a user locally and restores posts from settings', async ({ page }) => {
 		await installFakeNostrRelay(page);
 		await openDeck(page);

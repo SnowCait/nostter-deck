@@ -52,6 +52,8 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 			const nostrNprofile =
 				'nostr:nprofile1qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqg924242424242424242424242424242424242424242424242424gv3cla6';
 			const nostrNote = 'nostr:note1zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsglnzgl';
+			const sensitiveNostrNote =
+				'nostr:note1venxvenxvenxvenxvenxvenxvenxvenxvenxvenxvenxvenxvenqamap5p';
 			const nostrNevent =
 				'nostr:nevent1qvzqqqqqqypzp242424242424242424242424242424242424242424242424242qy28wumn8ghj7un9d3shjtn90psk6urvv5hsqgq3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyuv4j77';
 			const nostrNaddr =
@@ -91,6 +93,18 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 				content: `NIP-21 references ${nostrNpub} ${nostrNprofile} ${nostrNote} ${nostrNevent} ${nostrChannelNevent} ${nostrUnavailableNevent} ${nostrNaddr} ${nostrFallbackNpub} ${nostrNsec}`,
 				sig: '0'.repeat(128)
 			};
+			const sensitiveEvent = {
+				id: 'event-sensitive-content',
+				pubkey: textEvent.pubkey,
+				created_at: textEvent.created_at - 3,
+				kind: shortTextNoteKind,
+				tags: [
+					['content-warning', 'Graphic imagery'],
+					['t', 'hidden-sensitive-tag']
+				],
+				content: `Sensitive timeline body ${imagePreviewUrl} ${sensitiveNostrNote}`,
+				sig: '0'.repeat(128)
+			};
 			const threadReplyEvent = {
 				id: 'event-thread-reply',
 				pubkey: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
@@ -115,6 +129,19 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 				content: 'Nested thread reply',
 				sig: '0'.repeat(128)
 			};
+			const sensitiveThreadReplyEvent = {
+				id: 'event-thread-sensitive-reply',
+				pubkey: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+				created_at: textEvent.created_at + 30,
+				kind: shortTextNoteKind,
+				tags: [
+					['e', textEvent.id, '', 'root'],
+					['e', nestedThreadReplyEvent.id, '', 'reply'],
+					['content-warning']
+				],
+				content: 'Sensitive thread reply',
+				sig: '0'.repeat(128)
+			};
 			const quotedTextEvent = {
 				id: '1'.repeat(64),
 				pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -134,6 +161,15 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 					['emoji', 'channel', channelEmojiUrl]
 				],
 				content: 'Quoted channel message :channel:',
+				sig: '0'.repeat(128)
+			};
+			const quotedSensitiveEvent = {
+				id: '6'.repeat(64),
+				pubkey: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+				created_at: textEvent.created_at - 30,
+				kind: shortTextNoteKind,
+				tags: [['content-warning', 'Spoiler']],
+				content: 'Sensitive quoted note',
 				sig: '0'.repeat(128)
 			};
 			const longTextEvent = {
@@ -183,6 +219,18 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 					['p', textEvent.pubkey]
 				],
 				content: '',
+				sig: '0'.repeat(128)
+			};
+			const sensitiveRepostEvent = {
+				id: 'event-sensitive-content-repost',
+				pubkey: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+				created_at: Math.floor(Date.now() / 1000) - 70,
+				kind: repostKind,
+				tags: [
+					['e', sensitiveEvent.id],
+					['p', sensitiveEvent.pubkey]
+				],
+				content: JSON.stringify(sensitiveEvent),
 				sig: '0'.repeat(128)
 			};
 			const reactionEvent = {
@@ -371,7 +419,7 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 					}
 					const requestedSearches = filters.flatMap((filter) =>
 						matchesFilterTime(searchPreviewEvent(filter.search), filter) &&
-						(!filter.kinds || filter.kinds.includes(shortTextNoteKind)) &&
+						(!filter.kinds || filter.kinds.includes(searchPreviewEvent(filter.search).kind)) &&
 						filter.search
 							? [filter.search]
 							: []
@@ -441,6 +489,7 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 						setTimeout(() => {
 							this.emitMessage(['EVENT', subId, nestedThreadReplyEvent]);
 							this.emitMessage(['EVENT', subId, threadReplyEvent]);
+							this.emitMessage(['EVENT', subId, sensitiveThreadReplyEvent]);
 							this.emitMessage(['EOSE', subId]);
 						}, 5);
 					}
@@ -448,6 +497,7 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 					if (requestsProfilePosts) {
 						setTimeout(() => {
 							this.emitMessage(['EVENT', subId, nestedThreadReplyEvent]);
+							this.emitMessage(['EVENT', subId, sensitiveEvent]);
 						}, 5);
 					}
 
@@ -468,7 +518,11 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 									? editedSearchEvent
 									: search === 'thread-entry'
 										? threadReplyEvent
-										: textEvent
+										: search === 'sensitive'
+											? sensitiveEvent
+											: search === 'sensitive-repost'
+												? sensitiveRepostEvent
+												: textEvent
 							]);
 						}, 5);
 					}
@@ -500,7 +554,7 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 						}, 5);
 					}
 
-					for (const quotedEvent of [quotedTextEvent, quotedChannelEvent]) {
+					for (const quotedEvent of [quotedTextEvent, quotedChannelEvent, quotedSensitiveEvent]) {
 						if (!requestedEventIds.includes(quotedEvent.id)) continue;
 
 						relayEventIdRequests[quotedEvent.id] = (relayEventIdRequests[quotedEvent.id] ?? 0) + 1;
@@ -516,6 +570,8 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 					function searchPreviewEvent(search: string | undefined) {
 						if (search === 'bulk') return bulkEvents[0] ?? textEvent;
 						if (search === 'thread-entry') return threadReplyEvent;
+						if (search === 'sensitive') return sensitiveEvent;
+						if (search === 'sensitive-repost') return sensitiveRepostEvent;
 						return search === 'edited' ? editedSearchEvent : textEvent;
 					}
 

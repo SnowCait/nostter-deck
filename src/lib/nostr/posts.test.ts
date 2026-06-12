@@ -4,6 +4,7 @@ import type * as Nostr from 'nostr-typedef';
 import type { Profile } from './profiles';
 import {
 	eventToPost,
+	getContentWarning,
 	getReferencedPubkey,
 	getThreadReference,
 	reactionEventToPost,
@@ -35,6 +36,38 @@ function getProfile(pubkey: string): Profile | undefined {
 }
 
 describe('posts', () => {
+	test('extracts the first NIP-36 content warning', () => {
+		expect(
+			getContentWarning([
+				['content-warning', ' violence '],
+				['content-warning', 'spoiler']
+			])
+		).toEqual({ reason: 'violence' });
+	});
+
+	test.each([{ tags: [['content-warning']] }, { tags: [['content-warning', '   ']] }])(
+		'treats a content-warning tag without a reason as sensitive',
+		({ tags }) => {
+			expect(getContentWarning(tags)).toEqual({});
+		}
+	);
+
+	test('ignores NIP-32 labels and unrelated tags', () => {
+		expect(
+			getContentWarning([
+				['L', 'content-warning'],
+				['l', 'nudity', 'content-warning'],
+				['t', 'sensitive']
+			])
+		).toBeNull();
+	});
+
+	test('adds content warning metadata to posts', () => {
+		expect(eventToPost(event({ tags: [['content-warning', 'spoiler']] }))).toMatchObject({
+			contentWarning: { reason: 'spoiler' }
+		});
+	});
+
 	test('uses the last valid p tag as the referenced pubkey', () => {
 		expect(
 			getReferencedPubkey(
@@ -311,6 +344,23 @@ describe('posts', () => {
 					}
 				}
 			]
+		});
+	});
+
+	test.each([
+		[
+			'repost',
+			(target: Nostr.Event) =>
+				repostEventToPost(event({ kind: Repost, content: '' }), target, getProfile)
+		],
+		[
+			'reaction',
+			(target: Nostr.Event) =>
+				reactionEventToPost(event({ kind: Reaction, content: '+' }), target, getProfile)
+		]
+	])('keeps content warnings from %s targets', (_name, formatPost) => {
+		expect(formatPost(event({ tags: [['content-warning', 'graphic content']] }))).toMatchObject({
+			contentWarning: { reason: 'graphic content' }
 		});
 	});
 

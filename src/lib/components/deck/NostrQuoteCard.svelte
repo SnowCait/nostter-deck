@@ -9,6 +9,7 @@
 	import ProfileAvatar from './ProfileAvatar.svelte';
 	import MutedContentPlaceholder from './MutedContentPlaceholder.svelte';
 	import CustomEmojiText from './CustomEmojiText.svelte';
+	import ContentWarningPlaceholder from './ContentWarningPlaceholder.svelte';
 
 	type Props = {
 		href: string;
@@ -23,6 +24,7 @@
 	let { href, eventId, relayHints, textClass, avatarShape, getProfile, isMutedUser }: Props =
 		$props();
 	let isMutedQuoteRevealed = $state(false);
+	let isSensitiveQuoteRevealed = $state(false);
 
 	const quoteState = $derived(getNostrQuoteState(eventId));
 	const quotedPost = $derived(
@@ -33,6 +35,9 @@
 	const shortenedReference = $derived(`nostr:${neventEncode({ id: eventId }).slice(0, 12)}`);
 	const isMutedQuote = $derived(
 		quoteState?.status === 'loaded' && isMutedUser(quoteState.event.pubkey) && !isMutedQuoteRevealed
+	);
+	const isSensitiveQuote = $derived(
+		Boolean(quotedPost?.contentWarning) && !isSensitiveQuoteRevealed
 	);
 
 	$effect(() => requestNostrQuote(eventId, relayHints));
@@ -46,6 +51,14 @@
 		testId="muted-quote"
 		class="my-2 h-28 rounded-md border border-slate-200 dark:border-slate-800"
 		onReveal={() => (isMutedQuoteRevealed = true)}
+	/>
+{:else if isSensitiveQuote}
+	<ContentWarningPlaceholder
+		reason={quotedPost?.contentWarning?.reason}
+		{textClass}
+		testId="content-warning-quote"
+		class="my-2 h-28"
+		onReveal={() => (isSensitiveQuoteRevealed = true)}
 	/>
 {:else}
 	<a

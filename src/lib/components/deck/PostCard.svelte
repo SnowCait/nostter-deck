@@ -30,6 +30,7 @@
 	import NostrQuoteCard from './NostrQuoteCard.svelte';
 	import ImageViewer from './ImageViewer.svelte';
 	import MutedContentPlaceholder from './MutedContentPlaceholder.svelte';
+	import ContentWarningPlaceholder from './ContentWarningPlaceholder.svelte';
 
 	type Props = {
 		post: Post;
@@ -65,9 +66,11 @@
 	let isImageViewerOpen = $state(false);
 	let currentImageIndex = $state(0);
 	let isMutedPostRevealed = $state(false);
+	let isSensitiveContentRevealed = $state(false);
 	let isPostMenuOpen = $state(false);
 	let failedEmojiUrls = $state<string[]>([]);
 	const isPostVisible = $derived(!isMuted || isMutedPostRevealed);
+	const isPostContentVisible = $derived(!post.contentWarning || isSensitiveContentRevealed);
 	const isBodyCollapsible = $derived(post.body.length > 500 || post.body.split('\n').length > 12);
 	const directImageUrls = $derived(
 		bodyTokens.flatMap((token) => {
@@ -78,14 +81,14 @@
 	);
 
 	$effect(() => {
-		if (!isPostVisible) return;
+		if (!isPostVisible || !isPostContentVisible) return;
 		requestUrlMediaMetadata([
 			...new Set(bodyTokens.flatMap((token) => (token.type === 'link' ? [token.href] : [])))
 		]);
 	});
 
 	$effect(() => {
-		if (!isPostVisible) return;
+		if (!isPostVisible || !isPostContentVisible) return;
 		const profileReferenceTokens = bodyTokens.filter(isProfileReferenceToken);
 		if (profileReferenceTokens.length === 0) return;
 
@@ -391,6 +394,14 @@
 					<p class={['mt-2 text-slate-500 dark:text-slate-400', textClass.body]}>
 						{formatPostMessage(post.unavailableMessage)}
 					</p>
+				{:else if !isPostContentVisible}
+					<ContentWarningPlaceholder
+						reason={post.contentWarning?.reason}
+						{textClass}
+						testId="content-warning"
+						class="mt-2"
+						onReveal={() => (isSensitiveContentRevealed = true)}
+					/>
 				{:else}
 					<div class="relative mt-2">
 						<div
@@ -556,31 +567,33 @@
 					{/if}
 				{/if}
 
-				<div class="mt-2 flex flex-wrap gap-1.5">
-					{#each post.tags as tag (tag)}
-						<span
-							class={[
-								'rounded-md bg-sky-50 px-2 py-1 font-medium text-sky-700 dark:bg-sky-950/60 dark:text-sky-300',
-								textClass.tag
-							]}
-						>
-							{tag}
-						</span>
-					{/each}
-				</div>
-
-				{#if post.attachment}
-					<div
-						class="mt-3 rounded-md border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"
-					>
-						<p class="text-xs font-semibold text-slate-400 uppercase dark:text-slate-500">
-							{post.attachment.label}
-						</p>
-						<p class="mt-1 truncate text-sm font-bold">{post.attachment.title}</p>
-						<p class={['mt-1 text-slate-600 dark:text-slate-300', textClass.attachment]}>
-							{post.attachment.body}
-						</p>
+				{#if isPostContentVisible}
+					<div class="mt-2 flex flex-wrap gap-1.5">
+						{#each post.tags as tag (tag)}
+							<span
+								class={[
+									'rounded-md bg-sky-50 px-2 py-1 font-medium text-sky-700 dark:bg-sky-950/60 dark:text-sky-300',
+									textClass.tag
+								]}
+							>
+								{tag}
+							</span>
+						{/each}
 					</div>
+
+					{#if post.attachment}
+						<div
+							class="mt-3 rounded-md border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"
+						>
+							<p class="text-xs font-semibold text-slate-400 uppercase dark:text-slate-500">
+								{post.attachment.label}
+							</p>
+							<p class="mt-1 truncate text-sm font-bold">{post.attachment.title}</p>
+							<p class={['mt-1 text-slate-600 dark:text-slate-300', textClass.attachment]}>
+								{post.attachment.body}
+							</p>
+						</div>
+					{/if}
 				{/if}
 
 				{#if isLoggedIn}
@@ -635,9 +648,11 @@
 		</div>
 	</article>
 
-	<ImageViewer
-		images={directImageUrls}
-		bind:open={isImageViewerOpen}
-		bind:currentIndex={currentImageIndex}
-	/>
+	{#if isPostContentVisible}
+		<ImageViewer
+			images={directImageUrls}
+			bind:open={isImageViewerOpen}
+			bind:currentIndex={currentImageIndex}
+		/>
+	{/if}
 {/if}
