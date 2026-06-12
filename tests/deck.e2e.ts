@@ -977,7 +977,12 @@ test.describe('nostter deck', () => {
 
 		await page.getByRole('button', { name: 'Settings' }).click();
 		const settingsDialog = page.getByRole('dialog', { name: 'Settings' });
-		await expect(page.getByRole('heading', { name: 'Muted users' })).toBeVisible();
+		const mutedUsersToggle = page.getByRole('button', { name: 'Muted users (1)' });
+		await expect(mutedUsersToggle).toHaveAttribute('aria-expanded', 'false');
+		await expect(page.getByTestId('muted-users-content')).toHaveCount(0);
+		await expect(page.getByRole('button', { name: 'Unmute Alice Relay' })).toHaveCount(0);
+		await mutedUsersToggle.click();
+		await expect(mutedUsersToggle).toHaveAttribute('aria-expanded', 'true');
 		const unmuteButton = page.getByRole('button', { name: 'Unmute Alice Relay' });
 		await expect(unmuteButton).toHaveAttribute('title', 'Unmute Alice Relay');
 		await expect(unmuteButton).toHaveText('Unmute');
@@ -988,6 +993,11 @@ test.describe('nostter deck', () => {
 		await expect
 			.poll(() => settingsDialog.evaluate((element) => element.scrollWidth <= element.clientWidth))
 			.toBe(true);
+		await page.getByRole('button', { name: 'Close' }).click();
+		await page.getByRole('button', { name: 'Settings' }).click();
+		await expect(mutedUsersToggle).toHaveAttribute('aria-expanded', 'false');
+		await expect(page.getByTestId('muted-users-content')).toHaveCount(0);
+		await mutedUsersToggle.click();
 		await unmuteButton.click();
 
 		await expect(

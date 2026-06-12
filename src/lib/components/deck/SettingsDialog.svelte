@@ -1,5 +1,6 @@
 <script lang="ts">
 	import {
+		ChevronDown,
 		CircleUserRound,
 		Languages,
 		Settings,
@@ -57,6 +58,7 @@
 	}: Props = $props();
 	let currentLocale = $state<AppLocale>(getLocale());
 	let themePreference = $state(readUserSettings().theme);
+	let isMutedUsersExpanded = $state(false);
 
 	const localeLabels: Record<AppLocale, string> = {
 		en: 'EN',
@@ -100,8 +102,12 @@
 	);
 
 	$effect(() => {
-		if (!isOpen || mutedPubkeys.length === 0) return;
+		if (!isOpen || !isMutedUsersExpanded || mutedPubkeys.length === 0) return;
 		requestProfiles(mutedPubkeys, profileRelays);
+	});
+
+	$effect(() => {
+		if (!isOpen) isMutedUsersExpanded = false;
 	});
 
 	function close() {
@@ -337,56 +343,74 @@
 			</Select.Root>
 		</section>
 
-		<section class="mt-5 min-w-0" aria-labelledby="settings-muted-users-title">
-			<h3
-				id="settings-muted-users-title"
+		<section class="mt-5 min-w-0" aria-labelledby="settings-muted-users-toggle">
+			<button
+				type="button"
+				id="settings-muted-users-toggle"
 				class={[
-					'mb-3 flex items-center gap-2 font-bold tracking-wide text-slate-500 uppercase dark:text-slate-400',
+					'flex w-full min-w-0 items-center gap-2 rounded-md py-2 text-left font-bold tracking-wide text-slate-500 uppercase transition hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-200',
 					textClass.section
 				]}
+				aria-expanded={isMutedUsersExpanded}
+				aria-controls="settings-muted-users-content"
+				onclick={() => (isMutedUsersExpanded = !isMutedUsersExpanded)}
 			>
 				<VolumeX class="size-4 shrink-0" aria-hidden="true" />
-				<span>{m.settings_muted_users()}</span>
-			</h3>
-			{#if mutedPubkeys.length === 0}
-				<p class={['text-slate-500 dark:text-slate-400', textClass.body]}>
-					{m.muted_users_empty()}
-				</p>
-			{:else}
-				<div class="flex w-full min-w-0 flex-col gap-2">
-					{#each mutedPubkeys as pubkey (pubkey)}
-						{@const profile = getProfile(pubkey)}
-						{@const name = getMutedUserName(pubkey)}
-						<div
-							class="flex w-full min-w-0 items-center gap-3 rounded-md border border-slate-200 p-2 dark:border-slate-800"
-						>
-							<ProfileAvatar
-								shape={avatarShape}
-								sizeClass="size-9"
-								imageUrl={profile?.picture}
-								fallbackText={name.slice(0, 1)}
-								fallbackClass="bg-slate-500 text-sm font-bold text-white"
-							/>
-							<div class="min-w-0 flex-1">
-								<p class={['truncate font-semibold', textClass.account]}>{name}</p>
-								<p class={['truncate text-slate-500 dark:text-slate-400', textClass.meta]}>
-									{npubEncode(pubkey)}
-								</p>
-							</div>
-							<button
-								type="button"
-								class={[
-									'shrink-0 rounded-md px-2 py-1 font-semibold text-sky-600 transition hover:bg-sky-50 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none dark:text-sky-300 dark:hover:bg-sky-950/40',
-									textClass.meta
-								]}
-								aria-label={m.unmute_user({ name })}
-								title={m.unmute_user({ name })}
-								onclick={() => onUnmuteUser(pubkey)}
-							>
-								{m.unmute()}
-							</button>
+				<span class="min-w-0 flex-1 truncate">
+					{m.settings_muted_users_count({ count: mutedPubkeys.length })}
+				</span>
+				<ChevronDown
+					class={['size-4 shrink-0 transition-transform', isMutedUsersExpanded ? 'rotate-180' : '']}
+					aria-hidden="true"
+				/>
+			</button>
+			{#if isMutedUsersExpanded}
+				<div
+					id="settings-muted-users-content"
+					class="mt-3 min-w-0"
+					data-testid="muted-users-content"
+				>
+					{#if mutedPubkeys.length === 0}
+						<p class={['text-slate-500 dark:text-slate-400', textClass.body]}>
+							{m.muted_users_empty()}
+						</p>
+					{:else}
+						<div class="flex w-full min-w-0 flex-col gap-2">
+							{#each mutedPubkeys as pubkey (pubkey)}
+								{@const profile = getProfile(pubkey)}
+								{@const name = getMutedUserName(pubkey)}
+								<div
+									class="flex w-full min-w-0 items-center gap-3 rounded-md border border-slate-200 p-2 dark:border-slate-800"
+								>
+									<ProfileAvatar
+										shape={avatarShape}
+										sizeClass="size-9"
+										imageUrl={profile?.picture}
+										fallbackText={name.slice(0, 1)}
+										fallbackClass="bg-slate-500 text-sm font-bold text-white"
+									/>
+									<div class="min-w-0 flex-1">
+										<p class={['truncate font-semibold', textClass.account]}>{name}</p>
+										<p class={['truncate text-slate-500 dark:text-slate-400', textClass.meta]}>
+											{npubEncode(pubkey)}
+										</p>
+									</div>
+									<button
+										type="button"
+										class={[
+											'shrink-0 rounded-md px-2 py-1 font-semibold text-sky-600 transition hover:bg-sky-50 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none dark:text-sky-300 dark:hover:bg-sky-950/40',
+											textClass.meta
+										]}
+										aria-label={m.unmute_user({ name })}
+										title={m.unmute_user({ name })}
+										onclick={() => onUnmuteUser(pubkey)}
+									>
+										{m.unmute()}
+									</button>
+								</div>
+							{/each}
 						</div>
-					{/each}
+					{/if}
 				</div>
 			{/if}
 		</section>

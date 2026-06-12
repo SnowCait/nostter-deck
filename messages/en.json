@@ -15,6 +15,7 @@
 	"settings_general": "General",
 	"settings_appearance": "Appearance",
 	"settings_muted_users": "Muted users",
+	"settings_muted_users_count": "Muted users ({count})",
 	"language_switcher": "Language",
 	"theme_switcher": "Theme",
 	"theme_system": "System",

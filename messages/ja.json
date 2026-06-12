@@ -15,6 +15,7 @@
 	"settings_general": "一般",
 	"settings_appearance": "外観",
 	"settings_muted_users": "ミュート中のユーザー",
+	"settings_muted_users_count": "ミュート中のユーザー（{count}）",
 	"language_switcher": "言語",
 	"theme_switcher": "テーマ",
 	"theme_system": "システム",

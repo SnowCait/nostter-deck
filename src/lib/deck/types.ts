@@ -15,6 +15,7 @@ export type MessageKey =
 	| 'settings_general'
 	| 'settings_appearance'
 	| 'settings_muted_users'
+	| 'settings_muted_users_count'
 	| 'language_switcher'
 	| 'theme_switcher'
 	| 'theme_system'
