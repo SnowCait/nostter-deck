@@ -3,7 +3,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Column } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
-	import type * as Nostr from 'nostr-typedef';
+	import type { Profile } from '$lib/nostr/profiles';
 	import { readUiState, updateUiState } from '$lib/ui-state';
 	import type { AvatarShape, FontSize } from '$lib/user-settings';
 	import ProfileAvatar from './ProfileAvatar.svelte';
@@ -24,7 +24,7 @@
 		onSelectColumn: (columnId: string) => void;
 		onReorderColumn: (columnId: string, targetIndex: number) => void;
 		mutedPubkeys: string[];
-		getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined;
+		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
 		onUnmuteUser: (pubkey: string) => void;

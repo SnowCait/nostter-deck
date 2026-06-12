@@ -9,7 +9,7 @@
 		VolumeX
 	} from '@lucide/svelte';
 	import { npubEncode } from 'nostr-tools/nip19';
-	import type * as Nostr from 'nostr-typedef';
+	import type { Profile } from '$lib/nostr/profiles';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import * as Select from '$lib/components/ui/select';
 	import type { FontSizeTextClasses } from '$lib/font-size';
@@ -27,6 +27,7 @@
 		type ThemePreference
 	} from '$lib/user-settings';
 	import ProfileAvatar from './ProfileAvatar.svelte';
+	import CustomEmojiText from './CustomEmojiText.svelte';
 
 	type AppLocale = (typeof locales)[number];
 	type Props = {
@@ -37,7 +38,7 @@
 		onFontSizeChange: (fontSize: FontSize) => void;
 		onAvatarShapeChange: (avatarShape: AvatarShape) => void;
 		mutedPubkeys: string[];
-		getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined;
+		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
 		onUnmuteUser: (pubkey: string) => void;
@@ -390,7 +391,9 @@
 										fallbackClass="bg-slate-500 text-sm font-bold text-white"
 									/>
 									<div class="min-w-0 flex-1">
-										<p class={['truncate font-semibold', textClass.account]}>{name}</p>
+										<p class={['truncate font-semibold', textClass.account]}>
+											<CustomEmojiText text={name} customEmojis={profile?.customEmojis ?? []} />
+										</p>
 										<p class={['truncate text-slate-500 dark:text-slate-400', textClass.meta]}>
 											{npubEncode(pubkey)}
 										</p>

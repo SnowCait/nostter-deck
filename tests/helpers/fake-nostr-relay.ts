@@ -65,6 +65,9 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 			const nostrNsec = 'nostr:nsec1yg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3qxh9tww';
 			const imagePreviewUrl = 'https://example.com/image-without-extension';
 			const linkPreviewUrl = 'https://example.com/article';
+			const postEmojiUrl = 'https://example.com/emoji/post.png';
+			const profileEmojiUrl = 'https://example.com/emoji/profile.png';
+			const channelEmojiUrl = 'https://example.com/emoji/channel.png';
 			const textEvent = {
 				id: 'event-custom-timeline-1',
 				pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -72,9 +75,11 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 				kind: shortTextNoteKind,
 				tags: [
 					['t', 'nostter'],
-					['t', 'nostter']
+					['t', 'nostter'],
+					['emoji', 'deck', postEmojiUrl],
+					['emoji', 'mixed', 'http://example.com/emoji/mixed.png']
 				],
-				content: `Hello from a custom Nostr timeline ${imagePreviewUrl} ${imagePreviewUrl} ${linkPreviewUrl} https://example.com/path?from=nostter. www.example.com npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0l98cr`,
+				content: `Hello from a custom Nostr timeline :deck: and blocked :mixed: ${imagePreviewUrl} ${imagePreviewUrl} ${linkPreviewUrl} https://example.com/path?from=nostter. www.example.com npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0l98cr`,
 				sig: '0'.repeat(128)
 			};
 			const nostrReferenceEvent = {
@@ -124,8 +129,11 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 				pubkey: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
 				created_at: textEvent.created_at - 20,
 				kind: 42,
-				tags: [['e', '4'.repeat(64), '', 'root']],
-				content: 'Quoted channel message',
+				tags: [
+					['e', '4'.repeat(64), '', 'root'],
+					['emoji', 'channel', channelEmojiUrl]
+				],
+				content: 'Quoted channel message :channel:',
 				sig: '0'.repeat(128)
 			};
 			const longTextEvent = {
@@ -245,12 +253,12 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 				pubkey: textEvent.pubkey,
 				created_at: Math.floor(Date.now() / 1000) - 120,
 				kind: 0,
-				tags: [],
+				tags: [['emoji', 'profile', profileEmojiUrl]],
 				content: JSON.stringify({
 					display_name: 'Alice Relay',
 					picture: profilePictureUrl,
 					banner: profilePictureUrl,
-					about: 'Alice profile from the relay',
+					about: 'Alice profile from the relay :profile:',
 					nip05: 'alice@example.com',
 					website: 'https://example.com/alice'
 				}),

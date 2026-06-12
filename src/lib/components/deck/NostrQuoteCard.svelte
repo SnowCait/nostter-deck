@@ -5,9 +5,10 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { AvatarShape } from '$lib/user-settings';
-	import type * as Nostr from 'nostr-typedef';
+	import type { Profile } from '$lib/nostr/profiles';
 	import ProfileAvatar from './ProfileAvatar.svelte';
 	import MutedContentPlaceholder from './MutedContentPlaceholder.svelte';
+	import CustomEmojiText from './CustomEmojiText.svelte';
 
 	type Props = {
 		href: string;
@@ -15,7 +16,7 @@
 		relayHints: string[];
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
-		getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined;
+		getProfile: (pubkey: string) => Profile | undefined;
 		isMutedUser: (pubkey: string) => boolean;
 	};
 
@@ -65,7 +66,9 @@
 				/>
 				<span class="flex min-w-0 flex-1 flex-col">
 					<span class="flex min-w-0 items-center gap-1.5">
-						<span class={['truncate font-bold', textClass.account]}>{quotedPost.author}</span>
+						<span class={['truncate font-bold', textClass.account]}>
+							<CustomEmojiText text={quotedPost.author} customEmojis={quotedPost.authorEmojis} />
+						</span>
 						<span class={['shrink-0 text-slate-500 dark:text-slate-400', textClass.meta]}>
 							· {quotedPost.time}
 						</span>
@@ -76,7 +79,11 @@
 							textClass.body
 						]}
 					>
-						{quotedPost.body}
+						<CustomEmojiText
+							text={quotedPost.body}
+							customEmojis={quotedPost.bodyEmojis}
+							whitespaceClass="whitespace-pre-wrap"
+						/>
 					</span>
 				</span>
 			</span>

@@ -1,5 +1,6 @@
 import { decode } from 'nostr-tools/nip19';
 import { normalizeRelay } from '$lib/nostr/relays';
+import { tokenizeCustomEmojiText, type CustomEmoji } from '$lib/nostr/custom-emoji';
 
 declare global {
 	interface URLConstructor {
@@ -26,6 +27,12 @@ export type PostContentToken =
 			pubkey?: string;
 			eventId?: string;
 			relayHints?: string[];
+	  }
+	| {
+			type: 'customEmoji';
+			text: string;
+			shortcode: string;
+			url: string;
 	  };
 
 const nostrReferenceEntityTypes = ['npub', 'nprofile', 'note', 'nevent', 'naddr'] as const;
@@ -44,7 +51,10 @@ const trailingUrlPunctuationPattern = /[),.;:!?，、。！？）］】]+$/;
 
 ensureUrlCanParse();
 
-export function linkifyPostContent(content: string): PostContentToken[] {
+export function linkifyPostContent(
+	content: string,
+	customEmojis: CustomEmoji[] = []
+): PostContentToken[] {
 	const tokens: PostContentToken[] = [];
 	let currentIndex = 0;
 
@@ -59,10 +69,7 @@ export function linkifyPostContent(content: string): PostContentToken[] {
 		}
 
 		if (matchIndex > currentIndex) {
-			tokens.push({
-				type: 'text',
-				text: content.slice(currentIndex, matchIndex)
-			});
+			tokens.push(...tokenizeText(content.slice(currentIndex, matchIndex), customEmojis));
 		}
 
 		tokens.push(token);
@@ -70,13 +77,14 @@ export function linkifyPostContent(content: string): PostContentToken[] {
 	}
 
 	if (currentIndex < content.length) {
-		tokens.push({
-			type: 'text',
-			text: content.slice(currentIndex)
-		});
+		tokens.push(...tokenizeText(content.slice(currentIndex), customEmojis));
 	}
 
 	return tokens.length > 0 ? tokens : [{ type: 'text', text: content }];
+}
+
+function tokenizeText(text: string, customEmojis: CustomEmoji[]): PostContentToken[] {
+	return tokenizeCustomEmojiText(text, customEmojis);
 }
 
 function trimTrailingUrlPunctuation(value: string) {

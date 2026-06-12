@@ -3,8 +3,13 @@ import type * as Nostr from 'nostr-typedef';
 import { bufferTime, from, mergeMap, type Unsubscribable } from 'rxjs';
 import { SvelteMap } from 'svelte/reactivity';
 import { getNostrClient } from './client';
+import { parseCustomEmojis, type CustomEmoji } from './custom-emoji';
 
-const profilesByPubkey = new SvelteMap<string, Nostr.Content.Metadata>();
+export type Profile = Nostr.Content.Metadata & {
+	customEmojis: CustomEmoji[];
+};
+
+const profilesByPubkey = new SvelteMap<string, Profile>();
 const requestedPubkeys = new Set<string>();
 const profileRequestBufferMs = 1000;
 
@@ -29,7 +34,10 @@ function ensureProfileReq() {
 			const profile = parseProfile(event.content);
 			if (!profile) return;
 
-			profilesByPubkey.set(event.pubkey, profile);
+			profilesByPubkey.set(event.pubkey, {
+				...profile,
+				customEmojis: parseCustomEmojis(event.tags)
+			});
 		});
 
 	return profileReq;

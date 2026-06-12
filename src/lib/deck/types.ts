@@ -1,4 +1,5 @@
 import type * as Nostr from 'nostr-typedef';
+import type { CustomEmoji } from '$lib/nostr/custom-emoji';
 
 export type MessageKey =
 	| 'app_title'
@@ -124,10 +125,15 @@ export type RelaySelection = { type: 'default' } | { type: 'custom'; urls: strin
 
 export type PostMessage =
 	| { key: 'replying_to' }
-	| { key: 'reposted_by'; params: { name: string } }
+	| { key: 'reposted_by'; params: { name: string }; nameEmojis: CustomEmoji[] }
 	| { key: 'reposted_event_unavailable' }
-	| { key: 'reacted_by_like'; params: { name: string } }
-	| { key: 'reacted_by'; params: { name: string; content: string } }
+	| { key: 'reacted_by_like'; params: { name: string }; nameEmojis: CustomEmoji[] }
+	| {
+			key: 'reacted_by';
+			params: { name: string; content: string };
+			nameEmojis: CustomEmoji[];
+			contentEmojis: CustomEmoji[];
+	  }
 	| { key: 'reaction_event_unavailable' };
 
 export type PostContext = {
@@ -202,6 +208,8 @@ export type Post = {
 	avatarUrl?: string;
 	time: string;
 	body: string;
+	bodyEmojis: CustomEmoji[];
+	authorEmojis: CustomEmoji[];
 	accent: string;
 	tags: string[];
 	mutePubkeys: string[];

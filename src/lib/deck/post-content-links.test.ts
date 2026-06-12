@@ -66,4 +66,28 @@ describe('post content links', () => {
 			{ type: 'link', text: url, href: url }
 		]);
 	});
+
+	test('parses custom emoji outside links without changing shortcodes inside URLs', () => {
+		const emoji = { shortcode: 'party', url: 'https://example.com/party.png' };
+		const tokens = linkifyPostContent('Hello :party: https://example.com/:party:/image :unknown:', [
+			emoji
+		]);
+
+		expect(tokens).toEqual([
+			{ type: 'text', text: 'Hello ' },
+			{
+				type: 'customEmoji',
+				text: ':party:',
+				shortcode: 'party',
+				url: 'https://example.com/party.png'
+			},
+			{ type: 'text', text: ' ' },
+			{
+				type: 'link',
+				text: 'https://example.com/:party:/image',
+				href: 'https://example.com/:party:/image'
+			},
+			{ type: 'text', text: ' :unknown:' }
+		]);
+	});
 });

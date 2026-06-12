@@ -75,10 +75,52 @@ const nostrNaddr =
 const imagePreviewUrl = 'https://example.com/image-without-extension';
 const linkPreviewUrl = 'https://example.com/article';
 const pathPreviewUrl = 'https://example.com/path?from=nostter';
+const postEmojiUrl = 'https://example.com/emoji/post.png';
+const profileEmojiUrl = 'https://example.com/emoji/profile.png';
+const channelEmojiUrl = 'https://example.com/emoji/channel.png';
 const tallPreviewSvg =
 	'<svg xmlns="http://www.w3.org/2000/svg" width="120" height="240"><rect width="120" height="240" fill="black"/></svg>';
 
 test.describe('nostter deck', () => {
+	test('renders NIP-30 emoji from each event and rejects HTTP emoji URLs', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		for (const url of [postEmojiUrl, profileEmojiUrl, channelEmojiUrl]) {
+			await page.route(url, async (route) => {
+				await route.fulfill({
+					status: 200,
+					headers: { 'Content-Type': 'image/svg+xml' },
+					body: tallPreviewSvg
+				});
+			});
+		}
+		await openDeck(page);
+		await addCustomTimelineColumn(page);
+
+		const customColumn = deckColumns(page).first();
+		const emojiArticle = customColumn
+			.locator('article')
+			.filter({ hasText: 'Hello from a custom Nostr timeline' });
+		await expect(emojiArticle.getByRole('img', { name: ':deck:' })).toHaveAttribute(
+			'src',
+			postEmojiUrl
+		);
+		await expect(emojiArticle.getByText(':mixed:')).toBeVisible();
+
+		await emojiArticle
+			.getByRole('button', { name: /Open Alice Relay's profile/ })
+			.first()
+			.click();
+		const profileColumn = page.getByTestId('profile-column');
+		await expect(profileColumn.getByRole('img', { name: ':profile:' })).toHaveAttribute(
+			'src',
+			profileEmojiUrl
+		);
+
+		await expect(
+			customColumn.getByTestId('nostr-quote').getByRole('img', { name: ':channel:' })
+		).toHaveAttribute('src', channelEmojiUrl);
+	});
+
 	test('shows the initial deck', async ({ page }) => {
 		await openDeck(page);
 

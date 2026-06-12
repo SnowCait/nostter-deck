@@ -6,7 +6,8 @@
 	import type { Post } from '$lib/deck/types';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape } from '$lib/user-settings';
-	import type * as Nostr from 'nostr-typedef';
+	import type { Profile } from '$lib/nostr/profiles';
+	import CustomEmojiText from './CustomEmojiText.svelte';
 	import ProfileAvatar from './ProfileAvatar.svelte';
 	import PostCard from './PostCard.svelte';
 
@@ -19,7 +20,7 @@
 		isLoggedIn: boolean;
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
-		getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined;
+		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
 		isMutedUser: (pubkey: string) => boolean;
@@ -104,7 +105,9 @@
 				testId="profile-column-avatar"
 			/>
 
-			<h3 class={['mt-3 font-bold break-words', textClass.heading]}>{displayName}</h3>
+			<h3 class={['mt-3 font-bold break-words', textClass.heading]}>
+				<CustomEmojiText text={displayName} customEmojis={profile?.customEmojis ?? []} />
+			</h3>
 			<p
 				class={['mt-1 break-all text-slate-500 dark:text-slate-400', textClass.meta]}
 				data-testid="profile-npub"
@@ -123,7 +126,11 @@
 							textClass.body
 						]}
 					>
-						{profile.about}
+						<CustomEmojiText
+							text={profile.about}
+							customEmojis={profile.customEmojis}
+							whitespaceClass="whitespace-pre-wrap"
+						/>
 					</p>
 				</section>
 			{/if}

@@ -1,6 +1,8 @@
 import { ChannelMessage, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
 import type { Post, PostContext } from '$lib/deck/types';
+import { parseCustomEmojis } from './custom-emoji';
+import type { Profile } from './profiles';
 
 const accentClasses = [
 	'bg-sky-500',
@@ -13,14 +15,14 @@ const accentClasses = [
 	'bg-orange-500'
 ];
 
-export function eventToPost(event: Nostr.Event, profile?: Nostr.Content.Metadata): Post {
+export function eventToPost(event: Nostr.Event, profile?: Profile): Post {
 	return createPost(event, profile);
 }
 
 export function repostEventToPost(
 	repostEvent: Nostr.Event,
 	repostedEvent: Nostr.Event | undefined,
-	getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined
+	getProfile: (pubkey: string) => Profile | undefined
 ): Post {
 	const repostProfile = getProfile(repostEvent.pubkey);
 	const repostAuthor = createPostAuthor(repostEvent.pubkey, repostProfile);
@@ -29,7 +31,8 @@ export function repostEventToPost(
 		icon: 'repost',
 		message: {
 			key: 'reposted_by',
-			params: { name: repostAuthor.author }
+			params: { name: repostAuthor.author },
+			nameEmojis: repostAuthor.authorEmojis
 		}
 	} satisfies PostContext;
 
@@ -60,7 +63,7 @@ export function repostEventToPost(
 export function reactionEventToPost(
 	reactionEvent: Nostr.Event,
 	reactedEvent: Nostr.Event | undefined,
-	getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined
+	getProfile: (pubkey: string) => Profile | undefined
 ): Post {
 	const reactionProfile = getProfile(reactionEvent.pubkey);
 	const reactionContent = getReactionContent(reactionEvent);
@@ -71,11 +74,14 @@ export function reactionEventToPost(
 		message: isLikeReaction(reactionEvent.content)
 			? {
 					key: 'reacted_by_like',
-					params: { name: reactionAuthor.author }
+					params: { name: reactionAuthor.author },
+					nameEmojis: reactionAuthor.authorEmojis
 				}
 			: {
 					key: 'reacted_by',
-					params: { name: reactionAuthor.author, content: reactionContent }
+					params: { name: reactionAuthor.author, content: reactionContent },
+					nameEmojis: reactionAuthor.authorEmojis,
+					contentEmojis: parseCustomEmojis(reactionEvent.tags)
 				}
 	} satisfies PostContext;
 
@@ -103,7 +109,7 @@ export function reactionEventToPost(
 	};
 }
 
-function createPost(event: Nostr.Event, profile?: Nostr.Content.Metadata): Post {
+function createPost(event: Nostr.Event, profile?: Profile): Post {
 	const author = createPostAuthor(event.pubkey, profile);
 	const contexts = getReplyContexts(event);
 	const thread = getThreadReference(event);
@@ -113,6 +119,10 @@ function createPost(event: Nostr.Event, profile?: Nostr.Content.Metadata): Post 
 		...author,
 		time: formatRelativeTime(event.created_at),
 		body: event.content,
+		bodyEmojis:
+			event.kind === ShortTextNote || event.kind === ChannelMessage
+				? parseCustomEmojis(event.tags)
+				: [],
 		tags: getDisplayHashtags(event.tags),
 		mutePubkeys: [event.pubkey],
 		verified: false,
@@ -220,7 +230,7 @@ function getDisplayHashtags(tags: Nostr.Event['tags']) {
 	return [...new Set(displayHashtags)];
 }
 
-function createPostAuthor(pubkey: string, profile?: Nostr.Content.Metadata) {
+function createPostAuthor(pubkey: string, profile?: Profile) {
 	const displayName = profile?.display_name ?? profile?.name;
 
 	return {
@@ -228,6 +238,7 @@ function createPostAuthor(pubkey: string, profile?: Nostr.Content.Metadata) {
 		author: displayName || shortenPubkey(pubkey),
 		handle: shortenPubkey(pubkey),
 		avatarUrl: profile?.picture,
+		authorEmojis: profile?.customEmojis ?? [],
 		accent: accentClasses[hashString(pubkey) % accentClasses.length]
 	};
 }

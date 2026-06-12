@@ -4,7 +4,7 @@
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape } from '$lib/user-settings';
-	import type * as Nostr from 'nostr-typedef';
+	import type { Profile } from '$lib/nostr/profiles';
 	import PostCard from './PostCard.svelte';
 
 	type Props = {
@@ -13,7 +13,7 @@
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
 		scrollRoot?: HTMLDivElement;
-		getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined;
+		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
 		isMutedUser: (pubkey: string) => boolean;

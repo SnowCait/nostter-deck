@@ -13,6 +13,7 @@ import type {
 import { eventToPost, reactionEventToPost, repostEventToPost } from '$lib/nostr/posts';
 import { combineRelays, defaultRelays, searchRelays } from '$lib/nostr/relays';
 import { getTimelineKey } from './timeline-cache';
+import type { Profile } from '$lib/nostr/profiles';
 
 export type TimelineRuntime = {
 	timelineKey: string;
@@ -262,7 +263,7 @@ export function getReferencedEventId(event: Nostr.Event) {
 
 export function timelineRuntimeToPosts(
 	runtime: TimelineRuntime,
-	getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined,
+	getProfile: (pubkey: string) => Profile | undefined,
 	isMuted: (pubkey: string) => boolean = () => false
 ) {
 	return runtime.visibleEventIds.flatMap((eventId) => {
@@ -293,7 +294,7 @@ export function timelineRuntimeToPosts(
 export function toRuntimeColumn(
 	column: ColumnConfig,
 	runtime: TimelineRuntime,
-	getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined,
+	getProfile: (pubkey: string) => Profile | undefined,
 	isMuted: (pubkey: string) => boolean = () => false
 ): Column {
 	if (!isFetchableTimelineColumn(column)) {

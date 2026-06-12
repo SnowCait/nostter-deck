@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
+import type { Profile } from './profiles';
 import {
 	eventToPost,
 	getReferencedPubkey,
@@ -26,10 +27,10 @@ function event(patch: Partial<Nostr.Event>): Nostr.Event {
 	};
 }
 
-function getProfile(pubkey: string): Nostr.Content.Metadata | undefined {
-	if (pubkey === reactionPubkey) return { display_name: 'Alice' };
-	if (pubkey === targetPubkey) return { display_name: 'Bob' };
-	if (pubkey === repostPubkey) return { display_name: 'Carol' };
+function getProfile(pubkey: string): Profile | undefined {
+	if (pubkey === reactionPubkey) return { display_name: 'Alice', customEmojis: [] };
+	if (pubkey === targetPubkey) return { display_name: 'Bob', customEmojis: [] };
+	if (pubkey === repostPubkey) return { display_name: 'Carol', customEmojis: [] };
 	return undefined;
 }
 
@@ -107,6 +108,34 @@ describe('posts', () => {
 					}
 				}
 			]
+		});
+	});
+
+	test('keeps profile, post, and reaction emoji definitions separate', () => {
+		const reaction = event({
+			id: '2'.repeat(64),
+			pubkey: reactionPubkey,
+			kind: Reaction,
+			content: ':same:',
+			tags: [['emoji', 'same', 'https://example.com/reaction.png']]
+		});
+		const target = event({
+			content: ':same:',
+			tags: [['emoji', 'same', 'https://example.com/post.png']]
+		});
+		const profile: Profile = {
+			display_name: ':same:',
+			customEmojis: [{ shortcode: 'same', url: 'https://example.com/profile.png' }]
+		};
+
+		const post = reactionEventToPost(reaction, target, (pubkey) =>
+			pubkey === reactionPubkey ? profile : getProfile(pubkey)
+		);
+
+		expect(post.bodyEmojis).toEqual([{ shortcode: 'same', url: 'https://example.com/post.png' }]);
+		expect(post.contexts?.[0].message).toMatchObject({
+			nameEmojis: [{ shortcode: 'same', url: 'https://example.com/profile.png' }],
+			contentEmojis: [{ shortcode: 'same', url: 'https://example.com/reaction.png' }]
 		});
 	});
 
@@ -342,6 +371,21 @@ describe('posts', () => {
 		expect(eventToPost(event({ kind: ChannelMessage }), getProfile(targetPubkey))).toMatchObject({
 			body: 'Target note',
 			author: 'Bob'
+		});
+	});
+
+	test('keeps channel message emoji definitions for the body', () => {
+		expect(
+			eventToPost(
+				event({
+					kind: ChannelMessage,
+					content: 'Channel :wave:',
+					tags: [['emoji', 'wave', 'https://example.com/channel-wave.png']]
+				})
+			)
+		).toMatchObject({
+			body: 'Channel :wave:',
+			bodyEmojis: [{ shortcode: 'wave', url: 'https://example.com/channel-wave.png' }]
 		});
 	});
 

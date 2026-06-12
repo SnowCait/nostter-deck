@@ -22,8 +22,10 @@
 	import type { Post, PostMessage } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
+	import type { Profile } from '$lib/nostr/profiles';
+	import type { CustomEmoji } from '$lib/nostr/custom-emoji';
 	import type { AvatarShape } from '$lib/user-settings';
-	import type * as Nostr from 'nostr-typedef';
+	import CustomEmojiText from './CustomEmojiText.svelte';
 	import ProfileAvatar from './ProfileAvatar.svelte';
 	import NostrQuoteCard from './NostrQuoteCard.svelte';
 	import ImageViewer from './ImageViewer.svelte';
@@ -34,7 +36,7 @@
 		isLoggedIn: boolean;
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
-		getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined;
+		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
 		isMuted?: boolean;
@@ -58,12 +60,13 @@
 		onOpenProfile,
 		onOpenThread
 	}: Props = $props();
-	const bodyTokens = $derived(linkifyPostContent(post.body));
+	const bodyTokens = $derived(linkifyPostContent(post.body, post.bodyEmojis));
 	let isBodyExpanded = $state(false);
 	let isImageViewerOpen = $state(false);
 	let currentImageIndex = $state(0);
 	let isMutedPostRevealed = $state(false);
 	let isPostMenuOpen = $state(false);
+	let failedEmojiUrls = $state<string[]>([]);
 	const isPostVisible = $derived(!isMuted || isMutedPostRevealed);
 	const isBodyCollapsible = $derived(post.body.length > 500 || post.body.split('\n').length > 12);
 	const directImageUrls = $derived(
@@ -119,6 +122,12 @@
 		const profile = getProfile(token.pubkey);
 		const displayName = profile?.display_name ?? profile?.name;
 		return displayName ?? npubEncode(token.pubkey).slice(0, 12);
+	}
+
+	function getProfileReferenceEmojis(
+		token: Extract<PostContentToken, { type: 'nostrReference' }> & { pubkey: string }
+	) {
+		return getProfile(token.pubkey)?.customEmojis ?? [];
 	}
 
 	function openPostAuthorProfile() {
@@ -207,6 +216,43 @@
 				return m.reaction_event_unavailable();
 		}
 	}
+
+	function getPostMessageTokens(message: PostMessage): { text: string; emojis: CustomEmoji[] }[] {
+		const nameMarker = '\uE000name\uE001';
+		const contentMarker = '\uE000content\uE001';
+		let text: string;
+		const values: Record<string, { text: string; emojis: CustomEmoji[] }> = {};
+
+		switch (message.key) {
+			case 'reposted_by':
+				text = m.reposted_by({ name: nameMarker });
+				values[nameMarker] = { text: message.params.name, emojis: message.nameEmojis };
+				break;
+			case 'reacted_by_like':
+				text = m.reacted_by_like({ name: nameMarker });
+				values[nameMarker] = { text: message.params.name, emojis: message.nameEmojis };
+				break;
+			case 'reacted_by':
+				text = m.reacted_by({ name: nameMarker, content: contentMarker });
+				values[nameMarker] = { text: message.params.name, emojis: message.nameEmojis };
+				values[contentMarker] = {
+					text: message.params.content,
+					emojis: message.contentEmojis
+				};
+				break;
+			default:
+				return [{ text: formatPostMessage(message), emojis: [] }];
+		}
+
+		return text
+			.split(/(\uE000name\uE001|\uE000content\uE001)/)
+			.filter(Boolean)
+			.map((part) => values[part] ?? { text: part, emojis: [] });
+	}
+
+	function handleEmojiError(url: string) {
+		if (!failedEmojiUrls.includes(url)) failedEmojiUrls = [...failedEmojiUrls, url];
+	}
 </script>
 
 {#if !isPostVisible}
@@ -246,7 +292,9 @@
 					>
 						<MessageCircle class="size-4 shrink-0" aria-hidden="true" />
 						<span class="min-w-0 flex-1 truncate text-left">
-							{formatPostMessage(context.message)}
+							{#each getPostMessageTokens(context.message) as messageToken, messageIndex (messageIndex)}
+								<CustomEmojiText text={messageToken.text} customEmojis={messageToken.emojis} />
+							{/each}
 						</span>
 						<ChevronRight class="size-4 shrink-0" aria-hidden="true" />
 					</button>
@@ -264,7 +312,11 @@
 						{:else if context.icon === 'reply'}
 							<MessageCircle class="size-4 shrink-0" aria-hidden="true" />
 						{/if}
-						<span class="truncate">{formatPostMessage(context.message)}</span>
+						<span class="truncate">
+							{#each getPostMessageTokens(context.message) as messageToken, messageIndex (messageIndex)}
+								<CustomEmojiText text={messageToken.text} customEmojis={messageToken.emojis} />
+							{/each}
+						</span>
 					</div>
 				{/if}
 			{/each}
@@ -301,7 +353,7 @@
 								aria-label={m.open_profile({ name: post.author })}
 								onclick={openPostAuthorProfile}
 							>
-								{post.author}
+								<CustomEmojiText text={post.author} customEmojis={post.authorEmojis} />
 							</button>
 							{#if post.verified ?? true}
 								<ShieldCheck class="size-4 shrink-0 text-sky-500" aria-label={m.verified()} />
@@ -449,7 +501,10 @@
 											class="font-medium text-sky-600 hover:text-sky-700 hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none dark:text-sky-300 dark:hover:text-sky-200"
 											onclick={() => openMentionedProfile(token)}
 										>
-											{getNostrReferenceText(token)}
+											<CustomEmojiText
+												text={getNostrReferenceText(token)}
+												customEmojis={getProfileReferenceEmojis(token)}
+											/>
 										</button>
 									{:else}
 										<a
@@ -460,6 +515,19 @@
 										>
 											{getNostrReferenceText(token)}
 										</a>
+									{/if}
+								{:else if token.type === 'customEmoji'}
+									{#if failedEmojiUrls.includes(token.url)}
+										<span>{token.text}</span>
+									{:else}
+										<img
+											src={token.url}
+											alt={token.text}
+											title={token.text}
+											class="mx-0.5 inline-block size-[1.25em] object-contain align-[-0.25em]"
+											loading="lazy"
+											onerror={() => handleEmojiError(token.url)}
+										/>
 									{/if}
 								{:else}
 									<span class="whitespace-pre-wrap">{token.text}</span>
