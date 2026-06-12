@@ -1,16 +1,7 @@
 <script lang="ts">
-	import {
-		ChevronRight,
-		Heart,
-		MessageCircle,
-		Ellipsis,
-		Repeat2,
-		Share,
-		ShieldCheck
-	} from '@lucide/svelte';
+	import { ChevronRight, Heart, MessageCircle, Repeat2, Share, ShieldCheck } from '@lucide/svelte';
 	import { npubEncode } from 'nostr-tools/nip19';
 	import { linkifyPostContent, type PostContentToken } from '$lib/deck/post-content-links';
-	import * as Popover from '$lib/components/ui/popover';
 	import {
 		clearUrlPreviewImage,
 		getUrlMediaMetadata,
@@ -31,6 +22,7 @@
 	import ImageViewer from './ImageViewer.svelte';
 	import MutedContentPlaceholder from './MutedContentPlaceholder.svelte';
 	import ContentWarningPlaceholder from './ContentWarningPlaceholder.svelte';
+	import EventJsonMenu from './EventJsonMenu.svelte';
 
 	type Props = {
 		post: Post;
@@ -67,7 +59,6 @@
 	let currentImageIndex = $state(0);
 	let isMutedPostRevealed = $state(false);
 	let isSensitiveContentRevealed = $state(false);
-	let isPostMenuOpen = $state(false);
 	let failedEmojiUrls = $state<string[]>([]);
 	const isPostVisible = $derived(!isMuted || isMutedPostRevealed);
 	const isPostContentVisible = $derived(!post.contentWarning || isSensitiveContentRevealed);
@@ -148,7 +139,6 @@
 
 	function mutePostAuthor() {
 		onMuteUser?.(post.pubkey);
-		isPostMenuOpen = false;
 	}
 
 	function isEventReferenceToken(
@@ -269,22 +259,40 @@
 	class="outline-none [&:focus-visible>*]:bg-slate-100 dark:[&:focus-visible>*]:bg-slate-900"
 >
 	{#if !isPostVisible}
-		<MutedContentPlaceholder
-			message={m.muted_post()}
-			actionLabel={m.show_muted_post()}
-			{textClass}
-			testId="muted-post"
-			onReveal={() => (isMutedPostRevealed = true)}
-		/>
+		<div class="relative">
+			<MutedContentPlaceholder
+				message={m.muted_post()}
+				actionLabel={m.show_muted_post()}
+				{textClass}
+				testId="muted-post"
+				onReveal={() => (isMutedPostRevealed = true)}
+			/>
+			<EventJsonMenu
+				sourceEvent={post.events.source}
+				referencedEvent={post.events.referenced}
+				{textClass}
+				muteLabel={m.mute_user({ name: post.author })}
+				onMute={mutePostAuthor}
+				class="absolute top-3 right-3"
+			/>
+		</div>
 	{:else if post.referenceStatus === 'loading'}
 		<div
 			data-testid="referenced-post-loading"
 			class={[
-				'flex min-h-20 items-center border-b border-slate-200 bg-slate-50/70 p-3 text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400',
+				'relative flex min-h-20 items-center border-b border-slate-200 bg-slate-50/70 p-3 pr-12 text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400',
 				textClass.body
 			]}
 		>
 			{m.referenced_post_loading()}
+			<EventJsonMenu
+				sourceEvent={post.events.source}
+				referencedEvent={post.events.referenced}
+				{textClass}
+				muteLabel={m.mute_user({ name: post.author })}
+				onMute={mutePostAuthor}
+				class="absolute top-3 right-3"
+			/>
 		</div>
 	{:else}
 		<article
@@ -379,28 +387,13 @@
 								</span>
 							</div>
 						</div>
-						<Popover.Root bind:open={isPostMenuOpen}>
-							<Popover.Trigger
-								type="button"
-								class="flex size-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-								title={m.post_options()}
-								aria-label={m.post_options()}
-							>
-								<Ellipsis class="size-4" aria-hidden="true" />
-							</Popover.Trigger>
-							<Popover.Content align="end" sideOffset={4} class="w-56 gap-1 p-1">
-								<button
-									type="button"
-									class={[
-										'w-full rounded-md px-3 py-2 text-left font-semibold text-rose-600 transition hover:bg-rose-50 focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none dark:text-rose-400 dark:hover:bg-rose-950/40',
-										textClass.control
-									]}
-									onclick={mutePostAuthor}
-								>
-									{m.mute_user({ name: post.author })}
-								</button>
-							</Popover.Content>
-						</Popover.Root>
+						<EventJsonMenu
+							sourceEvent={post.events.source}
+							referencedEvent={post.events.referenced}
+							{textClass}
+							muteLabel={m.mute_user({ name: post.author })}
+							onMute={mutePostAuthor}
+						/>
 					</div>
 
 					{#if post.unavailableMessage}

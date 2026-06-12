@@ -1034,6 +1034,137 @@ test.describe('nostter deck', () => {
 			.toBeGreaterThan(0);
 	});
 
+	test('shows and copies raw event JSON from post menus', async ({ page, context }) => {
+		await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
+			origin: 'http://localhost:4173'
+		});
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], limit: 20 }]
+		});
+
+		const article = deckColumns(page)
+			.first()
+			.locator('article')
+			.filter({ hasText: 'Hello from a custom Nostr timeline' })
+			.first();
+		await article.getByRole('button', { name: 'Post menu' }).click();
+		await page.getByRole('button', { name: 'View event JSON' }).click();
+
+		const dialog = page.getByRole('dialog', { name: 'Event JSON' });
+		await expect(dialog).toBeVisible();
+		await expect
+			.poll(() =>
+				dialog.evaluate((element) => ({
+					width: element.getBoundingClientRect().width,
+					viewportWidth: window.innerWidth
+				}))
+			)
+			.toMatchObject({ width: 1024, viewportWidth: 1280 });
+		await expect(dialog.getByTestId('event-json')).toContainText('"id": "event-custom-timeline-1"');
+		await expect(dialog.getByTestId('event-json')).toContainText(
+			'"content": "Hello from a custom Nostr timeline'
+		);
+		await expect
+			.poll(() =>
+				dialog
+					.getByTestId('event-json')
+					.evaluate((element) => element.scrollWidth <= element.clientWidth)
+			)
+			.toBe(true);
+		await dialog.getByRole('button', { name: 'Copy JSON' }).click();
+		await expect(dialog.getByRole('button', { name: 'Copied' })).toBeVisible();
+		await expect
+			.poll(() => page.evaluate(() => navigator.clipboard.readText()))
+			.toContain('"sig": "0000000000000000000000000000000000000000000000000000000000000000');
+		await dialog.getByRole('button', { name: 'Close' }).click();
+		await expect(dialog).toHaveCount(0);
+	});
+
+	test('keeps the event JSON dialog inside a narrow viewport', async ({ page }) => {
+		await page.setViewportSize({ width: 360, height: 720 });
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], limit: 20 }]
+		});
+
+		const article = deckColumns(page)
+			.first()
+			.locator('article')
+			.filter({ hasText: 'Hello from a custom Nostr timeline' })
+			.first();
+		await article.getByRole('button', { name: 'Post menu' }).click();
+		await page.getByRole('button', { name: 'View event JSON' }).click();
+
+		const dialog = page.getByRole('dialog', { name: 'Event JSON' });
+		await expect
+			.poll(() =>
+				dialog.evaluate((element) => {
+					const rect = element.getBoundingClientRect();
+					return {
+						left: Math.round(rect.left),
+						right: Math.round(window.innerWidth - rect.right),
+						width: Math.round(rect.width)
+					};
+				})
+			)
+			.toEqual({ left: 16, right: 16, width: 328 });
+		await expect
+			.poll(() =>
+				dialog
+					.getByTestId('event-json')
+					.evaluate((element) => element.scrollWidth <= element.clientWidth)
+			)
+			.toBe(true);
+	});
+
+	test('switches between source and referenced event JSON', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [Repost], limit: 20 }]
+		});
+
+		const repostArticle = deckColumns(page)
+			.first()
+			.locator('article')
+			.filter({ hasText: 'Alice Relay reposted' })
+			.first();
+		await repostArticle.getByRole('button', { name: 'Post menu' }).click();
+		await page.getByRole('button', { name: 'View event JSON' }).click();
+
+		const dialog = page.getByRole('dialog', { name: 'Event JSON' });
+		await expect(dialog.getByRole('tab', { name: 'Source event' })).toHaveAttribute(
+			'aria-selected',
+			'true'
+		);
+		await expect(dialog.getByTestId('event-json')).toContainText('"kind": 6');
+		await dialog.getByRole('tab', { name: 'Referenced event' }).click();
+		await expect(dialog.getByTestId('event-json')).toContainText('"id": "event-custom-timeline-1"');
+	});
+
+	test('shows raw JSON for a loaded quote event', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], limit: 20 }]
+		});
+
+		const quote = deckColumns(page)
+			.first()
+			.getByTestId('nostr-quote')
+			.filter({ hasText: 'Quoted short text note' })
+			.first();
+		await quote.locator('..').getByRole('button', { name: 'Post menu' }).click();
+		await page.getByRole('button', { name: 'View event JSON' }).click();
+
+		const dialog = page.getByRole('dialog', { name: 'Event JSON' });
+		await expect(dialog.getByTestId('event-json')).toContainText(`"id": "${'1'.repeat(64)}"`);
+		await expect(dialog.getByRole('tab')).toHaveCount(0);
+	});
+
 	test('hides and reveals NIP-36 content across timeline, profile, thread, and quotes', async ({
 		page
 	}) => {

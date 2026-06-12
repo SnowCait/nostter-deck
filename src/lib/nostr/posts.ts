@@ -53,6 +53,7 @@ export function repostEventToPost(
 	return {
 		...repostedPost,
 		id: repostEvent.id,
+		events: { source: repostEvent, referenced: repostedEvent },
 		time: formatRelativeTime(repostEvent.created_at),
 		mutePubkeys,
 		referenceType: 'repost',
@@ -102,6 +103,7 @@ export function reactionEventToPost(
 	return {
 		...reactedPost,
 		id: reactionEvent.id,
+		events: { source: reactionEvent, referenced: reactedEvent },
 		time: formatRelativeTime(reactionEvent.created_at),
 		mutePubkeys,
 		referenceType: 'reaction',
@@ -117,6 +119,7 @@ function createPost(event: Nostr.Event, profile?: Profile): Post {
 
 	return {
 		id: event.id,
+		events: { source: event },
 		...author,
 		time: formatRelativeTime(event.created_at),
 		body: event.content,

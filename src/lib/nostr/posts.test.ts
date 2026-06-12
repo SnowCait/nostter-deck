@@ -68,6 +68,16 @@ describe('posts', () => {
 		});
 	});
 
+	test('keeps the source event for JSON inspection', () => {
+		const source = event({
+			tags: [['t', 'nostter']],
+			content: 'Raw source content'
+		});
+
+		expect(eventToPost(source).events).toEqual({ source });
+		expect(eventToPost(source).events.source).toBe(source);
+	});
+
 	test('uses the last valid p tag as the referenced pubkey', () => {
 		expect(
 			getReferencedPubkey(
@@ -195,6 +205,24 @@ describe('posts', () => {
 		});
 	});
 
+	test('keeps reaction source and referenced events for JSON inspection', () => {
+		const reaction = event({
+			id: '2'.repeat(64),
+			pubkey: reactionPubkey,
+			kind: Reaction,
+			content: '+'
+		});
+		const target = event({ content: 'Reacted target' });
+
+		expect(reactionEventToPost(reaction, target, getProfile).events).toEqual({
+			source: reaction,
+			referenced: target
+		});
+		expect(reactionEventToPost(reaction, undefined, getProfile).events).toEqual({
+			source: reaction
+		});
+	});
+
 	test('keeps reply context when formatting a reaction target', () => {
 		const reaction = event({
 			id: '2'.repeat(64),
@@ -294,6 +322,24 @@ describe('posts', () => {
 				}
 			],
 			unavailableMessage: { key: 'reposted_event_unavailable' }
+		});
+	});
+
+	test('keeps repost source and referenced events for JSON inspection', () => {
+		const repost = event({
+			id: '3'.repeat(64),
+			pubkey: repostPubkey,
+			kind: Repost,
+			content: ''
+		});
+		const target = event({ content: 'Reposted target' });
+
+		expect(repostEventToPost(repost, target, getProfile).events).toEqual({
+			source: repost,
+			referenced: target
+		});
+		expect(repostEventToPost(repost, undefined, getProfile).events).toEqual({
+			source: repost
 		});
 	});
 

@@ -77,6 +77,13 @@ export type MessageKey =
 	| 'move_column_right'
 	| 'column_options'
 	| 'post_options'
+	| 'view_event_json'
+	| 'event_json'
+	| 'source_event'
+	| 'referenced_event'
+	| 'copy_json'
+	| 'copied'
+	| 'copy_failed'
 	| 'mute_user'
 	| 'unmute'
 	| 'unmute_user'
@@ -205,6 +212,10 @@ export type ColumnConfig = TimelineColumnConfig | WebsiteColumnConfig;
 
 export type Post = {
 	id?: string;
+	events: {
+		source: Nostr.Event;
+		referenced?: Nostr.Event;
+	};
 	pubkey: string;
 	author: string;
 	handle: string;
