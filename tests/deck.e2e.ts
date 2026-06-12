@@ -1371,6 +1371,145 @@ test.describe('nostter deck', () => {
 		await expect(page.getByTestId('thread-column')).toHaveCount(0);
 	});
 
+	test('navigates columns and posts with Vim keys and arrow keys', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], limit: 20 }]
+		});
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], search: 'edited', limit: 20 }]
+		});
+
+		const columns = deckColumns(page);
+		await expect(columns).toHaveCount(2);
+		await expect(columns.nth(0).locator('[data-deck-post]')).toHaveCount(3);
+		await expect(columns.nth(1).locator('[data-deck-post]')).toHaveCount(1);
+
+		await page.keyboard.press('h');
+		let focusedPost = page.locator('[data-deck-post]:focus');
+		const firstColumnFirstPostKey = await columns
+			.nth(0)
+			.locator('[data-deck-post]')
+			.first()
+			.getAttribute('data-post-key');
+		expect(firstColumnFirstPostKey).toBeTruthy();
+		await expect(focusedPost).toHaveCount(1);
+		await expect(focusedPost).toHaveAttribute('data-post-key', firstColumnFirstPostKey!);
+
+		await page.keyboard.press('j');
+		focusedPost = page.locator('[data-deck-post]:focus');
+		const rememberedPostKey = await focusedPost.getAttribute('data-post-key');
+		const firstColumnSecondPostKey = await columns
+			.nth(0)
+			.locator('[data-deck-post]')
+			.nth(1)
+			.getAttribute('data-post-key');
+		expect(rememberedPostKey).toBeTruthy();
+		expect(firstColumnSecondPostKey).toBeTruthy();
+		await expect(focusedPost).toHaveAttribute('data-post-key', firstColumnSecondPostKey!);
+
+		await page.keyboard.press('ArrowRight');
+		const secondColumnPostKey = await columns
+			.nth(1)
+			.locator('[data-deck-post]')
+			.first()
+			.getAttribute('data-post-key');
+		expect(secondColumnPostKey).toBeTruthy();
+		await expect(page.locator('[data-deck-post]:focus')).toHaveAttribute(
+			'data-post-key',
+			secondColumnPostKey!
+		);
+
+		await page.keyboard.press('ArrowLeft');
+		await expect(page.locator('[data-deck-post]:focus')).toHaveAttribute(
+			'data-post-key',
+			rememberedPostKey!
+		);
+
+		await page.keyboard.press('k');
+		await page.keyboard.press('k');
+		await expect(page.locator('[data-deck-post]:focus')).toHaveAttribute(
+			'data-post-key',
+			firstColumnFirstPostKey!
+		);
+		await page.keyboard.press('ArrowUp');
+		await expect(page.locator('[data-deck-post]:focus')).toHaveAttribute(
+			'data-post-key',
+			firstColumnFirstPostKey!
+		);
+	});
+
+	test('opens post details with keyboard actions and restores the source post', async ({
+		page
+	}) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], search: 'thread-entry', limit: 20 }]
+		});
+
+		await expect(deckColumns(page).first().getByText('Direct thread reply')).toBeVisible();
+		await page.keyboard.press('j');
+		const sourcePost = page.locator('[data-deck-post]:focus');
+		const sourcePostKey = await sourcePost.getAttribute('data-post-key');
+		await expect(sourcePost).toContainText('Direct thread reply');
+
+		await page.keyboard.press('Enter');
+		await expect(page.getByTestId('thread-column')).toBeVisible();
+		await page.keyboard.press('Escape');
+		await expect(page.getByTestId('thread-column')).toHaveCount(0);
+		await expect(page.locator('[data-deck-post]:focus')).toHaveAttribute(
+			'data-post-key',
+			sourcePostKey!
+		);
+
+		await page.keyboard.press('p');
+		await expect(page.getByTestId('profile-column')).toBeVisible();
+		await page.keyboard.press('Escape');
+		await expect(page.getByTestId('profile-column')).toHaveCount(0);
+		await expect(page.locator('[data-deck-post]:focus')).toHaveAttribute(
+			'data-post-key',
+			sourcePostKey!
+		);
+
+		await page.keyboard.press('Enter');
+		await expect(page.getByTestId('thread-column')).toBeVisible();
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		await expect(page.getByRole('dialog', { name: 'Add column' })).toBeVisible();
+		await page.keyboard.press('Escape');
+		await expect(page.getByRole('dialog', { name: 'Add column' })).toHaveCount(0);
+		await expect(page.getByTestId('thread-column')).toBeVisible();
+	});
+
+	test('does not steal navigation keys from editable controls', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], search: 'thread-entry', limit: 20 }]
+		});
+
+		const column = deckColumns(page).first();
+		await column.getByRole('button', { name: 'Column options' }).click();
+		const titleInput = column.getByLabel('Column title');
+		await titleInput.fill('Keyboard');
+		await titleInput.press('p');
+		await expect(titleInput).toHaveValue('Keyboardp');
+		await titleInput.press('ArrowLeft');
+		await expect(page.getByTestId('profile-column')).toHaveCount(0);
+		await expect(titleInput).toBeFocused();
+
+		await column
+			.getByText('Direct thread reply')
+			.locator('xpath=ancestor::article')
+			.getByRole('button', { name: 'Open thread' })
+			.click();
+		await expect(page.getByTestId('thread-column')).toBeVisible();
+		await titleInput.focus();
+		await titleInput.press('Escape');
+		await expect(page.getByTestId('thread-column')).toHaveCount(0);
+	});
+
 	test('keeps a bounded timeline window backed by IndexedDB', async ({ page }) => {
 		await installFakeNostrRelay(page);
 		await openDeck(page);

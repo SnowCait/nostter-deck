@@ -96,6 +96,7 @@
 	let profilePostSubscription: { stop: () => void } | null = null;
 	let profilePostRequestId = 0;
 	let mutedPubkeys = $state(readMutedPubkeys());
+	const lastFocusedPostKeyByColumnId: Record<string, string> = {};
 
 	const composeMaxLength = 280;
 	const composeLength = $derived(composeText.length);
@@ -152,16 +153,177 @@
 		return `deck-column-${columnId}`;
 	}
 
-	function focusColumn(columnId: string) {
+	function getColumnElement(columnId: string) {
+		return document.getElementById(getColumnId(columnId));
+	}
+
+	function getPostElements(columnElement: HTMLElement) {
+		return [...columnElement.querySelectorAll<HTMLElement>('[data-deck-post]')];
+	}
+
+	function focusPost(columnId: string, postElement: HTMLElement) {
+		const postKey = postElement.dataset.postKey;
+		if (postKey) lastFocusedPostKeyByColumnId[columnId] = postKey;
+		activeColumnId = columnId;
+		postElement.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+		postElement.focus({ preventScroll: true });
+	}
+
+	function getRememberedPost(columnId: string, columnElement: HTMLElement) {
+		const postElements = getPostElements(columnElement);
+		const rememberedPostKey = lastFocusedPostKeyByColumnId[columnId];
+		return (
+			postElements.find((postElement) => postElement.dataset.postKey === rememberedPostKey) ??
+			postElements[0]
+		);
+	}
+
+	function focusColumn(columnId: string, preferPost = false) {
 		activeColumnId = columnId;
 
-		const columnElement = document.getElementById(getColumnId(columnId));
+		const columnElement = getColumnElement(columnId);
 		columnElement?.scrollIntoView({
 			behavior: 'smooth',
 			block: 'nearest',
 			inline: 'nearest'
 		});
+		if (preferPost && columnElement) {
+			const postElement = getRememberedPost(columnId, columnElement);
+			if (postElement) {
+				focusPost(columnId, postElement);
+				return;
+			}
+		}
 		columnElement?.focus({ preventScroll: true });
+	}
+
+	function getDisplayedColumnElements() {
+		return [...document.querySelectorAll<HTMLElement>('[data-deck-column]')];
+	}
+
+	function getFocusedColumnElement() {
+		const activeElement = document.activeElement;
+		const focusedColumn =
+			activeElement instanceof Element
+				? activeElement.closest<HTMLElement>('[data-deck-column]')
+				: null;
+		return focusedColumn ?? getColumnElement(activeColumnId) ?? getDisplayedColumnElements()[0];
+	}
+
+	function isKeyboardOverlayOpen() {
+		return Boolean(
+			document.querySelector(
+				'[data-slot="dialog-content"][data-open], [data-slot="popover-content"][data-open]'
+			)
+		);
+	}
+
+	function isKeyboardNavigationBlocked(target: EventTarget | null, key: string) {
+		if (!(target instanceof Element)) return false;
+		if (
+			target.closest(
+				'input, textarea, select, iframe, [contenteditable="true"], [role="option"], [role="menuitem"]'
+			)
+		) {
+			return true;
+		}
+
+		if (target.closest('button, a, [role="button"], [role="link"]')) {
+			return !['h', 'j', 'k', 'l'].includes(key);
+		}
+
+		return false;
+	}
+
+	function moveColumnFocus(direction: -1 | 1) {
+		const columnElements = getDisplayedColumnElements();
+		const currentColumn = getFocusedColumnElement();
+		const currentIndex = currentColumn ? columnElements.indexOf(currentColumn) : -1;
+		if (currentIndex < 0) return;
+
+		const nextColumn = columnElements[currentIndex + direction];
+		const nextColumnId = nextColumn?.dataset.columnId;
+		if (nextColumnId) focusColumn(nextColumnId, true);
+	}
+
+	function movePostFocus(direction: -1 | 1) {
+		const columnElement = getFocusedColumnElement();
+		const columnId = columnElement?.dataset.columnId;
+		if (!columnElement || !columnId) return;
+
+		const postElements = getPostElements(columnElement);
+		if (postElements.length === 0) return;
+
+		const activeElement = document.activeElement;
+		const currentPost =
+			activeElement instanceof Element
+				? activeElement.closest<HTMLElement>('[data-deck-post]')
+				: null;
+		const currentIndex = currentPost ? postElements.indexOf(currentPost) : -1;
+		const nextIndex =
+			currentIndex < 0
+				? 0
+				: Math.max(0, Math.min(currentIndex + direction, postElements.length - 1));
+		focusPost(columnId, postElements[nextIndex]);
+	}
+
+	function activateFocusedPostAction(selector: string) {
+		const activeElement = document.activeElement;
+		const postElement =
+			activeElement instanceof Element
+				? activeElement.closest<HTMLElement>('[data-deck-post]')
+				: null;
+		if (!postElement || activeElement !== postElement) return;
+
+		postElement.querySelector<HTMLElement>(selector)?.click();
+	}
+
+	function handleKeyboardNavigation(event: KeyboardEvent) {
+		if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+		if (isKeyboardOverlayOpen()) return;
+
+		if (event.key === 'Escape' && detailColumn) {
+			event.preventDefault();
+			void closeDetailColumn();
+			return;
+		}
+
+		const key = event.key.toLowerCase();
+		if (isKeyboardNavigationBlocked(event.target, key)) return;
+
+		if (key === 'h' || event.key === 'ArrowLeft') {
+			event.preventDefault();
+			moveColumnFocus(-1);
+		} else if (key === 'l' || event.key === 'ArrowRight') {
+			event.preventDefault();
+			moveColumnFocus(1);
+		} else if (key === 'j' || event.key === 'ArrowDown') {
+			event.preventDefault();
+			movePostFocus(1);
+		} else if (key === 'k' || event.key === 'ArrowUp') {
+			event.preventDefault();
+			movePostFocus(-1);
+		} else if (event.key === 'Enter') {
+			event.preventDefault();
+			activateFocusedPostAction('[data-keyboard-open-thread]');
+		} else if (key === 'p') {
+			event.preventDefault();
+			activateFocusedPostAction('[data-keyboard-open-profile]');
+		}
+	}
+
+	function handleFocusIn(event: FocusEvent) {
+		const target = event.target;
+		if (!(target instanceof Element)) return;
+
+		const columnElement = target.closest<HTMLElement>('[data-deck-column]');
+		const columnId = columnElement?.dataset.columnId;
+		if (!columnId) return;
+		activeColumnId = columnId;
+
+		const postElement = target.closest<HTMLElement>('[data-deck-post]');
+		const postKey = postElement?.dataset.postKey;
+		if (postKey) lastFocusedPostKeyByColumnId[columnId] = postKey;
 	}
 
 	function createColumnId(columns: ColumnConfig[]) {
@@ -272,7 +434,7 @@
 		});
 
 		await tick();
-		focusColumn('thread');
+		focusColumn('thread', true);
 	}
 
 	async function openProfileColumn(sourceColumnId: string, profile: ProfilePointer) {
@@ -303,7 +465,7 @@
 		startProfilePostSubscription(profile.pubkey, relays);
 
 		await tick();
-		focusColumn('profile');
+		focusColumn('profile', true);
 	}
 
 	async function closeDetailColumn(restoreFocus = true) {
@@ -322,7 +484,7 @@
 
 		if (restoreFocus && sourceColumnId && columnConfigs.some(({ id }) => id === sourceColumnId)) {
 			await tick();
-			focusColumn(sourceColumnId);
+			focusColumn(sourceColumnId, true);
 		}
 	}
 
@@ -455,6 +617,8 @@
 		avatarShape = nextAvatarShape;
 	}
 </script>
+
+<svelte:window onkeydown={handleKeyboardNavigation} onfocusin={handleFocusIn} />
 
 <svelte:head>
 	<title>{m.app_title()}</title>

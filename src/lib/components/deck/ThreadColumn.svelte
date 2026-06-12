@@ -47,6 +47,8 @@
 
 <section
 	{id}
+	data-deck-column
+	data-column-id="thread"
 	tabindex="-1"
 	class="flex h-full w-[342px] flex-col overflow-hidden border-r border-slate-200 bg-white outline-none dark:border-slate-800 dark:bg-slate-950"
 	data-testid="thread-column"

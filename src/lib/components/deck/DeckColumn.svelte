@@ -157,6 +157,8 @@
 
 <section
 	{id}
+	data-deck-column
+	data-column-id={column.id}
 	tabindex="-1"
 	class={[
 		'flex h-full flex-col overflow-hidden border-r border-slate-200 bg-white transition-[width,box-shadow] outline-none dark:border-slate-800 dark:bg-slate-950',
