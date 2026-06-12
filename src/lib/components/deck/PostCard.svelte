@@ -524,7 +524,7 @@
 											src={token.url}
 											alt={token.text}
 											title={token.text}
-											class="mx-0.5 inline-block size-[1.25em] object-contain align-[-0.25em]"
+											class="my-[-0.1em] inline-block h-[1.4em] w-auto object-contain align-[-0.3em]"
 											loading="lazy"
 											onerror={() => handleEmojiError(token.url)}
 										/>
