@@ -1445,6 +1445,11 @@ test.describe('nostter deck', () => {
 
 		await selectDropdownOption(page, page.getByLabel('Language'), 'JA');
 		await expect(sidebar(page).getByRole('button', { name: '設定', exact: true })).toBeVisible();
+		const collapseSidebarButton = sidebar(page).getByRole('button', {
+			name: 'サイドバーを折りたたむ'
+		});
+		await expect(collapseSidebarButton).toContainText('折りたたむ');
+		await expect(collapseSidebarButton).not.toContainText('サイドバーを折りたたむ');
 
 		await sidebar(page).getByRole('button', { name: '設定', exact: true }).click();
 		await expect(page.getByRole('dialog', { name: '設定' })).toBeVisible();

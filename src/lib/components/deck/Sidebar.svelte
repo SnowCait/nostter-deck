@@ -179,7 +179,7 @@
 				{/if}
 			</span>
 			<span class={`${sidebarLabelClass()} truncate text-left`}>
-				{m.collapse_sidebar()}
+				{m.collapse_sidebar_short()}
 			</span>
 		</button>
 

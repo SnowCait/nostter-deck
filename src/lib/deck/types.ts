@@ -31,6 +31,7 @@ export type MessageKey =
 	| 'post_text'
 	| 'schedule_post'
 	| 'collapse_sidebar'
+	| 'collapse_sidebar_short'
 	| 'expand_sidebar'
 	| 'timeline_follow'
 	| 'timeline_search'
