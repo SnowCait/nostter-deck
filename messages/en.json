@@ -59,6 +59,7 @@
 	"custom_timeline_filters_help": "Use a Nostr REQ filter array. authors normally accepts pubkey arrays; this app also accepts a single address string like kind:pubkey:identifier.",
 	"custom_timeline_relays": "Relays",
 	"custom_timeline_custom_relays": "Custom relays",
+	"custom_timeline_custom_relays_help": "Enter one relay URL per line or a JSON string array of URLs. Use wss:// normally. ws:// is allowed only for localhost and loopback addresses.",
 	"custom_timeline_not_implemented": "Relay fetching is not implemented yet.",
 	"custom_timeline_filter_count": "Filters: {count}",
 	"custom_timeline_relay_count": "Relays: {count}",

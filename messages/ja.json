@@ -59,6 +59,7 @@
 	"custom_timeline_filters_help": "Nostr の REQ フィルター配列を入力します。authors は通常 pubkey 配列ですが、このアプリでは kind:pubkey:identifier 形式の文字列も指定できます。",
 	"custom_timeline_relays": "リレー",
 	"custom_timeline_custom_relays": "カスタムリレー",
+	"custom_timeline_custom_relays_help": "1 行に 1 つのリレー URL、または URL の JSON 文字列配列を入力します。通常は wss:// を使用してください。ws:// は localhost とループバックアドレスのみ使用できます。",
 	"custom_timeline_not_implemented": "Relay 取得はまだ実装されていません。",
 	"custom_timeline_filter_count": "フィルター数: {count}",
 	"custom_timeline_relay_count": "リレー数: {count}",

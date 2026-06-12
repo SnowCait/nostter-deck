@@ -10,7 +10,7 @@
 		resolveRelayDraft,
 		resolveRelaySelection
 	} from '$lib/nostr/relays';
-	import FilterHelpButton from './FilterHelpButton.svelte';
+	import InputHelpButton from './InputHelpButton.svelte';
 
 	type Props = {
 		column: CustomTimelineColumnConfig;
@@ -72,7 +72,7 @@
 	>
 		{m.custom_timeline_filters()}
 	</label>
-	<FilterHelpButton {textClass} />
+	<InputHelpButton {textClass} helpText={m.custom_timeline_filters_help()} />
 </div>
 <textarea
 	id={`column-filters-${column.id}`}
@@ -106,12 +106,15 @@
 	{/each}
 </div>
 
-<label
-	class={['mb-2 block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
-	for={`column-custom-relays-${column.id}`}
->
-	{m.custom_timeline_custom_relays()}
-</label>
+<div class="mb-2 flex items-center justify-between gap-2">
+	<label
+		class={['block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
+		for={`column-custom-relays-${column.id}`}
+	>
+		{m.custom_timeline_custom_relays()}
+	</label>
+	<InputHelpButton {textClass} helpText={m.custom_timeline_custom_relays_help()} />
+</div>
 <textarea
 	id={`column-custom-relays-${column.id}`}
 	class={[

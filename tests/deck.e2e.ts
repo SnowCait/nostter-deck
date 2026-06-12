@@ -847,8 +847,21 @@ test.describe('nostter deck', () => {
 		await installFakeNostrRelay(page);
 		await openDeck(page);
 		const localRelay = 'ws://localhost:4869/';
+		const relayHelp = /JSON string array/;
 
-		await addCustomTimelineColumn(page, { customRelays: localRelay });
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		await selectColumnType(page, 'custom_timeline');
+		await page.getByRole('button', { name: relayHelp }).click();
+		await expect(page.getByText(relayHelp)).toBeVisible();
+		await page.keyboard.press('Escape');
+		await page
+			.getByLabel('Custom relays')
+			.fill(JSON.stringify(['wss://relay.example', localRelay], null, 2));
+		await page
+			.getByRole('dialog', { name: 'Add column' })
+			.getByRole('button', { name: 'Save' })
+			.click();
+
 		await expect
 			.poll(() =>
 				page.evaluate(
@@ -859,13 +872,18 @@ test.describe('nostter deck', () => {
 			.toBe(true);
 		await expectStoredCustomTimelineColumn(page, undefined, {
 			type: 'custom',
-			urls: [...defaultRelays, localRelay]
+			urls: [...defaultRelays, 'wss://relay.example/', localRelay]
 		});
 
 		await page.reload();
 		const customColumn = deckColumns(page).first();
 		await columnOptionsButton(customColumn).click();
-		await expect(customColumn.getByLabel('Custom relays')).toHaveValue(localRelay);
+		await customColumn.getByRole('button', { name: relayHelp }).click();
+		await expect(page.getByText(relayHelp)).toBeVisible();
+		await page.keyboard.press('Escape');
+		await expect(customColumn.getByLabel('Custom relays')).toHaveValue(
+			`wss://relay.example/\n${localRelay}`
+		);
 	});
 
 	test('continues loading timelines when NIP-11 requests fail', async ({ page }) => {

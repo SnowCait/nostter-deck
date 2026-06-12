@@ -80,14 +80,26 @@ export function resolveRelaySelection(selection: RelaySelection) {
 }
 
 export function parseCustomRelays(value: string): string[] | null {
-	const lines = value
-		.split('\n')
-		.map((line) => line.trim())
-		.filter((line) => line.length > 0);
+	const trimmedValue = value.trim();
+	if (trimmedValue.length === 0) return [];
 
-	if (lines.length === 0) return [];
+	let values: unknown[];
+	if (trimmedValue.startsWith('[')) {
+		try {
+			const parsedValue: unknown = JSON.parse(trimmedValue);
+			if (!Array.isArray(parsedValue)) return null;
+			values = parsedValue;
+		} catch {
+			return null;
+		}
+	} else {
+		values = value
+			.split('\n')
+			.map((line) => line.trim())
+			.filter((line) => line.length > 0);
+	}
 
-	const relays = lines.map(normalizeRelay);
+	const relays = values.map(normalizeRelay);
 	if (relays.some((relay) => relay === null)) return null;
 
 	return uniqueRelays(relays as string[]);

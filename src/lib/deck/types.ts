@@ -59,6 +59,7 @@ export type MessageKey =
 	| 'custom_timeline_filters_help'
 	| 'custom_timeline_relays'
 	| 'custom_timeline_custom_relays'
+	| 'custom_timeline_custom_relays_help'
 	| 'custom_timeline_not_implemented'
 	| 'custom_timeline_filter_count'
 	| 'custom_timeline_relay_count'

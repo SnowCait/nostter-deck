@@ -1,16 +1,15 @@
 <script lang="ts">
 	import { CircleQuestionMark } from '@lucide/svelte';
 	import * as Popover from '$lib/components/ui/popover';
-	import { m } from '$lib/paraglide/messages.js';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 
 	type Props = {
 		textClass: FontSizeTextClasses;
+		helpText: string;
 	};
 
-	const { textClass }: Props = $props();
+	const { textClass, helpText }: Props = $props();
 	let isOpen = $state(false);
-	const helpText = $derived(m.custom_timeline_filters_help());
 </script>
 
 <Popover.Root bind:open={isOpen}>

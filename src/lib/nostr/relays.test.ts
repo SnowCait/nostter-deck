@@ -4,6 +4,7 @@ import {
 	formatCustomRelays,
 	normalizeRelay,
 	normalizeRelays,
+	parseCustomRelays,
 	resolveRelayDraft,
 	resolveRelays
 } from './relays';
@@ -44,6 +45,31 @@ describe('nostr relays', () => {
 	test('rejects empty or partly invalid relay arrays', () => {
 		expect(normalizeRelays([])).toBeNull();
 		expect(normalizeRelays(['wss://relay.example', 'https://relay.example'])).toBeNull();
+	});
+
+	test.each([
+		['', []],
+		['wss://one.example\nwss://two.example', ['wss://one.example/', 'wss://two.example/']],
+		[
+			'["wss://one.example", "wss://two.example", "wss://one.example/"]',
+			['wss://one.example/', 'wss://two.example/']
+		],
+		[
+			'[\n  "wss://relay.example",\n  "ws://localhost:4869"\n]',
+			['wss://relay.example/', 'ws://localhost:4869/']
+		],
+		['[]', []]
+	])('parses custom relay input %s', (value, expected) => {
+		expect(parseCustomRelays(value)).toEqual(expected);
+	});
+
+	test.each([
+		'["wss://relay.example"',
+		'{"relay":"wss://relay.example"}',
+		'["wss://relay.example", 1]',
+		'["wss://relay.example", "https://relay.example"]'
+	])('rejects invalid custom relay input %s', (value) => {
+		expect(parseCustomRelays(value)).toBeNull();
 	});
 
 	test('resolves selected and custom relays', () => {

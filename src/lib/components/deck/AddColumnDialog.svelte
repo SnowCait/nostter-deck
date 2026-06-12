@@ -10,7 +10,7 @@
 	import { decodeChannelPointer, decodeProfilePointer } from '$lib/nostr/nip19';
 	import { defaultRelays, resolveRelayDraft } from '$lib/nostr/relays';
 	import { m } from '$lib/paraglide/messages.js';
-	import FilterHelpButton from './FilterHelpButton.svelte';
+	import InputHelpButton from './InputHelpButton.svelte';
 
 	type Props = {
 		isOpen: boolean;
@@ -208,7 +208,7 @@
 				>
 					{m.custom_timeline_filters()}
 				</label>
-				<FilterHelpButton {textClass} />
+				<InputHelpButton {textClass} helpText={m.custom_timeline_filters_help()} />
 			</div>
 			<textarea
 				id="custom-timeline-filters"
@@ -242,15 +242,15 @@
 				{/each}
 			</div>
 
-			<label
-				class={[
-					'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
-					textClass.control
-				]}
-				for="custom-timeline-relays"
-			>
-				{m.custom_timeline_custom_relays()}
-			</label>
+			<div class="mt-4 mb-2 flex items-center justify-between gap-2">
+				<label
+					class={['block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
+					for="custom-timeline-relays"
+				>
+					{m.custom_timeline_custom_relays()}
+				</label>
+				<InputHelpButton {textClass} helpText={m.custom_timeline_custom_relays_help()} />
+			</div>
 			<textarea
 				id="custom-timeline-relays"
 				class={[
