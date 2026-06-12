@@ -188,7 +188,7 @@ function isReplyEvent(event: Nostr.Event) {
 	return false;
 }
 
-function isShortTextNoteReplyEvent(event: Nostr.Event) {
+export function isShortTextNoteReplyEvent(event: Nostr.Event) {
 	const eventTags = event.tags.filter((tag) => tag[0] === 'e' && tag[1]);
 	if (eventTags.length === 0) return false;
 

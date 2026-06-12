@@ -3,20 +3,50 @@
 	import { npubEncode } from 'nostr-tools/nip19';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { FontSizeTextClasses } from '$lib/font-size';
+	import type { Post } from '$lib/deck/types';
+	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape } from '$lib/user-settings';
 	import type * as Nostr from 'nostr-typedef';
 	import ProfileAvatar from './ProfileAvatar.svelte';
+	import PostCard from './PostCard.svelte';
 
 	type Props = {
 		id: string;
 		pubkey: string;
+		posts: Post[];
+		isLoading: boolean;
+		error: string | null;
+		isLoggedIn: boolean;
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
 		getProfile: (pubkey: string) => Nostr.Content.Metadata | undefined;
+		requestProfiles: (pubkeys: string[], relays: string[]) => void;
+		profileRelays: string[];
+		isMutedUser: (pubkey: string) => boolean;
+		onMuteUser: (pubkey: string) => void;
 		onClose: () => void;
+		onOpenProfile: (profile: ProfilePointer) => void;
+		onOpenThread: (post: Post) => void;
 	};
 
-	const { id, pubkey, textClass, avatarShape, getProfile, onClose }: Props = $props();
+	const {
+		id,
+		pubkey,
+		posts,
+		isLoading,
+		error,
+		isLoggedIn,
+		textClass,
+		avatarShape,
+		getProfile,
+		requestProfiles,
+		profileRelays,
+		isMutedUser,
+		onMuteUser,
+		onClose,
+		onOpenProfile,
+		onOpenThread
+	}: Props = $props();
 	const profile = $derived(getProfile(pubkey));
 	const displayName = $derived(
 		profile?.display_name ?? profile?.name ?? npubEncode(pubkey).slice(0, 16)
@@ -137,5 +167,47 @@
 				</p>
 			{/if}
 		</div>
+
+		<section aria-labelledby="profile-posts-title">
+			<h3
+				id="profile-posts-title"
+				class={[
+					'border-y border-slate-200 px-4 py-3 font-bold dark:border-slate-800',
+					textClass.heading
+				]}
+			>
+				{m.profile_posts()}
+			</h3>
+			{#if isLoading && posts.length === 0}
+				<p class={['p-6 text-center text-slate-500 dark:text-slate-400', textClass.control]}>
+					{m.profile_posts_loading()}
+				</p>
+			{:else if error && posts.length === 0}
+				<p class={['p-6 text-center text-rose-600 dark:text-rose-400', textClass.control]}>
+					{m.profile_posts_error({ message: error })}
+				</p>
+			{:else if posts.length === 0}
+				<p class={['p-6 text-center text-slate-500 dark:text-slate-400', textClass.control]}>
+					{m.profile_posts_empty()}
+				</p>
+			{:else}
+				{#each posts as post (post.id)}
+					<PostCard
+						{post}
+						{isLoggedIn}
+						{textClass}
+						{avatarShape}
+						{getProfile}
+						{requestProfiles}
+						{profileRelays}
+						isMuted={Boolean(post.referenceType) && post.mutePubkeys.some(isMutedUser)}
+						{isMutedUser}
+						{onMuteUser}
+						{onOpenProfile}
+						{onOpenThread}
+					/>
+				{/each}
+			{/if}
+		</section>
 	</div>
 </section>

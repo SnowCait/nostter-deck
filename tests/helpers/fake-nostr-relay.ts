@@ -344,6 +344,12 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 						(filter) =>
 							filter.kinds?.includes(shortTextNoteKind) && filter['#e']?.includes(textEvent.id)
 					);
+					const requestsProfilePosts = filters.some(
+						(filter) =>
+							filter.kinds?.includes(shortTextNoteKind) &&
+							filter.kinds.includes(repostKind) &&
+							filter.authors?.includes(textEvent.pubkey)
+					);
 					for (const filter of filters) {
 						if (
 							filter.search ||
@@ -428,6 +434,12 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 							this.emitMessage(['EVENT', subId, nestedThreadReplyEvent]);
 							this.emitMessage(['EVENT', subId, threadReplyEvent]);
 							this.emitMessage(['EOSE', subId]);
+						}, 5);
+					}
+
+					if (requestsProfilePosts) {
+						setTimeout(() => {
+							this.emitMessage(['EVENT', subId, nestedThreadReplyEvent]);
 						}, 5);
 					}
 

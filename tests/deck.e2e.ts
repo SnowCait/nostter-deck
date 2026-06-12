@@ -1137,9 +1137,50 @@ test.describe('nostter deck', () => {
 			profileColumn.getByRole('link', { name: 'https://example.com/alice' })
 		).toHaveAttribute('href', 'https://example.com/alice');
 		await expect(profileColumn.getByTestId('profile-npub')).toHaveText(npubEncode(textEventPubkey));
+		await expect(profileColumn.getByRole('heading', { name: 'Posts' })).toBeVisible();
+		await expect(
+			profileColumn.getByText('Hello from a custom Nostr timeline', { exact: false })
+		).toHaveCount(3);
+		await expect(profileColumn.getByText('Alice Relay reposted')).toHaveCount(2);
+		await expect(profileColumn.getByText('Nested thread reply')).toHaveCount(0);
+		await expect(profileColumn.getByText('Alice Relay liked')).toHaveCount(0);
 
 		await profileButtons.last().click();
 		await expect(profileColumn).toHaveCount(0);
+		await profileButtons.first().click();
+		await expect(
+			profileColumn.getByText('Hello from a custom Nostr timeline', { exact: false })
+		).toHaveCount(3);
+	});
+
+	test('shows direct profile posts while preserving repost mute placeholders', async ({ page }) => {
+		await page.addInitScript(
+			({ key, pubkey }) => localStorage.setItem(key, JSON.stringify([pubkey])),
+			{ key: mutedUsersStorageKey, pubkey: textEventPubkey }
+		);
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [Repost], limit: 20 }]
+		});
+
+		const sourceColumn = deckColumns(page).first();
+		await sourceColumn
+			.getByTestId('muted-post')
+			.first()
+			.getByRole('button', { name: 'Show post' })
+			.click();
+		const revealedRepost = sourceColumn.locator('article').first();
+		await revealedRepost
+			.getByRole('button', { name: "Open Alice Relay's profile" })
+			.first()
+			.click();
+
+		const profileColumn = page.getByTestId('profile-column');
+		await expect(
+			profileColumn.getByText('Hello from a custom Nostr timeline', { exact: false })
+		).toHaveCount(1);
+		await expect(profileColumn.getByTestId('muted-post')).toHaveCount(2);
 	});
 
 	test('replaces the temporary profile column with a thread column', async ({ page }) => {
