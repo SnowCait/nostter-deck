@@ -88,11 +88,7 @@
 			class={[
 				'group relative flex h-11 w-full items-center rounded-md font-medium transition',
 				textClass.control,
-				isActive
-					? 'text-sky-700 dark:text-sky-300'
-					: 'text-slate-700 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white',
-				!isCollapsed && isActive ? 'bg-sky-50 dark:bg-sky-950/50' : '',
-				!isCollapsed && !isActive ? 'hover:bg-slate-100 dark:hover:bg-slate-900' : '',
+				isActive ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/10 hover:text-white',
 				draggedColumnId === column.id ? 'opacity-50' : '',
 				dropTarget?.columnId === column.id && dropTarget.position === 'before'
 					? 'before:absolute before:inset-x-1 before:top-0 before:h-0.5 before:rounded-full before:bg-sky-500'
@@ -108,18 +104,22 @@
 			ondragover={(event) => updateColumnDropTarget(event, column.id)}
 			ondrop={(event) => dropColumn(event, column.id)}
 		>
+			<div
+				data-testid="sidebar-column-active-indicator"
+				class={[
+					'pointer-events-none absolute top-1 bottom-1 left-0 w-[3px] rounded-full transition-colors',
+					isActive ? 'bg-sky-400' : 'bg-transparent'
+				]}
+				aria-hidden="true"
+			></div>
 			<span
 				draggable="true"
 				role="presentation"
 				data-testid="sidebar-column-drag-handle"
 				class={[
 					'flex size-11 shrink-0 cursor-grab items-center justify-center rounded-md transition active:cursor-grabbing',
-					isCollapsed && isActive
-						? 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
-						: '',
-					isCollapsed && !isActive
-						? 'group-hover:bg-slate-100 group-hover:text-slate-950 dark:group-hover:bg-slate-900 dark:group-hover:text-white'
-						: ''
+					isActive ? 'text-sky-300' : '',
+					isCollapsed && !isActive ? 'group-hover:text-white' : ''
 				]}
 				ondragstart={(event) => startColumnDrag(event, column.id)}
 				ondragend={clearColumnDrag}

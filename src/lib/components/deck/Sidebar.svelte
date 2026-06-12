@@ -75,7 +75,7 @@
 
 <aside
 	class={[
-		'flex h-full min-h-0 shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-slate-200 bg-white/95 px-2 py-4 transition-[width] duration-200 ease-out dark:border-slate-800 dark:bg-slate-950/95',
+		'flex h-full min-h-0 shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-slate-800 bg-slate-950 px-2 py-4 text-slate-100 transition-[width] duration-200 ease-out',
 		isCollapsed ? 'w-[60px]' : 'w-[236px]'
 	]}
 >
@@ -87,7 +87,7 @@
 		</div>
 		<div class={sidebarLabelClass()}>
 			<h1 class={['flex min-w-0 items-center', textClass.title]}>
-				<img src="/logo.svg" alt={m.app_title()} class="h-7 max-w-[150px] dark:invert" />
+				<img src="/logo.svg" alt={m.app_title()} class="h-7 max-w-[150px] invert" />
 			</h1>
 		</div>
 	</div>
@@ -127,14 +127,14 @@
 		{onReorderColumn}
 	/>
 
-	<div class="my-3 w-full border-t border-slate-200 dark:border-slate-800" aria-hidden="true"></div>
+	<div class="my-3 w-full border-t border-slate-800" aria-hidden="true"></div>
 
 	<button
 		type="button"
 		class={[
-			'group flex h-11 w-full items-center rounded-md font-medium text-slate-600 transition hover:text-slate-950 dark:text-slate-400 dark:hover:text-white',
+			'group flex h-11 w-full items-center rounded-md font-medium text-slate-400 transition hover:text-white',
 			textClass.control,
-			isCollapsed ? '' : 'hover:bg-slate-100 dark:hover:bg-slate-900'
+			isCollapsed ? '' : 'hover:bg-white/10'
 		]}
 		title={m.add_column()}
 		aria-label={m.add_column()}
@@ -143,7 +143,7 @@
 		<span
 			class={[
 				'flex size-11 shrink-0 items-center justify-center rounded-md transition',
-				isCollapsed ? 'group-hover:bg-slate-100 dark:group-hover:bg-slate-900' : ''
+				isCollapsed ? 'group-hover:bg-white/10' : ''
 			]}
 		>
 			<Plus class="size-5 shrink-0" aria-hidden="true" />
@@ -157,9 +157,9 @@
 		<button
 			type="button"
 			class={[
-				'group flex h-11 w-full items-center rounded-md font-medium text-slate-600 transition hover:text-slate-950 dark:text-slate-400 dark:hover:text-white',
+				'group flex h-11 w-full items-center rounded-md font-medium text-slate-400 transition hover:text-white',
 				textClass.control,
-				isCollapsed ? '' : 'hover:bg-slate-100 dark:hover:bg-slate-900'
+				isCollapsed ? '' : 'hover:bg-white/10'
 			]}
 			title={sidebarToggleLabel()}
 			aria-label={sidebarToggleLabel()}
@@ -169,7 +169,7 @@
 			<span
 				class={[
 					'flex size-11 shrink-0 items-center justify-center rounded-md transition',
-					isCollapsed ? 'group-hover:bg-slate-100 dark:group-hover:bg-slate-900' : ''
+					isCollapsed ? 'group-hover:bg-white/10' : ''
 				]}
 			>
 				{#if isCollapsed}
@@ -186,9 +186,9 @@
 		<button
 			type="button"
 			class={[
-				'group flex h-11 w-full items-center rounded-md font-medium text-slate-600 transition hover:text-slate-950 dark:text-slate-400 dark:hover:text-white',
+				'group flex h-11 w-full items-center rounded-md font-medium text-slate-400 transition hover:text-white',
 				textClass.control,
-				isCollapsed ? '' : 'hover:bg-slate-100 dark:hover:bg-slate-900'
+				isCollapsed ? '' : 'hover:bg-white/10'
 			]}
 			title={m.nav_settings()}
 			aria-label={m.nav_settings()}
@@ -197,7 +197,7 @@
 			<span
 				class={[
 					'flex size-11 shrink-0 items-center justify-center rounded-md transition',
-					isCollapsed ? 'group-hover:bg-slate-100 dark:group-hover:bg-slate-900' : ''
+					isCollapsed ? 'group-hover:bg-white/10' : ''
 				]}
 			>
 				<Settings class="size-5 shrink-0" aria-hidden="true" />
@@ -210,7 +210,7 @@
 		{#if isLoggedIn}
 			<div
 				class={[
-					'flex h-11 w-full items-center rounded-md border border-slate-200 transition dark:border-slate-800',
+					'flex h-11 w-full items-center rounded-md border border-slate-800 bg-white/5 transition',
 					isCollapsed ? 'border-0' : ''
 				]}
 			>
@@ -218,7 +218,7 @@
 					<ProfileAvatar
 						shape={avatarShape}
 						sizeClass="size-9"
-						fallbackClass="bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
+						fallbackClass="bg-slate-100 text-slate-950"
 						testId="account-avatar"
 					>
 						<UserRound class="size-4" aria-hidden="true" />
@@ -226,7 +226,7 @@
 				</div>
 				<div class={sidebarLabelClass()}>
 					<p class={['truncate font-semibold', textClass.account]}>Mika</p>
-					<p class={['truncate text-slate-500 dark:text-slate-400', textClass.meta]}>
+					<p class={['truncate text-slate-400', textClass.meta]}>
 						{m.account_role()}
 					</p>
 				</div>

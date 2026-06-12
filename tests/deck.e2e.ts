@@ -264,9 +264,22 @@ test.describe('nostter deck', () => {
 		await expectColumnOrder(columns, ['example.com', 'Search']);
 		await expect(sidebarColumns).toHaveText(['example.com', 'Search']);
 
+		const sidebarBackground = await sidebar(page).evaluate(
+			(element) => getComputedStyle(element).backgroundColor
+		);
+		await websiteSidebarColumn.click();
+		const activeIndicator = websiteSidebarColumn.getByTestId('sidebar-column-active-indicator');
+		const inactiveIndicator = searchSidebarColumn.getByTestId('sidebar-column-active-indicator');
+		await expect(websiteSidebarColumn).toHaveAttribute('aria-current', 'page');
+		expect(
+			await activeIndicator.evaluate((element) => getComputedStyle(element).backgroundColor)
+		).not.toBe('rgba(0, 0, 0, 0)');
+		await expect(inactiveIndicator).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+
 		await page.reload();
 		await expectColumnOrder(columns, ['example.com', 'Search']);
 		await expect(sidebarColumns).toHaveText(['example.com', 'Search']);
+		await expect(sidebar(page)).toHaveCSS('background-color', sidebarBackground);
 
 		await page.getByRole('button', { name: 'Collapse sidebar' }).click();
 		await expectSidebarWidth(page, sidebarCollapsedWidth);
@@ -285,6 +298,11 @@ test.describe('nostter deck', () => {
 
 		await sidebarButton(page, 'Search').click();
 		await expect(sidebarButton(page, 'Search')).toHaveAttribute('aria-current', 'page');
+		expect(
+			await sidebarButton(page, 'Search')
+				.getByTestId('sidebar-column-active-indicator')
+				.evaluate((element) => getComputedStyle(element).backgroundColor)
+		).not.toBe('rgba(0, 0, 0, 0)');
 	});
 
 	test('shows the right edge add UI only while there are no columns', async ({ page }) => {
@@ -1876,9 +1894,13 @@ test.describe('nostter deck', () => {
 		await expect(page.getByText('Appearance')).toBeVisible();
 		await expect(page.getByLabel('Theme')).toHaveText('System');
 		await expect(page.getByLabel('Font size')).toHaveText('Standard');
+		const lightSidebarBackground = await sidebar(page).evaluate(
+			(element) => getComputedStyle(element).backgroundColor
+		);
 
 		await selectDropdownOption(page, page.getByLabel('Theme'), 'Dark');
 		await expect(page.locator('html')).toHaveClass(/dark/);
+		await expect(sidebar(page)).toHaveCSS('background-color', lightSidebarBackground);
 		await expectStoredThemePreference(page, 'dark');
 		await expectThemeNotStoredInUiState(page);
 		await expect(page.locator('main')).toHaveCSS('color-scheme', 'dark');
