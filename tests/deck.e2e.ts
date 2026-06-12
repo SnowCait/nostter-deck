@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import { nprofileEncode, npubEncode } from 'nostr-tools/nip19';
 import { defaultRelays, profileRelays, searchRelays } from '$lib/nostr/relays';
@@ -80,6 +80,12 @@ const profileEmojiUrl = 'https://example.com/emoji/profile.png';
 const channelEmojiUrl = 'https://example.com/emoji/channel.png';
 const tallPreviewSvg =
 	'<svg xmlns="http://www.w3.org/2000/svg" width="120" height="240"><rect width="120" height="240" fill="black"/></svg>';
+
+async function pressKeyboardShortcuts(page: Page) {
+	await page.keyboard.down('Shift');
+	await page.keyboard.press('Slash');
+	await page.keyboard.up('Shift');
+}
 
 test.describe('nostter deck', () => {
 	test('renders NIP-30 emoji from each event and rejects HTTP emoji URLs', async ({ page }) => {
@@ -1520,6 +1526,81 @@ test.describe('nostter deck', () => {
 		await titleInput.focus();
 		await titleInput.press('Escape');
 		await expect(page.getByTestId('thread-column')).toHaveCount(0);
+	});
+
+	test('shows keyboard shortcuts with Shift+/ and restores focus when closed', async ({ page }) => {
+		await openDeck(page);
+
+		const addColumnButton = page.getByRole('button', { name: 'Add column' }).first();
+		await addColumnButton.focus();
+		await pressKeyboardShortcuts(page);
+
+		const shortcutsDialog = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
+		await expect(shortcutsDialog).toBeVisible();
+		await expect(shortcutsDialog.getByText('Previous column')).toBeVisible();
+		await expect(shortcutsDialog.getByText('Next post')).toBeVisible();
+		await expect(shortcutsDialog.getByText('Open thread')).toBeVisible();
+		await expect(shortcutsDialog.getByText('Open profile')).toBeVisible();
+		await expect(shortcutsDialog.getByText('Close details')).toBeVisible();
+		await expect(shortcutsDialog.locator('kbd')).toHaveText([
+			'H',
+			'←',
+			'L',
+			'→',
+			'K',
+			'↑',
+			'J',
+			'↓',
+			'Enter',
+			'P',
+			'Esc',
+			'?'
+		]);
+
+		await page.keyboard.press('Escape');
+		await expect(shortcutsDialog).toHaveCount(0);
+		await expect(addColumnButton).toBeFocused();
+
+		await pressKeyboardShortcuts(page);
+		await expect(shortcutsDialog).toBeVisible();
+		await page.mouse.click(10, 10);
+		await expect(shortcutsDialog).toHaveCount(0);
+	});
+
+	test('does not open keyboard shortcuts from inputs or over another dialog', async ({ page }) => {
+		await openDeck(page);
+
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		const addColumnDialog = page.getByRole('dialog', { name: 'Add column' });
+		await selectColumnType(page, 'timeline_search');
+		const searchInput = addColumnDialog.getByLabel('Search query');
+		await searchInput.fill('nostter');
+		await pressKeyboardShortcuts(page);
+		await expect(searchInput).toHaveValue('nostter?');
+		await expect(page.getByRole('dialog', { name: 'Keyboard shortcuts' })).toHaveCount(0);
+
+		await pressKeyboardShortcuts(page);
+		await expect(addColumnDialog).toBeVisible();
+		await expect(page.getByRole('dialog', { name: 'Keyboard shortcuts' })).toHaveCount(0);
+	});
+
+	test('localizes the keyboard shortcuts dialog', async ({ page }) => {
+		await openDeck(page);
+
+		await page.getByRole('button', { name: 'Settings' }).click();
+		await selectDropdownOption(page, page.getByLabel('Language'), 'JA');
+		const settingsButton = sidebar(page).getByRole('button', { name: '設定', exact: true });
+		await expect(settingsButton).toBeVisible();
+		await settingsButton.click();
+		const settingsDialog = page.getByRole('dialog', { name: '設定' });
+		await expect(settingsDialog).toBeVisible();
+		await settingsDialog.getByRole('button', { name: '閉じる' }).click();
+
+		await pressKeyboardShortcuts(page);
+		const shortcutsDialog = page.getByRole('dialog', { name: 'キーボードショートカット' });
+		await expect(shortcutsDialog).toBeVisible();
+		await expect(shortcutsDialog.getByText('前のカラム')).toBeVisible();
+		await expect(shortcutsDialog.getByText('ショートカット一覧を表示')).toBeVisible();
 	});
 
 	test('keeps a bounded timeline window backed by IndexedDB', async ({ page }) => {

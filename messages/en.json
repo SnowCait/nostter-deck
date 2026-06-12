@@ -122,5 +122,17 @@
 	"show_less_post": "Show less",
 	"like": "Like",
 	"share": "Share",
+	"keyboard_shortcuts": "Keyboard shortcuts",
+	"keyboard_shortcuts_navigation": "Navigation",
+	"keyboard_shortcuts_post_actions": "Post actions",
+	"keyboard_shortcuts_other": "Other",
+	"keyboard_shortcut_previous_column": "Previous column",
+	"keyboard_shortcut_next_column": "Next column",
+	"keyboard_shortcut_previous_post": "Previous post",
+	"keyboard_shortcut_next_post": "Next post",
+	"keyboard_shortcut_open_thread": "Open thread",
+	"keyboard_shortcut_open_profile": "Open profile",
+	"keyboard_shortcut_close_detail": "Close details",
+	"keyboard_shortcut_show_shortcuts": "Show keyboard shortcuts",
 	"verified": "Verified"
 }

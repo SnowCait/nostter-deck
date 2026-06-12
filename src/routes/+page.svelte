@@ -4,6 +4,7 @@
 	import { Repost, ShortTextNote } from 'nostr-tools/kinds';
 	import AddColumnDialog from '$lib/components/deck/AddColumnDialog.svelte';
 	import DeckColumn from '$lib/components/deck/DeckColumn.svelte';
+	import KeyboardShortcutsDialog from '$lib/components/deck/KeyboardShortcutsDialog.svelte';
 	import ProfileColumn from '$lib/components/deck/ProfileColumn.svelte';
 	import ThreadColumn from '$lib/components/deck/ThreadColumn.svelte';
 	import ProfileAvatar from '$lib/components/deck/ProfileAvatar.svelte';
@@ -76,6 +77,7 @@
 	let columnConfigs = $state<ColumnConfig[]>(savedColumnConfigs.map((column) => ({ ...column })));
 	let activeColumnId = $state(savedColumnConfigs[0]?.id ?? '');
 	let isColumnDialogOpen = $state(false);
+	let isKeyboardShortcutsDialogOpen = $state(false);
 	let openSettingsColumnId = $state<string | null>(null);
 	let isComposePanelOpen = $state(false);
 	let composeText = $state('');
@@ -218,15 +220,18 @@
 		);
 	}
 
-	function isKeyboardNavigationBlocked(target: EventTarget | null, key: string) {
+	function isEditableKeyboardTarget(target: EventTarget | null) {
 		if (!(target instanceof Element)) return false;
-		if (
+		return Boolean(
 			target.closest(
 				'input, textarea, select, iframe, [contenteditable="true"], [role="option"], [role="menuitem"]'
 			)
-		) {
-			return true;
-		}
+		);
+	}
+
+	function isKeyboardNavigationBlocked(target: EventTarget | null, key: string) {
+		if (!(target instanceof Element)) return false;
+		if (isEditableKeyboardTarget(target)) return true;
 
 		if (target.closest('button, a, [role="button"], [role="link"]')) {
 			return !['h', 'j', 'k', 'l'].includes(key);
@@ -289,6 +294,14 @@
 		}
 
 		const key = event.key.toLowerCase();
+		const isKeyboardShortcutsKey = event.key === '?' || (event.code === 'Slash' && event.shiftKey);
+		if (isKeyboardShortcutsKey) {
+			if (isEditableKeyboardTarget(event.target)) return;
+			event.preventDefault();
+			isKeyboardShortcutsDialogOpen = true;
+			return;
+		}
+
 		if (isKeyboardNavigationBlocked(event.target, key)) return;
 
 		if (key === 'h' || event.key === 'ArrowLeft') {
@@ -870,3 +883,5 @@
 	createColumnId={() => createColumnId(columnConfigs)}
 	onSave={(column) => void saveColumn(column)}
 />
+
+<KeyboardShortcutsDialog bind:isOpen={isKeyboardShortcutsDialogOpen} {textClass} />

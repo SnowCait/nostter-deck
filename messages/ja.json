@@ -122,5 +122,17 @@
 	"show_less_post": "閉じる",
 	"like": "いいね",
 	"share": "共有",
+	"keyboard_shortcuts": "キーボードショートカット",
+	"keyboard_shortcuts_navigation": "ナビゲーション",
+	"keyboard_shortcuts_post_actions": "投稿操作",
+	"keyboard_shortcuts_other": "その他",
+	"keyboard_shortcut_previous_column": "前のカラム",
+	"keyboard_shortcut_next_column": "次のカラム",
+	"keyboard_shortcut_previous_post": "前の投稿",
+	"keyboard_shortcut_next_post": "次の投稿",
+	"keyboard_shortcut_open_thread": "スレッドを開く",
+	"keyboard_shortcut_open_profile": "プロフィールを開く",
+	"keyboard_shortcut_close_detail": "詳細を閉じる",
+	"keyboard_shortcut_show_shortcuts": "ショートカット一覧を表示",
 	"verified": "認証済み"
 }
