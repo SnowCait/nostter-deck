@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
-import { nprofileEncode, npubEncode } from 'nostr-tools/nip19';
+import { decode, nprofileEncode, npubEncode } from 'nostr-tools/nip19';
 import { defaultRelays, profileRelays, searchRelays } from '$lib/nostr/relays';
 import { fakeRelayConnectionCounts, installFakeNostrRelay } from './helpers/fake-nostr-relay';
 import {
@@ -1145,7 +1145,10 @@ test.describe('nostter deck', () => {
 		await expect(dialog.getByTestId('event-json')).toContainText('"id": "event-custom-timeline-1"');
 	});
 
-	test('shows raw JSON for a loaded quote event', async ({ page }) => {
+	test('shows raw JSON and copies nevent for a loaded quote event', async ({ page, context }) => {
+		await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
+			origin: 'http://localhost:4173'
+		});
 		await installFakeNostrRelay(page);
 		await openDeck(page);
 		await addCustomTimelineColumn(page, {
@@ -1163,6 +1166,55 @@ test.describe('nostter deck', () => {
 		const dialog = page.getByRole('dialog', { name: 'Event JSON' });
 		await expect(dialog.getByTestId('event-json')).toContainText(`"id": "${'1'.repeat(64)}"`);
 		await expect(dialog.getByRole('tab')).toHaveCount(0);
+		await expect(dialog.getByRole('button', { name: 'Copy nevent' })).toBeVisible();
+		await expect(dialog.getByRole('button', { name: 'Copy naddr' })).toHaveCount(0);
+		await dialog.getByRole('button', { name: 'Copy nevent' }).click();
+		await expect(dialog.getByRole('button', { name: 'Copied' })).toBeVisible();
+		const pointer = await page.evaluate(() => navigator.clipboard.readText());
+		expect(pointer).toMatch(/^nevent1/);
+		expect(decode(pointer)).toEqual({
+			type: 'nevent',
+			data: {
+				id: '1'.repeat(64),
+				relays: [],
+				author: textEventPubkey,
+				kind: ShortTextNote
+			}
+		});
+	});
+
+	test('copies addressable events as naddr', async ({ page, context }) => {
+		await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
+			origin: 'http://localhost:4173'
+		});
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [30000], limit: 20 }]
+		});
+
+		const article = deckColumns(page)
+			.first()
+			.locator('article')
+			.filter({ hasText: 'Addressable timeline event' });
+		await article.getByRole('button', { name: 'Post menu' }).click();
+		await page.getByRole('button', { name: 'View event JSON' }).click();
+
+		const dialog = page.getByRole('dialog', { name: 'Event JSON' });
+		await expect(dialog.getByRole('button', { name: 'Copy naddr' })).toBeVisible();
+		await expect(dialog.getByRole('button', { name: 'Copy nevent' })).toHaveCount(0);
+		await dialog.getByRole('button', { name: 'Copy naddr' }).click();
+		const pointer = await page.evaluate(() => navigator.clipboard.readText());
+		expect(pointer).toMatch(/^naddr1/);
+		expect(decode(pointer)).toEqual({
+			type: 'naddr',
+			data: {
+				identifier: 'favorites',
+				pubkey: 'd'.repeat(64),
+				kind: 30000,
+				relays: []
+			}
+		});
 	});
 
 	test('hides and reveals NIP-36 content across timeline, profile, thread, and quotes', async ({

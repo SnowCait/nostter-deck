@@ -82,6 +82,8 @@ export type MessageKey =
 	| 'source_event'
 	| 'referenced_event'
 	| 'copy_json'
+	| 'copy_nevent'
+	| 'copy_naddr'
 	| 'copied'
 	| 'copy_failed'
 	| 'mute_user'

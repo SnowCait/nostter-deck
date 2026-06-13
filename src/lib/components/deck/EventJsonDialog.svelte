@@ -4,6 +4,7 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { FontSizeTextClasses } from '$lib/font-size';
+	import { encodeEventPointer } from '$lib/nostr/nip19';
 
 	type EventEntry = {
 		key: 'source' | 'referenced';
@@ -19,11 +20,12 @@
 
 	let { isOpen = $bindable(), entries, textClass }: Props = $props();
 	let selectedKey = $state<EventEntry['key']>('source');
-	let copyStatus = $state<'idle' | 'copied' | 'failed'>('idle');
+	let copyStatus = $state<'idle' | 'json' | 'pointer' | 'failed'>('idle');
 	let copyStatusTimeout: ReturnType<typeof setTimeout> | undefined;
 
 	const selectedEntry = $derived(entries.find((entry) => entry.key === selectedKey) ?? entries[0]);
 	const formattedJson = $derived(selectedEntry ? JSON.stringify(selectedEntry.event, null, 2) : '');
+	const eventPointer = $derived(selectedEntry ? encodeEventPointer(selectedEntry.event) : null);
 
 	$effect(() => {
 		if (!isOpen) {
@@ -37,11 +39,11 @@
 		clearCopyStatus();
 	}
 
-	async function copyJson() {
+	async function copyValue(value: string, status: 'json' | 'pointer') {
 		clearCopyStatus();
 		try {
-			await navigator.clipboard.writeText(formattedJson);
-			copyStatus = 'copied';
+			await navigator.clipboard.writeText(value);
+			copyStatus = status;
 		} catch {
 			copyStatus = 'failed';
 		}
@@ -108,22 +110,42 @@
 					>
 						{selectedEntry?.label}
 					</span>
-					<button
-						type="button"
-						class={[
-							'flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 font-semibold text-slate-600 transition hover:bg-slate-200 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white',
-							textClass.control
-						]}
-						onclick={copyJson}
-					>
-						{#if copyStatus === 'copied'}
-							<Check class="size-4" aria-hidden="true" />
-							{m.copied()}
-						{:else}
-							<Clipboard class="size-4" aria-hidden="true" />
-							{m.copy_json()}
+					<div class="flex shrink-0 flex-wrap justify-end gap-1">
+						{#if eventPointer}
+							<button
+								type="button"
+								class={[
+									'flex items-center gap-1.5 rounded-md px-2 py-1 font-semibold text-slate-600 transition hover:bg-slate-200 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white',
+									textClass.control
+								]}
+								onclick={() => copyValue(eventPointer.value, 'pointer')}
+							>
+								{#if copyStatus === 'pointer'}
+									<Check class="size-4" aria-hidden="true" />
+									{m.copied()}
+								{:else}
+									<Clipboard class="size-4" aria-hidden="true" />
+									{eventPointer.type === 'naddr' ? m.copy_naddr() : m.copy_nevent()}
+								{/if}
+							</button>
 						{/if}
-					</button>
+						<button
+							type="button"
+							class={[
+								'flex items-center gap-1.5 rounded-md px-2 py-1 font-semibold text-slate-600 transition hover:bg-slate-200 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white',
+								textClass.control
+							]}
+							onclick={() => copyValue(formattedJson, 'json')}
+						>
+							{#if copyStatus === 'json'}
+								<Check class="size-4" aria-hidden="true" />
+								{m.copied()}
+							{:else}
+								<Clipboard class="size-4" aria-hidden="true" />
+								{m.copy_json()}
+							{/if}
+						</button>
+					</div>
 				</div>
 				<pre
 					data-testid="event-json"
@@ -132,7 +154,11 @@
 					></pre>
 			</div>
 			<p class="sr-only" aria-live="polite">
-				{copyStatus === 'copied' ? m.copied() : copyStatus === 'failed' ? m.copy_failed() : ''}
+				{copyStatus === 'json' || copyStatus === 'pointer'
+					? m.copied()
+					: copyStatus === 'failed'
+						? m.copy_failed()
+						: ''}
 			</p>
 		</div>
 	</Dialog.Content>

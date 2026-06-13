@@ -285,7 +285,7 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 				sig: '0'.repeat(128)
 			};
 			const namedAddressableListEvent = {
-				id: 'event-addressable-list-named',
+				id: '8'.repeat(64),
 				pubkey: addressableListAuthorPubkey,
 				created_at: Math.floor(Date.now() / 1000) - 180,
 				kind: 30000,
@@ -293,7 +293,7 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 					['d', 'favorites'],
 					['p', textEvent.pubkey]
 				],
-				content: '',
+				content: 'Addressable timeline event',
 				sig: '0'.repeat(128)
 			};
 			const profileEvent = {
@@ -475,6 +475,13 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 							filter.authors?.includes(addressableListAuthorPubkey) &&
 							filter['#d']?.includes('favorites')
 					);
+					const requestsAddressableTimeline = filters.some(
+						(filter) =>
+							matchesFilterTime(namedAddressableListEvent, filter) &&
+							filter.kinds?.includes(30000) &&
+							!filter.authors &&
+							!filter['#d']
+					);
 
 					if (requestsTextEvents) {
 						setTimeout(() => {
@@ -610,6 +617,12 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 							this.emitMessage(['EVENT', subId, namedAddressableListEvent]);
 							this.emitMessage(['EOSE', subId]);
 						}, 10);
+					}
+
+					if (requestsAddressableTimeline) {
+						setTimeout(() => {
+							this.emitMessage(['EVENT', subId, namedAddressableListEvent]);
+						}, 5);
 					}
 				}
 

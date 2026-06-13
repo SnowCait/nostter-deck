@@ -1,5 +1,6 @@
-import { ChannelCreation } from 'nostr-tools/kinds';
-import { decode, npubEncode } from 'nostr-tools/nip19';
+import { ChannelCreation, isAddressableKind, isReplaceableKind } from 'nostr-tools/kinds';
+import { decode, naddrEncode, neventEncode, npubEncode } from 'nostr-tools/nip19';
+import type * as Nostr from 'nostr-typedef';
 import { normalizeRelay } from './relays';
 
 export type ProfilePointer = {
@@ -20,6 +21,11 @@ export type ChannelPointer = {
 };
 
 const eventIdPattern = /^[0-9a-f]{64}$/i;
+
+export type EncodedEventPointer = {
+	type: 'nevent' | 'naddr';
+	value: string;
+};
 
 export function decodeProfilePointer(value: string): ProfilePointer | null {
 	try {
@@ -82,4 +88,44 @@ export function decodeChannelPointer(value: string): ChannelPointer | null {
 
 export function encodeNpub(pubkey: string) {
 	return npubEncode(pubkey);
+}
+
+export function encodeEventPointer(event: Nostr.Event): EncodedEventPointer | null {
+	if (
+		!eventIdPattern.test(event.id) ||
+		!eventIdPattern.test(event.pubkey) ||
+		!Number.isSafeInteger(event.kind) ||
+		event.kind < 0
+	) {
+		return null;
+	}
+
+	try {
+		const identifier = isReplaceableKind(event.kind)
+			? ''
+			: isAddressableKind(event.kind)
+				? event.tags.find((tag) => tag[0] === 'd')?.[1]
+				: undefined;
+		if (identifier !== undefined) {
+			return {
+				type: 'naddr',
+				value: naddrEncode({
+					identifier,
+					pubkey: event.pubkey,
+					kind: event.kind
+				})
+			};
+		}
+
+		return {
+			type: 'nevent',
+			value: neventEncode({
+				id: event.id,
+				author: event.pubkey,
+				kind: event.kind
+			})
+		};
+	} catch {
+		return null;
+	}
 }
