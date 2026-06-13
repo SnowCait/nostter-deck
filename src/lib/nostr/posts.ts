@@ -40,7 +40,6 @@ export function repostEventToPost(
 		return {
 			...createPost(repostEvent, repostProfile),
 			body: '',
-			tags: [],
 			mutePubkeys,
 			referenceType: 'repost',
 			contexts: [context],
@@ -90,7 +89,6 @@ export function reactionEventToPost(
 		return {
 			...createPost(reactionEvent, reactionProfile),
 			body: '',
-			tags: [],
 			mutePubkeys,
 			referenceType: 'reaction',
 			contexts: [context],
@@ -127,7 +125,6 @@ function createPost(event: Nostr.Event, profile?: Profile): Post {
 			event.kind === ShortTextNote || event.kind === ChannelMessage
 				? parseCustomEmojis(event.tags)
 				: [],
-		tags: getDisplayHashtags(event.tags),
 		mutePubkeys: [event.pubkey],
 		...(contentWarning ? { contentWarning } : {}),
 		verified: false,
@@ -236,11 +233,6 @@ function getReactionContent(event: Nostr.Event) {
 
 function isLikeReaction(content: string) {
 	return content.trim() === '' || content.trim() === '+';
-}
-
-function getDisplayHashtags(tags: Nostr.Event['tags']) {
-	const displayHashtags = tags.flatMap((tag) => (tag[0] === 't' && tag[1] ? [`#${tag[1]}`] : []));
-	return [...new Set(displayHashtags)];
 }
 
 function createPostAuthor(pubkey: string, profile?: Profile) {

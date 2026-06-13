@@ -67,6 +67,36 @@ describe('post content links', () => {
 		]);
 	});
 
+	test('parses hashtags from post text', () => {
+		expect(linkifyPostContent('Hello #nostr, #日本語 and #under_score.')).toEqual([
+			{ type: 'text', text: 'Hello ' },
+			{ type: 'hashtag', text: '#nostr', tag: 'nostr' },
+			{ type: 'text', text: ', ' },
+			{ type: 'hashtag', text: '#日本語', tag: '日本語' },
+			{ type: 'text', text: ' and ' },
+			{ type: 'hashtag', text: '#under_score', tag: 'under_score' },
+			{ type: 'text', text: '.' }
+		]);
+	});
+
+	test('does not parse hashes inside words, URLs, NIP-21 references, or custom emojis', () => {
+		const emoji = { shortcode: 'hash', url: 'https://example.com/#emoji' };
+		const tokens = linkifyPostContent(
+			`word#tag https://example.com/#section ${nostrNevent} :hash: #visible`,
+			[emoji]
+		);
+
+		expect(tokens.filter((token) => token.type === 'hashtag')).toEqual([
+			{ type: 'hashtag', text: '#visible', tag: 'visible' }
+		]);
+		expect(tokens).toContainEqual({
+			type: 'customEmoji',
+			text: ':hash:',
+			shortcode: 'hash',
+			url: 'https://example.com/#emoji'
+		});
+	});
+
 	test('parses custom emoji outside links without changing shortcodes inside URLs', () => {
 		const emoji = { shortcode: 'party', url: 'https://example.com/party.png' };
 		const tokens = linkifyPostContent('Hello :party: https://example.com/:party:/image :unknown:', [

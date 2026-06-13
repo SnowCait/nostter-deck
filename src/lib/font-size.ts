@@ -8,7 +8,6 @@ export type FontSizeTextClasses = {
 	account: string;
 	meta: string;
 	body: string;
-	tag: string;
 	attachment: string;
 	action: string;
 	textarea: string;
@@ -24,7 +23,6 @@ export const textClassByFontSize = {
 		account: 'text-xs',
 		meta: 'text-[11px]',
 		body: 'text-xs leading-5',
-		tag: 'text-[11px]',
 		attachment: 'text-xs leading-5',
 		action: 'text-[11px]',
 		textarea: 'text-sm leading-5',
@@ -38,7 +36,6 @@ export const textClassByFontSize = {
 		account: 'text-sm',
 		meta: 'text-xs',
 		body: 'text-sm leading-5',
-		tag: 'text-xs',
 		attachment: 'text-sm leading-5',
 		action: 'text-xs',
 		textarea: 'text-base leading-6',
@@ -52,7 +49,6 @@ export const textClassByFontSize = {
 		account: 'text-base',
 		meta: 'text-sm',
 		body: 'text-base leading-6',
-		tag: 'text-sm',
 		attachment: 'text-base leading-6',
 		action: 'text-sm',
 		textarea: 'text-lg leading-7',

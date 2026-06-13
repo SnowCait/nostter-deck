@@ -33,6 +33,11 @@ export type PostContentToken =
 			text: string;
 			shortcode: string;
 			url: string;
+	  }
+	| {
+			type: 'hashtag';
+			text: string;
+			tag: string;
 	  };
 
 const nostrReferenceEntityTypes = ['npub', 'nprofile', 'note', 'nevent', 'naddr'] as const;
@@ -48,6 +53,7 @@ const nostrReferencePattern = new RegExp(
 	'i'
 );
 const trailingUrlPunctuationPattern = /[),.;:!?，、。！？）］】]+$/;
+const hashtagPattern = /(^|[^\p{L}\p{N}_])#([\p{L}\p{N}_]+)/gu;
 
 ensureUrlCanParse();
 
@@ -84,7 +90,30 @@ export function linkifyPostContent(
 }
 
 function tokenizeText(text: string, customEmojis: CustomEmoji[]): PostContentToken[] {
-	return tokenizeCustomEmojiText(text, customEmojis);
+	const tokens: PostContentToken[] = [];
+	let currentIndex = 0;
+
+	for (const match of text.matchAll(hashtagPattern)) {
+		const prefix = match[1];
+		const hashtag = match[0].slice(prefix.length);
+		const matchIndex = (match.index ?? 0) + prefix.length;
+
+		if (matchIndex > currentIndex) {
+			tokens.push(...tokenizeCustomEmojiText(text.slice(currentIndex, matchIndex), customEmojis));
+		}
+		tokens.push({
+			type: 'hashtag',
+			text: hashtag,
+			tag: match[2]
+		});
+		currentIndex = matchIndex + hashtag.length;
+	}
+
+	if (currentIndex < text.length) {
+		tokens.push(...tokenizeCustomEmojiText(text.slice(currentIndex), customEmojis));
+	}
+
+	return tokens;
 }
 
 function trimTrailingUrlPunctuation(value: string) {

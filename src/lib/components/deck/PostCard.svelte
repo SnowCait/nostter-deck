@@ -37,6 +37,7 @@
 		onMuteUser?: (pubkey: string) => void;
 		onOpenProfile?: (profile: ProfilePointer) => void;
 		onOpenThread?: (post: Post) => void;
+		onOpenHashtag?: (hashtag: string) => void;
 	};
 
 	const {
@@ -51,7 +52,8 @@
 		isMutedUser = () => false,
 		onMuteUser,
 		onOpenProfile,
-		onOpenThread
+		onOpenThread,
+		onOpenHashtag
 	}: Props = $props();
 	const bodyTokens = $derived(linkifyPostContent(post.body, post.bodyEmojis));
 	let isBodyExpanded = $state(false);
@@ -546,6 +548,14 @@
 												onerror={() => handleEmojiError(token.url)}
 											/>
 										{/if}
+									{:else if token.type === 'hashtag'}
+										<button
+											type="button"
+											class="font-medium text-sky-600 hover:text-sky-700 hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none dark:text-sky-300 dark:hover:text-sky-200"
+											onclick={() => onOpenHashtag?.(token.text)}
+										>
+											{token.text}
+										</button>
 									{:else}
 										<span class="whitespace-pre-wrap">{token.text}</span>
 									{/if}
@@ -574,19 +584,6 @@
 					{/if}
 
 					{#if isPostContentVisible}
-						<div class="mt-2 flex flex-wrap gap-1.5">
-							{#each post.tags as tag (tag)}
-								<span
-									class={[
-										'rounded-md bg-sky-50 px-2 py-1 font-medium text-sky-700 dark:bg-sky-950/60 dark:text-sky-300',
-										textClass.tag
-									]}
-								>
-									{tag}
-								</span>
-							{/each}
-						</div>
-
 						{#if post.attachment}
 							<div
 								class="mt-3 rounded-md border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"

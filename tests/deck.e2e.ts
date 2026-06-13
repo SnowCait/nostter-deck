@@ -7,6 +7,7 @@ import {
 	addCustomTimelineColumn,
 	addPresetColumn,
 	addWebsiteColumn,
+	columnConfigsStorageKey,
 	columnNames,
 	columnOptionsButton,
 	deckColumns,
@@ -994,6 +995,47 @@ test.describe('nostter deck', () => {
 				)
 			)
 			.toBe(quoteRequestCount);
+	});
+
+	test('opens hashtag searches from post content without rendering tag badges', async ({
+		page
+	}) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], search: 'thread-entry', limit: 20 }]
+		});
+
+		const columns = deckColumns(page);
+		const sourceColumn = columns.first();
+		const hashtag = sourceColumn.getByRole('button', { name: '#nostter', exact: true }).first();
+		await expect(hashtag).toBeVisible();
+		await expect(sourceColumn.getByText('#tag-only', { exact: true })).toHaveCount(0);
+
+		await hashtag.click();
+
+		await expect(columns).toHaveCount(3);
+		await expect(columns.nth(1)).toBeFocused();
+		await expect
+			.poll(() =>
+				page.evaluate((key) => {
+					const columns = JSON.parse(localStorage.getItem(key) ?? '[]');
+					return columns.map((column: { sourceKey?: string; query?: string }) => ({
+						sourceKey: column.sourceKey,
+						query: column.query
+					}));
+				}, columnConfigsStorageKey)
+			)
+			.toEqual([
+				{ sourceKey: undefined, query: undefined },
+				{ sourceKey: 'timeline_search', query: '#nostter' },
+				{ sourceKey: undefined, query: undefined }
+			]);
+
+		await hashtag.click();
+		await expect(columns).toHaveCount(3);
+		await expect(columns.nth(1)).toBeFocused();
 	});
 
 	test('allows loopback relays and requests their NIP-11 information', async ({ page }) => {

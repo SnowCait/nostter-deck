@@ -55,6 +55,7 @@
 		onLoadNewerTimeline: () => void;
 		onOpenProfile: (profile: ProfilePointer) => void;
 		onOpenThread: (post: import('$lib/deck/types').Post) => void;
+		onOpenHashtag: (hashtag: string) => void;
 	};
 
 	const {
@@ -86,7 +87,8 @@
 		onLoadOlderTimeline,
 		onLoadNewerTimeline,
 		onOpenProfile,
-		onOpenThread
+		onOpenThread,
+		onOpenHashtag
 	}: Props = $props();
 
 	const columnWidthClassByWidth = {
@@ -340,7 +342,6 @@
 			></iframe>
 		{:else}
 			<TimelineColumnBody
-				{column}
 				{runtime}
 				{isLoggedIn}
 				{textClass}
@@ -355,6 +356,7 @@
 				onLoadNewer={onLoadNewerTimeline}
 				{onOpenProfile}
 				{onOpenThread}
+				{onOpenHashtag}
 			/>
 		{/if}
 	</div>

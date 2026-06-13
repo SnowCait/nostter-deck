@@ -24,6 +24,7 @@
 		onClose: () => void;
 		onOpenProfile: (profile: ProfilePointer) => void;
 		onOpenThread: (post: Post) => void;
+		onOpenHashtag: (hashtag: string) => void;
 	};
 
 	let {
@@ -41,7 +42,8 @@
 		onMuteUser,
 		onClose,
 		onOpenProfile,
-		onOpenThread
+		onOpenThread,
+		onOpenHashtag
 	}: Props = $props();
 </script>
 
@@ -114,6 +116,7 @@
 						{onMuteUser}
 						{onOpenProfile}
 						{onOpenThread}
+						{onOpenHashtag}
 					/>
 				</div>
 			{/each}

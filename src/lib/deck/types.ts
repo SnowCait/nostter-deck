@@ -227,7 +227,6 @@ export type Post = {
 	bodyEmojis: CustomEmoji[];
 	authorEmojis: CustomEmoji[];
 	accent: string;
-	tags: string[];
 	mutePubkeys: string[];
 	contentWarning?: {
 		reason?: string;

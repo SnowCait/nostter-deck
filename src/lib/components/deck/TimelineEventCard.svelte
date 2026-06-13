@@ -24,6 +24,7 @@
 		onMuteUser: (pubkey: string) => void;
 		onOpenProfile: (profile: ProfilePointer) => void;
 		onOpenThread: (post: Post) => void;
+		onOpenHashtag: (hashtag: string) => void;
 	};
 
 	const {
@@ -39,7 +40,8 @@
 		isMutedUser,
 		onMuteUser,
 		onOpenProfile,
-		onOpenThread
+		onOpenThread,
+		onOpenHashtag
 	}: Props = $props();
 
 	const event = $derived(getEvent(eventId));
@@ -91,5 +93,6 @@
 		{onMuteUser}
 		{onOpenProfile}
 		{onOpenThread}
+		{onOpenHashtag}
 	/>
 {/if}

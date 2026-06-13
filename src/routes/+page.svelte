@@ -370,6 +370,38 @@
 		focusColumn(column.id);
 	}
 
+	async function openHashtagColumn(sourceColumnId: string, hashtag: string) {
+		const query = hashtag.trim();
+		if (!query) return;
+
+		const existingColumn = columnConfigs.find(
+			(column) =>
+				column.type === 'timeline' &&
+				column.timelineKind === 'preset' &&
+				column.sourceKey === 'timeline_search' &&
+				column.query === query
+		);
+		if (existingColumn) {
+			focusColumn(existingColumn.id);
+			return;
+		}
+
+		const sourceIndex = columnConfigs.findIndex((column) => column.id === sourceColumnId);
+		const nextColumn: ColumnConfig = {
+			id: createColumnId(columnConfigs),
+			type: 'timeline',
+			timelineKind: 'preset',
+			sourceKey: 'timeline_search',
+			query,
+			width: 'standard'
+		};
+		const nextColumns = [...columnConfigs];
+		nextColumns.splice(sourceIndex >= 0 ? sourceIndex + 1 : nextColumns.length, 0, nextColumn);
+		setColumnConfigs(nextColumns);
+		await tick();
+		focusColumn(nextColumn.id);
+	}
+
 	async function deleteColumn(columnId: string) {
 		const deletedIndex = columnConfigs.findIndex((column) => column.id === columnId);
 		if (deletedIndex < 0) return;
@@ -783,6 +815,7 @@
 						onMuteUser={muteUser}
 						onOpenProfile={(profile) => void openProfileColumn(column.id, profile)}
 						onOpenThread={(post) => void openThreadColumn(column.id, post)}
+						onOpenHashtag={(hashtag) => void openHashtagColumn(column.id, hashtag)}
 						onToggleSettings={() => toggleColumnSettings(column.id)}
 						onDelete={() => deleteColumn(column.id)}
 						onMoveLeft={() => moveColumn(column.id, -1)}
@@ -816,6 +849,7 @@
 								onClose={() => void closeDetailColumn()}
 								onOpenProfile={(profile) => void openProfileColumn(column.id, profile)}
 								onOpenThread={(post) => void openThreadColumn(column.id, post)}
+								onOpenHashtag={(hashtag) => void openHashtagColumn(column.id, hashtag)}
 							/>
 						{:else}
 							<ProfileColumn
@@ -835,6 +869,7 @@
 								onClose={() => void closeDetailColumn()}
 								onOpenProfile={(profile) => void openProfileColumn(column.id, profile)}
 								onOpenThread={(post) => void openThreadColumn(column.id, post)}
+								onOpenHashtag={(hashtag) => void openHashtagColumn(column.id, hashtag)}
 							/>
 						{/if}
 					{/if}

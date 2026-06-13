@@ -28,6 +28,7 @@
 		onClose: () => void;
 		onOpenProfile: (profile: ProfilePointer) => void;
 		onOpenThread: (post: Post) => void;
+		onOpenHashtag: (hashtag: string) => void;
 	};
 
 	const {
@@ -46,7 +47,8 @@
 		onMuteUser,
 		onClose,
 		onOpenProfile,
-		onOpenThread
+		onOpenThread,
+		onOpenHashtag
 	}: Props = $props();
 	const profile = $derived(getProfile(pubkey));
 	const displayName = $derived(
@@ -214,6 +216,7 @@
 						{onMuteUser}
 						{onOpenProfile}
 						{onOpenThread}
+						{onOpenHashtag}
 					/>
 				{/each}
 			{/if}

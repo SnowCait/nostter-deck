@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages.js';
-	import type { Post, TimelineColumnConfig } from '$lib/deck/types';
+	import type { Post } from '$lib/deck/types';
 	import type { TimelineRuntime } from '$lib/deck/timeline-runtime';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
@@ -9,7 +9,6 @@
 	import TimelineEventCard from './TimelineEventCard.svelte';
 
 	type Props = {
-		column: TimelineColumnConfig;
 		runtime: TimelineRuntime;
 		isLoggedIn: boolean;
 		textClass: FontSizeTextClasses;
@@ -24,10 +23,10 @@
 		onLoadNewer: () => void;
 		onOpenProfile: (profile: ProfilePointer) => void;
 		onOpenThread: (post: Post) => void;
+		onOpenHashtag: (hashtag: string) => void;
 	};
 
 	const {
-		column,
 		runtime,
 		isLoggedIn,
 		textClass,
@@ -41,7 +40,8 @@
 		onLoadOlder,
 		onLoadNewer,
 		onOpenProfile,
-		onOpenThread
+		onOpenThread,
+		onOpenHashtag
 	}: Props = $props();
 	let newerSentinel: HTMLDivElement | undefined = $state();
 	let olderSentinel: HTMLDivElement | undefined = $state();
@@ -124,6 +124,7 @@
 			{onMuteUser}
 			{onOpenProfile}
 			{onOpenThread}
+			{onOpenHashtag}
 		/>
 	{/each}
 	<div bind:this={olderSentinel} class="h-px" aria-hidden="true"></div>
