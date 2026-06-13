@@ -68,7 +68,13 @@ describe('post content links', () => {
 	});
 
 	test('parses hashtags from post text', () => {
-		expect(linkifyPostContent('Hello #nostr, #日本語 and #under_score.')).toEqual([
+		expect(
+			linkifyPostContent(
+				'Hello #nostr, #日本語 and #under_score.',
+				[],
+				['nostr', '日本語', 'under_score']
+			)
+		).toEqual([
 			{ type: 'text', text: 'Hello ' },
 			{ type: 'hashtag', text: '#nostr', tag: 'nostr' },
 			{ type: 'text', text: ', ' },
@@ -79,11 +85,21 @@ describe('post content links', () => {
 		]);
 	});
 
+	test('only parses hashtags declared by t tags, ignoring case', () => {
+		expect(linkifyPostContent('#Nostr #plain #日本語', [], ['nostr', '日本語'])).toEqual([
+			{ type: 'hashtag', text: '#Nostr', tag: 'Nostr' },
+			{ type: 'text', text: ' #plain ' },
+			{ type: 'hashtag', text: '#日本語', tag: '日本語' }
+		]);
+		expect(linkifyPostContent('#nostr')).toEqual([{ type: 'text', text: '#nostr' }]);
+	});
+
 	test('does not parse hashes inside words, URLs, NIP-21 references, or custom emojis', () => {
 		const emoji = { shortcode: 'hash', url: 'https://example.com/#emoji' };
 		const tokens = linkifyPostContent(
 			`word#tag https://example.com/#section ${nostrNevent} :hash: #visible`,
-			[emoji]
+			[emoji],
+			['tag', 'section', 'visible']
 		);
 
 		expect(tokens.filter((token) => token.type === 'hashtag')).toEqual([

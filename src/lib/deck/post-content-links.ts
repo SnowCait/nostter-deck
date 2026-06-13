@@ -59,9 +59,11 @@ ensureUrlCanParse();
 
 export function linkifyPostContent(
 	content: string,
-	customEmojis: CustomEmoji[] = []
+	customEmojis: CustomEmoji[] = [],
+	hashtagTags: string[] = []
 ): PostContentToken[] {
 	const tokens: PostContentToken[] = [];
+	const normalizedHashtagTags = new Set(hashtagTags.map((tag) => tag.toLowerCase()));
 	let currentIndex = 0;
 
 	for (const match of content.matchAll(linkCandidatePattern)) {
@@ -75,7 +77,13 @@ export function linkifyPostContent(
 		}
 
 		if (matchIndex > currentIndex) {
-			tokens.push(...tokenizeText(content.slice(currentIndex, matchIndex), customEmojis));
+			tokens.push(
+				...tokenizeText(
+					content.slice(currentIndex, matchIndex),
+					customEmojis,
+					normalizedHashtagTags
+				)
+			);
 		}
 
 		tokens.push(token);
@@ -83,17 +91,23 @@ export function linkifyPostContent(
 	}
 
 	if (currentIndex < content.length) {
-		tokens.push(...tokenizeText(content.slice(currentIndex), customEmojis));
+		tokens.push(...tokenizeText(content.slice(currentIndex), customEmojis, normalizedHashtagTags));
 	}
 
 	return tokens.length > 0 ? tokens : [{ type: 'text', text: content }];
 }
 
-function tokenizeText(text: string, customEmojis: CustomEmoji[]): PostContentToken[] {
+function tokenizeText(
+	text: string,
+	customEmojis: CustomEmoji[],
+	hashtagTags: Set<string>
+): PostContentToken[] {
 	const tokens: PostContentToken[] = [];
 	let currentIndex = 0;
 
 	for (const match of text.matchAll(hashtagPattern)) {
+		if (!hashtagTags.has(match[2].toLowerCase())) continue;
+
 		const prefix = match[1];
 		const hashtag = match[0].slice(prefix.length);
 		const matchIndex = (match.index ?? 0) + prefix.length;

@@ -79,10 +79,11 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 				kind: shortTextNoteKind,
 				tags: [
 					['t', 'tag-only'],
+					['t', 'nostter'],
 					['emoji', 'deck', postEmojiUrl],
 					['emoji', 'mixed', 'http://example.com/emoji/mixed.png']
 				],
-				content: `Hello from a custom Nostr timeline #nostter :deck: and blocked :mixed: ${imagePreviewUrl} ${imagePreviewUrl} ${linkPreviewUrl} https://example.com/path?from=nostter. www.example.com npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0l98cr`,
+				content: `Hello from a custom Nostr timeline #nostter #not-tagged :deck: and blocked :mixed: ${imagePreviewUrl} ${imagePreviewUrl} ${linkPreviewUrl} https://example.com/path?from=nostter. www.example.com npub1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq0l98cr`,
 				sig: '0'.repeat(128)
 			};
 			const nostrReferenceEvent = {

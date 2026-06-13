@@ -55,7 +55,11 @@
 		onOpenThread,
 		onOpenHashtag
 	}: Props = $props();
-	const bodyTokens = $derived(linkifyPostContent(post.body, post.bodyEmojis));
+	const bodyEvent = $derived(post.events.referenced ?? post.events.source);
+	const bodyHashtags = $derived(
+		bodyEvent.tags.flatMap((tag) => (tag[0] === 't' && tag[1] ? [tag[1]] : []))
+	);
+	const bodyTokens = $derived(linkifyPostContent(post.body, post.bodyEmojis, bodyHashtags));
 	let isBodyExpanded = $state(false);
 	let isImageViewerOpen = $state(false);
 	let currentImageIndex = $state(0);

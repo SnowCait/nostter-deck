@@ -1012,6 +1012,10 @@ test.describe('nostter deck', () => {
 		const sourceColumn = columns.first();
 		const hashtag = sourceColumn.getByRole('button', { name: '#nostter', exact: true }).first();
 		await expect(hashtag).toBeVisible();
+		await expect(sourceColumn.getByText('#not-tagged', { exact: true }).first()).toBeVisible();
+		await expect(
+			sourceColumn.getByRole('button', { name: '#not-tagged', exact: true })
+		).toHaveCount(0);
 		await expect(sourceColumn.getByText('#tag-only', { exact: true })).toHaveCount(0);
 
 		await hashtag.click();
