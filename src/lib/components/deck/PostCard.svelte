@@ -511,6 +511,7 @@
 												{avatarShape}
 												{getProfile}
 												{isMutedUser}
+												{onOpenThread}
 											/>
 										{:else if isProfileReferenceToken(token)}
 											<button

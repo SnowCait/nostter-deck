@@ -771,8 +771,9 @@ test.describe('nostter deck', () => {
 				quoteCards.evaluateAll((cards) => cards.map((card) => card.getBoundingClientRect().height))
 			)
 			.toEqual([112, 112, 112, 112]);
-		await expect(nostrReferenceArticle.locator(`a[href="${nostrNote}"]`)).toHaveCount(1);
-		await expect(nostrReferenceArticle.locator(`a[href="${nostrNevent}"]`)).toHaveCount(1);
+		await expect(nostrReferenceArticle.locator(`a[href="${nostrNote}"]`)).toHaveCount(0);
+		await expect(nostrReferenceArticle.locator(`a[href="${nostrNevent}"]`)).toHaveCount(0);
+		await expect(nostrReferenceArticle.getByRole('button', { name: 'Open thread' })).toHaveCount(2);
 		await expect(nostrReferenceArticle.locator(`a[href="${nostrNaddr}"]`)).toHaveText(nostrNaddr);
 		await expect
 			.poll(() =>
@@ -1285,6 +1286,52 @@ test.describe('nostter deck', () => {
 				kind: ShortTextNote
 			}
 		});
+	});
+
+	test('opens a loaded quote thread and keeps unsupported quotes as external links', async ({
+		page
+	}) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], limit: 20 }]
+		});
+
+		const sourceColumn = deckColumns(page).first();
+		const referencesArticle = sourceColumn
+			.locator('article')
+			.filter({ hasText: 'NIP-21 references' });
+		const quote = referencesArticle
+			.getByTestId('nostr-quote')
+			.filter({ hasText: 'Quoted short text note' })
+			.first();
+
+		await expect(quote).toHaveRole('button');
+		await expect(quote).toHaveAccessibleName('Open thread');
+		await quote.click();
+
+		const threadColumn = page.getByTestId('thread-column');
+		await expect(threadColumn).toBeVisible();
+		await expect(threadColumn.getByText('Quoted short text note')).toBeVisible();
+		await expect(sourceColumn.locator('xpath=following-sibling::*[1]')).toHaveAttribute(
+			'data-testid',
+			'thread-column'
+		);
+
+		await quote.click();
+		await expect(threadColumn).toHaveCount(0);
+
+		const channelQuote = referencesArticle
+			.getByTestId('nostr-quote')
+			.filter({ hasText: 'Quoted channel message' });
+		await expect(channelQuote).toHaveRole('link');
+		await expect(channelQuote).toHaveAttribute('target', '_blank');
+
+		const unavailableQuote = referencesArticle
+			.getByTestId('nostr-quote')
+			.filter({ hasText: 'nostr:nevent1qqsrx' });
+		await expect(unavailableQuote).toHaveRole('link');
+		await expect(unavailableQuote).toHaveAttribute('target', '_blank');
 	});
 
 	test('copies addressable events as naddr', async ({ page, context }) => {
