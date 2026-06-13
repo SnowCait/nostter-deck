@@ -1,14 +1,16 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages.js';
-	import type { TimelineColumn } from '$lib/deck/types';
+	import type { Post, TimelineColumnConfig } from '$lib/deck/types';
+	import type { TimelineRuntime } from '$lib/deck/timeline-runtime';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape } from '$lib/user-settings';
 	import type { Profile } from '$lib/nostr/profiles';
-	import PostCard from './PostCard.svelte';
+	import TimelineEventCard from './TimelineEventCard.svelte';
 
 	type Props = {
-		column: TimelineColumn;
+		column: TimelineColumnConfig;
+		runtime: TimelineRuntime;
 		isLoggedIn: boolean;
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
@@ -21,11 +23,12 @@
 		onLoadOlder: () => void;
 		onLoadNewer: () => void;
 		onOpenProfile: (profile: ProfilePointer) => void;
-		onOpenThread: (post: import('$lib/deck/types').Post) => void;
+		onOpenThread: (post: Post) => void;
 	};
 
 	const {
 		column,
+		runtime,
 		isLoggedIn,
 		textClass,
 		avatarShape,
@@ -43,6 +46,14 @@
 	let newerSentinel: HTMLDivElement | undefined = $state();
 	let olderSentinel: HTMLDivElement | undefined = $state();
 
+	function getEvent(eventId: string) {
+		return runtime.loadedEventsById[eventId];
+	}
+
+	function isReferenceUnavailable(eventId: string) {
+		return runtime.unavailableReferenceEventIds.includes(eventId);
+	}
+
 	$effect(() => {
 		if (!scrollRoot) return;
 
@@ -51,10 +62,10 @@
 				for (const entry of entries) {
 					if (!entry.isIntersecting) continue;
 
-					if (entry.target === newerSentinel && column.hasNewerStored && !column.isLoadingNewer) {
+					if (entry.target === newerSentinel && runtime.hasNewerStored && !runtime.isLoadingNewer) {
 						onLoadNewer();
 					}
-					if (entry.target === olderSentinel && column.hasOlderStored && !column.isLoadingOlder) {
+					if (entry.target === olderSentinel && runtime.hasOlderStored && !runtime.isLoadingOlder) {
 						onLoadOlder();
 					}
 				}
@@ -69,16 +80,16 @@
 	});
 </script>
 
-{#if column.error}
+{#if runtime.error}
 	<div
 		class={[
 			'flex h-full items-center justify-center p-6 text-center font-semibold text-rose-600 dark:text-rose-400',
 			textClass.control
 		]}
 	>
-		{m.custom_timeline_error({ message: column.error })}
+		{m.custom_timeline_error({ message: runtime.error })}
 	</div>
-{:else if column.isLoading && column.posts.length === 0}
+{:else if runtime.isLoading && runtime.visibleEventIds.length === 0}
 	<div
 		class={[
 			'flex h-full items-center justify-center p-6 text-center text-slate-500 dark:text-slate-400',
@@ -87,7 +98,7 @@
 	>
 		{m.custom_timeline_loading()}
 	</div>
-{:else if column.posts.length === 0}
+{:else if runtime.visibleEventIds.length === 0}
 	<div
 		class={[
 			'flex h-full items-center justify-center p-6 text-center text-slate-500 dark:text-slate-400',
@@ -98,16 +109,17 @@
 	</div>
 {:else}
 	<div bind:this={newerSentinel} class="h-px" aria-hidden="true"></div>
-	{#each column.posts as post (post.id ?? `${column.id}-${post.author}-${post.time}`)}
-		<PostCard
-			{post}
+	{#each runtime.visibleEventIds as eventId (eventId)}
+		<TimelineEventCard
+			{eventId}
+			{getEvent}
+			{isReferenceUnavailable}
 			{isLoggedIn}
 			{textClass}
 			{avatarShape}
 			{getProfile}
 			{requestProfiles}
 			{profileRelays}
-			isMuted={post.mutePubkeys.some(isMutedUser)}
 			{isMutedUser}
 			{onMuteUser}
 			{onOpenProfile}

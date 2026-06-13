@@ -6,12 +6,13 @@
 	import { getColumnTitle } from '$lib/deck/column-title';
 	import { columnWidths } from '$lib/deck/column-configs';
 	import type {
-		Column,
+		ColumnConfig,
 		ColumnIconKey,
 		ColumnWidth,
 		NostrFilter,
 		RelaySelection
 	} from '$lib/deck/types';
+	import type { TimelineRuntime } from '$lib/deck/timeline-runtime';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape } from '$lib/user-settings';
@@ -25,7 +26,8 @@
 	import TimelineColumnBody from './TimelineColumnBody.svelte';
 
 	type Props = {
-		column: Column;
+		column: ColumnConfig;
+		runtime: TimelineRuntime;
 		id: string;
 		isLoggedIn: boolean;
 		isSettingsOpen: boolean;
@@ -57,6 +59,7 @@
 
 	const {
 		column,
+		runtime,
 		id,
 		isLoggedIn,
 		isSettingsOpen,
@@ -144,10 +147,10 @@
 
 		const element = event.currentTarget as HTMLDivElement;
 		const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
-		if (element.scrollTop <= 8 && column.hasNewerStored && !column.isLoadingNewer) {
+		if (element.scrollTop <= 8 && runtime.hasNewerStored && !runtime.isLoadingNewer) {
 			onLoadNewerTimeline();
 		}
-		if (distanceFromBottom <= 8 && column.hasOlderStored && !column.isLoadingOlder) {
+		if (distanceFromBottom <= 8 && runtime.hasOlderStored && !runtime.isLoadingOlder) {
 			onLoadOlderTimeline();
 		}
 	}
@@ -338,6 +341,7 @@
 		{:else}
 			<TimelineColumnBody
 				{column}
+				{runtime}
 				{isLoggedIn}
 				{textClass}
 				{avatarShape}

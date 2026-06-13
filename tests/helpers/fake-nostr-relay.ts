@@ -13,6 +13,7 @@ declare global {
 		__nostterFakeRelaySearchRequests?: Record<string, number>;
 		__nostterFakeRelayTimelineAuthorRequests?: Record<string, number>;
 		__nostterFakeRelayNip11Requests?: string[];
+		__nostterFakeRelayEmitSearchEvent?: (search: string, event: unknown) => void;
 	}
 }
 
@@ -27,6 +28,7 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 			const relaySearchRequests: Record<string, number> = {};
 			const relayTimelineAuthorRequests: Record<string, number> = {};
 			const relayNip11Requests: string[] = [];
+			const relaySockets = new Set<FakeWebSocket>();
 			const nativeFetch = window.fetch.bind(window);
 			window.fetch = async (input, init) => {
 				const request = input instanceof Request ? input : null;
@@ -343,6 +345,12 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 
 				readyState = FakeWebSocket.CONNECTING;
 				url: string;
+				subscriptions = new Map<
+					string,
+					Array<{
+						search?: string;
+					}>
+				>();
 				listeners: Record<string, Set<(event?: unknown) => void>> = {
 					open: new Set(),
 					message: new Set(),
@@ -351,6 +359,7 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 
 				constructor(url: string) {
 					this.url = url;
+					relaySockets.add(this);
 					relayConnections[url] = (relayConnections[url] ?? 0) + 1;
 					setTimeout(() => {
 						this.readyState = FakeWebSocket.OPEN;
@@ -368,7 +377,12 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 
 				send(data: string) {
 					const message = JSON.parse(data);
-					if (!Array.isArray(message) || message[0] !== 'REQ') return;
+					if (!Array.isArray(message)) return;
+					if (message[0] === 'CLOSE') {
+						this.subscriptions.delete(message[1]);
+						return;
+					}
+					if (message[0] !== 'REQ') return;
 
 					const subId = message[1] as string;
 					const filters = message.slice(2) as Array<{
@@ -381,6 +395,7 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 						since?: number;
 						until?: number;
 					}>;
+					this.subscriptions.set(subId, filters);
 					const matchesFilterTime = (
 						event: { created_at: number },
 						filter: { since?: number; until?: number }
@@ -628,6 +643,7 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 
 				close(code = 1000) {
 					this.readyState = FakeWebSocket.CLOSED;
+					relaySockets.delete(this);
 					this.dispatch('close', { type: 'close', code, reason: '' });
 				}
 
@@ -655,6 +671,14 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 			window.__nostterFakeRelaySearchRequests = relaySearchRequests;
 			window.__nostterFakeRelayTimelineAuthorRequests = relayTimelineAuthorRequests;
 			window.__nostterFakeRelayNip11Requests = relayNip11Requests;
+			window.__nostterFakeRelayEmitSearchEvent = (search, event) => {
+				for (const socket of relaySockets) {
+					for (const [subId, filters] of socket.subscriptions) {
+						if (!filters.some((filter) => filter.search === search)) continue;
+						socket.emitMessage(['EVENT', subId, event]);
+					}
+				}
+			};
 		},
 		{
 			failNip11: options.failNip11 === true,

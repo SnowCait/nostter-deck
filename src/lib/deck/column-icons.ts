@@ -1,4 +1,4 @@
-import type { Column, ColumnConfig, ColumnIconKey } from './types';
+import type { ColumnConfig, ColumnIconKey } from './types';
 
 export const columnIconKeys = ['users', 'search', 'messages', 'radio', 'globe'] as const;
 
@@ -15,6 +15,6 @@ export function getDefaultColumnIconKey(column: ColumnConfig): ColumnIconKey {
 	return 'search';
 }
 
-export function getColumnIconKey(column: Column): ColumnIconKey {
+export function getColumnIconKey(column: ColumnConfig): ColumnIconKey {
 	return column.icon ?? getDefaultColumnIconKey(column);
 }

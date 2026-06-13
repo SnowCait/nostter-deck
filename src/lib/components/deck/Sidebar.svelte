@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { PanelLeftClose, PanelLeftOpen, Plus, Send, Settings, UserRound } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
-	import type { Column } from '$lib/deck/types';
+	import type { ColumnConfig } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { Profile } from '$lib/nostr/profiles';
 	import { readUiState, updateUiState } from '$lib/ui-state';
@@ -11,7 +11,7 @@
 	import SettingsDialog from './SettingsDialog.svelte';
 
 	type Props = {
-		columns: Column[];
+		columns: ColumnConfig[];
 		activeColumnId: string;
 		isLoggedIn: boolean;
 		onAddColumn: () => void;

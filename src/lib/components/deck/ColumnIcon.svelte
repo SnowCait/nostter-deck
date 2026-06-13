@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { getColumnIconKey } from '$lib/deck/column-icons';
-	import type { Column } from '$lib/deck/types';
+	import type { ColumnConfig } from '$lib/deck/types';
 	import ColumnIconGlyph from './ColumnIconGlyph.svelte';
 
 	type Props = {
-		column: Column;
+		column: ColumnConfig;
 		iconClass: string;
 	};
 

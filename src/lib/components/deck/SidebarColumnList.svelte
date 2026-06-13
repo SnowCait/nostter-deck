@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { getColumnTitle } from '$lib/deck/column-title';
-	import type { Column } from '$lib/deck/types';
+	import type { ColumnConfig } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import { m } from '$lib/paraglide/messages.js';
 	import ColumnIcon from './ColumnIcon.svelte';
 
 	type Props = {
-		columns: Column[];
+		columns: ColumnConfig[];
 		activeColumnId: string;
 		isCollapsed: boolean;
 		textClass: FontSizeTextClasses;

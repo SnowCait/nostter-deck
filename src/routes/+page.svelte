@@ -13,8 +13,7 @@
 	import {
 		emptyTimelineRuntime,
 		getTimelineRequest,
-		timelineRuntimeToPosts,
-		toRuntimeColumn
+		timelineRuntimeToPosts
 	} from '$lib/deck/timeline-runtime';
 	import {
 		addProfilePostEvent,
@@ -23,14 +22,7 @@
 	} from '$lib/deck/profile-post-runtime';
 	import { resetSessionTimelineCache } from '$lib/deck/timeline-cache';
 	import { createTimelineController } from '$lib/deck/timeline-controller.svelte';
-	import type {
-		Column,
-		ColumnConfig,
-		ColumnIconKey,
-		ColumnWidth,
-		Post,
-		ThreadPost
-	} from '$lib/deck/types';
+	import type { ColumnConfig, ColumnIconKey, ColumnWidth, Post, ThreadPost } from '$lib/deck/types';
 	import {
 		saveChannelSettings as saveChannelSettingsConfig,
 		saveCustomTimelineSettings as saveCustomTimelineSettingsConfig,
@@ -73,6 +65,7 @@
 	const savedColumnConfigs = readColumnConfigs();
 	const isLoggedIn = (globalThis as NostrDeckGlobal).__NOSTTER_DECK_IS_LOGGED_IN__ === true;
 	const defaultProfileRelays = [...profileRelays];
+	const emptyColumnRuntime = emptyTimelineRuntime();
 
 	let columnConfigs = $state<ColumnConfig[]>(savedColumnConfigs.map((column) => ({ ...column })));
 	let activeColumnId = $state(savedColumnConfigs[0]?.id ?? '');
@@ -108,16 +101,6 @@
 		getColumnConfigs: () => columnConfigs,
 		isReady: () => isTimelineCacheReady
 	});
-	const columns = $derived<Column[]>(
-		columnConfigs.map((column) =>
-			toRuntimeColumn(
-				column,
-				timelineController.runtimes[column.id] ?? emptyTimelineRuntime(),
-				getProfile,
-				isMutedUser
-			)
-		)
-	);
 	const threadPosts = $derived<ThreadPost[]>(
 		threadSelectedEvent
 			? buildThreadEvents(
@@ -641,7 +624,7 @@
 	class="app-shell flex min-h-0 overflow-hidden bg-[#eef3f7] text-slate-950 dark:bg-slate-950 dark:text-slate-50"
 >
 	<Sidebar
-		{columns}
+		columns={columnConfigs}
 		{activeColumnId}
 		{isLoggedIn}
 		onAddColumn={openAddColumnDialog}
@@ -781,10 +764,11 @@
 	<section class="flex min-w-0 flex-1 flex-col">
 		<div class="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
 			<div class="flex h-full min-w-max">
-				{#each columns as column (column.id)}
+				{#each columnConfigs as column (column.id)}
 					{@const columnIndex = getColumnIndex(column.id)}
 					<DeckColumn
 						{column}
+						runtime={timelineController.runtimes[column.id] ?? emptyColumnRuntime}
 						id={getColumnId(column.id)}
 						{isLoggedIn}
 						isSettingsOpen={openSettingsColumnId === column.id}

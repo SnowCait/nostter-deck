@@ -741,6 +741,19 @@ test.describe('nostter deck', () => {
 				.getByTestId('post-body')
 				.getByRole('button', { name: "Open npub1lllllll's profile" })
 		).toHaveText('@npub1lllllll');
+		const quoteCards = nostrReferenceArticle.getByTestId('nostr-quote');
+		await expect(quoteCards).toHaveCount(4);
+		await expect(quoteCards.filter({ hasText: 'Quoted short text note' })).toHaveCount(2);
+		await expect(quoteCards.filter({ hasText: 'Quoted channel message' })).toHaveCount(1);
+		await expect(quoteCards.filter({ hasText: 'nostr:nevent1qqsrx' })).toHaveCount(1);
+		await expect
+			.poll(() =>
+				page.evaluate(
+					(eventId) => window.__nostterFakeRelayEventIdRequests?.[eventId] ?? 0,
+					'1'.repeat(64)
+				)
+			)
+			.toBe(3);
 
 		for (const profileMention of [profileMentions.first(), profileMentions.last()]) {
 			await profileMention.click();
@@ -750,12 +763,8 @@ test.describe('nostter deck', () => {
 			await profileMention.click();
 			await expect(profileColumn).toHaveCount(0);
 		}
-		await expect(customColumn.locator(`a[href="${nostrFallbackNpub}"]`)).toHaveCount(0);
-		const quoteCards = nostrReferenceArticle.getByTestId('nostr-quote');
-		await expect(quoteCards).toHaveCount(4);
 		await expect(quoteCards.filter({ hasText: 'Quoted short text note' })).toHaveCount(2);
-		await expect(quoteCards.filter({ hasText: 'Quoted channel message' })).toHaveCount(1);
-		await expect(quoteCards.filter({ hasText: 'nostr:nevent1qqsrx' })).toHaveCount(1);
+		await expect(customColumn.locator(`a[href="${nostrFallbackNpub}"]`)).toHaveCount(0);
 		await expect
 			.poll(async () =>
 				quoteCards.evaluateAll((cards) => cards.map((card) => card.getBoundingClientRect().height))
@@ -932,6 +941,59 @@ test.describe('nostter deck', () => {
 		await expect
 			.poll(async () => fakeRelayConnectionCounts(page, expectedProfileRelayUrls))
 			.toEqual(expectedProfileRelayConnections);
+	});
+
+	test('keeps existing quote DOM when another timeline receives a live event', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], search: 'live-target', limit: 20 }]
+		});
+
+		const columns = deckColumns(page);
+		const quote = columns
+			.first()
+			.locator('article')
+			.filter({ hasText: 'NIP-21 references' })
+			.getByTestId('nostr-quote')
+			.filter({ hasText: 'Quoted short text note' })
+			.first();
+		await expect(quote).toBeVisible();
+		await quote.evaluate((element) => {
+			element.setAttribute('data-preserved-quote', 'true');
+		});
+		const quoteRequestCount = await page.evaluate(
+			(eventId) => window.__nostterFakeRelayEventIdRequests?.[eventId] ?? 0,
+			'1'.repeat(64)
+		);
+
+		await page.evaluate(
+			({ search, event }) => window.__nostterFakeRelayEmitSearchEvent?.(search, event),
+			{
+				search: 'live-target',
+				event: {
+					id: '9'.repeat(64),
+					pubkey: 'e'.repeat(64),
+					created_at: Math.floor(Date.now() / 1000) + 1,
+					kind: ShortTextNote,
+					tags: [],
+					content: 'Live event in second timeline',
+					sig: '0'.repeat(128)
+				}
+			}
+		);
+
+		await expect(columns.nth(1).getByText('Live event in second timeline')).toBeVisible();
+		await expect(quote).toHaveAttribute('data-preserved-quote', 'true');
+		await expect
+			.poll(() =>
+				page.evaluate(
+					(eventId) => window.__nostterFakeRelayEventIdRequests?.[eventId] ?? 0,
+					'1'.repeat(64)
+				)
+			)
+			.toBe(quoteRequestCount);
 	});
 
 	test('allows loopback relays and requests their NIP-11 information', async ({ page }) => {
