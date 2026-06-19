@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount, tick } from 'svelte';
 	import { CalendarClock, Image, Plus, Send, Smile, UserRound } from '@lucide/svelte';
-	import { Repost, ShortTextNote } from 'nostr-tools/kinds';
 	import AddColumnDialog from '$lib/components/deck/AddColumnDialog.svelte';
 	import DeckColumn from '$lib/components/deck/DeckColumn.svelte';
 	import KeyboardShortcutsDialog from '$lib/components/deck/KeyboardShortcutsDialog.svelte';
@@ -10,19 +9,11 @@
 	import ProfileAvatar from '$lib/components/deck/ProfileAvatar.svelte';
 	import Sidebar from '$lib/components/deck/Sidebar.svelte';
 	import { readColumnConfigs, writeColumnConfigs } from '$lib/deck/column-configs';
-	import {
-		emptyTimelineRuntime,
-		getTimelineRequest,
-		timelineRuntimeToPosts
-	} from '$lib/deck/timeline-runtime';
-	import {
-		addProfilePostEvent,
-		addProfileReferencedEvent,
-		markProfileReferencedEventUnavailable
-	} from '$lib/deck/profile-post-runtime';
+	import { emptyTimelineRuntime } from '$lib/deck/timeline-runtime';
 	import { resetSessionTimelineCache } from '$lib/deck/timeline-cache';
+	import { createDetailColumnController } from '$lib/deck/detail-column-controller.svelte';
 	import { createTimelineController } from '$lib/deck/timeline-controller.svelte';
-	import type { ColumnConfig, ColumnIconKey, ColumnWidth, Post, ThreadPost } from '$lib/deck/types';
+	import type { ColumnConfig, ColumnIconKey, ColumnWidth } from '$lib/deck/types';
 	import {
 		saveChannelSettings as saveChannelSettingsConfig,
 		saveCustomTimelineSettings as saveCustomTimelineSettingsConfig,
@@ -41,26 +32,13 @@
 	} from '$lib/muted-users';
 	import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
 	import { getProfile, requestProfiles } from '$lib/nostr/profiles';
-	import { eventToPost, getThreadReference } from '$lib/nostr/posts';
-	import {
-		combineRelays,
-		defaultRelays,
-		profileRelays,
-		resolveRelaySelection
-	} from '$lib/nostr/relays';
-	import { buildThreadEvents, startThreadSubscription } from '$lib/nostr/thread';
-	import { startCustomTimelineSubscription } from '$lib/nostr/timeline';
+	import { profileRelays } from '$lib/nostr/relays';
 	import { m } from '$lib/paraglide/messages.js';
 	import { readUserSettings, type AvatarShape, type FontSize } from '$lib/user-settings';
-	import type * as Nostr from 'nostr-typedef';
 
 	type NostrDeckGlobal = typeof globalThis & {
 		__NOSTTER_DECK_IS_LOGGED_IN__?: boolean;
 	};
-
-	type DetailColumn =
-		| { type: 'thread'; sourceColumnId: string; eventId: string }
-		| { type: 'profile'; sourceColumnId: string; pubkey: string };
 
 	const savedColumnConfigs = readColumnConfigs();
 	const isLoggedIn = (globalThis as NostrDeckGlobal).__NOSTTER_DECK_IS_LOGGED_IN__ === true;
@@ -78,18 +56,6 @@
 	let fontSize = $state<FontSize>(initialUserSettings.fontSize);
 	let avatarShape = $state<AvatarShape>(initialUserSettings.avatarShape);
 	let isTimelineCacheReady = $state(false);
-	let detailColumn = $state<DetailColumn | null>(null);
-	let threadSelectedEvent = $state<Nostr.Event | null>(null);
-	let threadEvents = $state<Nostr.Event[]>([]);
-	let isThreadLoading = $state(false);
-	let threadError = $state<string | null>(null);
-	let threadSubscription: { stop: () => void } | null = null;
-	let threadRequestId = 0;
-	let profilePostRuntimes = $state<
-		Record<string, import('$lib/deck/timeline-runtime').TimelineRuntime>
-	>({});
-	let profilePostSubscription: { stop: () => void } | null = null;
-	let profilePostRequestId = 0;
 	let mutedPubkeys = $state(readMutedPubkeys());
 	const lastFocusedPostKeyByColumnId: Record<string, string> = {};
 
@@ -101,26 +67,13 @@
 		getColumnConfigs: () => columnConfigs,
 		isReady: () => isTimelineCacheReady
 	});
-	const threadPosts = $derived<ThreadPost[]>(
-		threadSelectedEvent
-			? buildThreadEvents(
-					threadEvents,
-					getThreadReference(threadSelectedEvent)?.rootId ?? threadSelectedEvent.id
-				).map(({ event, depth }) => ({
-					post: eventToPost(event, getProfile(event.pubkey)),
-					depth,
-					isMuted: isMutedUser(event.pubkey)
-				}))
-			: []
-	);
-	const profilePosts = $derived(
-		detailColumn?.type === 'profile'
-			? timelineRuntimeToPosts(
-					profilePostRuntimes[detailColumn.pubkey] ?? emptyTimelineRuntime(),
-					getProfile
-				)
-			: []
-	);
+	const detailController = createDetailColumnController({
+		getColumnConfigs: () => columnConfigs,
+		getProfile,
+		isMutedUser,
+		requestProfiles,
+		focusColumn
+	});
 
 	onMount(() => {
 		void resetSessionTimelineCache().then(() => {
@@ -130,8 +83,7 @@
 
 	onDestroy(() => {
 		timelineController.stop();
-		threadSubscription?.stop();
-		profilePostSubscription?.stop();
+		detailController.stop();
 	});
 
 	function getColumnId(columnId: string) {
@@ -270,9 +222,9 @@
 		if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
 		if (isKeyboardOverlayOpen()) return;
 
-		if (event.key === 'Escape' && detailColumn) {
+		if (event.key === 'Escape' && detailController.detailColumn) {
 			event.preventDefault();
-			void closeDetailColumn();
+			void detailController.close();
 			return;
 		}
 
@@ -408,7 +360,9 @@
 
 		const nextColumns = columnConfigs.filter((column) => column.id !== columnId);
 		setColumnConfigs(nextColumns);
-		if (detailColumn?.sourceColumnId === columnId) closeDetailColumn(false);
+		if (detailController.detailColumn?.sourceColumnId === columnId) {
+			void detailController.close({ restoreFocus: false });
+		}
 		openSettingsColumnId = null;
 
 		if (activeColumnId !== columnId) return;
@@ -420,148 +374,6 @@
 			await tick();
 			focusColumn(nextActiveColumn.id);
 		}
-	}
-
-	async function openThreadColumn(sourceColumnId: string, post: Post) {
-		if (!post.thread) return;
-		if (detailColumn?.type === 'thread' && detailColumn.eventId === post.thread.event.id) {
-			await closeDetailColumn();
-			return;
-		}
-
-		threadSubscription?.stop();
-		profilePostRequestId += 1;
-		profilePostSubscription?.stop();
-		profilePostSubscription = null;
-		const requestId = ++threadRequestId;
-		detailColumn = { type: 'thread', sourceColumnId, eventId: post.thread.event.id };
-		threadSelectedEvent = post.thread.event;
-		threadEvents = [post.thread.event];
-		threadError = null;
-		isThreadLoading = true;
-
-		const sourceColumn = columnConfigs.find((column) => column.id === sourceColumnId);
-		const request = sourceColumn ? getTimelineRequest(sourceColumn) : null;
-		const relays = request ? resolveRelaySelection(request.relays) : [];
-		threadSubscription = startThreadSubscription({
-			selectedEvent: post.thread.event,
-			relays,
-			onEvents: (events) => {
-				if (threadRequestId !== requestId) return;
-				threadEvents = events;
-			},
-			onLoadingChange: (isLoading) => {
-				if (threadRequestId !== requestId) return;
-				isThreadLoading = isLoading;
-			},
-			onError: (message) => {
-				if (threadRequestId !== requestId) return;
-				threadError = message;
-				isThreadLoading = false;
-			}
-		});
-
-		await tick();
-		focusColumn('thread', true);
-	}
-
-	async function openProfileColumn(sourceColumnId: string, profile: ProfilePointer) {
-		if (detailColumn?.type === 'profile' && detailColumn.pubkey === profile.pubkey) {
-			await closeDetailColumn();
-			return;
-		}
-
-		threadRequestId += 1;
-		threadSubscription?.stop();
-		threadSubscription = null;
-		threadSelectedEvent = null;
-		threadEvents = [];
-		threadError = null;
-		isThreadLoading = false;
-
-		const sourceColumn = columnConfigs.find((column) => column.id === sourceColumnId);
-		const request = sourceColumn ? getTimelineRequest(sourceColumn) : null;
-		const sourceRelays = request ? resolveRelaySelection(request.relays) : [];
-		const relays = combineRelays(
-			sourceRelays,
-			profile.relays,
-			[...defaultRelays],
-			defaultProfileRelays
-		);
-		requestProfiles([profile.pubkey], relays);
-		detailColumn = { type: 'profile', sourceColumnId, pubkey: profile.pubkey };
-		startProfilePostSubscription(profile.pubkey, relays);
-
-		await tick();
-		focusColumn('profile', true);
-	}
-
-	async function closeDetailColumn(restoreFocus = true) {
-		const sourceColumnId = detailColumn?.sourceColumnId;
-		threadRequestId += 1;
-		threadSubscription?.stop();
-		threadSubscription = null;
-		profilePostRequestId += 1;
-		profilePostSubscription?.stop();
-		profilePostSubscription = null;
-		detailColumn = null;
-		threadSelectedEvent = null;
-		threadEvents = [];
-		threadError = null;
-		isThreadLoading = false;
-
-		if (restoreFocus && sourceColumnId && columnConfigs.some(({ id }) => id === sourceColumnId)) {
-			await tick();
-			focusColumn(sourceColumnId, true);
-		}
-	}
-
-	function startProfilePostSubscription(pubkey: string, relays: string[]) {
-		profilePostRequestId += 1;
-		const requestId = profilePostRequestId;
-		profilePostSubscription?.stop();
-		const currentRuntime = profilePostRuntimes[pubkey] ?? emptyTimelineRuntime(pubkey);
-		setProfilePostRuntime(pubkey, { ...currentRuntime, isLoading: true, error: null });
-
-		profilePostSubscription = startCustomTimelineSubscription({
-			filters: [{ kinds: [ShortTextNote, Repost], authors: [pubkey], limit: 20 }],
-			relays: { type: 'custom', urls: relays },
-			onEvent: (event) => {
-				if (profilePostRequestId !== requestId) return;
-				const runtime = profilePostRuntimes[pubkey] ?? emptyTimelineRuntime(pubkey);
-				setProfilePostRuntime(pubkey, addProfilePostEvent(runtime, event));
-			},
-			onReferencedEvent: (referenceEventId, event) => {
-				if (profilePostRequestId !== requestId) return;
-				const runtime = profilePostRuntimes[pubkey] ?? emptyTimelineRuntime(pubkey);
-				setProfilePostRuntime(pubkey, addProfileReferencedEvent(runtime, referenceEventId, event));
-			},
-			onReferencedEventUnavailable: (referenceEventId) => {
-				if (profilePostRequestId !== requestId) return;
-				const runtime = profilePostRuntimes[pubkey] ?? emptyTimelineRuntime(pubkey);
-				setProfilePostRuntime(
-					pubkey,
-					markProfileReferencedEventUnavailable(runtime, referenceEventId)
-				);
-			},
-			onLoadingChange: (isLoading) => {
-				if (profilePostRequestId !== requestId) return;
-				const runtime = profilePostRuntimes[pubkey] ?? emptyTimelineRuntime(pubkey);
-				setProfilePostRuntime(pubkey, { ...runtime, isLoading });
-			},
-			onError: (error) => {
-				if (profilePostRequestId !== requestId) return;
-				const runtime = profilePostRuntimes[pubkey] ?? emptyTimelineRuntime(pubkey);
-				setProfilePostRuntime(pubkey, { ...runtime, error, isLoading: false });
-			}
-		});
-	}
-
-	function setProfilePostRuntime(
-		pubkey: string,
-		runtime: import('$lib/deck/timeline-runtime').TimelineRuntime
-	) {
-		profilePostRuntimes = { ...profilePostRuntimes, [pubkey]: runtime };
 	}
 
 	async function moveColumn(columnId: string, direction: -1 | 1) {
@@ -813,8 +625,8 @@
 						profileRelays={defaultProfileRelays}
 						{isMutedUser}
 						onMuteUser={muteUser}
-						onOpenProfile={(profile) => void openProfileColumn(column.id, profile)}
-						onOpenThread={(post) => void openThreadColumn(column.id, post)}
+						onOpenProfile={(profile) => void detailController.openProfile(column.id, profile)}
+						onOpenThread={(post) => void detailController.openThread(column.id, post)}
 						onOpenHashtag={(hashtag) => void openHashtagColumn(column.id, hashtag)}
 						onToggleSettings={() => toggleColumnSettings(column.id)}
 						onDelete={() => deleteColumn(column.id)}
@@ -831,13 +643,13 @@
 						onLoadOlderTimeline={() => void timelineController.loadOlder(column.id)}
 						onLoadNewerTimeline={() => void timelineController.loadNewer(column.id)}
 					/>
-					{#if detailColumn?.sourceColumnId === column.id}
-						{#if detailColumn.type === 'thread'}
+					{#if detailController.detailColumn?.sourceColumnId === column.id}
+						{#if detailController.detailColumn.type === 'thread'}
 							<ThreadColumn
 								id={getColumnId('thread')}
-								posts={threadPosts}
-								isLoading={isThreadLoading}
-								error={threadError}
+								posts={detailController.threadPosts}
+								isLoading={detailController.isThreadLoading}
+								error={detailController.threadError}
 								{isLoggedIn}
 								{textClass}
 								{avatarShape}
@@ -846,18 +658,18 @@
 								profileRelays={defaultProfileRelays}
 								{isMutedUser}
 								onMuteUser={muteUser}
-								onClose={() => void closeDetailColumn()}
-								onOpenProfile={(profile) => void openProfileColumn(column.id, profile)}
-								onOpenThread={(post) => void openThreadColumn(column.id, post)}
+								onClose={() => void detailController.close()}
+								onOpenProfile={(profile) => void detailController.openProfile(column.id, profile)}
+								onOpenThread={(post) => void detailController.openThread(column.id, post)}
 								onOpenHashtag={(hashtag) => void openHashtagColumn(column.id, hashtag)}
 							/>
 						{:else}
 							<ProfileColumn
 								id={getColumnId('profile')}
-								pubkey={detailColumn.pubkey}
-								posts={profilePosts}
-								isLoading={profilePostRuntimes[detailColumn.pubkey]?.isLoading ?? false}
-								error={profilePostRuntimes[detailColumn.pubkey]?.error ?? null}
+								pubkey={detailController.detailColumn.pubkey}
+								posts={detailController.profilePosts}
+								isLoading={detailController.profileRuntime.isLoading}
+								error={detailController.profileRuntime.error}
 								{isLoggedIn}
 								{textClass}
 								{avatarShape}
@@ -866,9 +678,9 @@
 								profileRelays={defaultProfileRelays}
 								{isMutedUser}
 								onMuteUser={muteUser}
-								onClose={() => void closeDetailColumn()}
-								onOpenProfile={(profile) => void openProfileColumn(column.id, profile)}
-								onOpenThread={(post) => void openThreadColumn(column.id, post)}
+								onClose={() => void detailController.close()}
+								onOpenProfile={(profile) => void detailController.openProfile(column.id, profile)}
+								onOpenThread={(post) => void detailController.openThread(column.id, post)}
 								onOpenHashtag={(hashtag) => void openHashtagColumn(column.id, hashtag)}
 							/>
 						{/if}
