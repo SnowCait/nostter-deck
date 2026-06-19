@@ -2,7 +2,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import { ShortTextNote } from 'nostr-tools/kinds';
 
 export const columnNames: string[] = [];
-export const sidebarButtonNames = ['Add column', 'Settings'];
+export const sidebarButtonNames = ['Add column', 'Settings', 'Log in'];
 export const sidebarExpandedWidth = 236;
 export const sidebarCollapsedWidth = 60;
 export const composerWidth = 360;
@@ -28,14 +28,25 @@ export type ColumnType = keyof typeof columnTypeLabels;
 
 export async function openDeck(page: Page, options: { isLoggedIn?: boolean } = {}) {
 	await page.addInitScript(({ isLoggedIn }) => {
-		const testWindow = window as Window & { __NOSTTER_DECK_IS_LOGGED_IN__?: boolean };
-
 		if (!window.localStorage.getItem('PARAGLIDE_LOCALE')) {
 			window.localStorage.setItem('PARAGLIDE_LOCALE', 'en');
 		}
 
 		if (isLoggedIn) {
-			testWindow.__NOSTTER_DECK_IS_LOGGED_IN__ = true;
+			Object.defineProperty(window, 'nostr', {
+				configurable: true,
+				value: {
+					getPublicKey: async () =>
+						'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+				}
+			});
+			window.localStorage.setItem(
+				'nostter:auth-account',
+				JSON.stringify({
+					method: 'nip07',
+					pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+				})
+			);
 		}
 	}, options);
 	await page.goto('/');

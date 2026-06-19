@@ -2333,12 +2333,45 @@ test.describe('nostter deck', () => {
 		await openDeck(page);
 
 		await expectSidebarWidth(page, sidebarExpandedWidth);
+		await expect(sidebar(page).getByRole('button', { name: 'Log in' })).toBeDisabled();
+		await expect(sidebar(page).getByText(/NIP-07 extension is required/)).toBeVisible();
 		await expect(sidebar(page).getByRole('button', { name: 'Post' })).toHaveCount(0);
 		await expect(page.getByRole('region', { name: 'Post' })).toHaveCount(0);
 		await page.getByRole('button', { name: 'Collapse sidebar' }).click();
 		await expectSidebarWidth(page, sidebarCollapsedWidth);
 		await expect(sidebar(page).getByRole('button', { name: 'Post' })).toHaveCount(0);
 		await expect(page.getByRole('region', { name: 'Post' })).toHaveCount(0);
+	});
+
+	test('logs in through NIP-07 and requires a new explicit login after logout', async ({
+		page
+	}) => {
+		await page.addInitScript(() => {
+			Object.defineProperty(window, 'nostr', {
+				configurable: true,
+				value: {
+					getPublicKey: async () =>
+						'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+				}
+			});
+		});
+		await openDeck(page);
+
+		await sidebar(page).getByRole('button', { name: 'Log in' }).click();
+		await expect(sidebar(page).getByRole('button', { name: 'Post' })).toBeVisible();
+		await expect
+			.poll(() => page.evaluate(() => window.localStorage.getItem('nostter:auth-account')))
+			.toContain('"method":"nip07"');
+
+		await sidebar(page).getByRole('button', { name: 'Log out' }).click();
+		await expect(sidebar(page).getByRole('button', { name: 'Post' })).toHaveCount(0);
+		await expect
+			.poll(() => page.evaluate(() => window.localStorage.getItem('nostter:auth-account')))
+			.toBeNull();
+
+		await page.reload();
+		await expect(sidebar(page).getByRole('button', { name: 'Log in' })).toBeEnabled();
+		await expect(sidebar(page).getByRole('button', { name: 'Post' })).toHaveCount(0);
 	});
 
 	test('opens the compose panel from the sidebar when logged in', async ({ page }) => {
@@ -2349,7 +2382,7 @@ test.describe('nostter deck', () => {
 		const composer = page.getByRole('region', { name: 'Post' });
 		await expect(composer).toBeVisible();
 		await expectComposerNextToSidebar(page, composer);
-		await expect(composer.getByText('Mika', { exact: true })).toBeVisible();
+		await expect(composer.getByText(/^npub1/)).toBeVisible();
 		await expect(composer.getByLabel('Post text')).toHaveValue('');
 		await expect(composer.getByText('0 / 280')).toBeVisible();
 		await expect(composer.getByRole('button', { name: 'Post', exact: true })).toBeDisabled();

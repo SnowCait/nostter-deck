@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount, tick } from 'svelte';
 	import { CalendarClock, Image, Plus, Send, Smile, UserRound } from '@lucide/svelte';
+	import { npubEncode } from 'nostr-tools/nip19';
 	import AddColumnDialog from '$lib/components/deck/AddColumnDialog.svelte';
 	import DeckColumn from '$lib/components/deck/DeckColumn.svelte';
 	import KeyboardShortcutsDialog from '$lib/components/deck/KeyboardShortcutsDialog.svelte';
@@ -33,15 +34,11 @@
 	import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
 	import { getProfile, requestProfiles } from '$lib/nostr/profiles';
 	import { profileRelays } from '$lib/nostr/relays';
+	import { getAuthState, initializeAuth, loginWithNip07, logout } from '$lib/nostr/auth.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { readUserSettings, type AvatarShape, type FontSize } from '$lib/user-settings';
 
-	type NostrDeckGlobal = typeof globalThis & {
-		__NOSTTER_DECK_IS_LOGGED_IN__?: boolean;
-	};
-
 	const savedColumnConfigs = readColumnConfigs();
-	const isLoggedIn = (globalThis as NostrDeckGlobal).__NOSTTER_DECK_IS_LOGGED_IN__ === true;
 	const defaultProfileRelays = [...profileRelays];
 	const emptyColumnRuntime = emptyTimelineRuntime();
 
@@ -59,6 +56,16 @@
 	let mutedPubkeys = $state(readMutedPubkeys());
 	const lastFocusedPostKeyByColumnId: Record<string, string> = {};
 
+	const authState = $derived(getAuthState());
+	const isLoggedIn = $derived(authState.status === 'loggedIn');
+	const accountPubkey = $derived(authState.pubkey);
+	const accountProfile = $derived(accountPubkey ? getProfile(accountPubkey) : undefined);
+	const accountName = $derived(
+		accountProfile?.display_name ??
+			accountProfile?.name ??
+			(accountPubkey ? `${npubEncode(accountPubkey).slice(0, 16)}…` : '')
+	);
+	const accountNpub = $derived(accountPubkey ? `${npubEncode(accountPubkey).slice(0, 16)}…` : '');
 	const composeMaxLength = 280;
 	const composeLength = $derived(composeText.length);
 	const canSubmitPost = $derived(composeLength > 0 && composeLength <= composeMaxLength);
@@ -79,6 +86,16 @@
 		void resetSessionTimelineCache().then(() => {
 			isTimelineCacheReady = true;
 		});
+		void initializeAuth();
+	});
+
+	$effect(() => {
+		if (!accountPubkey) {
+			isComposePanelOpen = false;
+			return;
+		}
+
+		requestProfiles([accountPubkey], defaultProfileRelays);
 	});
 
 	onDestroy(() => {
@@ -316,6 +333,14 @@
 		isComposePanelOpen = false;
 	}
 
+	async function login() {
+		await loginWithNip07();
+	}
+
+	function logoutAccount() {
+		logout();
+	}
+
 	async function saveColumn(column: ColumnConfig) {
 		setColumnConfigs([...columnConfigs, column]);
 		await tick();
@@ -471,6 +496,11 @@
 		columns={columnConfigs}
 		{activeColumnId}
 		{isLoggedIn}
+		{authState}
+		{accountPubkey}
+		{accountProfile}
+		onLogin={login}
+		onLogout={logoutAccount}
 		onAddColumn={openAddColumnDialog}
 		onCompose={toggleComposePanel}
 		{fontSize}
@@ -523,15 +553,16 @@
 					<ProfileAvatar
 						shape={avatarShape}
 						sizeClass="size-10"
+						imageUrl={accountProfile?.picture}
 						fallbackClass="bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
 						testId="account-avatar"
 					>
 						<UserRound class="size-4" aria-hidden="true" />
 					</ProfileAvatar>
 					<div class="min-w-0">
-						<p class={['truncate font-bold', textClass.control]}>Mika</p>
+						<p class={['truncate font-bold', textClass.control]}>{accountName}</p>
 						<p class={['truncate text-slate-500 dark:text-slate-400', textClass.meta]}>
-							@mika · {m.account_role()}
+							{accountNpub}
 						</p>
 					</div>
 				</div>

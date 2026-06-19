@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { PanelLeftClose, PanelLeftOpen, Plus, Send, Settings, UserRound } from '@lucide/svelte';
+	import { npubEncode } from 'nostr-tools/nip19';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { ColumnConfig } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
+	import type { AuthState } from '$lib/nostr/auth.svelte';
 	import type { Profile } from '$lib/nostr/profiles';
 	import { readUiState, updateUiState } from '$lib/ui-state';
 	import type { AvatarShape, FontSize } from '$lib/user-settings';
@@ -14,6 +16,11 @@
 		columns: ColumnConfig[];
 		activeColumnId: string;
 		isLoggedIn: boolean;
+		authState: AuthState;
+		accountPubkey: string | null;
+		accountProfile: Profile | undefined;
+		onLogin: () => void | Promise<void>;
+		onLogout: () => void;
 		onAddColumn: () => void;
 		onCompose: () => void;
 		fontSize: FontSize;
@@ -34,6 +41,11 @@
 		columns,
 		activeColumnId,
 		isLoggedIn,
+		authState,
+		accountPubkey,
+		accountProfile,
+		onLogin,
+		onLogout,
 		onAddColumn,
 		onCompose,
 		fontSize,
@@ -70,6 +82,15 @@
 
 	function openSettingsDialog() {
 		isSettingsDialogOpen = true;
+	}
+
+	function getAccountName() {
+		return accountProfile?.display_name ?? accountProfile?.name ?? m.account_npub();
+	}
+
+	function getShortNpub() {
+		if (!accountPubkey) return '';
+		return `${npubEncode(accountPubkey).slice(0, 16)}…`;
 	}
 </script>
 
@@ -210,7 +231,7 @@
 		{#if isLoggedIn}
 			<div
 				class={[
-					'flex h-11 w-full items-center rounded-md border border-slate-800 bg-white/5 transition',
+					'flex min-h-11 w-full items-center rounded-md border border-slate-800 bg-white/5 py-1 transition',
 					isCollapsed ? 'border-0' : ''
 				]}
 			>
@@ -218,6 +239,7 @@
 					<ProfileAvatar
 						shape={avatarShape}
 						sizeClass="size-9"
+						imageUrl={accountProfile?.picture}
 						fallbackClass="bg-slate-100 text-slate-950"
 						testId="account-avatar"
 					>
@@ -225,11 +247,55 @@
 					</ProfileAvatar>
 				</div>
 				<div class={sidebarLabelClass()}>
-					<p class={['truncate font-semibold', textClass.account]}>Mika</p>
+					<p class={['truncate font-semibold', textClass.account]}>{getAccountName()}</p>
 					<p class={['truncate text-slate-400', textClass.meta]}>
-						{m.account_role()}
+						{getShortNpub()}
 					</p>
 				</div>
+				{#if !isCollapsed}
+					<button
+						type="button"
+						class={[
+							'mr-2 shrink-0 rounded px-2 py-1 text-slate-400 transition hover:bg-white/10 hover:text-white',
+							textClass.meta
+						]}
+						onclick={onLogout}
+					>
+						{m.logout()}
+					</button>
+				{/if}
+			</div>
+		{:else}
+			<div class="w-full">
+				<button
+					type="button"
+					class={[
+						'group flex h-11 w-full items-center rounded-md font-medium text-slate-400 transition hover:text-white disabled:cursor-not-allowed disabled:text-slate-600',
+						textClass.control,
+						isCollapsed ? '' : 'hover:bg-white/10'
+					]}
+					title={m.login()}
+					aria-label={m.login()}
+					disabled={authState.status === 'unavailable' || authState.status === 'loggingIn'}
+					onclick={onLogin}
+				>
+					<span
+						class={[
+							'flex size-11 shrink-0 items-center justify-center rounded-md transition',
+							isCollapsed ? 'group-hover:bg-white/10' : ''
+						]}
+					>
+						<UserRound class="size-5 shrink-0" aria-hidden="true" />
+					</span>
+					<span class={`${sidebarLabelClass()} truncate text-left`}>
+						{m.login()}
+					</span>
+				</button>
+				{#if !isCollapsed && authState.status === 'unavailable'}
+					<p class={['mt-1 px-2 text-slate-500', textClass.meta]}>{m.login_unavailable()}</p>
+				{:else if !isCollapsed && authState.status === 'error'}
+					<p class={['mt-1 px-2 text-rose-400', textClass.meta]} role="alert">{m.login_failed()}</p>
+				{/if}
 			</div>
 		{/if}
 	</div>
