@@ -487,7 +487,8 @@ export async function installFakeNostrRelay(
 							filter.authors?.includes(textEvent.pubkey)
 					);
 					const requestsNip65RelayList = filters.some(
-						(filter) => filter.kinds?.includes(RelayList) && filter.authors?.includes(textEvent.pubkey)
+						(filter) =>
+							filter.kinds?.includes(RelayList) && filter.authors?.includes(textEvent.pubkey)
 					);
 					for (const filter of filters) {
 						if (!filter.kinds?.includes(0) || !filter.authors) continue;

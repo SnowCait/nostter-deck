@@ -115,7 +115,8 @@ function requestNip65RelayTags(pubkey: string): Promise<Nip65RelayTag[] | null> 
 			.use(request)
 			.subscribe({
 				next: ({ event }) => {
-					if (event.kind !== RelayList || event.pubkey.toLowerCase() !== pubkey.toLowerCase()) return;
+					if (event.kind !== RelayList || event.pubkey.toLowerCase() !== pubkey.toLowerCase())
+						return;
 					if (
 						!latestEvent ||
 						event.created_at > latestEvent.created_at ||
