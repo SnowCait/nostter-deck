@@ -66,6 +66,8 @@
 	let isMutedPostRevealed = $state(false);
 	let isSensitiveContentRevealed = $state(false);
 	let failedEmojiUrls = $state<string[]>([]);
+	// Keep the controls hidden until their actions are implemented.
+	const arePostActionsEnabled = false;
 	const isPostVisible = $derived(!isMuted || isMutedPostRevealed);
 	const isPostContentVisible = $derived(!post.contentWarning || isSensitiveContentRevealed);
 	const keyboardNavigationKey = $derived(
@@ -603,8 +605,7 @@
 							</div>
 						{/if}
 					{/if}
-
-					{#if isLoggedIn}
+					{#if isLoggedIn && arePostActionsEnabled}
 						<div class="mt-3 grid grid-cols-4 text-slate-500 dark:text-slate-400">
 							<button
 								type="button"
