@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
+import { Reaction, RelayList, Repost, ShortTextNote } from 'nostr-tools/kinds';
 
 declare global {
 	interface Window {
@@ -13,13 +13,17 @@ declare global {
 		__nostterFakeRelaySearchRequests?: Record<string, number>;
 		__nostterFakeRelayTimelineAuthorRequests?: Record<string, number>;
 		__nostterFakeRelayNip11Requests?: string[];
+		__nostterFakeRelayPublishedEvents?: Array<{ relay: string; event: unknown }>;
 		__nostterFakeRelayEmitSearchEvent?: (search: string, event: unknown) => void;
 	}
 }
 
-export async function installFakeNostrRelay(page: Page, options: { failNip11?: boolean } = {}) {
+export async function installFakeNostrRelay(
+	page: Page,
+	options: { failNip11?: boolean; rejectPublish?: boolean } = {}
+) {
 	await page.addInitScript(
-		({ failNip11, reactionKind, repostKind, shortTextNoteKind }) => {
+		({ failNip11, rejectPublish, reactionKind, repostKind, shortTextNoteKind }) => {
 			const relayConnections: Record<string, number> = {};
 			const relayProfileRequests: Record<string, number> = {};
 			const relayProfileAuthorRequests: Record<string, number> = {};
@@ -28,6 +32,7 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 			const relaySearchRequests: Record<string, number> = {};
 			const relayTimelineAuthorRequests: Record<string, number> = {};
 			const relayNip11Requests: string[] = [];
+			const relayPublishedEvents: Array<{ relay: string; event: unknown }> = [];
 			const relaySockets = new Set<FakeWebSocket>();
 			const nativeFetch = window.fetch.bind(window);
 			window.fetch = async (input, init) => {
@@ -326,6 +331,15 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 				}),
 				sig: '0'.repeat(128)
 			};
+			const nip65RelayListEvent = {
+				id: '9'.repeat(64),
+				pubkey: textEvent.pubkey,
+				created_at: textEvent.created_at,
+				kind: RelayList,
+				tags: [['r', 'wss://relay.damus.io/', 'write']],
+				content: '',
+				sig: '0'.repeat(128)
+			};
 			const bulkCreatedAt = Math.floor(Date.now() / 1000) - 60;
 			const bulkEvents = Array.from({ length: 250 }, (_, index) => ({
 				id: index.toString(16).padStart(64, '0'),
@@ -380,6 +394,14 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 					if (!Array.isArray(message)) return;
 					if (message[0] === 'CLOSE') {
 						this.subscriptions.delete(message[1]);
+						return;
+					}
+					if (message[0] === 'EVENT') {
+						const event = message[1] as { id?: string };
+						relayPublishedEvents.push({ relay: this.url, event });
+						setTimeout(() => {
+							if (event.id) this.emitMessage(['OK', event.id, !rejectPublish, 'rejected']);
+						}, 0);
 						return;
 					}
 					if (message[0] !== 'REQ') return;
@@ -463,6 +485,9 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 							matchesFilterTime(profileEvent, filter) &&
 							filter.kinds?.includes(0) &&
 							filter.authors?.includes(textEvent.pubkey)
+					);
+					const requestsNip65RelayList = filters.some(
+						(filter) => filter.kinds?.includes(RelayList) && filter.authors?.includes(textEvent.pubkey)
 					);
 					for (const filter of filters) {
 						if (!filter.kinds?.includes(0) || !filter.authors) continue;
@@ -606,6 +631,13 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 						}, 20);
 					}
 
+					if (requestsNip65RelayList) {
+						setTimeout(() => {
+							this.emitMessage(['EVENT', subId, nip65RelayListEvent]);
+							this.emitMessage(['EOSE', subId]);
+						}, 5);
+					}
+
 					if (requestsContactList) {
 						const address = `${contactListEvent.kind}:${contactListEvent.pubkey}:`;
 						relayAddressRequests[address] = (relayAddressRequests[address] ?? 0) + 1;
@@ -671,6 +703,7 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 			window.__nostterFakeRelaySearchRequests = relaySearchRequests;
 			window.__nostterFakeRelayTimelineAuthorRequests = relayTimelineAuthorRequests;
 			window.__nostterFakeRelayNip11Requests = relayNip11Requests;
+			window.__nostterFakeRelayPublishedEvents = relayPublishedEvents;
 			window.__nostterFakeRelayEmitSearchEvent = (search, event) => {
 				for (const socket of relaySockets) {
 					for (const [subId, filters] of socket.subscriptions) {
@@ -682,6 +715,7 @@ export async function installFakeNostrRelay(page: Page, options: { failNip11?: b
 		},
 		{
 			failNip11: options.failNip11 === true,
+			rejectPublish: options.rejectPublish === true,
 			reactionKind: Reaction,
 			repostKind: Repost,
 			shortTextNoteKind: ShortTextNote

@@ -3,7 +3,8 @@ import type * as Nostr from 'nostr-typedef';
 
 export type AuthStatus = 'loggedOut' | 'loggingIn' | 'loggedIn' | 'unavailable' | 'error';
 
-export type Nip07Signer = Pick<Nostr.Nip07.Nostr, 'getPublicKey'>;
+type Nip07PublicKeyProvider = Pick<Nostr.Nip07.Nostr, 'getPublicKey'>;
+export type Nip07Signer = Pick<Nostr.Nip07.Nostr, 'getPublicKey' | 'signEvent'>;
 
 export type AuthState = {
 	status: AuthStatus;
@@ -19,12 +20,20 @@ export const authStorageKey = 'nostter:auth-account';
 
 let state = $state<AuthState>({ status: 'loggedOut', pubkey: null });
 
-function getNip07Signer(): Nip07Signer | null {
+function getNip07PublicKeyProvider(): Nip07PublicKeyProvider | null {
 	const candidate = (globalThis as typeof globalThis & { nostr?: unknown }).nostr;
 	if (!candidate || typeof candidate !== 'object') return null;
 
+	const provider = candidate as Partial<Nip07PublicKeyProvider>;
+	return typeof provider.getPublicKey === 'function' ? (provider as Nip07PublicKeyProvider) : null;
+}
+
+export function getNip07Signer(): Nip07Signer | null {
+	const candidate = getNip07PublicKeyProvider();
+	if (!candidate) return null;
+
 	const signer = candidate as Partial<Nip07Signer>;
-	return typeof signer.getPublicKey === 'function' ? (signer as Nip07Signer) : null;
+	return typeof signer.signEvent === 'function' ? (signer as Nip07Signer) : null;
 }
 
 function normalizePubkey(value: unknown): string | null {
@@ -54,10 +63,10 @@ function writeStoredAccount(account: StoredAccount | null) {
 }
 
 function setLoggedOutState() {
-	state = { status: getNip07Signer() ? 'loggedOut' : 'unavailable', pubkey: null };
+	state = { status: getNip07PublicKeyProvider() ? 'loggedOut' : 'unavailable', pubkey: null };
 }
 
-async function getExtensionPubkey(signer: Nip07Signer): Promise<string | null> {
+async function getExtensionPubkey(signer: Nip07PublicKeyProvider): Promise<string | null> {
 	try {
 		return normalizePubkey(await signer.getPublicKey());
 	} catch {
@@ -70,11 +79,11 @@ export function getAuthState() {
 }
 
 export function isNip07Available() {
-	return getNip07Signer() !== null;
+	return getNip07PublicKeyProvider() !== null;
 }
 
 export async function loginWithNip07() {
-	const signer = getNip07Signer();
+	const signer = getNip07PublicKeyProvider();
 	if (!signer) {
 		setLoggedOutState();
 		return false;
@@ -99,7 +108,7 @@ export async function initializeAuth() {
 		return false;
 	}
 
-	const signer = getNip07Signer();
+	const signer = getNip07PublicKeyProvider();
 	if (!signer) {
 		setLoggedOutState();
 		return false;

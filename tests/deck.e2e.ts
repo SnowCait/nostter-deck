@@ -2419,4 +2419,52 @@ test.describe('nostter deck', () => {
 		await sidebar(page).getByRole('button', { name: 'Post' }).click();
 		await expect(composer).toBeHidden();
 	});
+
+	test('publishes a signed short text note through the configured default relays', async ({
+		page
+	}) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page, { isLoggedIn: true });
+
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+		const composer = page.getByRole('region', { name: 'Post' });
+		await composer.getByLabel('Post text').fill('Published from nostter deck.');
+		await composer.getByRole('button', { name: 'Post', exact: true }).click();
+
+		await expect(composer).toBeHidden();
+		await expect
+			.poll(() =>
+				page.evaluate(() =>
+					(window.__nostterFakeRelayPublishedEvents ?? []).some(({ relay, event }) => {
+						const published = event as Record<string, unknown>;
+						return (
+							relay === 'wss://relay.damus.io/' &&
+							published.id === 'f'.repeat(64) &&
+							published.pubkey === 'a'.repeat(64) &&
+							published.kind === 1 &&
+							JSON.stringify(published.tags) === '[]' &&
+							published.content === 'Published from nostter deck.' &&
+							published.sig === '0'.repeat(128)
+						);
+					})
+				)
+			)
+			.toBe(true);
+	});
+
+	test('keeps the draft visible when every relay rejects a post', async ({ page }) => {
+		await installFakeNostrRelay(page, { rejectPublish: true });
+		await openDeck(page, { isLoggedIn: true });
+
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+		const composer = page.getByRole('region', { name: 'Post' });
+		await composer.getByLabel('Post text').fill('Keep this draft.');
+		await composer.getByRole('button', { name: 'Post', exact: true }).click();
+
+		await expect(composer).toBeVisible();
+		await expect(composer.getByLabel('Post text')).toHaveValue('Keep this draft.');
+		await expect(composer.getByRole('alert')).toHaveText(
+			'Could not publish your post. Please try again.'
+		);
+	});
 });

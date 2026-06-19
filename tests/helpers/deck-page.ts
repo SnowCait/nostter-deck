@@ -37,7 +37,13 @@ export async function openDeck(page: Page, options: { isLoggedIn?: boolean } = {
 				configurable: true,
 				value: {
 					getPublicKey: async () =>
-						'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+						'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+					signEvent: async (event: Record<string, unknown>) => ({
+						...event,
+						id: 'f'.repeat(64),
+						pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+						sig: '0'.repeat(128)
+					})
 				}
 			});
 			window.localStorage.setItem(

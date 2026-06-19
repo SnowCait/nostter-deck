@@ -8,6 +8,13 @@ export const profileRelays = [
 	'wss://directory.yabu.me/',
 	'wss://profiles.nostr1.com/'
 ] as const;
+export const indexerRelays = [
+	'wss://purplepag.es/',
+	'wss://user.kindpag.es/',
+	'wss://directory.yabu.me/',
+	'wss://profiles.nostr1.com/',
+	'wss://indexer.coracle.social/'
+] as const;
 
 const defaultRelaySet = new Set<string>(defaultRelays);
 

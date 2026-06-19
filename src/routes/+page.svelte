@@ -33,8 +33,21 @@
 	} from '$lib/muted-users';
 	import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
 	import { getProfile, requestProfiles } from '$lib/nostr/profiles';
+	import {
+		clearDefaultRelays,
+		configureCachedNip65Relays,
+		configureDefaultRelays,
+		refreshNip65Relays
+	} from '$lib/nostr/nip65';
+	import { publishShortTextNote } from '$lib/nostr/publish';
 	import { profileRelays } from '$lib/nostr/relays';
-	import { getAuthState, initializeAuth, loginWithNip07, logout } from '$lib/nostr/auth.svelte';
+	import {
+		getAuthState,
+		getNip07Signer,
+		initializeAuth,
+		loginWithNip07,
+		logout
+	} from '$lib/nostr/auth.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { readUserSettings, type AvatarShape, type FontSize } from '$lib/user-settings';
 
@@ -49,6 +62,8 @@
 	let openSettingsColumnId = $state<string | null>(null);
 	let isComposePanelOpen = $state(false);
 	let composeText = $state('');
+	let isPublishing = $state(false);
+	let publishError = $state(false);
 	const initialUserSettings = readUserSettings();
 	let fontSize = $state<FontSize>(initialUserSettings.fontSize);
 	let avatarShape = $state<AvatarShape>(initialUserSettings.avatarShape);
@@ -68,7 +83,9 @@
 	const accountNpub = $derived(accountPubkey ? `${npubEncode(accountPubkey).slice(0, 16)}…` : '');
 	const composeMaxLength = 280;
 	const composeLength = $derived(composeText.length);
-	const canSubmitPost = $derived(composeLength > 0 && composeLength <= composeMaxLength);
+	const canSubmitPost = $derived(
+		!isPublishing && composeLength > 0 && composeLength <= composeMaxLength
+	);
 	const textClass = $derived(textClassByFontSize[fontSize]);
 	const timelineController = createTimelineController({
 		getColumnConfigs: () => columnConfigs,
@@ -92,10 +109,18 @@
 	$effect(() => {
 		if (!accountPubkey) {
 			isComposePanelOpen = false;
+			publishError = false;
+			clearDefaultRelays();
 			return;
 		}
 
 		requestProfiles([accountPubkey], defaultProfileRelays);
+		configureCachedNip65Relays(accountPubkey);
+		void refreshNip65Relays(accountPubkey).then((relayTags) => {
+			if (relayTags && getAuthState().pubkey === accountPubkey) {
+				configureDefaultRelays(relayTags);
+			}
+		});
 	});
 
 	onDestroy(() => {
@@ -330,6 +355,29 @@
 	}
 
 	function closeComposePanel() {
+		isComposePanelOpen = false;
+	}
+
+	async function publishPost() {
+		if (!canSubmitPost || !accountPubkey) return;
+
+		const signer = getNip07Signer();
+		if (!signer) {
+			publishError = true;
+			return;
+		}
+
+		isPublishing = true;
+		publishError = false;
+		const result = await publishShortTextNote(composeText, accountPubkey, signer);
+		isPublishing = false;
+
+		if (!result.ok) {
+			publishError = true;
+			return;
+		}
+
+		composeText = '';
 		isComposePanelOpen = false;
 	}
 
@@ -575,6 +623,7 @@
 						textClass.textarea
 					]}
 					placeholder={m.compose_placeholder()}
+					disabled={isPublishing}
 					bind:value={composeText}
 				></textarea>
 
@@ -582,25 +631,28 @@
 					<div class="flex items-center gap-1">
 						<button
 							type="button"
-							class="flex size-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-sky-50 hover:text-sky-600 dark:text-slate-400 dark:hover:bg-sky-950/40 dark:hover:text-sky-300"
-							title={m.add_media()}
+							class="flex size-9 cursor-not-allowed items-center justify-center rounded-md text-slate-400 dark:text-slate-600"
+							title={m.coming_soon()}
 							aria-label={m.add_media()}
+							disabled
 						>
 							<Image class="size-4" aria-hidden="true" />
 						</button>
 						<button
 							type="button"
-							class="flex size-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-sky-50 hover:text-sky-600 dark:text-slate-400 dark:hover:bg-sky-950/40 dark:hover:text-sky-300"
-							title={m.add_emoji()}
+							class="flex size-9 cursor-not-allowed items-center justify-center rounded-md text-slate-400 dark:text-slate-600"
+							title={m.coming_soon()}
 							aria-label={m.add_emoji()}
+							disabled
 						>
 							<Smile class="size-4" aria-hidden="true" />
 						</button>
 						<button
 							type="button"
-							class="flex size-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-sky-50 hover:text-sky-600 dark:text-slate-400 dark:hover:bg-sky-950/40 dark:hover:text-sky-300"
-							title={m.schedule_post()}
+							class="flex size-9 cursor-not-allowed items-center justify-center rounded-md text-slate-400 dark:text-slate-600"
+							title={m.coming_soon()}
 							aria-label={m.schedule_post()}
+							disabled
 						>
 							<CalendarClock class="size-4" aria-hidden="true" />
 						</button>
@@ -620,6 +672,12 @@
 					</p>
 				</div>
 
+				{#if publishError}
+					<p class={['mt-3 text-rose-600 dark:text-rose-400', textClass.control]} role="alert">
+						{m.post_failed()}
+					</p>
+				{/if}
+
 				<div class="mt-4 flex justify-end">
 					<button
 						type="button"
@@ -628,8 +686,9 @@
 							textClass.control
 						]}
 						disabled={!canSubmitPost}
+						onclick={publishPost}
 					>
-						{m.action_post()}
+						{isPublishing ? m.post_sending() : m.action_post()}
 					</button>
 				</div>
 			</div>
