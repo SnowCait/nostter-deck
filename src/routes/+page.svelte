@@ -43,7 +43,7 @@
 	import { profileRelays } from '$lib/nostr/relays';
 	import {
 		getAuthState,
-		getNip07Signer,
+		getAuthSigner,
 		initializeAuth,
 		loginWithNip07,
 		logout
@@ -361,7 +361,7 @@
 	async function publishPost() {
 		if (!canSubmitPost || !accountPubkey) return;
 
-		const signer = getNip07Signer();
+		const signer = getAuthSigner();
 		if (!signer) {
 			publishError = true;
 			return;
