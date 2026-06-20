@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import { decode, nprofileEncode, npubEncode } from 'nostr-tools/nip19';
 import { defaultRelays, profileRelays, searchRelays } from '$lib/nostr/relays';
@@ -88,6 +88,13 @@ async function pressKeyboardShortcuts(page: Page) {
 	await page.keyboard.up('Shift');
 }
 
+async function horizontalCenter(locator: Locator) {
+	await expect(locator).toBeVisible();
+	const box = await locator.boundingBox();
+	if (!box) throw new Error('Expected a visible element with a bounding box');
+	return box.x + box.width / 2;
+}
+
 test.describe('nostter deck', () => {
 	test('renders NIP-30 emoji from each event and rejects HTTP emoji URLs', async ({ page }) => {
 		await installFakeNostrRelay(page);
@@ -133,7 +140,7 @@ test.describe('nostter deck', () => {
 
 		await expect(page).toHaveTitle('nostter deck');
 		await expect(page.getByRole('heading', { name: 'nostter deck' })).toBeVisible();
-		await expect(sidebar(page).locator('img[src="/favicon.svg"]')).toBeVisible();
+		await expect(sidebar(page).locator('img[src="/favicon.svg"]')).toHaveCount(1);
 		await expect(sidebar(page).getByRole('img', { name: 'nostter deck' })).toHaveAttribute(
 			'src',
 			'/logo.svg'
@@ -2137,6 +2144,9 @@ test.describe('nostter deck', () => {
 		await addWebsiteColumn(page, 'example.com');
 
 		await expectSidebarWidth(page, sidebarExpandedWidth);
+		await expect(
+			sidebar(page).evaluate((element) => getComputedStyle(element).overflowX)
+		).resolves.toBe('hidden');
 
 		const collapseButton = page.getByRole('button', { name: 'Collapse sidebar' });
 		await expect(collapseButton).toHaveAttribute('aria-pressed', 'false');
@@ -2178,6 +2188,33 @@ test.describe('nostter deck', () => {
 			'false'
 		);
 		await expectSidebarWidth(page, sidebarExpandedWidth);
+	});
+
+	test('keeps lower sidebar icons fixed while collapsing and expanding', async ({ page }) => {
+		await openDeck(page, { isLoggedIn: true });
+
+		const accountAvatar = sidebar(page).getByTestId('account-avatar');
+		const expandedPositions = {
+			account: await horizontalCenter(accountAvatar),
+			settings: await horizontalCenter(sidebarButtonIcon(page, 'Settings')),
+			collapse: await horizontalCenter(sidebarButtonIcon(page, 'Collapse sidebar'))
+		};
+
+		await page.getByRole('button', { name: 'Collapse sidebar' }).click();
+		await expectSidebarWidth(page, sidebarCollapsedWidth);
+
+		const collapsedPositions = {
+			account: await horizontalCenter(accountAvatar),
+			settings: await horizontalCenter(sidebarButtonIcon(page, 'Settings')),
+			collapse: await horizontalCenter(sidebarButtonIcon(page, 'Expand sidebar'))
+		};
+
+		for (const icon of Object.keys(expandedPositions) as Array<keyof typeof expandedPositions>) {
+			expect(
+				Math.abs(collapsedPositions[icon] - expandedPositions[icon]),
+				`${icon} icon`
+			).toBeLessThanOrEqual(0.5);
+		}
 	});
 
 	test('changes language from the settings dialog', async ({ page }) => {

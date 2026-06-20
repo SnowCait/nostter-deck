@@ -133,8 +133,8 @@
 			bind:ref={accountMenuTrigger}
 			type="button"
 			class={[
-				'flex min-h-11 w-full items-center rounded-md border border-slate-800 bg-white/5 py-1 text-left transition hover:bg-white/10',
-				isCollapsed ? 'border-0' : ''
+				'flex min-h-11 w-full items-center rounded-md bg-white/5 py-1 text-left transition hover:bg-white/10',
+				isCollapsed ? '' : 'ring-1 ring-slate-800'
 			]}
 			aria-label={m.account_menu()}
 			title={m.account_menu()}

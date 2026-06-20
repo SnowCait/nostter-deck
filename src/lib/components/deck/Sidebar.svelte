@@ -93,14 +93,13 @@
 
 <aside
 	class={[
-		'flex h-full min-h-0 shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-slate-800 bg-slate-950 px-2 py-4 text-slate-100 transition-[width] duration-200 ease-out',
+		'flex h-full min-h-0 shrink-0 flex-col overflow-x-hidden overflow-y-auto overscroll-contain border-r border-slate-800 bg-slate-950 px-2 py-4 text-slate-100 transition-[width] duration-200 ease-out',
 		isCollapsed ? 'w-[60px]' : 'w-[236px]'
 	]}
 >
 	<div class="mb-5 flex w-full items-center">
 		<div class="flex w-11 shrink-0 justify-center">
 			<div class="flex size-10 items-center justify-center rounded-md">
-				<img src="/favicon.svg" alt="" class="size-7" aria-hidden="true" />
 				<img src="/favicon.svg" alt="" class="size-7" aria-hidden="true" />
 			</div>
 		</div>
