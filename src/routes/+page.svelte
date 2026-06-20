@@ -387,7 +387,7 @@
 	}
 
 	async function login() {
-		await loginWithNip07();
+		return loginWithNip07();
 	}
 
 	async function selectSavedAccount(accountId: string) {
