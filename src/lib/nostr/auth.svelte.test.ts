@@ -1,14 +1,40 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { getAccountId, accountsStorageKey } from './accounts';
 import {
-	authStorageKey,
+	getAccountStore,
 	getAuthState,
 	initializeAuth,
+	legacyAuthStorageKey,
 	loginWithNip07,
 	logout,
-	resetAuthStateForTesting
+	removeAccount,
+	resetAuthStateForTesting,
+	selectAccount
 } from './auth.svelte';
 
-const pubkey = 'a'.repeat(64);
+const pubkeyA = 'a'.repeat(64);
+const pubkeyB = 'b'.repeat(64);
+const bunkerMocks = vi.hoisted(() => ({
+	fromBunker: vi.fn(),
+	fromURI: vi.fn(),
+	signer: {
+		bp: { pubkey: 'b'.repeat(64), relays: ['wss://relay.example'], secret: null },
+		connect: vi.fn(),
+		getPublicKey: vi.fn(),
+		close: vi.fn()
+	}
+}));
+
+vi.mock('nostr-tools/nip46', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('nostr-tools/nip46')>();
+	return {
+		...actual,
+		BunkerSigner: {
+			fromBunker: bunkerMocks.fromBunker,
+			fromURI: bunkerMocks.fromURI
+		}
+	};
+});
 
 function installLocalStorage() {
 	const values = new Map<string, string>();
@@ -20,12 +46,24 @@ function installLocalStorage() {
 	return values;
 }
 
-describe('NIP-07 authentication', () => {
+function installNip07(pubkey: string) {
+	vi.stubGlobal('nostr', {
+		getPublicKey: vi.fn(async () => pubkey),
+		signEvent: vi.fn(async (event: Record<string, unknown>) => event)
+	});
+}
+
+describe('multi-account authentication', () => {
 	let storageValues: Map<string, string>;
 
 	beforeEach(() => {
 		storageValues = installLocalStorage();
 		resetAuthStateForTesting();
+		bunkerMocks.fromBunker.mockReset();
+		bunkerMocks.fromURI.mockReset();
+		bunkerMocks.signer.connect.mockReset();
+		bunkerMocks.signer.getPublicKey.mockReset();
+		bunkerMocks.signer.close.mockReset();
 	});
 
 	afterEach(() => {
@@ -33,61 +71,123 @@ describe('NIP-07 authentication', () => {
 		resetAuthStateForTesting();
 	});
 
-	test('logs in with a valid NIP-07 public key and persists the account choice', async () => {
-		vi.stubGlobal('nostr', { getPublicKey: vi.fn(async () => pubkey.toUpperCase()) });
+	test('adds a NIP-07 account and persists it as the active account', async () => {
+		installNip07(pubkeyA.toUpperCase());
 
 		await expect(loginWithNip07()).resolves.toBe(true);
-		expect(getAuthState()).toEqual({ status: 'loggedIn', pubkey });
-		expect(JSON.parse(storageValues.get(authStorageKey) ?? '')).toEqual({
-			method: 'nip07',
-			pubkey
+		expect(getAuthState()).toEqual({ status: 'loggedIn', pubkey: pubkeyA });
+		expect(getAccountStore()).toEqual({
+			activeAccountId: getAccountId('nip07', pubkeyA),
+			accounts: [
+				expect.objectContaining({
+					id: getAccountId('nip07', pubkeyA),
+					method: 'nip07',
+					pubkey: pubkeyA
+				})
+			]
 		});
+		expect(JSON.parse(storageValues.get(accountsStorageKey) ?? '')).toEqual(getAccountStore());
 	});
 
-	test('rejects an invalid NIP-07 public key without persisting a session', async () => {
-		vi.stubGlobal('nostr', { getPublicKey: vi.fn(async () => 'invalid') });
-
-		await expect(loginWithNip07()).resolves.toBe(false);
-		expect(getAuthState()).toEqual({ status: 'error', pubkey: null });
-		expect(storageValues.has(authStorageKey)).toBe(false);
-	});
-
-	test('keeps the user logged out when the extension rejects the request', async () => {
-		vi.stubGlobal('nostr', {
-			getPublicKey: vi.fn(async () => Promise.reject(new Error('denied')))
-		});
-
-		await expect(loginWithNip07()).resolves.toBe(false);
-		expect(getAuthState()).toEqual({ status: 'error', pubkey: null });
-		expect(storageValues.has(authStorageKey)).toBe(false);
-	});
-
-	test('restores only the previously selected NIP-07 account', async () => {
-		storageValues.set(authStorageKey, JSON.stringify({ method: 'nip07', pubkey }));
-		vi.stubGlobal('nostr', { getPublicKey: vi.fn(async () => pubkey) });
-
-		await expect(initializeAuth()).resolves.toBe(true);
-		expect(getAuthState()).toEqual({ status: 'loggedIn', pubkey });
-
-		vi.stubGlobal('nostr', { getPublicKey: vi.fn(async () => 'b'.repeat(64)) });
-		await expect(initializeAuth()).resolves.toBe(false);
-		expect(getAuthState()).toEqual({ status: 'loggedOut', pubkey: null });
-		expect(storageValues.has(authStorageKey)).toBe(false);
-	});
-
-	test('marks NIP-07 as unavailable when no extension is present', async () => {
-		await expect(initializeAuth()).resolves.toBe(false);
-		expect(getAuthState()).toEqual({ status: 'unavailable', pubkey: null });
-	});
-
-	test('logout clears the saved account and prevents automatic restoration', async () => {
-		vi.stubGlobal('nostr', { getPublicKey: vi.fn(async () => pubkey) });
+	test('adds and activates the extension current key when a stored NIP-07 key no longer matches', async () => {
+		installNip07(pubkeyA);
 		await loginWithNip07();
 
-		logout();
-		expect(storageValues.has(authStorageKey)).toBe(false);
-		expect(getAuthState()).toEqual({ status: 'loggedOut', pubkey: null });
+		installNip07(pubkeyB);
+		await expect(selectAccount(getAccountId('nip07', pubkeyA))).resolves.toBe(true);
+
+		expect(getAuthState()).toEqual({ status: 'loggedIn', pubkey: pubkeyB });
+		expect(getAccountStore().activeAccountId).toBe(getAccountId('nip07', pubkeyB));
+		expect(getAccountStore().accounts.map(({ id }) => id)).toEqual([
+			getAccountId('nip07', pubkeyA),
+			getAccountId('nip07', pubkeyB)
+		]);
+	});
+
+	test('restores the selected NIP-07 account only when the extension exposes that key', async () => {
+		storageValues.set(
+			accountsStorageKey,
+			JSON.stringify({
+				activeAccountId: getAccountId('nip07', pubkeyA),
+				accounts: [
+					{
+						id: getAccountId('nip07', pubkeyA),
+						method: 'nip07',
+						pubkey: pubkeyA,
+						createdAt: 1
+					}
+				]
+			})
+		);
+		installNip07(pubkeyA);
+
+		await expect(initializeAuth()).resolves.toBe(true);
+		expect(getAuthState()).toEqual({ status: 'loggedIn', pubkey: pubkeyA });
+	});
+
+	test('restores the selected NIP-46 account from its saved connection data', async () => {
+		const clientSecretKey = 'c'.repeat(64);
+		storageValues.set(
+			accountsStorageKey,
+			JSON.stringify({
+				activeAccountId: getAccountId('nip46', pubkeyB),
+				accounts: [
+					{
+						id: getAccountId('nip46', pubkeyB),
+						method: 'nip46',
+						pubkey: pubkeyB,
+						createdAt: 1,
+						bunker: bunkerMocks.signer.bp,
+						clientSecretKey
+					}
+				]
+			})
+		);
+		bunkerMocks.fromBunker.mockReturnValue(bunkerMocks.signer);
+		bunkerMocks.signer.connect.mockResolvedValue(undefined);
+		bunkerMocks.signer.getPublicKey.mockResolvedValue(pubkeyB);
+
+		await expect(initializeAuth()).resolves.toBe(true);
+		expect(bunkerMocks.fromBunker).toHaveBeenCalledTimes(1);
+		expect(getAuthState()).toEqual({ status: 'loggedIn', pubkey: pubkeyB });
+	});
+
+	test('ignores the legacy single-account session and requires a fresh login', async () => {
+		storageValues.set(legacyAuthStorageKey, JSON.stringify({ method: 'nip07', pubkey: pubkeyA }));
+		installNip07(pubkeyA);
+
 		await expect(initializeAuth()).resolves.toBe(false);
+		expect(storageValues.has(legacyAuthStorageKey)).toBe(false);
 		expect(getAuthState()).toEqual({ status: 'loggedOut', pubkey: null });
+	});
+
+	test('deleting the active account restores the next saved account', async () => {
+		installNip07(pubkeyA);
+		await loginWithNip07();
+		installNip07(pubkeyB);
+		await loginWithNip07();
+
+		installNip07(pubkeyA);
+		await expect(removeAccount(getAccountId('nip07', pubkeyB))).resolves.toBe(true);
+
+		expect(getAuthState()).toEqual({ status: 'loggedIn', pubkey: pubkeyA });
+		expect(getAccountStore()).toMatchObject({
+			activeAccountId: getAccountId('nip07', pubkeyA),
+			accounts: [expect.objectContaining({ pubkey: pubkeyA })]
+		});
+	});
+
+	test('logout deletes the active saved account', async () => {
+		installNip07(pubkeyA);
+		await loginWithNip07();
+
+		await expect(logout()).resolves.toBe(true);
+		expect(getAccountStore()).toEqual({ activeAccountId: null, accounts: [] });
+		expect(getAuthState()).toEqual({ status: 'loggedOut', pubkey: null });
+	});
+
+	test('marks the session unavailable when no NIP-07 extension or saved account exists', async () => {
+		await expect(initializeAuth()).resolves.toBe(false);
+		expect(getAuthState()).toEqual({ status: 'unavailable', pubkey: null });
 	});
 });

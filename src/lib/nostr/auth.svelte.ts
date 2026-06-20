@@ -1,4 +1,3 @@
-import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
 import {
 	BunkerSigner,
 	createNostrConnectURI,
@@ -8,6 +7,16 @@ import {
 import { generateSecretKey, getPublicKey } from 'nostr-tools/pure';
 import { bytesToHex, hexToBytes } from 'nostr-tools/utils';
 import type * as Nostr from 'nostr-typedef';
+import {
+	getAccountId,
+	readAccounts,
+	removeAccount as removeStoredAccount,
+	setActiveAccount,
+	upsertAccount,
+	type AccountRecord,
+	type AccountStore,
+	type Nip46AccountRecord
+} from './accounts';
 import { defaultRelays } from './relays';
 
 export type AuthStatus = 'loggedOut' | 'loggingIn' | 'loggedIn' | 'unavailable' | 'error';
@@ -21,15 +30,13 @@ export type AuthState = {
 	pubkey: string | null;
 };
 
-type StoredAccount =
-	| { method: 'nip07'; pubkey: string }
-	| { method: 'nip46'; pubkey: string; bunker: BunkerPointer; clientSecretKey: string };
-
-export const authStorageKey = 'nostter:auth-account';
+export const legacyAuthStorageKey = 'nostter:auth-account';
 
 let state = $state<AuthState>({ status: 'loggedOut', pubkey: null });
+let accountStore = $state<AccountStore>(readAccounts());
 let activeSigner: AuthSigner | null = null;
 let activeBunkerSigner: BunkerSigner | null = null;
+let authAttempt = 0;
 
 function getNip07PublicKeyProvider(): Nip07PublicKeyProvider | null {
 	const candidate = (globalThis as typeof globalThis & { nostr?: unknown }).nostr;
@@ -51,56 +58,57 @@ export function getAuthSigner() {
 	return activeSigner;
 }
 
+export function getAuthState() {
+	return state;
+}
+
+export function getAccountStore() {
+	return accountStore;
+}
+
+export function isNip07Available() {
+	return getNip07PublicKeyProvider() !== null;
+}
+
 function normalizePubkey(value: unknown): string | null {
 	if (typeof value !== 'string' || !/^[0-9a-f]{64}$/i.test(value)) return null;
 	return value.toLowerCase();
 }
 
-function normalizeStoredAccount(value: unknown): StoredAccount | null {
-	if (!value || typeof value !== 'object') return null;
-
-	const candidate = value as Partial<StoredAccount>;
-	const pubkey = normalizePubkey(candidate.pubkey);
-	if (candidate.method === 'nip07' && pubkey) return { method: 'nip07', pubkey };
-	if (candidate.method !== 'nip46' || !pubkey || !candidate.bunker) return null;
-	const bunker = candidate.bunker as Partial<BunkerPointer>;
-	if (
-		typeof bunker.pubkey !== 'string' ||
-		!Array.isArray(bunker.relays) ||
-		typeof candidate.clientSecretKey !== 'string' ||
-		!/^[0-9a-f]{64}$/i.test(candidate.clientSecretKey)
-	)
-		return null;
-	return {
-		method: 'nip46',
-		pubkey,
-		bunker: {
-			pubkey: bunker.pubkey,
-			relays: bunker.relays.filter((relay): relay is string => typeof relay === 'string'),
-			secret: typeof bunker.secret === 'string' ? bunker.secret : null
-		},
-		clientSecretKey: candidate.clientSecretKey.toLowerCase()
-	};
+function refreshAccountStore() {
+	accountStore = readAccounts();
+	return accountStore;
 }
 
-function readStoredAccount() {
-	return readJsonStorage<StoredAccount | null>(authStorageKey, null, normalizeStoredAccount);
+function writeAndSetAccountStore(store: AccountStore) {
+	accountStore = store;
+	return store;
 }
 
-function writeStoredAccount(account: StoredAccount | null) {
-	if (!account) {
-		if (typeof localStorage !== 'undefined') localStorage.removeItem(authStorageKey);
-		return;
-	}
-
-	writeJsonStorage(authStorageKey, account, normalizeStoredAccount);
+function loggedOutStatus() {
+	return getNip07PublicKeyProvider() ? 'loggedOut' : 'unavailable';
 }
 
-function setLoggedOutState() {
+function disconnectActiveSigner() {
 	activeSigner = null;
 	void activeBunkerSigner?.close();
 	activeBunkerSigner = null;
-	state = { status: getNip07PublicKeyProvider() ? 'loggedOut' : 'unavailable', pubkey: null };
+}
+
+function setLoggedOutState(status: AuthStatus = loggedOutStatus()) {
+	disconnectActiveSigner();
+	state = { status, pubkey: null };
+}
+
+function beginAuthentication() {
+	authAttempt += 1;
+	disconnectActiveSigner();
+	state = { status: 'loggingIn', pubkey: null };
+	return authAttempt;
+}
+
+function isCurrentAttempt(attempt: number) {
+	return authAttempt === attempt;
 }
 
 async function getExtensionPubkey(signer: Nip07PublicKeyProvider): Promise<string | null> {
@@ -111,101 +119,107 @@ async function getExtensionPubkey(signer: Nip07PublicKeyProvider): Promise<strin
 	}
 }
 
-export function getAuthState() {
-	return state;
-}
-
-export function isNip07Available() {
-	return getNip07PublicKeyProvider() !== null;
-}
-
-export async function loginWithNip07() {
-	const signer = getNip07PublicKeyProvider();
-	if (!signer) {
-		setLoggedOutState();
-		return false;
-	}
-
-	state = { status: 'loggingIn', pubkey: null };
-	const pubkey = await getExtensionPubkey(signer);
-	if (!pubkey) {
-		state = { status: 'error', pubkey: null };
-		return false;
-	}
-
-	writeStoredAccount({ method: 'nip07', pubkey });
-	activeSigner = getNip07Signer();
-	if (!activeSigner) {
-		state = { status: 'error', pubkey: null };
-		return false;
-	}
-	state = { status: 'loggedIn', pubkey };
-	return true;
-}
-
-export async function initializeAuth() {
-	const storedAccount = readStoredAccount();
-	if (!storedAccount) {
-		setLoggedOutState();
-		return false;
-	}
-
-	if (storedAccount.method === 'nip46') {
-		return connectNip46(
-			storedAccount.bunker,
-			hexToBytes(storedAccount.clientSecretKey),
-			storedAccount.pubkey,
-			true
-		);
-	}
-
-	const signer = getNip07Signer();
-	if (!signer) return false;
-	state = { status: 'loggingIn', pubkey: null };
-	const pubkey = await getExtensionPubkey(signer);
-	if (!pubkey || pubkey !== storedAccount.pubkey) {
-		writeStoredAccount(null);
-		setLoggedOutState();
-		return false;
-	}
+function activateNip07Account(signer: Nip07Signer, pubkey: string) {
+	const record: AccountRecord = {
+		id: getAccountId('nip07', pubkey),
+		method: 'nip07',
+		pubkey,
+		createdAt: Date.now()
+	};
+	writeAndSetAccountStore(upsertAccount(record));
 	activeSigner = signer;
 	state = { status: 'loggedIn', pubkey };
 	return true;
 }
 
-async function connectNip46(
+async function activateNip07() {
+	const provider = getNip07PublicKeyProvider();
+	const signer = getNip07Signer();
+	if (!provider || !signer) {
+		setLoggedOutState(provider ? 'error' : 'unavailable');
+		return false;
+	}
+
+	const attempt = beginAuthentication();
+	const pubkey = await getExtensionPubkey(provider);
+	if (!isCurrentAttempt(attempt)) return false;
+	if (!pubkey) {
+		setLoggedOutState('error');
+		return false;
+	}
+	return activateNip07Account(signer, pubkey);
+}
+
+function createNip46Account(
+	pubkey: string,
+	bunker: BunkerPointer,
+	clientSecretKey: Uint8Array
+): Nip46AccountRecord {
+	return {
+		id: getAccountId('nip46', pubkey),
+		method: 'nip46',
+		pubkey,
+		createdAt: Date.now(),
+		bunker,
+		clientSecretKey: bytesToHex(clientSecretKey)
+	};
+}
+
+async function activateNip46(
 	bunker: BunkerPointer,
 	clientSecretKey: Uint8Array,
-	expectedPubkey?: string,
-	restoring = false
+	expectedPubkey?: string
 ) {
-	state = { status: 'loggingIn', pubkey: null };
+	const attempt = beginAuthentication();
+	let signer: BunkerSigner | null = null;
 	try {
-		const signer = BunkerSigner.fromBunker(clientSecretKey, bunker);
+		signer = BunkerSigner.fromBunker(clientSecretKey, bunker);
 		await signer.connect();
 		const pubkey = normalizePubkey(await signer.getPublicKey());
 		if (!pubkey || (expectedPubkey && pubkey !== expectedPubkey)) throw new Error('Invalid signer');
+		if (!isCurrentAttempt(attempt)) {
+			void signer.close();
+			return false;
+		}
+
+		writeAndSetAccountStore(upsertAccount(createNip46Account(pubkey, signer.bp, clientSecretKey)));
 		activeBunkerSigner = signer;
 		activeSigner = signer as AuthSigner;
-		if (!restoring) {
-			writeStoredAccount({
-				method: 'nip46',
-				pubkey,
-				bunker: signer.bp,
-				clientSecretKey: bytesToHex(clientSecretKey)
-			});
-		}
 		state = { status: 'loggedIn', pubkey };
 		return true;
 	} catch {
-		setLoggedOutState();
+		if (signer) void signer.close();
+		if (isCurrentAttempt(attempt)) setLoggedOutState('error');
 		return false;
 	}
 }
 
+export async function loginWithNip07() {
+	return activateNip07();
+}
+
+export async function initializeAuth() {
+	if (typeof localStorage !== 'undefined') localStorage.removeItem(legacyAuthStorageKey);
+	const store = refreshAccountStore();
+	if (!store.activeAccountId) {
+		setLoggedOutState();
+		return false;
+	}
+	return selectAccount(store.activeAccountId);
+}
+
+export async function selectAccount(accountId: string) {
+	const account = refreshAccountStore().accounts.find(({ id }) => id === accountId);
+	if (!account) return false;
+
+	writeAndSetAccountStore(setActiveAccount(accountId));
+	if (account.method === 'nip07') return activateNip07();
+	return activateNip46(account.bunker, hexToBytes(account.clientSecretKey), account.pubkey);
+}
+
 export async function loginWithNip46Bunker(input: string) {
 	const bunker = await parseBunkerInput(input.trim());
-	return bunker ? connectNip46(bunker, generateSecretKey()) : false;
+	return bunker ? activateNip46(bunker, generateSecretKey()) : false;
 }
 
 export function createNip46ConnectionUri() {
@@ -222,32 +236,55 @@ export function createNip46ConnectionUri() {
 }
 
 export async function loginWithNip46ConnectionUri(uri: string, clientSecretKey: Uint8Array) {
-	state = { status: 'loggingIn', pubkey: null };
+	const attempt = beginAuthentication();
+	let signer: BunkerSigner | null = null;
 	try {
-		const signer = await BunkerSigner.fromURI(clientSecretKey, uri);
+		signer = await BunkerSigner.fromURI(clientSecretKey, uri);
 		const pubkey = normalizePubkey(await signer.getPublicKey());
 		if (!pubkey) throw new Error('Invalid signer');
+		if (!isCurrentAttempt(attempt)) {
+			void signer.close();
+			return false;
+		}
+
+		writeAndSetAccountStore(upsertAccount(createNip46Account(pubkey, signer.bp, clientSecretKey)));
 		activeBunkerSigner = signer;
 		activeSigner = signer as AuthSigner;
-		writeStoredAccount({
-			method: 'nip46',
-			pubkey,
-			bunker: signer.bp,
-			clientSecretKey: bytesToHex(clientSecretKey)
-		});
 		state = { status: 'loggedIn', pubkey };
 		return true;
 	} catch {
-		setLoggedOutState();
+		if (signer) void signer.close();
+		if (isCurrentAttempt(attempt)) setLoggedOutState('error');
 		return false;
 	}
 }
 
-export function logout() {
-	writeStoredAccount(null);
-	setLoggedOutState();
+export async function removeAccount(accountId: string) {
+	const wasActive = accountStore.activeAccountId === accountId;
+	const nextStore = writeAndSetAccountStore(removeStoredAccount(accountId));
+	if (!wasActive) return true;
+
+	if (!nextStore.activeAccountId) {
+		authAttempt += 1;
+		setLoggedOutState();
+		return true;
+	}
+	return selectAccount(nextStore.activeAccountId);
+}
+
+export async function logout() {
+	const activeAccountId = accountStore.activeAccountId;
+	if (!activeAccountId) {
+		authAttempt += 1;
+		setLoggedOutState();
+		return true;
+	}
+	return removeAccount(activeAccountId);
 }
 
 export function resetAuthStateForTesting() {
+	authAttempt += 1;
+	disconnectActiveSigner();
+	accountStore = readAccounts();
 	state = { status: 'loggedOut', pubkey: null };
 }

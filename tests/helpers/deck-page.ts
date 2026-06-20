@@ -46,11 +46,19 @@ export async function openDeck(page: Page, options: { isLoggedIn?: boolean } = {
 					})
 				}
 			});
+			const pubkey = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 			window.localStorage.setItem(
-				'nostter:auth-account',
+				'nostter:accounts',
 				JSON.stringify({
-					method: 'nip07',
-					pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+					activeAccountId: `nip07:${pubkey}`,
+					accounts: [
+						{
+							id: `nip07:${pubkey}`,
+							method: 'nip07',
+							pubkey,
+							createdAt: 1
+						}
+					]
 				})
 			);
 		}

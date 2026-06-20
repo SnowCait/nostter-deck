@@ -42,11 +42,13 @@
 	import { publishShortTextNote } from '$lib/nostr/publish';
 	import { profileRelays } from '$lib/nostr/relays';
 	import {
+		getAccountStore,
 		getAuthState,
 		getAuthSigner,
 		initializeAuth,
 		loginWithNip07,
-		logout
+		removeAccount as removeAuthAccount,
+		selectAccount
 	} from '$lib/nostr/auth.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { readUserSettings, type AvatarShape, type FontSize } from '$lib/user-settings';
@@ -72,6 +74,9 @@
 	const lastFocusedPostKeyByColumnId: Record<string, string> = {};
 
 	const authState = $derived(getAuthState());
+	const accountStore = $derived(getAccountStore());
+	const accounts = $derived(accountStore.accounts);
+	const activeAccountId = $derived(accountStore.activeAccountId);
 	const isLoggedIn = $derived(authState.status === 'loggedIn');
 	const accountPubkey = $derived(authState.pubkey);
 	const accountProfile = $derived(accountPubkey ? getProfile(accountPubkey) : undefined);
@@ -192,7 +197,7 @@
 	function isKeyboardOverlayOpen() {
 		return Boolean(
 			document.querySelector(
-				'[data-slot="dialog-content"][data-open], [data-slot="popover-content"][data-open]'
+				'[data-slot="dialog-content"][data-state="open"], [data-slot="popover-content"][data-state="open"]'
 			)
 		);
 	}
@@ -385,8 +390,16 @@
 		await loginWithNip07();
 	}
 
-	function logoutAccount() {
-		logout();
+	async function selectSavedAccount(accountId: string) {
+		isComposePanelOpen = false;
+		publishError = false;
+		return selectAccount(accountId);
+	}
+
+	async function removeSavedAccount(accountId: string) {
+		isComposePanelOpen = false;
+		publishError = false;
+		return removeAuthAccount(accountId);
 	}
 
 	async function saveColumn(column: ColumnConfig) {
@@ -547,8 +560,11 @@
 		{authState}
 		{accountPubkey}
 		{accountProfile}
+		{accounts}
+		{activeAccountId}
 		onLogin={login}
-		onLogout={logoutAccount}
+		onSelectAccount={selectSavedAccount}
+		onRemoveAccount={removeSavedAccount}
 		onAddColumn={openAddColumnDialog}
 		onCompose={toggleComposePanel}
 		{fontSize}
