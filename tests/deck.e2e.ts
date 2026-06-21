@@ -2516,6 +2516,7 @@ test.describe('nostter deck', () => {
 		await expect(composer).toBeVisible();
 		await expectComposerNextToSidebar(page, composer);
 		await expect(composer.getByTestId('account-avatar')).toBeVisible();
+		await expect(composer.getByLabel('Post text')).toBeFocused();
 		await expect(composer.getByLabel('Post text')).toHaveValue('');
 		await expect(composer.getByText(/\/ 280/)).toHaveCount(0);
 		await expect(composer.getByRole('button', { name: 'Post', exact: true })).toBeDisabled();
@@ -2538,6 +2539,7 @@ test.describe('nostter deck', () => {
 
 		await sidebar(page).getByRole('button', { name: 'Post' }).click();
 		await expect(composer).toBeVisible();
+		await expect(composer.getByLabel('Post text')).toBeFocused();
 		await expect(composer.getByLabel('Post text')).toHaveValue('x'.repeat(281));
 		await sidebar(page).getByRole('button', { name: 'Post' }).click();
 		await expect(composer).toBeHidden();

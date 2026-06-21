@@ -376,10 +376,15 @@
 		isColumnDialogOpen = true;
 	}
 
-	function toggleComposePanel() {
+	async function toggleComposePanel() {
 		if (!isLoggedIn) return;
 
-		isComposePanelOpen = !isComposePanelOpen;
+		if (isComposePanelOpen) {
+			isComposePanelOpen = false;
+			return;
+		}
+
+		await openComposePanel();
 	}
 
 	async function openComposePanel() {
