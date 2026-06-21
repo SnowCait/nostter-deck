@@ -14,7 +14,12 @@
 	import { resetSessionTimelineCache } from '$lib/deck/timeline-cache';
 	import { createDetailColumnController } from '$lib/deck/detail-column-controller.svelte';
 	import { createTimelineController } from '$lib/deck/timeline-controller.svelte';
-	import type { ColumnConfig, ColumnIconKey, ColumnWidth } from '$lib/deck/types';
+	import type {
+		ChannelTimelineColumnConfig,
+		ColumnConfig,
+		ColumnIconKey,
+		ColumnWidth
+	} from '$lib/deck/types';
 	import {
 		saveChannelSettings as saveChannelSettingsConfig,
 		saveCustomTimelineSettings as saveCustomTimelineSettingsConfig,
@@ -39,7 +44,7 @@
 		configureDefaultRelays,
 		refreshNip65Relays
 	} from '$lib/nostr/nip65';
-	import { publishShortTextNote } from '$lib/nostr/publish';
+	import { publishChannelMessage, publishShortTextNote } from '$lib/nostr/publish';
 	import { profileRelays } from '$lib/nostr/relays';
 	import {
 		getAccountStore,
@@ -384,6 +389,15 @@
 
 		composeText = '';
 		isComposePanelOpen = false;
+	}
+
+	async function publishChannelPost(channel: ChannelTimelineColumnConfig, content: string) {
+		if (!accountPubkey) return { ok: false as const, reason: 'signing-failed' as const };
+
+		const signer = getAuthSigner();
+		if (!signer) return { ok: false as const, reason: 'signing-failed' as const };
+
+		return publishChannelMessage(content, channel.channelId, accountPubkey, signer, channel.relays);
 	}
 
 	async function login() {
@@ -744,6 +758,7 @@
 						onFollowSave={(profile) => saveFollowSettings(column.id, profile)}
 						onSearchSave={(query) => saveSearchSettings(column.id, query)}
 						onChannelSave={(channel) => saveChannelSettings(column.id, channel)}
+						onPublishChannelMessage={publishChannelPost}
 						onCustomTimelineSave={(filters, relays) =>
 							saveCustomTimelineSettings(column.id, filters, relays)}
 						onLoadOlderTimeline={() => void timelineController.loadOlder(column.id)}

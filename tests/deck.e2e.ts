@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
-import { decode, nprofileEncode, npubEncode } from 'nostr-tools/nip19';
+import { ChannelCreation, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
+import { decode, neventEncode, nprofileEncode, npubEncode } from 'nostr-tools/nip19';
 import { defaultRelays, profileRelays, searchRelays } from '$lib/nostr/relays';
 import { fakeRelayConnectionCounts, installFakeNostrRelay } from './helpers/fake-nostr-relay';
 import {
@@ -2525,6 +2525,105 @@ test.describe('nostter deck', () => {
 				)
 			)
 			.toBe(true);
+	});
+
+	test('publishes an unlimited NIP-28 message from a channel column', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page, { isLoggedIn: true });
+
+		const channelId = '4'.repeat(64);
+		const channelRelay = 'wss://channel.example/';
+		await addPresetColumn(page, 'timeline_channel', {
+			channelTarget: neventEncode({
+				id: channelId,
+				kind: ChannelCreation,
+				relays: [channelRelay]
+			})
+		});
+
+		const channelColumn = deckColumns(page).last();
+		const composer = channelColumn.getByTestId('channel-composer');
+		const message = 'x'.repeat(281);
+		await expect(composer).toBeVisible();
+		await expect(composer.locator('input')).toHaveCount(1);
+		await expect(composer.locator('textarea')).toHaveCount(0);
+		const submitButton = composer.getByRole('button', { name: 'Post', exact: true });
+		await expect(submitButton).toBeVisible();
+
+		const channelInput = composer.getByLabel('Channel message');
+		await channelInput.fill('   ');
+		await expect(submitButton).toBeDisabled();
+		await channelInput.fill(message);
+		await channelInput.press('Enter');
+		await expect(channelInput).toHaveValue('');
+
+		await channelColumn.getByRole('button', { name: 'Column options' }).click();
+		await expect(channelColumn.getByTestId('column-settings-scroll')).toBeVisible();
+		const childOrder = await channelColumn
+			.locator(':scope > *')
+			.evaluateAll((children) =>
+				children.map((child) => child.getAttribute('data-testid') ?? child.tagName)
+			);
+		expect(childOrder.indexOf('column-settings-scroll')).toBeLessThan(
+			childOrder.indexOf('channel-composer')
+		);
+		expect(childOrder.indexOf('channel-composer')).toBeLessThan(
+			childOrder.indexOf('timeline-scroll')
+		);
+
+		await expect
+			.poll(() =>
+				page.evaluate(
+					({ channelId, channelRelay, message }) => {
+						const events = window.__nostterFakeRelayPublishedEvents ?? [];
+						const isChannelMessage = (event: unknown) => {
+							const published = event as Record<string, unknown>;
+							return (
+								published.kind === 42 &&
+								JSON.stringify(published.tags) === JSON.stringify([['e', channelId, '', 'root']]) &&
+								published.content === message
+							);
+						};
+						return (
+							events.some(
+								({ relay, event }) => relay === 'wss://relay.damus.io/' && isChannelMessage(event)
+							) &&
+							events.some(({ relay, event }) => relay === channelRelay && isChannelMessage(event))
+						);
+					},
+					{ channelId, channelRelay, message }
+				)
+			)
+			.toBe(true);
+	});
+
+	test('hides the channel composer while logged out', async ({ page }) => {
+		await openDeck(page, { isLoggedIn: false });
+
+		await addPresetColumn(page, 'timeline_channel', {
+			channelTarget: '4'.repeat(64)
+		});
+
+		await expect(deckColumns(page).last().getByTestId('channel-composer')).toBeHidden();
+	});
+
+	test('keeps a rejected channel message and shows an error', async ({ page }) => {
+		await installFakeNostrRelay(page, { rejectPublish: true });
+		await openDeck(page, { isLoggedIn: true });
+
+		await addPresetColumn(page, 'timeline_channel', {
+			channelTarget: '4'.repeat(64)
+		});
+
+		const composer = deckColumns(page).last().getByTestId('channel-composer');
+		const channelInput = composer.getByLabel('Channel message');
+		await channelInput.fill('Keep this channel draft.');
+		await composer.getByRole('button', { name: 'Post', exact: true }).click();
+
+		await expect(channelInput).toHaveValue('Keep this channel draft.');
+		await expect(composer.getByRole('alert')).toHaveText(
+			'Could not publish your post. Please try again.'
+		);
 	});
 
 	test('keeps the draft visible when every relay rejects a post', async ({ page }) => {

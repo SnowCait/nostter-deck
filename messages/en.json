@@ -83,6 +83,8 @@
 	"follow_target": "npub or nprofile",
 	"search_query": "Search query",
 	"channel_target": "Channel ID or nevent",
+	"channel_post_text": "Channel message",
+	"channel_compose_placeholder": "Message this channel",
 	"custom_timeline_filters": "REQ filters",
 	"custom_timeline_filters_help": "Use a Nostr REQ filter array. authors normally accepts pubkey arrays; this app also accepts a single address string like kind:pubkey:identifier.",
 	"custom_timeline_relays": "Relays",

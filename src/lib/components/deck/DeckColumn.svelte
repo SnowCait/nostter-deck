@@ -9,15 +9,18 @@
 		ColumnConfig,
 		ColumnIconKey,
 		ColumnWidth,
+		ChannelTimelineColumnConfig,
 		NostrFilter,
 		RelaySelection
 	} from '$lib/deck/types';
 	import type { TimelineRuntime } from '$lib/deck/timeline-runtime';
 	import type { FontSizeTextClasses } from '$lib/font-size';
+	import type { PublishPostResult } from '$lib/nostr/publish';
 	import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape } from '$lib/user-settings';
 	import type { Profile } from '$lib/nostr/profiles';
 	import ChannelColumnSettings from './ChannelColumnSettings.svelte';
+	import ChannelComposer from './ChannelComposer.svelte';
 	import ColumnIcon from './ColumnIcon.svelte';
 	import ColumnIconGlyph from './ColumnIconGlyph.svelte';
 	import CustomTimelineSettings from './CustomTimelineSettings.svelte';
@@ -50,6 +53,10 @@
 		onFollowSave: (profile: ProfilePointer) => void;
 		onSearchSave: (query: string) => void;
 		onChannelSave: (channel: ChannelPointer) => void;
+		onPublishChannelMessage: (
+			channel: ChannelTimelineColumnConfig,
+			content: string
+		) => Promise<PublishPostResult>;
 		onCustomTimelineSave: (filters: NostrFilter[], relays: RelaySelection) => void;
 		onLoadOlderTimeline: () => void;
 		onLoadNewerTimeline: () => void;
@@ -83,6 +90,7 @@
 		onFollowSave,
 		onSearchSave,
 		onChannelSave,
+		onPublishChannelMessage,
 		onCustomTimelineSave,
 		onLoadOlderTimeline,
 		onLoadNewerTimeline,
@@ -325,6 +333,14 @@
 				<span>{m.delete_column()}</span>
 			</button>
 		</div>
+	{/if}
+
+	{#if isLoggedIn && column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_channel'}
+		<ChannelComposer
+			channel={column}
+			{textClass}
+			onPublish={(content) => onPublishChannelMessage(column, content)}
+		/>
 	{/if}
 
 	<div

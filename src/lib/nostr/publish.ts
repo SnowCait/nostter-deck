@@ -1,4 +1,5 @@
-import { ShortTextNote } from 'nostr-tools/kinds';
+import { ChannelMessage, ShortTextNote } from 'nostr-tools/kinds';
+import { now } from 'rx-nostr';
 import { catchError, defaultIfEmpty, filter, firstValueFrom, map, of, take } from 'rxjs';
 import type * as Nostr from 'nostr-typedef';
 import { getNostrClient } from './client';
@@ -8,18 +9,14 @@ export type PublishPostResult =
 	| { ok: true; event: Nostr.Event }
 	| { ok: false; reason: 'signing-failed' | 'account-mismatch' | 'relay-failed' };
 
-export async function publishShortTextNote(
-	content: string,
-	pubkey: string,
-	signer: Nip07Signer
-): Promise<PublishPostResult> {
-	const eventTemplate = {
-		kind: ShortTextNote,
-		tags: [],
-		content,
-		created_at: Math.floor(Date.now() / 1000)
-	};
+type PublishEventTemplate = Pick<Nostr.Event, 'kind' | 'tags' | 'content' | 'created_at'>;
 
+async function publishEvent(
+	eventTemplate: PublishEventTemplate,
+	pubkey: string,
+	signer: Nip07Signer,
+	relays?: string[]
+): Promise<PublishPostResult> {
 	let signedEvent: Nostr.Event;
 	try {
 		signedEvent = await signer.signEvent(eventTemplate);
@@ -36,7 +33,8 @@ export async function publishShortTextNote(
 			getNostrClient()
 				.send(signedEvent, {
 					completeOn: 'all-ok',
-					errorOnTimeout: true
+					errorOnTimeout: true,
+					...(relays ? { on: { defaultWriteRelays: true, relays } } : {})
 				})
 				.pipe(
 					filter((packet) => packet.ok),
@@ -51,4 +49,37 @@ export async function publishShortTextNote(
 	} catch {
 		return { ok: false, reason: 'relay-failed' };
 	}
+}
+
+export function publishShortTextNote(content: string, pubkey: string, signer: Nip07Signer) {
+	return publishEvent(
+		{
+			kind: ShortTextNote,
+			tags: [],
+			content,
+			created_at: now()
+		},
+		pubkey,
+		signer
+	);
+}
+
+export function publishChannelMessage(
+	content: string,
+	channelId: string,
+	pubkey: string,
+	signer: Nip07Signer,
+	channelRelays: string[]
+) {
+	return publishEvent(
+		{
+			kind: ChannelMessage,
+			tags: [['e', channelId, '', 'root']],
+			content,
+			created_at: now()
+		},
+		pubkey,
+		signer,
+		channelRelays
+	);
 }
