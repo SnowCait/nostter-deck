@@ -12,6 +12,7 @@ export type UserSettings = {
 	theme: ThemePreference;
 	fontSize: FontSize;
 	avatarShape: AvatarShape;
+	includeClientTag: boolean;
 };
 
 const userSettingsStorageKey = 'nostter:user-settings';
@@ -19,7 +20,8 @@ const userSettingsStorageKey = 'nostter:user-settings';
 const defaultUserSettings: UserSettings = {
 	theme: 'system',
 	fontSize: 'medium',
-	avatarShape: 'circle'
+	avatarShape: 'circle',
+	includeClientTag: true
 };
 
 function isThemePreference(value: unknown): value is ThemePreference {
@@ -43,7 +45,11 @@ function normalizeUserSettings(value: unknown): UserSettings {
 		fontSize: isFontSize(candidate.fontSize) ? candidate.fontSize : defaultUserSettings.fontSize,
 		avatarShape: isAvatarShape(candidate.avatarShape)
 			? candidate.avatarShape
-			: defaultUserSettings.avatarShape
+			: defaultUserSettings.avatarShape,
+		includeClientTag:
+			typeof candidate.includeClientTag === 'boolean'
+				? candidate.includeClientTag
+				: defaultUserSettings.includeClientTag
 	};
 }
 

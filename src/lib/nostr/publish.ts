@@ -9,7 +9,22 @@ export type PublishPostResult =
 	| { ok: true; event: Nostr.Event }
 	| { ok: false; reason: 'signing-failed' | 'account-mismatch' | 'relay-failed' };
 
+export type PublishOptions = {
+	includeClientTag?: boolean;
+};
+
 type PublishEventTemplate = Pick<Nostr.Event, 'kind' | 'tags' | 'content' | 'created_at'>;
+
+const nostterClientTag = [
+	'client',
+	'nostter deck',
+	'31990:83d52b4363d2d1bc5a098de7be67c120bfb7c0cee8efefd8eb6e42372af24689:1782011724356',
+	'wss://yabu.me/'
+] as const;
+
+function withClientTag(tags: string[][], includeClientTag: boolean) {
+	return includeClientTag ? [...tags, [...nostterClientTag]] : tags;
+}
 
 async function publishEvent(
 	eventTemplate: PublishEventTemplate,
@@ -51,11 +66,16 @@ async function publishEvent(
 	}
 }
 
-export function publishShortTextNote(content: string, pubkey: string, signer: Nip07Signer) {
+export function publishShortTextNote(
+	content: string,
+	pubkey: string,
+	signer: Nip07Signer,
+	{ includeClientTag = false }: PublishOptions = {}
+) {
 	return publishEvent(
 		{
 			kind: ShortTextNote,
-			tags: [],
+			tags: withClientTag([], includeClientTag),
 			content,
 			created_at: now()
 		},
@@ -69,12 +89,13 @@ export function publishChannelMessage(
 	channelId: string,
 	pubkey: string,
 	signer: Nip07Signer,
-	channelRelays: string[]
+	channelRelays: string[],
+	{ includeClientTag = false }: PublishOptions = {}
 ) {
 	return publishEvent(
 		{
 			kind: ChannelMessage,
-			tags: [['e', channelId, '', 'root']],
+			tags: withClientTag([['e', channelId, '', 'root']], includeClientTag),
 			content,
 			created_at: now()
 		},

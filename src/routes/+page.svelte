@@ -412,7 +412,9 @@
 
 		isPublishing = true;
 		publishError = false;
-		const result = await publishShortTextNote(composeText, accountPubkey, signer);
+		const result = await publishShortTextNote(composeText, accountPubkey, signer, {
+			includeClientTag: readUserSettings().includeClientTag
+		});
 		isPublishing = false;
 
 		if (!result.ok) {
@@ -430,7 +432,16 @@
 		const signer = getAuthSigner();
 		if (!signer) return { ok: false as const, reason: 'signing-failed' as const };
 
-		return publishChannelMessage(content, channel.channelId, accountPubkey, signer, channel.relays);
+		return publishChannelMessage(
+			content,
+			channel.channelId,
+			accountPubkey,
+			signer,
+			channel.relays,
+			{
+				includeClientTag: readUserSettings().includeClientTag
+			}
+		);
 	}
 
 	async function login() {

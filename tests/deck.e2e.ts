@@ -79,6 +79,12 @@ const pathPreviewUrl = 'https://example.com/path?from=nostter';
 const postEmojiUrl = 'https://example.com/emoji/post.png';
 const profileEmojiUrl = 'https://example.com/emoji/profile.png';
 const channelEmojiUrl = 'https://example.com/emoji/channel.png';
+const nostterClientTag = [
+	'client',
+	'nostter deck',
+	'31990:83d52b4363d2d1bc5a098de7be67c120bfb7c0cee8efefd8eb6e42372af24689:1782011724356',
+	'wss://yabu.me/'
+];
 const tallPreviewSvg =
 	'<svg xmlns="http://www.w3.org/2000/svg" width="120" height="240"><rect width="120" height="240" fill="black"/></svg>';
 
@@ -2298,6 +2304,51 @@ test.describe('nostter deck', () => {
 		await expectThemeNotStoredInUiState(page);
 	});
 
+	test('changes and persists client information attachment', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page, { isLoggedIn: true });
+
+		await page.getByRole('button', { name: 'Settings' }).click();
+		const clientInformationToggle = page.getByLabel('Attach client information');
+		await expect(clientInformationToggle).toBeChecked();
+		await clientInformationToggle.uncheck();
+		await expect
+			.poll(() =>
+				page.evaluate(() => {
+					const settings = window.localStorage.getItem('nostter:user-settings');
+					return settings ? JSON.parse(settings).includeClientTag : null;
+				})
+			)
+			.toBe(false);
+		await page
+			.getByRole('dialog', { name: 'Settings' })
+			.getByRole('button', { name: 'Close' })
+			.click();
+
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+		const composer = page.getByRole('region', { name: 'Post' });
+		await composer.getByLabel('Post text').fill('Post without client information.');
+		await composer.getByLabel('Post text').press('ControlOrMeta+Enter');
+		await expect
+			.poll(() =>
+				page.evaluate(() =>
+					(window.__nostterFakeRelayPublishedEvents ?? []).some(({ event }) => {
+						const published = event as Record<string, unknown>;
+						return (
+							published.kind === 1 &&
+							published.content === 'Post without client information.' &&
+							JSON.stringify(published.tags) === '[]'
+						);
+					})
+				)
+			)
+			.toBe(true);
+
+		await page.reload();
+		await page.getByRole('button', { name: 'Settings' }).click();
+		await expect(page.getByLabel('Attach client information')).not.toBeChecked();
+	});
+
 	test('changes and persists the font size from user settings', async ({ page }) => {
 		await installFakeNostrRelay(page);
 		await openDeck(page);
@@ -2597,19 +2648,21 @@ test.describe('nostter deck', () => {
 		await expect(composer).toBeHidden();
 		await expect
 			.poll(() =>
-				page.evaluate(() =>
-					(window.__nostterFakeRelayPublishedEvents ?? []).some(({ relay, event }) => {
-						const published = event as Record<string, unknown>;
-						return (
-							relay === 'wss://relay.damus.io/' &&
-							published.id === 'f'.repeat(64) &&
-							published.pubkey === 'a'.repeat(64) &&
-							published.kind === 1 &&
-							JSON.stringify(published.tags) === '[]' &&
-							published.content === 'Published from nostter deck.' &&
-							published.sig === '0'.repeat(128)
-						);
-					})
+				page.evaluate(
+					(clientTag) =>
+						(window.__nostterFakeRelayPublishedEvents ?? []).some(({ relay, event }) => {
+							const published = event as Record<string, unknown>;
+							return (
+								relay === 'wss://relay.damus.io/' &&
+								published.id === 'f'.repeat(64) &&
+								published.pubkey === 'a'.repeat(64) &&
+								published.kind === 1 &&
+								JSON.stringify(published.tags) === JSON.stringify([clientTag]) &&
+								published.content === 'Published from nostter deck.' &&
+								published.sig === '0'.repeat(128)
+							);
+						}),
+					nostterClientTag
 				)
 			)
 			.toBe(true);
@@ -2665,13 +2718,14 @@ test.describe('nostter deck', () => {
 		await expect
 			.poll(() =>
 				page.evaluate(
-					({ channelId, channelRelay, message }) => {
+					({ channelId, channelRelay, message, clientTag }) => {
 						const events = window.__nostterFakeRelayPublishedEvents ?? [];
 						const isChannelMessage = (event: unknown) => {
 							const published = event as Record<string, unknown>;
 							return (
 								published.kind === 42 &&
-								JSON.stringify(published.tags) === JSON.stringify([['e', channelId, '', 'root']]) &&
+								JSON.stringify(published.tags) ===
+									JSON.stringify([['e', channelId, '', 'root'], clientTag]) &&
 								published.content === message
 							);
 						};
@@ -2682,7 +2736,7 @@ test.describe('nostter deck', () => {
 							events.some(({ relay, event }) => relay === channelRelay && isChannelMessage(event))
 						);
 					},
-					{ channelId, channelRelay, message }
+					{ channelId, channelRelay, message, clientTag: nostterClientTag }
 				)
 			)
 			.toBe(true);

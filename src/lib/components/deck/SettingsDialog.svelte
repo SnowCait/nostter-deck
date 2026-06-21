@@ -59,6 +59,7 @@
 	}: Props = $props();
 	let currentLocale = $state<AppLocale>(getLocale());
 	let themePreference = $state(readUserSettings().theme);
+	let includeClientTag = $state(readUserSettings().includeClientTag);
 	let isMutedUsersExpanded = $state(false);
 
 	const localeLabels: Record<AppLocale, string> = {
@@ -145,6 +146,14 @@
 		onAvatarShapeChange(selectedAvatarShape);
 	}
 
+	function toggleIncludeClientTag(event: Event) {
+		includeClientTag = (event.currentTarget as HTMLInputElement).checked;
+		updateUserSettings((currentSettings) => ({
+			...currentSettings,
+			includeClientTag
+		}));
+	}
+
 	function getMutedUserName(pubkey: string) {
 		const profile = getProfile(pubkey);
 		return profile?.display_name ?? profile?.name ?? npubEncode(pubkey).slice(0, 16);
@@ -208,6 +217,21 @@
 					{/each}
 				</Select.Content>
 			</Select.Root>
+
+			<label
+				class={[
+					'mt-4 flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-300',
+					textClass.label
+				]}
+			>
+				<input
+					type="checkbox"
+					class="size-4 shrink-0 accent-sky-500"
+					checked={includeClientTag}
+					onchange={toggleIncludeClientTag}
+				/>
+				<span>{m.attach_client_information()}</span>
+			</label>
 		</section>
 
 		<section class="mt-5" aria-labelledby="settings-appearance-title">

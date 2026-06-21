@@ -34,17 +34,33 @@ describe('user settings storage', () => {
 		expect(readUserSettings()).toEqual({
 			theme: 'system',
 			fontSize: 'medium',
-			avatarShape: 'circle'
+			avatarShape: 'circle',
+			includeClientTag: true
 		});
 	});
 
 	test('preserves valid persisted settings', () => {
-		writeUserSettings({ theme: 'dark', fontSize: 'large', avatarShape: 'square' });
+		writeUserSettings({
+			theme: 'dark',
+			fontSize: 'large',
+			avatarShape: 'square',
+			includeClientTag: false
+		});
 
 		expect(readUserSettings()).toEqual({
 			theme: 'dark',
 			fontSize: 'large',
-			avatarShape: 'square'
+			avatarShape: 'square',
+			includeClientTag: false
 		});
+	});
+
+	test('enables client information for settings saved before the preference existed', () => {
+		storageValues.set(
+			userSettingsStorageKey,
+			JSON.stringify({ theme: 'light', fontSize: 'small', avatarShape: 'square' })
+		);
+
+		expect(readUserSettings().includeClientTag).toBe(true);
 	});
 });
