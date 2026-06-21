@@ -169,7 +169,9 @@
 	"keyboard_shortcut_next_post": "Next post",
 	"keyboard_shortcut_open_thread": "Open thread",
 	"keyboard_shortcut_open_profile": "Open profile",
-	"keyboard_shortcut_close_detail": "Close details",
+	"keyboard_shortcut_open_composer": "Open composer",
+	"keyboard_shortcut_publish_post": "Publish post",
+	"keyboard_shortcut_close_detail": "Close details or composer",
 	"keyboard_shortcut_show_shortcuts": "Show keyboard shortcuts",
 	"verified": "Verified"
 }

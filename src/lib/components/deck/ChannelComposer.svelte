@@ -33,6 +33,13 @@
 
 		content = '';
 	}
+
+	function handleKeydown(event: KeyboardEvent) {
+		if (event.key !== 'Enter' || (!event.ctrlKey && !event.metaKey)) return;
+
+		event.preventDefault();
+		void publish();
+	}
 </script>
 
 <section
@@ -48,17 +55,19 @@
 	>
 		<div class="flex items-center gap-2">
 			<label class="sr-only" for={`channel-compose-${channel.id}`}>{m.channel_post_text()}</label>
-			<input
+			<textarea
 				id={`channel-compose-${channel.id}`}
-				type="text"
+				rows="1"
 				class={[
-					'h-10 min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:cursor-wait dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
+					'min-h-10 min-w-0 flex-1 resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:cursor-wait dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
 					textClass.control
 				]}
 				placeholder={m.channel_compose_placeholder()}
 				disabled={isPublishing}
+				aria-keyshortcuts="Control+Enter Meta+Enter"
 				bind:value={content}
-			/>
+				onkeydown={handleKeydown}
+			></textarea>
 			<button
 				type="submit"
 				class={[

@@ -25,7 +25,9 @@
 			title: m.keyboard_shortcuts_post_actions(),
 			shortcuts: [
 				{ keys: ['Enter'], label: m.keyboard_shortcut_open_thread() },
-				{ keys: ['P'], label: m.keyboard_shortcut_open_profile() }
+				{ keys: ['P'], label: m.keyboard_shortcut_open_profile() },
+				{ keys: ['N'], label: m.keyboard_shortcut_open_composer() },
+				{ keys: ['Ctrl / ⌘', 'Enter'], label: m.keyboard_shortcut_publish_post() }
 			]
 		},
 		{

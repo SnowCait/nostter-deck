@@ -71,6 +71,7 @@
 	let composeText = $state('');
 	let isPublishing = $state(false);
 	let publishError = $state(false);
+	let composeTextarea = $state<HTMLTextAreaElement>();
 	const initialUserSettings = readUserSettings();
 	let fontSize = $state<FontSize>(initialUserSettings.fontSize);
 	let avatarShape = $state<AvatarShape>(initialUserSettings.avatarShape);
@@ -216,6 +217,10 @@
 		);
 	}
 
+	function isComposePanelKeyboardTarget(target: EventTarget | null) {
+		return target instanceof Element && Boolean(target.closest('[data-compose-panel]'));
+	}
+
 	function isKeyboardNavigationBlocked(target: EventTarget | null, key: string) {
 		if (!(target instanceof Element)) return false;
 		if (isEditableKeyboardTarget(target)) return true;
@@ -274,13 +279,31 @@
 		if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
 		if (isKeyboardOverlayOpen()) return;
 
-		if (event.key === 'Escape' && detailController.detailColumn) {
-			event.preventDefault();
-			void detailController.close();
-			return;
+		if (event.key === 'Escape') {
+			if (
+				isComposePanelOpen &&
+				(isComposePanelKeyboardTarget(event.target) || !detailController.detailColumn)
+			) {
+				event.preventDefault();
+				closeComposePanel();
+				return;
+			}
+
+			if (detailController.detailColumn) {
+				event.preventDefault();
+				void detailController.close();
+				return;
+			}
 		}
 
 		const key = event.key.toLowerCase();
+		if (key === 'n') {
+			if (isEditableKeyboardTarget(event.target) || !isLoggedIn) return;
+			event.preventDefault();
+			void openComposePanel();
+			return;
+		}
+
 		const isKeyboardShortcutsKey = event.key === '?' || (event.code === 'Slash' && event.shiftKey);
 		if (isKeyboardShortcutsKey) {
 			if (isEditableKeyboardTarget(event.target)) return;
@@ -364,8 +387,23 @@
 		isComposePanelOpen = !isComposePanelOpen;
 	}
 
+	async function openComposePanel() {
+		if (!isLoggedIn) return;
+
+		isComposePanelOpen = true;
+		await tick();
+		composeTextarea?.focus();
+	}
+
 	function closeComposePanel() {
 		isComposePanelOpen = false;
+	}
+
+	function handleComposeKeydown(event: KeyboardEvent) {
+		if (event.key !== 'Enter' || (!event.ctrlKey && !event.metaKey)) return;
+
+		event.preventDefault();
+		void publishPost();
 	}
 
 	async function publishPost() {
@@ -599,6 +637,7 @@
 		<section
 			class="flex h-full w-[360px] shrink-0 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
 			aria-labelledby="compose-panel-title"
+			data-compose-panel
 		>
 			<header
 				class="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800"
@@ -654,7 +693,10 @@
 					]}
 					placeholder={m.compose_placeholder()}
 					disabled={isPublishing}
+					aria-keyshortcuts="Control+Enter Meta+Enter"
+					bind:this={composeTextarea}
 					bind:value={composeText}
+					onkeydown={handleComposeKeydown}
 				></textarea>
 
 				<div class="mt-3 flex items-center justify-between gap-3">

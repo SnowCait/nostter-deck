@@ -1919,7 +1919,9 @@ test.describe('nostter deck', () => {
 		await expect(shortcutsDialog.getByText('Next post')).toBeVisible();
 		await expect(shortcutsDialog.getByText('Open thread')).toBeVisible();
 		await expect(shortcutsDialog.getByText('Open profile')).toBeVisible();
-		await expect(shortcutsDialog.getByText('Close details')).toBeVisible();
+		await expect(shortcutsDialog.getByText('Open composer')).toBeVisible();
+		await expect(shortcutsDialog.getByText('Publish post')).toBeVisible();
+		await expect(shortcutsDialog.getByText('Close details or composer')).toBeVisible();
 		await expect(shortcutsDialog.locator('kbd')).toHaveText([
 			'H',
 			'←',
@@ -1931,6 +1933,9 @@ test.describe('nostter deck', () => {
 			'↓',
 			'Enter',
 			'P',
+			'N',
+			'Ctrl / ⌘',
+			'Enter',
 			'Esc',
 			'?'
 		]);
@@ -1981,6 +1986,8 @@ test.describe('nostter deck', () => {
 		await expect(shortcutsDialog).toBeVisible();
 		await expect(shortcutsDialog.getByText('前のカラム')).toBeVisible();
 		await expect(shortcutsDialog.getByText('ショートカット一覧を表示')).toBeVisible();
+		await expect(shortcutsDialog.getByText('投稿欄を開く')).toBeVisible();
+		await expect(shortcutsDialog.getByText('詳細または投稿欄を閉じる')).toBeVisible();
 	});
 
 	test('keeps a bounded timeline window backed by IndexedDB', async ({ page }) => {
@@ -2475,7 +2482,7 @@ test.describe('nostter deck', () => {
 		await expect(composer.getByText('281 / 280')).toBeVisible();
 		await expect(composer.getByRole('button', { name: 'Post', exact: true })).toBeDisabled();
 
-		await composer.getByRole('button', { name: 'Close' }).click();
+		await composer.getByLabel('Post text').press('Escape');
 		await expect(composer).toBeHidden();
 		await expectSidebarWidth(page, sidebarExpandedWidth);
 
@@ -2495,6 +2502,73 @@ test.describe('nostter deck', () => {
 		await expect(composer).toBeHidden();
 	});
 
+	test('opens and focuses the compose panel with N', async ({ page }) => {
+		await openDeck(page, { isLoggedIn: true });
+
+		const composer = page.getByRole('region', { name: 'Post' });
+		await page.keyboard.press('n');
+		await expect(composer).toBeVisible();
+		const composeText = composer.getByLabel('Post text');
+		await expect(composeText).toBeFocused();
+
+		await page.getByRole('button', { name: 'Add column' }).first().focus();
+		await page.keyboard.press('n');
+		await expect(composer).toBeVisible();
+		await expect(composeText).toBeFocused();
+
+		await composeText.press('n');
+		await expect(composeText).toHaveValue('n');
+
+		await page.getByRole('button', { name: 'Add column' }).first().focus();
+		await page.keyboard.press('Escape');
+		await expect(composer).toBeHidden();
+		await page.keyboard.press('n');
+		await expect(composeText).toHaveValue('n');
+	});
+
+	test('closes the focused composer before closing the focused detail column with Escape', async ({
+		page
+	}) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page, { isLoggedIn: true });
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], search: 'thread-entry', limit: 20 }]
+		});
+
+		await page.keyboard.press('j');
+		await page.keyboard.press('Enter');
+		const threadColumn = page.getByTestId('thread-column');
+		await expect(threadColumn).toBeVisible();
+
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+		const composer = page.getByRole('region', { name: 'Post' });
+		await expect(composer).toBeVisible();
+		await page.keyboard.press('n');
+		await expect(composer.getByLabel('Post text')).toBeFocused();
+		await page.keyboard.press('Escape');
+		await expect(composer).toBeHidden();
+		await expect(threadColumn).toBeVisible();
+
+		await threadColumn.focus();
+		await page.keyboard.press('Escape');
+		await expect(threadColumn).toHaveCount(0);
+	});
+
+	test('does not open the compose panel with N while logged out or over a dialog', async ({
+		page
+	}) => {
+		await openDeck(page);
+
+		await page.keyboard.press('n');
+		await expect(page.getByRole('region', { name: 'Post' })).toHaveCount(0);
+
+		await openDeck(page, { isLoggedIn: true });
+		await page.getByRole('button', { name: 'Add column' }).first().click();
+		await expect(page.getByRole('dialog', { name: 'Add column' })).toBeVisible();
+		await page.keyboard.press('n');
+		await expect(page.getByRole('region', { name: 'Post' })).toHaveCount(0);
+	});
+
 	test('publishes a signed short text note through the configured default relays', async ({
 		page
 	}) => {
@@ -2504,7 +2578,7 @@ test.describe('nostter deck', () => {
 		await sidebar(page).getByRole('button', { name: 'Post' }).click();
 		const composer = page.getByRole('region', { name: 'Post' });
 		await composer.getByLabel('Post text').fill('Published from nostter deck.');
-		await composer.getByRole('button', { name: 'Post', exact: true }).click();
+		await composer.getByLabel('Post text').press('ControlOrMeta+Enter');
 
 		await expect(composer).toBeHidden();
 		await expect
@@ -2545,8 +2619,8 @@ test.describe('nostter deck', () => {
 		const composer = channelColumn.getByTestId('channel-composer');
 		const message = 'x'.repeat(281);
 		await expect(composer).toBeVisible();
-		await expect(composer.locator('input')).toHaveCount(1);
-		await expect(composer.locator('textarea')).toHaveCount(0);
+		await expect(composer.locator('input')).toHaveCount(0);
+		await expect(composer.locator('textarea')).toHaveCount(1);
 		const submitButton = composer.getByRole('button', { name: 'Post', exact: true });
 		await expect(submitButton).toBeVisible();
 
@@ -2555,6 +2629,9 @@ test.describe('nostter deck', () => {
 		await expect(submitButton).toBeDisabled();
 		await channelInput.fill(message);
 		await channelInput.press('Enter');
+		await expect(channelInput).toHaveValue(`${message}\n`);
+		await channelInput.fill(message);
+		await channelInput.press('ControlOrMeta+Enter');
 		await expect(channelInput).toHaveValue('');
 
 		await channelColumn.getByRole('button', { name: 'Column options' }).click();

@@ -169,7 +169,9 @@
 	"keyboard_shortcut_next_post": "次の投稿",
 	"keyboard_shortcut_open_thread": "スレッドを開く",
 	"keyboard_shortcut_open_profile": "プロフィールを開く",
-	"keyboard_shortcut_close_detail": "詳細を閉じる",
+	"keyboard_shortcut_open_composer": "投稿欄を開く",
+	"keyboard_shortcut_publish_post": "投稿を送信",
+	"keyboard_shortcut_close_detail": "詳細または投稿欄を閉じる",
 	"keyboard_shortcut_show_shortcuts": "ショートカット一覧を表示",
 	"verified": "認証済み"
 }
