@@ -2464,10 +2464,11 @@ test.describe('nostter deck', () => {
 		const composer = page.getByRole('region', { name: 'Post' });
 		await expect(composer).toBeVisible();
 		await expectComposerNextToSidebar(page, composer);
-		await expect(composer.getByText(/^npub1/)).toBeVisible();
+		await expect(composer.getByTestId('account-avatar')).toBeVisible();
 		await expect(composer.getByLabel('Post text')).toHaveValue('');
-		await expect(composer.getByText('0 / 280')).toBeVisible();
+		await expect(composer.getByText(/\/ 280/)).toHaveCount(0);
 		await expect(composer.getByRole('button', { name: 'Post', exact: true })).toBeDisabled();
+		await expect(composer.getByRole('button', { name: 'Close' }).locator('svg')).toBeVisible();
 
 		await expect(composer.getByRole('button', { name: 'Add media' })).toBeVisible();
 		await expect(composer.getByRole('button', { name: 'Add emoji' })).toBeVisible();
@@ -2475,12 +2476,10 @@ test.describe('nostter deck', () => {
 		await expect(composer.getByRole('button', { name: 'Post visibility' })).toHaveCount(0);
 
 		await composer.getByLabel('Post text').fill('Drafting from the deck.');
-		await expect(composer.getByText('23 / 280')).toBeVisible();
 		await expect(composer.getByRole('button', { name: 'Post', exact: true })).toBeEnabled();
 
 		await composer.getByLabel('Post text').fill('x'.repeat(281));
-		await expect(composer.getByText('281 / 280')).toBeVisible();
-		await expect(composer.getByRole('button', { name: 'Post', exact: true })).toBeDisabled();
+		await expect(composer.getByRole('button', { name: 'Post', exact: true })).toBeEnabled();
 
 		await composer.getByLabel('Post text').press('Escape');
 		await expect(composer).toBeHidden();
@@ -2500,6 +2499,21 @@ test.describe('nostter deck', () => {
 		await expectComposerNextToSidebar(page, composer);
 		await sidebar(page).getByRole('button', { name: 'Post' }).click();
 		await expect(composer).toBeHidden();
+	});
+
+	test('matches the composer header height to deck columns', async ({ page }) => {
+		await openDeck(page, { isLoggedIn: true });
+		await addCustomTimelineColumn(page);
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+
+		const composerHeader = page.getByRole('region', { name: 'Post' }).locator('header');
+		const columnHeader = deckColumns(page).first().locator('header');
+		await expect(composerHeader).toBeVisible();
+		await expect(columnHeader).toBeVisible();
+
+		const composerHeaderHeight = Math.round((await composerHeader.boundingBox())?.height ?? 0);
+		const columnHeaderHeight = Math.round((await columnHeader.boundingBox())?.height ?? 0);
+		expect(composerHeaderHeight).toBe(columnHeaderHeight);
 	});
 
 	test('opens and focuses the compose panel with N', async ({ page }) => {

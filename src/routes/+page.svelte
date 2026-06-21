@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount, tick } from 'svelte';
-	import { CalendarClock, Image, Plus, Send, Smile, UserRound } from '@lucide/svelte';
+	import { CalendarClock, Image, Plus, Send, Smile, UserRound, X } from '@lucide/svelte';
 	import { npubEncode } from 'nostr-tools/nip19';
 	import AddColumnDialog from '$lib/components/deck/AddColumnDialog.svelte';
 	import DeckColumn from '$lib/components/deck/DeckColumn.svelte';
@@ -91,12 +91,7 @@
 			accountProfile?.name ??
 			(accountPubkey ? `${npubEncode(accountPubkey).slice(0, 16)}…` : '')
 	);
-	const accountNpub = $derived(accountPubkey ? `${npubEncode(accountPubkey).slice(0, 16)}…` : '');
-	const composeMaxLength = 280;
-	const composeLength = $derived(composeText.length);
-	const canSubmitPost = $derived(
-		!isPublishing && composeLength > 0 && composeLength <= composeMaxLength
-	);
+	const canSubmitPost = $derived(!isPublishing && composeText.length > 0);
 	const textClass = $derived(textClassByFontSize[fontSize]);
 	const timelineController = createTimelineController({
 		getColumnConfigs: () => columnConfigs,
@@ -640,7 +635,7 @@
 			data-compose-panel
 		>
 			<header
-				class="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800"
+				class="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-3 py-2.5 dark:border-slate-800"
 			>
 				<div class="flex min-w-0 items-center gap-2">
 					<Send class="size-4 shrink-0 text-sky-500" aria-hidden="true" />
@@ -650,13 +645,12 @@
 				</div>
 				<button
 					type="button"
-					class={[
-						'h-9 rounded-md px-3 font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900',
-						textClass.control
-					]}
+					class="flex size-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-50"
+					title={m.close()}
+					aria-label={m.close()}
 					onclick={closeComposePanel}
 				>
-					{m.close()}
+					<X class="size-4" aria-hidden="true" />
 				</button>
 			</header>
 
@@ -664,24 +658,17 @@
 				class="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain p-4"
 				data-testid="compose-panel-scroll"
 			>
-				<div
-					class="mb-4 flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900"
-				>
+				<div class="mb-3 flex shrink-0 items-center gap-3">
 					<ProfileAvatar
 						shape={avatarShape}
-						sizeClass="size-10"
+						sizeClass="size-9"
 						imageUrl={accountProfile?.picture}
 						fallbackClass="bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
 						testId="account-avatar"
 					>
 						<UserRound class="size-4" aria-hidden="true" />
 					</ProfileAvatar>
-					<div class="min-w-0">
-						<p class={['truncate font-bold', textClass.control]}>{accountName}</p>
-						<p class={['truncate text-slate-500 dark:text-slate-400', textClass.meta]}>
-							{accountNpub}
-						</p>
-					</div>
+					<p class={['min-w-0 truncate font-bold', textClass.control]}>{accountName}</p>
 				</div>
 
 				<label class="sr-only" for="compose-text">{m.post_text()}</label>
@@ -699,49 +686,34 @@
 					onkeydown={handleComposeKeydown}
 				></textarea>
 
-				<div class="mt-3 flex items-center justify-between gap-3">
-					<div class="flex items-center gap-1">
-						<button
-							type="button"
-							class="flex size-9 cursor-not-allowed items-center justify-center rounded-md text-slate-400 dark:text-slate-600"
-							title={m.coming_soon()}
-							aria-label={m.add_media()}
-							disabled
-						>
-							<Image class="size-4" aria-hidden="true" />
-						</button>
-						<button
-							type="button"
-							class="flex size-9 cursor-not-allowed items-center justify-center rounded-md text-slate-400 dark:text-slate-600"
-							title={m.coming_soon()}
-							aria-label={m.add_emoji()}
-							disabled
-						>
-							<Smile class="size-4" aria-hidden="true" />
-						</button>
-						<button
-							type="button"
-							class="flex size-9 cursor-not-allowed items-center justify-center rounded-md text-slate-400 dark:text-slate-600"
-							title={m.coming_soon()}
-							aria-label={m.schedule_post()}
-							disabled
-						>
-							<CalendarClock class="size-4" aria-hidden="true" />
-						</button>
-					</div>
-
-					<p
-						class={[
-							'font-semibold tabular-nums',
-							textClass.control,
-							composeLength > composeMaxLength
-								? 'text-rose-600 dark:text-rose-400'
-								: 'text-slate-500 dark:text-slate-400'
-						]}
-						aria-live="polite"
+				<div class="mt-3 flex items-center gap-1">
+					<button
+						type="button"
+						class="flex size-9 cursor-not-allowed items-center justify-center rounded-md text-slate-400 dark:text-slate-600"
+						title={m.coming_soon()}
+						aria-label={m.add_media()}
+						disabled
 					>
-						{composeLength} / {composeMaxLength}
-					</p>
+						<Image class="size-4" aria-hidden="true" />
+					</button>
+					<button
+						type="button"
+						class="flex size-9 cursor-not-allowed items-center justify-center rounded-md text-slate-400 dark:text-slate-600"
+						title={m.coming_soon()}
+						aria-label={m.add_emoji()}
+						disabled
+					>
+						<Smile class="size-4" aria-hidden="true" />
+					</button>
+					<button
+						type="button"
+						class="flex size-9 cursor-not-allowed items-center justify-center rounded-md text-slate-400 dark:text-slate-600"
+						title={m.coming_soon()}
+						aria-label={m.schedule_post()}
+						disabled
+					>
+						<CalendarClock class="size-4" aria-hidden="true" />
+					</button>
 				</div>
 
 				{#if publishError}
