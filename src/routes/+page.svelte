@@ -20,13 +20,17 @@
 	import { emptyTimelineRuntime } from '$lib/deck/timeline-runtime';
 	import { resetSessionTimelineCache } from '$lib/deck/timeline-cache';
 	import { createDetailColumnController } from '$lib/deck/detail-column-controller.svelte';
+	import { createComposerController } from '$lib/deck/composer-controller.svelte';
+	import { createKeyboardNavigation } from '$lib/deck/keyboard-navigation';
+	import {
+		addHashtagColumn,
+		createUniqueColumnId,
+		moveColumn as moveColumnConfig,
+		removeColumn,
+		reorderColumn as reorderColumnConfig
+	} from '$lib/deck/column-actions';
 	import { createTimelineController } from '$lib/deck/timeline-controller.svelte';
-	import type {
-		ChannelTimelineColumnConfig,
-		ColumnConfig,
-		ColumnIconKey,
-		ColumnWidth
-	} from '$lib/deck/types';
+	import type { ColumnConfig, ColumnIconKey, ColumnWidth } from '$lib/deck/types';
 	import {
 		saveChannelSettings as saveChannelSettingsConfig,
 		saveCustomTimelineSettings as saveCustomTimelineSettingsConfig,
@@ -51,7 +55,6 @@
 		configureDefaultRelays,
 		refreshNip65Relays
 	} from '$lib/nostr/nip65';
-	import { publishChannelMessage, publishShortTextNote } from '$lib/nostr/publish';
 	import { profileRelays } from '$lib/nostr/relays';
 	import {
 		getAccountStore,
@@ -80,17 +83,12 @@
 	let isColumnDialogOpen = $state(false);
 	let isKeyboardShortcutsDialogOpen = $state(false);
 	let openSettingsColumnId = $state<string | null>(null);
-	let isComposePanelOpen = $state(false);
-	let composeText = $state('');
-	let isPublishing = $state(false);
-	let publishError = $state(false);
 	let composeTextarea = $state<HTMLTextAreaElement>();
 	const initialUserSettings = readUserSettings();
 	let fontSize = $state<FontSize>(initialUserSettings.fontSize);
 	let avatarShape = $state<AvatarShape>(initialUserSettings.avatarShape);
 	let isTimelineCacheReady = $state(false);
 	let mutedPubkeys = $state(readMutedPubkeys());
-	const lastFocusedPostKeyByColumnId: Record<string, string> = {};
 
 	const authState = $derived(getAuthState());
 	const accountStore = $derived(getAccountStore());
@@ -104,18 +102,45 @@
 			accountProfile?.name ??
 			(accountPubkey ? `${npubEncode(accountPubkey).slice(0, 16)}…` : '')
 	);
-	const canSubmitPost = $derived(!isPublishing && composeText.length > 0);
 	const textClass = $derived(textClassByFontSize[fontSize]);
+	const composer = createComposerController({
+		getAccountPubkey: () => accountPubkey,
+		getSigner: getAuthSigner,
+		getIncludeClientTag: () => readUserSettings().includeClientTag,
+		focusTextarea: () => composeTextarea?.focus()
+	});
 	const timelineController = createTimelineController({
 		getColumnConfigs: () => columnConfigs,
 		isReady: () => isTimelineCacheReady
 	});
+	let keyboardNavigation = $state<ReturnType<typeof createKeyboardNavigation> | null>(null);
+
+	function focusColumn(columnId: string, preferPost = false) {
+		keyboardNavigation?.focusColumn(columnId, preferPost);
+	}
+
+	function getColumnId(columnId: string) {
+		return `deck-column-${columnId}`;
+	}
+
 	const detailController = createDetailColumnController({
 		getColumnConfigs: () => columnConfigs,
 		getProfile,
 		isMutedUser,
 		requestProfiles,
 		focusColumn
+	});
+	keyboardNavigation = createKeyboardNavigation({
+		getColumns: () => columnConfigs,
+		getActiveColumnId: () => activeColumnId,
+		setActiveColumnId: (columnId) => (activeColumnId = columnId),
+		isLoggedIn: () => isLoggedIn,
+		isComposeOpen: () => composer.isOpen,
+		closeCompose: composer.close,
+		openCompose: composer.open,
+		hasDetailColumn: () => detailController.detailColumn !== null,
+		closeDetail: () => detailController.close(),
+		openKeyboardShortcuts: () => (isKeyboardShortcutsDialogOpen = true)
 	});
 
 	onMount(() => {
@@ -127,8 +152,7 @@
 
 	$effect(() => {
 		if (!accountPubkey) {
-			isComposePanelOpen = false;
-			publishError = false;
+			composer.close();
 			clearDefaultRelays();
 			return;
 		}
@@ -146,241 +170,6 @@
 		timelineController.stop();
 		detailController.stop();
 	});
-
-	function getColumnId(columnId: string) {
-		return `deck-column-${columnId}`;
-	}
-
-	function getColumnElement(columnId: string) {
-		return document.getElementById(getColumnId(columnId));
-	}
-
-	function getPostElements(columnElement: HTMLElement) {
-		return [...columnElement.querySelectorAll<HTMLElement>('[data-deck-post]')];
-	}
-
-	function focusPost(columnId: string, postElement: HTMLElement) {
-		const postKey = postElement.dataset.postKey;
-		if (postKey) lastFocusedPostKeyByColumnId[columnId] = postKey;
-		activeColumnId = columnId;
-		postElement.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-		postElement.focus({ preventScroll: true });
-	}
-
-	function getRememberedPost(columnId: string, columnElement: HTMLElement) {
-		const postElements = getPostElements(columnElement);
-		const rememberedPostKey = lastFocusedPostKeyByColumnId[columnId];
-		return (
-			postElements.find((postElement) => postElement.dataset.postKey === rememberedPostKey) ??
-			postElements[0]
-		);
-	}
-
-	function focusColumn(columnId: string, preferPost = false) {
-		activeColumnId = columnId;
-
-		const columnElement = getColumnElement(columnId);
-		columnElement?.scrollIntoView({
-			behavior: 'smooth',
-			block: 'nearest',
-			inline: 'nearest'
-		});
-		if (preferPost && columnElement) {
-			const postElement = getRememberedPost(columnId, columnElement);
-			if (postElement) {
-				focusPost(columnId, postElement);
-				return;
-			}
-		}
-		columnElement?.focus({ preventScroll: true });
-	}
-
-	function getDisplayedColumnElements() {
-		return [...document.querySelectorAll<HTMLElement>('[data-deck-column]')];
-	}
-
-	function getFocusedColumnElement() {
-		const activeElement = document.activeElement;
-		const focusedColumn =
-			activeElement instanceof Element
-				? activeElement.closest<HTMLElement>('[data-deck-column]')
-				: null;
-		return focusedColumn ?? getColumnElement(activeColumnId) ?? getDisplayedColumnElements()[0];
-	}
-
-	function isKeyboardOverlayOpen() {
-		return Boolean(
-			document.querySelector(
-				'[data-slot="dialog-content"][data-state="open"], [data-slot="popover-content"][data-state="open"]'
-			)
-		);
-	}
-
-	function isEditableKeyboardTarget(target: EventTarget | null) {
-		if (!(target instanceof Element)) return false;
-		return Boolean(
-			target.closest(
-				'input, textarea, select, iframe, [contenteditable="true"], [role="option"], [role="menuitem"]'
-			)
-		);
-	}
-
-	function isComposePanelKeyboardTarget(target: EventTarget | null) {
-		return target instanceof Element && Boolean(target.closest('[data-compose-panel]'));
-	}
-
-	function isKeyboardNavigationBlocked(target: EventTarget | null, key: string) {
-		if (!(target instanceof Element)) return false;
-		if (isEditableKeyboardTarget(target)) return true;
-
-		if (target.closest('button, a, [role="button"], [role="link"]')) {
-			return !['h', 'j', 'k', 'l'].includes(key);
-		}
-
-		return false;
-	}
-
-	function moveColumnFocus(direction: -1 | 1) {
-		const columnElements = getDisplayedColumnElements();
-		const currentColumn = getFocusedColumnElement();
-		const currentIndex = currentColumn ? columnElements.indexOf(currentColumn) : -1;
-		if (currentIndex < 0) return;
-
-		const nextColumn = columnElements[currentIndex + direction];
-		const nextColumnId = nextColumn?.dataset.columnId;
-		if (nextColumnId) focusColumn(nextColumnId, true);
-	}
-
-	function movePostFocus(direction: -1 | 1) {
-		const columnElement = getFocusedColumnElement();
-		const columnId = columnElement?.dataset.columnId;
-		if (!columnElement || !columnId) return;
-
-		const postElements = getPostElements(columnElement);
-		if (postElements.length === 0) return;
-
-		const activeElement = document.activeElement;
-		const currentPost =
-			activeElement instanceof Element
-				? activeElement.closest<HTMLElement>('[data-deck-post]')
-				: null;
-		const currentIndex = currentPost ? postElements.indexOf(currentPost) : -1;
-		const nextIndex =
-			currentIndex < 0
-				? 0
-				: Math.max(0, Math.min(currentIndex + direction, postElements.length - 1));
-		focusPost(columnId, postElements[nextIndex]);
-	}
-
-	function activateFocusedPostAction(selector: string) {
-		const activeElement = document.activeElement;
-		const postElement =
-			activeElement instanceof Element
-				? activeElement.closest<HTMLElement>('[data-deck-post]')
-				: null;
-		if (!postElement || activeElement !== postElement) return;
-
-		postElement.querySelector<HTMLElement>(selector)?.click();
-	}
-
-	function scrollActiveTimelineToTop() {
-		const activeColumn = columnConfigs.find((column) => column.id === activeColumnId);
-		if (activeColumn?.type !== 'timeline') return;
-
-		getColumnElement(activeColumnId)
-			?.querySelector<HTMLDivElement>('[data-testid="timeline-scroll"]')
-			?.scrollTo({ top: 0, behavior: 'smooth' });
-	}
-
-	function handleKeyboardNavigation(event: KeyboardEvent) {
-		if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
-		if (isKeyboardOverlayOpen()) return;
-
-		if (event.key === 'Escape') {
-			if (
-				isComposePanelOpen &&
-				(isComposePanelKeyboardTarget(event.target) || !detailController.detailColumn)
-			) {
-				event.preventDefault();
-				closeComposePanel();
-				return;
-			}
-
-			if (detailController.detailColumn) {
-				event.preventDefault();
-				void detailController.close();
-				return;
-			}
-		}
-
-		const key = event.key.toLowerCase();
-		if (key === 'n') {
-			if (isEditableKeyboardTarget(event.target) || !isLoggedIn) return;
-			event.preventDefault();
-			void openComposePanel();
-			return;
-		}
-
-		const isKeyboardShortcutsKey = event.key === '?' || (event.code === 'Slash' && event.shiftKey);
-		if (isKeyboardShortcutsKey) {
-			if (isEditableKeyboardTarget(event.target)) return;
-			event.preventDefault();
-			isKeyboardShortcutsDialogOpen = true;
-			return;
-		}
-
-		if (event.key === 'Home') {
-			if (isEditableKeyboardTarget(event.target)) return;
-			event.preventDefault();
-			scrollActiveTimelineToTop();
-			return;
-		}
-
-		if (isKeyboardNavigationBlocked(event.target, key)) return;
-
-		if (key === 'h' || event.key === 'ArrowLeft') {
-			event.preventDefault();
-			moveColumnFocus(-1);
-		} else if (key === 'l' || event.key === 'ArrowRight') {
-			event.preventDefault();
-			moveColumnFocus(1);
-		} else if (key === 'j' || event.key === 'ArrowDown') {
-			event.preventDefault();
-			movePostFocus(1);
-		} else if (key === 'k' || event.key === 'ArrowUp') {
-			event.preventDefault();
-			movePostFocus(-1);
-		} else if (event.key === 'Enter') {
-			event.preventDefault();
-			activateFocusedPostAction('[data-keyboard-open-thread]');
-		} else if (key === 'p') {
-			event.preventDefault();
-			activateFocusedPostAction('[data-keyboard-open-profile]');
-		}
-	}
-
-	function handleFocusIn(event: FocusEvent) {
-		const target = event.target;
-		if (!(target instanceof Element)) return;
-
-		const columnElement = target.closest<HTMLElement>('[data-deck-column]');
-		const columnId = columnElement?.dataset.columnId;
-		if (!columnId) return;
-		activeColumnId = columnId;
-
-		const postElement = target.closest<HTMLElement>('[data-deck-post]');
-		const postKey = postElement?.dataset.postKey;
-		if (postKey) lastFocusedPostKeyByColumnId[columnId] = postKey;
-	}
-
-	function createColumnId(columns: ColumnConfig[]) {
-		const columnIds = new Set(columns.map((column) => column.id));
-
-		while (true) {
-			const id = crypto.randomUUID();
-			if (!columnIds.has(id)) return id;
-		}
-	}
 
 	function writeDeckStore(nextStore: ColumnDeckStore) {
 		columnDeckStore = nextStore;
@@ -431,13 +220,9 @@
 		if (!nextDeck) return;
 
 		await detailController.close({ restoreFocus: false });
-		isComposePanelOpen = false;
-		composeText = '';
-		publishError = false;
+		composer.reset();
 		openSettingsColumnId = null;
-		for (const columnId of Object.keys(lastFocusedPostKeyByColumnId)) {
-			delete lastFocusedPostKeyByColumnId[columnId];
-		}
+		keyboardNavigation?.resetFocusMemory();
 
 		columnConfigs = nextDeck.columns.map((column) => ({ ...column }));
 		activeColumnId = nextDeck.columns[0]?.id ?? '';
@@ -518,74 +303,12 @@
 	async function toggleComposePanel() {
 		if (!isLoggedIn) return;
 
-		if (isComposePanelOpen) {
-			isComposePanelOpen = false;
+		if (composer.isOpen) {
+			composer.close();
 			return;
 		}
 
-		await openComposePanel();
-	}
-
-	async function openComposePanel() {
-		if (!isLoggedIn) return;
-
-		isComposePanelOpen = true;
-		await tick();
-		composeTextarea?.focus();
-	}
-
-	function closeComposePanel() {
-		isComposePanelOpen = false;
-	}
-
-	function handleComposeKeydown(event: KeyboardEvent) {
-		if (event.key !== 'Enter' || (!event.ctrlKey && !event.metaKey)) return;
-
-		event.preventDefault();
-		void publishPost();
-	}
-
-	async function publishPost() {
-		if (!canSubmitPost || !accountPubkey) return;
-
-		const signer = getAuthSigner();
-		if (!signer) {
-			publishError = true;
-			return;
-		}
-
-		isPublishing = true;
-		publishError = false;
-		const result = await publishShortTextNote(composeText, accountPubkey, signer, {
-			includeClientTag: readUserSettings().includeClientTag
-		});
-		isPublishing = false;
-
-		if (!result.ok) {
-			publishError = true;
-			return;
-		}
-
-		composeText = '';
-		isComposePanelOpen = false;
-	}
-
-	async function publishChannelPost(channel: ChannelTimelineColumnConfig, content: string) {
-		if (!accountPubkey) return { ok: false as const, reason: 'signing-failed' as const };
-
-		const signer = getAuthSigner();
-		if (!signer) return { ok: false as const, reason: 'signing-failed' as const };
-
-		return publishChannelMessage(
-			content,
-			channel.channelId,
-			accountPubkey,
-			signer,
-			channel.relays,
-			{
-				includeClientTag: readUserSettings().includeClientTag
-			}
-		);
+		await composer.open();
 	}
 
 	async function login() {
@@ -593,14 +316,12 @@
 	}
 
 	async function selectSavedAccount(accountId: string) {
-		isComposePanelOpen = false;
-		publishError = false;
+		composer.close();
 		return selectAccount(accountId);
 	}
 
 	async function removeSavedAccount(accountId: string) {
-		isComposePanelOpen = false;
-		publishError = false;
+		composer.close();
 		return removeAuthAccount(accountId);
 	}
 
@@ -611,43 +332,24 @@
 	}
 
 	async function openHashtagColumn(sourceColumnId: string, hashtag: string) {
-		const query = hashtag.trim();
-		if (!query) return;
+		const result = addHashtagColumn(columnConfigs, sourceColumnId, hashtag);
+		if (!result) return;
 
-		const existingColumn = columnConfigs.find(
-			(column) =>
-				column.type === 'timeline' &&
-				column.timelineKind === 'preset' &&
-				column.sourceKey === 'timeline_search' &&
-				column.query === query
-		);
-		if (existingColumn) {
-			focusColumn(existingColumn.id);
+		if (result.type === 'existing') {
+			focusColumn(result.column.id);
 			return;
 		}
 
-		const sourceIndex = columnConfigs.findIndex((column) => column.id === sourceColumnId);
-		const nextColumn: ColumnConfig = {
-			id: createColumnId(columnConfigs),
-			type: 'timeline',
-			timelineKind: 'preset',
-			sourceKey: 'timeline_search',
-			query,
-			width: 'standard'
-		};
-		const nextColumns = [...columnConfigs];
-		nextColumns.splice(sourceIndex >= 0 ? sourceIndex + 1 : nextColumns.length, 0, nextColumn);
-		setColumnConfigs(nextColumns);
+		setColumnConfigs(result.columns);
 		await tick();
-		focusColumn(nextColumn.id);
+		focusColumn(result.column.id);
 	}
 
 	async function deleteColumn(columnId: string) {
-		const deletedIndex = columnConfigs.findIndex((column) => column.id === columnId);
-		if (deletedIndex < 0) return;
+		const result = removeColumn(columnConfigs, columnId);
+		if (!result) return;
 
-		const nextColumns = columnConfigs.filter((column) => column.id !== columnId);
-		setColumnConfigs(nextColumns);
+		setColumnConfigs(result.columns);
 		if (detailController.detailColumn?.sourceColumnId === columnId) {
 			void detailController.close({ restoreFocus: false });
 		}
@@ -655,7 +357,7 @@
 
 		if (activeColumnId !== columnId) return;
 
-		const nextActiveColumn = nextColumns[Math.min(deletedIndex, nextColumns.length - 1)];
+		const nextActiveColumn = result.columns[Math.min(result.index, result.columns.length - 1)];
 		activeColumnId = nextActiveColumn?.id ?? '';
 
 		if (nextActiveColumn) {
@@ -665,14 +367,8 @@
 	}
 
 	async function moveColumn(columnId: string, direction: -1 | 1) {
-		const currentIndex = columnConfigs.findIndex((column) => column.id === columnId);
-		const nextIndex = currentIndex + direction;
-
-		if (currentIndex < 0 || nextIndex < 0 || nextIndex >= columnConfigs.length) return;
-
-		const nextColumns = [...columnConfigs];
-		const [column] = nextColumns.splice(currentIndex, 1);
-		nextColumns.splice(nextIndex, 0, column);
+		const nextColumns = moveColumnConfig(columnConfigs, columnId, direction);
+		if (!nextColumns) return;
 		setColumnConfigs(nextColumns);
 
 		await tick();
@@ -680,16 +376,8 @@
 	}
 
 	function reorderColumn(columnId: string, targetIndex: number) {
-		const currentIndex = columnConfigs.findIndex((column) => column.id === columnId);
-		if (currentIndex < 0) return;
-
-		const nextColumns = [...columnConfigs];
-		const [column] = nextColumns.splice(currentIndex, 1);
-		const adjustedTargetIndex = currentIndex < targetIndex ? targetIndex - 1 : targetIndex;
-		const nextIndex = Math.max(0, Math.min(adjustedTargetIndex, nextColumns.length));
-		if (nextIndex === currentIndex) return;
-
-		nextColumns.splice(nextIndex, 0, column);
+		const nextColumns = reorderColumnConfig(columnConfigs, columnId, targetIndex);
+		if (!nextColumns) return;
 		setColumnConfigs(nextColumns);
 	}
 
@@ -746,7 +434,10 @@
 	}
 </script>
 
-<svelte:window onkeydown={handleKeyboardNavigation} onfocusin={handleFocusIn} />
+<svelte:window
+	onkeydown={(event) => void keyboardNavigation?.handleKeyboardNavigation(event)}
+	onfocusin={(event) => keyboardNavigation?.handleFocusIn(event)}
+/>
 
 <svelte:head>
 	<title>{m.app_title()}</title>
@@ -790,7 +481,7 @@
 		onUnmuteUser={unmuteUser}
 	/>
 
-	{#if isLoggedIn && isComposePanelOpen}
+	{#if isLoggedIn && composer.isOpen}
 		<section
 			class="flex h-full w-[360px] shrink-0 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
 			aria-labelledby="compose-panel-title"
@@ -810,7 +501,7 @@
 					class="flex size-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-50"
 					title={m.close()}
 					aria-label={m.close()}
-					onclick={closeComposePanel}
+					onclick={composer.close}
 				>
 					<X class="size-4" aria-hidden="true" />
 				</button>
@@ -841,11 +532,11 @@
 						textClass.textarea
 					]}
 					placeholder={m.compose_placeholder()}
-					disabled={isPublishing}
+					disabled={composer.isPublishing}
 					aria-keyshortcuts="Control+Enter Meta+Enter"
 					bind:this={composeTextarea}
-					bind:value={composeText}
-					onkeydown={handleComposeKeydown}
+					bind:value={composer.content}
+					onkeydown={composer.handleKeydown}
 				></textarea>
 
 				<div class="mt-3 flex items-center gap-1">
@@ -878,7 +569,7 @@
 					</button>
 				</div>
 
-				{#if publishError}
+				{#if composer.hasError}
 					<p class={['mt-3 text-rose-600 dark:text-rose-400', textClass.control]} role="alert">
 						{m.post_failed()}
 					</p>
@@ -891,10 +582,10 @@
 							'h-10 rounded-md bg-sky-500 px-4 font-bold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300 disabled:dark:bg-slate-800 disabled:dark:text-slate-500',
 							textClass.control
 						]}
-						disabled={!canSubmitPost}
-						onclick={publishPost}
+						disabled={!composer.canSubmit}
+						onclick={composer.publish}
 					>
-						{isPublishing ? m.post_sending() : m.action_post()}
+						{composer.isPublishing ? m.post_sending() : m.action_post()}
 					</button>
 				</div>
 			</div>
@@ -934,7 +625,7 @@
 						onFollowSave={(profile) => saveFollowSettings(column.id, profile)}
 						onSearchSave={(query) => saveSearchSettings(column.id, query)}
 						onChannelSave={(channel) => saveChannelSettings(column.id, channel)}
-						onPublishChannelMessage={publishChannelPost}
+						onPublishChannelMessage={composer.publishChannel}
 						onCustomTimelineSave={(filters, relays) =>
 							saveCustomTimelineSettings(column.id, filters, relays)}
 						onLoadOlderTimeline={() => void timelineController.loadOlder(column.id)}
@@ -1008,7 +699,7 @@
 <AddColumnDialog
 	bind:isOpen={isColumnDialogOpen}
 	{textClass}
-	createColumnId={() => createColumnId(columnConfigs)}
+	createColumnId={() => createUniqueColumnId(columnConfigs)}
 	onSave={(column) => void saveColumn(column)}
 />
 
