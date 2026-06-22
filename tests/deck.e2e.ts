@@ -2799,6 +2799,58 @@ test.describe('nostter deck', () => {
 		);
 	});
 
+	test('creates, switches, duplicates, renames, and deletes named column decks', async ({
+		page
+	}) => {
+		await openDeck(page);
+		const deckTrigger = sidebar(page).getByRole('button', { name: 'Decks' });
+
+		await deckTrigger.click();
+		await page.getByTestId('deck-menu').getByRole('button', { name: 'New deck' }).click();
+		const nameDialog = page.getByRole('dialog');
+		await nameDialog.getByLabel('Deck name').fill('Work');
+		await nameDialog.getByRole('button', { name: 'Save' }).click();
+		await expect(deckTrigger).toHaveAttribute('title', 'Work');
+
+		await deckTrigger.click();
+		await page.getByTestId('deck-menu').getByTitle('Rename deck').last().click();
+		await nameDialog.getByLabel('Deck name').fill('Work feed');
+		await nameDialog.getByRole('button', { name: 'Save' }).click();
+		await expect(deckTrigger).toHaveAttribute('title', 'Work feed');
+
+		await deckTrigger.click();
+		await page.getByTestId('deck-menu').getByTitle('Duplicate deck').last().click();
+		await nameDialog.getByLabel('Deck name').fill('Personal');
+		await nameDialog.getByRole('button', { name: 'Save' }).click();
+		await expect(deckTrigger).toHaveAttribute('title', 'Personal');
+
+		await expect
+			.poll(() =>
+				page.evaluate(() => {
+					const stored = window.localStorage.getItem('nostter:column-decks');
+					return stored ? JSON.parse(stored).decks.map((deck: { name: string }) => deck.name) : [];
+				})
+			)
+			.toEqual(['Default', 'Work feed', 'Personal']);
+
+		await deckTrigger.click();
+		await page.getByTestId('deck-menu').getByTitle('Delete deck').last().click();
+		await page.getByRole('dialog').getByRole('button', { name: 'Delete deck' }).click();
+		await expect(deckTrigger).toHaveAttribute('title', 'Work feed');
+
+		await deckTrigger.click();
+		await page
+			.getByTestId('deck-menu')
+			.getByRole('button', { name: 'Default', exact: true })
+			.click();
+		await expect(deckTrigger).toHaveAttribute('title', 'Default');
+		await page.reload();
+		await expect(sidebar(page).getByRole('button', { name: 'Decks' })).toHaveAttribute(
+			'title',
+			'Default'
+		);
+	});
+
 	test('authenticates an active account when a relay sends a NIP-42 challenge', async ({
 		page
 	}) => {

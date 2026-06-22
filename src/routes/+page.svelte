@@ -9,7 +9,14 @@
 	import ThreadColumn from '$lib/components/deck/ThreadColumn.svelte';
 	import ProfileAvatar from '$lib/components/deck/ProfileAvatar.svelte';
 	import Sidebar from '$lib/components/deck/Sidebar.svelte';
-	import { readColumnConfigs, writeColumnConfigs } from '$lib/deck/column-configs';
+	import {
+		createColumnDeck,
+		duplicateColumnDeck,
+		hasColumnDeckName,
+		readColumnDeckStore,
+		writeColumnDeckStore,
+		type ColumnDeckStore
+	} from '$lib/deck/column-decks';
 	import { emptyTimelineRuntime } from '$lib/deck/timeline-runtime';
 	import { resetSessionTimelineCache } from '$lib/deck/timeline-cache';
 	import { createDetailColumnController } from '$lib/deck/detail-column-controller.svelte';
@@ -58,12 +65,18 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import { readUserSettings, type AvatarShape, type FontSize } from '$lib/user-settings';
 
-	const savedColumnConfigs = readColumnConfigs();
+	const savedColumnDeckStore = readColumnDeckStore();
+	const savedActiveDeck =
+		savedColumnDeckStore.decks.find((deck) => deck.id === savedColumnDeckStore.activeDeckId) ??
+		savedColumnDeckStore.decks[0];
 	const defaultProfileRelays = [...profileRelays];
 	const emptyColumnRuntime = emptyTimelineRuntime();
 
-	let columnConfigs = $state<ColumnConfig[]>(savedColumnConfigs.map((column) => ({ ...column })));
-	let activeColumnId = $state(savedColumnConfigs[0]?.id ?? '');
+	let columnDeckStore = $state<ColumnDeckStore>(savedColumnDeckStore);
+	let columnConfigs = $state<ColumnConfig[]>(
+		(savedActiveDeck?.columns ?? []).map((column) => ({ ...column }))
+	);
+	let activeColumnId = $state(savedActiveDeck?.columns[0]?.id ?? '');
 	let isColumnDialogOpen = $state(false);
 	let isKeyboardShortcutsDialogOpen = $state(false);
 	let openSettingsColumnId = $state<string | null>(null);
@@ -369,9 +382,119 @@
 		}
 	}
 
+	function writeDeckStore(nextStore: ColumnDeckStore) {
+		columnDeckStore = nextStore;
+		writeColumnDeckStore(nextStore);
+	}
+
+	function getDeck(deckId: string) {
+		return columnDeckStore.decks.find((deck) => deck.id === deckId) ?? null;
+	}
+
 	function setColumnConfigs(nextColumnConfigs: ColumnConfig[]) {
+		const activeDeckId = columnDeckStore.activeDeckId;
+		const nextStore = {
+			...columnDeckStore,
+			decks: columnDeckStore.decks.map((deck) =>
+				deck.id === activeDeckId ? { ...deck, columns: nextColumnConfigs } : deck
+			)
+		};
 		columnConfigs = nextColumnConfigs;
-		writeColumnConfigs(nextColumnConfigs);
+		writeDeckStore(nextStore);
+	}
+
+	function createDeckId() {
+		const deckIds = new Set(columnDeckStore.decks.map((deck) => deck.id));
+		while (true) {
+			const id = crypto.randomUUID();
+			if (!deckIds.has(id)) return id;
+		}
+	}
+
+	function createDeckColumnIdGenerator() {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- short-lived duplicate ID registry
+		const columnIds = new Set(
+			columnDeckStore.decks.flatMap((deck) => deck.columns.map((column) => column.id))
+		);
+		return () => {
+			while (true) {
+				const id = crypto.randomUUID();
+				if (columnIds.has(id)) continue;
+				columnIds.add(id);
+				return id;
+			}
+		};
+	}
+
+	async function activateDeck(nextStore: ColumnDeckStore, deckId: string) {
+		const nextDeck = nextStore.decks.find((deck) => deck.id === deckId);
+		if (!nextDeck) return;
+
+		await detailController.close({ restoreFocus: false });
+		isComposePanelOpen = false;
+		composeText = '';
+		publishError = false;
+		openSettingsColumnId = null;
+		for (const columnId of Object.keys(lastFocusedPostKeyByColumnId)) {
+			delete lastFocusedPostKeyByColumnId[columnId];
+		}
+
+		columnConfigs = nextDeck.columns.map((column) => ({ ...column }));
+		activeColumnId = nextDeck.columns[0]?.id ?? '';
+		writeDeckStore({ ...nextStore, activeDeckId: deckId });
+		await tick();
+		if (activeColumnId) focusColumn(activeColumnId);
+	}
+
+	async function selectDeck(deckId: string) {
+		if (deckId === columnDeckStore.activeDeckId) return;
+		await activateDeck(columnDeckStore, deckId);
+	}
+
+	async function createDeck(name: string) {
+		if (hasColumnDeckName(columnDeckStore.decks, name)) return;
+		const deck = createColumnDeck(createDeckId(), name);
+		if (!deck) return;
+		await activateDeck({ ...columnDeckStore, decks: [...columnDeckStore.decks, deck] }, deck.id);
+	}
+
+	function renameDeck(deckId: string, name: string) {
+		if (hasColumnDeckName(columnDeckStore.decks, name, deckId)) return;
+		writeDeckStore({
+			...columnDeckStore,
+			decks: columnDeckStore.decks.map((deck) =>
+				deck.id === deckId ? { ...deck, name: name.trim() } : deck
+			)
+		});
+	}
+
+	async function duplicateDeck(deckId: string, name: string) {
+		if (hasColumnDeckName(columnDeckStore.decks, name)) return;
+		const sourceDeck = getDeck(deckId);
+		if (!sourceDeck) return;
+		const deck = duplicateColumnDeck(
+			sourceDeck,
+			createDeckId(),
+			name,
+			createDeckColumnIdGenerator()
+		);
+		if (!deck) return;
+		await activateDeck({ ...columnDeckStore, decks: [...columnDeckStore.decks, deck] }, deck.id);
+	}
+
+	async function deleteDeck(deckId: string) {
+		if (columnDeckStore.decks.length <= 1) return;
+		const deckIndex = columnDeckStore.decks.findIndex((deck) => deck.id === deckId);
+		if (deckIndex < 0) return;
+		const nextDecks = columnDeckStore.decks.filter((deck) => deck.id !== deckId);
+		const nextStore = { ...columnDeckStore, decks: nextDecks };
+		if (deckId !== columnDeckStore.activeDeckId) {
+			writeDeckStore(nextStore);
+			return;
+		}
+
+		const nextDeck = nextDecks[Math.min(deckIndex, nextDecks.length - 1)];
+		await activateDeck(nextStore, nextDeck.id);
 	}
 
 	function isMutedUser(pubkey: string) {
@@ -634,6 +757,8 @@
 >
 	<Sidebar
 		columns={columnConfigs}
+		decks={columnDeckStore.decks}
+		activeDeckId={columnDeckStore.activeDeckId}
 		{activeColumnId}
 		{isLoggedIn}
 		{authState}
@@ -645,6 +770,11 @@
 		onSelectAccount={selectSavedAccount}
 		onRemoveAccount={removeSavedAccount}
 		onAddColumn={openAddColumnDialog}
+		onSelectDeck={selectDeck}
+		onCreateDeck={createDeck}
+		onRenameDeck={renameDeck}
+		onDuplicateDeck={duplicateDeck}
+		onDeleteDeck={deleteDeck}
 		onCompose={toggleComposePanel}
 		{fontSize}
 		{avatarShape}

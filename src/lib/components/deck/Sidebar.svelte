@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { PanelLeftClose, PanelLeftOpen, Plus, Send, Settings } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import type { ColumnDeck } from '$lib/deck/column-decks';
 	import type { ColumnConfig } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { AuthState } from '$lib/nostr/auth.svelte';
@@ -9,11 +10,14 @@
 	import { readUiState, updateUiState } from '$lib/ui-state';
 	import type { AvatarShape, FontSize } from '$lib/user-settings';
 	import AccountMenu from './AccountMenu.svelte';
+	import DeckMenu from './DeckMenu.svelte';
 	import SidebarColumnList from './SidebarColumnList.svelte';
 	import SettingsDialog from './SettingsDialog.svelte';
 
 	type Props = {
 		columns: ColumnConfig[];
+		decks: ColumnDeck[];
+		activeDeckId: string;
 		activeColumnId: string;
 		isLoggedIn: boolean;
 		authState: AuthState;
@@ -25,6 +29,11 @@
 		onSelectAccount: (accountId: string) => Promise<boolean>;
 		onRemoveAccount: (accountId: string) => Promise<boolean>;
 		onAddColumn: () => void;
+		onSelectDeck: (deckId: string) => Promise<void>;
+		onCreateDeck: (name: string) => Promise<void>;
+		onRenameDeck: (deckId: string, name: string) => void;
+		onDuplicateDeck: (deckId: string, name: string) => Promise<void>;
+		onDeleteDeck: (deckId: string) => Promise<void>;
 		onCompose: () => void;
 		fontSize: FontSize;
 		avatarShape: AvatarShape;
@@ -42,6 +51,8 @@
 
 	const {
 		columns,
+		decks,
+		activeDeckId,
 		activeColumnId,
 		isLoggedIn,
 		authState,
@@ -53,6 +64,11 @@
 		onSelectAccount,
 		onRemoveAccount,
 		onAddColumn,
+		onSelectDeck,
+		onCreateDeck,
+		onRenameDeck,
+		onDuplicateDeck,
+		onDeleteDeck,
 		onCompose,
 		fontSize,
 		avatarShape,
@@ -194,6 +210,18 @@
 			</span>
 			<span class={`${sidebarLabelClass()} truncate text-left`}>{m.collapse_sidebar_short()}</span>
 		</button>
+
+		<DeckMenu
+			{decks}
+			{activeDeckId}
+			{isCollapsed}
+			{textClass}
+			{onSelectDeck}
+			{onCreateDeck}
+			{onRenameDeck}
+			{onDuplicateDeck}
+			{onDeleteDeck}
+		/>
 
 		<button
 			type="button"

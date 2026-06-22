@@ -31,7 +31,7 @@ function normalizeColumnDisplayConfig(
 	};
 }
 
-function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
+export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 	if (!Array.isArray(value) || value.length === 0) return [];
 
 	const columns = value.flatMap((item): ColumnConfig[] => {
