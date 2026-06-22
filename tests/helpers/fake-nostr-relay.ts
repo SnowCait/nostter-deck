@@ -14,16 +14,27 @@ declare global {
 		__nostterFakeRelayTimelineAuthorRequests?: Record<string, number>;
 		__nostterFakeRelayNip11Requests?: string[];
 		__nostterFakeRelayPublishedEvents?: Array<{ relay: string; event: unknown }>;
+		__nostterFakeRelayAuthEvents?: Array<{ relay: string; event: unknown }>;
 		__nostterFakeRelayEmitSearchEvent?: (search: string, event: unknown) => void;
 	}
 }
 
+type FakeRelayAuthMode = 'challenge' | 'required';
+
 export async function installFakeNostrRelay(
 	page: Page,
-	options: { failNip11?: boolean; rejectPublish?: boolean } = {}
+	options: { failNip11?: boolean; rejectPublish?: boolean; authMode?: FakeRelayAuthMode } = {}
 ) {
 	await page.addInitScript(
-		({ failNip11, rejectPublish, reactionKind, repostKind, shortTextNoteKind }) => {
+		({
+			failNip11,
+			rejectPublish,
+			authMode,
+			reactionKind,
+			relayListKind,
+			repostKind,
+			shortTextNoteKind
+		}) => {
 			const relayConnections: Record<string, number> = {};
 			const relayProfileRequests: Record<string, number> = {};
 			const relayProfileAuthorRequests: Record<string, number> = {};
@@ -33,6 +44,7 @@ export async function installFakeNostrRelay(
 			const relayTimelineAuthorRequests: Record<string, number> = {};
 			const relayNip11Requests: string[] = [];
 			const relayPublishedEvents: Array<{ relay: string; event: unknown }> = [];
+			const relayAuthEvents: Array<{ relay: string; event: unknown }> = [];
 			const relaySockets = new Set<FakeWebSocket>();
 			const nativeFetch = window.fetch.bind(window);
 			window.fetch = async (input, init) => {
@@ -335,7 +347,7 @@ export async function installFakeNostrRelay(
 				id: '9'.repeat(64),
 				pubkey: textEvent.pubkey,
 				created_at: textEvent.created_at,
-				kind: RelayList,
+				kind: relayListKind,
 				tags: [['r', 'wss://relay.damus.io/', 'write']],
 				content: '',
 				sig: '0'.repeat(128)
@@ -359,6 +371,8 @@ export async function installFakeNostrRelay(
 
 				readyState = FakeWebSocket.CONNECTING;
 				url: string;
+				authenticated = false;
+				authChallenge = 'nostter-fake-auth-challenge';
 				subscriptions = new Map<
 					string,
 					Array<{
@@ -378,6 +392,7 @@ export async function installFakeNostrRelay(
 					setTimeout(() => {
 						this.readyState = FakeWebSocket.OPEN;
 						this.dispatch('open');
+						if (authMode === 'challenge') this.emitMessage(['AUTH', this.authChallenge]);
 					}, 0);
 				}
 
@@ -396,10 +411,31 @@ export async function installFakeNostrRelay(
 						this.subscriptions.delete(message[1]);
 						return;
 					}
+					if (message[0] === 'AUTH') {
+						const event = message[1] as { id?: string };
+						relayAuthEvents.push({ relay: this.url, event });
+						this.authenticated = true;
+						setTimeout(() => {
+							if (event.id) this.emitMessage(['OK', event.id, true, 'authenticated']);
+						}, 0);
+						return;
+					}
 					if (message[0] === 'EVENT') {
 						const event = message[1] as { id?: string };
 						relayPublishedEvents.push({ relay: this.url, event });
 						setTimeout(() => {
+							if (authMode === 'required' && !this.authenticated) {
+								this.emitMessage(['AUTH', this.authChallenge]);
+								if (event.id) {
+									this.emitMessage([
+										'OK',
+										event.id,
+										false,
+										'auth-required: authentication required'
+									]);
+								}
+								return;
+							}
 							if (event.id) this.emitMessage(['OK', event.id, !rejectPublish, 'rejected']);
 						}, 0);
 						return;
@@ -407,6 +443,13 @@ export async function installFakeNostrRelay(
 					if (message[0] !== 'REQ') return;
 
 					const subId = message[1] as string;
+					if (authMode === 'required' && !this.authenticated) {
+						setTimeout(() => {
+							this.emitMessage(['AUTH', this.authChallenge]);
+							this.emitMessage(['CLOSED', subId, 'auth-required: authentication required']);
+						}, 0);
+						return;
+					}
 					const filters = message.slice(2) as Array<{
 						kinds?: number[];
 						authors?: string[];
@@ -488,7 +531,7 @@ export async function installFakeNostrRelay(
 					);
 					const requestsNip65RelayList = filters.some(
 						(filter) =>
-							filter.kinds?.includes(RelayList) && filter.authors?.includes(textEvent.pubkey)
+							filter.kinds?.includes(relayListKind) && filter.authors?.includes(textEvent.pubkey)
 					);
 					for (const filter of filters) {
 						if (!filter.kinds?.includes(0) || !filter.authors) continue;
@@ -705,6 +748,7 @@ export async function installFakeNostrRelay(
 			window.__nostterFakeRelayTimelineAuthorRequests = relayTimelineAuthorRequests;
 			window.__nostterFakeRelayNip11Requests = relayNip11Requests;
 			window.__nostterFakeRelayPublishedEvents = relayPublishedEvents;
+			window.__nostterFakeRelayAuthEvents = relayAuthEvents;
 			window.__nostterFakeRelayEmitSearchEvent = (search, event) => {
 				for (const socket of relaySockets) {
 					for (const [subId, filters] of socket.subscriptions) {
@@ -717,7 +761,9 @@ export async function installFakeNostrRelay(
 		{
 			failNip11: options.failNip11 === true,
 			rejectPublish: options.rejectPublish === true,
+			authMode: options.authMode,
 			reactionKind: Reaction,
+			relayListKind: RelayList,
 			repostKind: Repost,
 			shortTextNoteKind: ShortTextNote
 		}

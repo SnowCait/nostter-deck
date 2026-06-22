@@ -2798,4 +2798,83 @@ test.describe('nostter deck', () => {
 			'Could not publish your post. Please try again.'
 		);
 	});
+
+	test('authenticates an active account when a relay sends a NIP-42 challenge', async ({
+		page
+	}) => {
+		await installFakeNostrRelay(page, { authMode: 'challenge' });
+		await openDeck(page, { isLoggedIn: true });
+		await addCustomTimelineColumn(page);
+
+		await expect
+			.poll(() =>
+				page.evaluate(() =>
+					(window.__nostterFakeRelayAuthEvents ?? []).some(({ relay, event }) => {
+						const authEvent = event as Record<string, unknown>;
+						const tags = authEvent.tags as string[][];
+						return (
+							authEvent.kind === 22242 &&
+							authEvent.pubkey === 'a'.repeat(64) &&
+							authEvent.content === '' &&
+							tags.some((tag) => tag[0] === 'relay' && tag[1] === relay) &&
+							tags.some((tag) => tag[0] === 'challenge' && tag[1] === 'nostter-fake-auth-challenge')
+						);
+					})
+				)
+			)
+			.toBe(true);
+	});
+
+	test('retries a subscription after NIP-42 authentication is required', async ({ page }) => {
+		await installFakeNostrRelay(page, { authMode: 'required' });
+		await openDeck(page, { isLoggedIn: true });
+		await addCustomTimelineColumn(page);
+
+		await expect(page.getByText('Hello from a custom Nostr timeline')).toBeVisible();
+		await expect
+			.poll(() =>
+				page.evaluate(() =>
+					(window.__nostterFakeRelayAuthEvents ?? []).some(
+						({ event }) => (event as Record<string, unknown>).kind === 22242
+					)
+				)
+			)
+			.toBe(true);
+	});
+
+	test('retries a post after NIP-42 authentication is required', async ({ page }) => {
+		await installFakeNostrRelay(page, { authMode: 'required' });
+		await openDeck(page, { isLoggedIn: true });
+
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+		const composer = page.getByRole('region', { name: 'Post' });
+		await composer.getByLabel('Post text').fill('Published after NIP-42 authentication.');
+		await composer.getByLabel('Post text').press('ControlOrMeta+Enter');
+
+		await expect(composer).toBeHidden();
+		await expect
+			.poll(() =>
+				page.evaluate(() => {
+					const events = window.__nostterFakeRelayPublishedEvents ?? [];
+					return events.filter(({ event }) => {
+						const published = event as Record<string, unknown>;
+						return (
+							published.kind === 1 && published.content === 'Published after NIP-42 authentication.'
+						);
+					}).length;
+				})
+			)
+			.toBeGreaterThanOrEqual(2);
+	});
+
+	test('does not authenticate a relay while logged out', async ({ page }) => {
+		await installFakeNostrRelay(page, { authMode: 'challenge' });
+		await openDeck(page);
+		await addCustomTimelineColumn(page);
+
+		await expect(page.getByText('Hello from a custom Nostr timeline')).toBeVisible();
+		await expect
+			.poll(() => page.evaluate(() => (window.__nostterFakeRelayAuthEvents ?? []).length))
+			.toBe(0);
+	});
 });
