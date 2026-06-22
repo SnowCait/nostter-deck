@@ -1923,6 +1923,7 @@ test.describe('nostter deck', () => {
 		await expect(shortcutsDialog).toBeVisible();
 		await expect(shortcutsDialog.getByText('Previous column')).toBeVisible();
 		await expect(shortcutsDialog.getByText('Next post')).toBeVisible();
+		await expect(shortcutsDialog.getByText('Scroll to top')).toBeVisible();
 		await expect(shortcutsDialog.getByText('Open thread')).toBeVisible();
 		await expect(shortcutsDialog.getByText('Open profile')).toBeVisible();
 		await expect(shortcutsDialog.getByText('Open composer')).toBeVisible();
@@ -1937,6 +1938,7 @@ test.describe('nostter deck', () => {
 			'↑',
 			'J',
 			'↓',
+			'Home',
 			'Enter',
 			'P',
 			'N',
@@ -1991,12 +1993,15 @@ test.describe('nostter deck', () => {
 		const shortcutsDialog = page.getByRole('dialog', { name: 'キーボードショートカット' });
 		await expect(shortcutsDialog).toBeVisible();
 		await expect(shortcutsDialog.getByText('前のカラム')).toBeVisible();
+		await expect(shortcutsDialog.getByText('先頭へ戻る')).toBeVisible();
 		await expect(shortcutsDialog.getByText('ショートカット一覧を表示')).toBeVisible();
 		await expect(shortcutsDialog.getByText('投稿欄を開く')).toBeVisible();
 		await expect(shortcutsDialog.getByText('詳細または投稿欄を閉じる')).toBeVisible();
 	});
 
-	test('keeps a bounded timeline window backed by IndexedDB', async ({ page }) => {
+	test('keeps a bounded timeline window backed by IndexedDB and scrolls to the top', async ({
+		page
+	}) => {
 		await installFakeNostrRelay(page);
 		await openDeck(page);
 		const columns = deckColumns(page);
@@ -2007,7 +2012,9 @@ test.describe('nostter deck', () => {
 
 		const customColumn = columns.first();
 		const timelineScroll = customColumn.getByTestId('timeline-scroll');
+		const scrollToTopTitle = customColumn.getByRole('button', { name: 'Scroll to top' });
 		await expect(customColumn.locator('article')).toHaveCount(200);
+		await expect(scrollToTopTitle).toBeVisible();
 
 		await timelineScroll.evaluate((element) => {
 			element.scrollTop = element.scrollHeight;
@@ -2017,11 +2024,17 @@ test.describe('nostter deck', () => {
 		await expect(customColumn.locator('article')).toHaveCount(200);
 		await expect(customColumn.getByText('Bulk event 000')).toHaveCount(0);
 
-		await timelineScroll.evaluate((element) => {
-			element.scrollTop = 0;
-		});
+		await scrollToTopTitle.click();
+		await expect.poll(() => timelineScroll.evaluate((element) => element.scrollTop)).toBe(0);
 		await expect(customColumn.getByText('Bulk event 000')).toBeVisible();
 		await expect(customColumn.locator('article')).toHaveCount(200);
+
+		await timelineScroll.evaluate((element) => {
+			element.scrollTop = element.scrollHeight;
+		});
+		await customColumn.focus();
+		await page.keyboard.press('Home');
+		await expect.poll(() => timelineScroll.evaluate((element) => element.scrollTop)).toBe(0);
 	});
 
 	test('resolves custom timeline author addresses', async ({ page }) => {

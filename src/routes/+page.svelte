@@ -270,6 +270,15 @@
 		postElement.querySelector<HTMLElement>(selector)?.click();
 	}
 
+	function scrollActiveTimelineToTop() {
+		const activeColumn = columnConfigs.find((column) => column.id === activeColumnId);
+		if (activeColumn?.type !== 'timeline') return;
+
+		getColumnElement(activeColumnId)
+			?.querySelector<HTMLDivElement>('[data-testid="timeline-scroll"]')
+			?.scrollTo({ top: 0, behavior: 'smooth' });
+	}
+
 	function handleKeyboardNavigation(event: KeyboardEvent) {
 		if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
 		if (isKeyboardOverlayOpen()) return;
@@ -304,6 +313,13 @@
 			if (isEditableKeyboardTarget(event.target)) return;
 			event.preventDefault();
 			isKeyboardShortcutsDialogOpen = true;
+			return;
+		}
+
+		if (event.key === 'Home') {
+			if (isEditableKeyboardTarget(event.target)) return;
+			event.preventDefault();
+			scrollActiveTimelineToTop();
 			return;
 		}
 

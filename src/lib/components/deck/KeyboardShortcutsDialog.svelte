@@ -18,7 +18,8 @@
 				{ keys: ['H', '←'], label: m.keyboard_shortcut_previous_column() },
 				{ keys: ['L', '→'], label: m.keyboard_shortcut_next_column() },
 				{ keys: ['K', '↑'], label: m.keyboard_shortcut_previous_post() },
-				{ keys: ['J', '↓'], label: m.keyboard_shortcut_next_post() }
+				{ keys: ['J', '↓'], label: m.keyboard_shortcut_next_post() },
+				{ keys: ['Home'], label: m.keyboard_shortcut_scroll_to_top() }
 			]
 		},
 		{

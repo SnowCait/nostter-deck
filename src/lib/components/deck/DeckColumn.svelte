@@ -164,6 +164,10 @@
 			onLoadOlderTimeline();
 		}
 	}
+
+	function scrollToTop() {
+		timelineScrollElement?.scrollTo({ top: 0, behavior: 'smooth' });
+	}
 </script>
 
 <section
@@ -182,9 +186,23 @@
 		<div class="flex items-center justify-between gap-3">
 			<div class="flex min-w-0 items-center gap-2">
 				<ColumnIcon {column} iconClass={columnIconClass} />
-				<h2 class={['min-w-0 truncate font-bold', textClass.title]}>
-					{getColumnTitle(column)}
-				</h2>
+				{#if column.type === 'timeline'}
+					<h2 class={['min-w-0 flex-1', textClass.title]} aria-label={getColumnTitle(column)}>
+						<button
+							type="button"
+							class="block w-full truncate text-left font-bold focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 dark:focus-visible:outline-sky-400"
+							title={m.scroll_to_top()}
+							aria-label={m.scroll_to_top()}
+							onclick={scrollToTop}
+						>
+							{getColumnTitle(column)}
+						</button>
+					</h2>
+				{:else}
+					<h2 class={['min-w-0 truncate font-bold', textClass.title]}>
+						{getColumnTitle(column)}
+					</h2>
+				{/if}
 			</div>
 			<div class="flex shrink-0 items-center gap-1">
 				<button
