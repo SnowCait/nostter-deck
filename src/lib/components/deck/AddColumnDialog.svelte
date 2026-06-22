@@ -1,15 +1,15 @@
 <script lang="ts">
 	import * as Dialog from '$lib/components/ui/dialog';
-	import * as Select from '$lib/components/ui/select';
 	import { createColumnConfigFromDraft, type AddColumnType } from '$lib/deck/add-column';
 	import { columnSourceKeys } from '$lib/deck/data';
-	import type { ColumnConfig } from '$lib/deck/types';
+	import type { ColumnConfig, ColumnIconKey } from '$lib/deck/types';
 	import { normalizeWebsiteUrl } from '$lib/deck/website-url';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import { parseNostrFilters } from '$lib/nostr/filters';
 	import { decodeChannelPointer, decodeProfilePointer } from '$lib/nostr/nip19';
 	import { defaultRelays, resolveRelayDraft } from '$lib/nostr/relays';
 	import { m } from '$lib/paraglide/messages.js';
+	import ColumnIconGlyph from './ColumnIconGlyph.svelte';
 	import InputHelpButton from './InputHelpButton.svelte';
 
 	type Props = {
@@ -23,6 +23,13 @@
 
 	const availableColumnSourceKeys = columnSourceKeys;
 	const defaultColumnType = availableColumnSourceKeys[0] ?? 'timeline_search';
+	const columnTypeIconKeys = {
+		timeline_follow: 'users',
+		timeline_search: 'search',
+		timeline_channel: 'messages',
+		custom_timeline: 'radio',
+		website: 'globe'
+	} satisfies Record<AddColumnType, ColumnIconKey>;
 
 	let selectedColumnType = $state<AddColumnType>(defaultColumnType);
 	let websiteUrl = $state('');
@@ -36,13 +43,22 @@
 
 	const normalizedWebsiteUrl = $derived(normalizeWebsiteUrl(websiteUrl));
 	const availableColumnTypes = $derived([
-		...availableColumnSourceKeys.map((value) => ({ value, label: m[value]() })),
-		{ value: 'custom_timeline' as const, label: m.column_type_custom_timeline() },
-		{ value: 'website' as const, label: m.column_type_website() }
+		...availableColumnSourceKeys.map((value) => ({
+			value,
+			label: m[value](),
+			iconKey: columnTypeIconKeys[value]
+		})),
+		{
+			value: 'custom_timeline' as const,
+			label: m.column_type_custom_timeline(),
+			iconKey: columnTypeIconKeys.custom_timeline
+		},
+		{
+			value: 'website' as const,
+			label: m.column_type_website(),
+			iconKey: columnTypeIconKeys.website
+		}
 	]);
-	const selectedColumnTypeLabel = $derived(
-		availableColumnTypes.find(({ value }) => value === selectedColumnType)?.label ?? ''
-	);
 	const parsedFollowTarget = $derived(decodeProfilePointer(followTarget));
 	const parsedChannelTarget = $derived(decodeChannelPointer(channelTarget));
 	const parsedCustomTimelineFilters = $derived(parseNostrFilters(customTimelineFilters));
@@ -111,30 +127,36 @@
 			</Dialog.Title>
 		</div>
 
-		<label
+		<p
 			id="column-type-label"
-			class={['mb-2 block font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
-			for="column-type"
+			class={['mb-2 font-semibold text-slate-700 dark:text-slate-300', textClass.control]}
 		>
 			{m.column_type()}
-		</label>
-		<Select.Root type="single" items={availableColumnTypes} bind:value={selectedColumnType}>
-			<Select.Trigger
-				id="column-type"
-				aria-labelledby="column-type-label"
-				class={[
-					'h-10 w-full border-slate-300 bg-white px-3 text-slate-950 shadow-none focus-visible:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-900 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-950',
-					textClass.control
-				]}
-			>
-				<span class="truncate">{selectedColumnTypeLabel}</span>
-			</Select.Trigger>
-			<Select.Content class="z-[60]">
-				{#each availableColumnTypes as columnType (columnType.value)}
-					<Select.Item value={columnType.value} label={columnType.label} />
-				{/each}
-			</Select.Content>
-		</Select.Root>
+		</p>
+		<div class="grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby="column-type-label">
+			{#each availableColumnTypes as columnType (columnType.value)}
+				<label
+					class={[
+						'flex min-h-16 min-w-0 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 transition',
+						selectedColumnType === columnType.value
+							? 'border-sky-500 bg-sky-50 text-sky-700 dark:border-sky-400 dark:bg-sky-950/50 dark:text-sky-300'
+							: 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800',
+						'[&:has(input:focus-visible)]:border-sky-500 [&:has(input:focus-visible)]:ring-2 [&:has(input:focus-visible)]:ring-sky-100 dark:[&:has(input:focus-visible)]:border-sky-400 dark:[&:has(input:focus-visible)]:ring-sky-950',
+						textClass.control
+					]}
+				>
+					<input
+						class="sr-only"
+						type="radio"
+						name="column-type"
+						value={columnType.value}
+						bind:group={selectedColumnType}
+					/>
+					<ColumnIconGlyph iconKey={columnType.iconKey} iconClass="size-5 shrink-0" />
+					<span class="min-w-0 truncate font-semibold">{columnType.label}</span>
+				</label>
+			{/each}
+		</div>
 
 		{#if selectedColumnType === 'timeline_follow'}
 			<label

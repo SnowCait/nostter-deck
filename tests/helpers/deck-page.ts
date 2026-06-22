@@ -113,7 +113,8 @@ export async function addCustomTimelineColumn(
 }
 
 export async function selectColumnType(page: Page, columnType: ColumnType) {
-	await selectDropdownOption(page, page.getByLabel('Column type'), columnTypeLabels[columnType]);
+	const radio = page.getByRole('radio', { name: columnTypeLabels[columnType], exact: true });
+	await radio.locator('xpath=ancestor::label').click();
 }
 
 export async function selectDropdownOption(page: Page, trigger: Locator, optionLabel: string) {

@@ -330,16 +330,13 @@ test.describe('nostter deck', () => {
 
 		await addColumnPlaceholder.getByRole('button', { name: 'Add column' }).click();
 		await expect(addColumnDialog).toBeVisible();
-		await page.getByLabel('Column type').click();
-		await expect(page.getByRole('option')).toHaveText([
-			'Follow',
-			'Search',
-			'Channel',
-			'Custom timeline',
-			'Website'
-		]);
+		const columnTypeRadios = addColumnDialog.getByRole('radio');
+		await expect(columnTypeRadios).toHaveCount(5);
+		for (const name of ['Follow', 'Search', 'Channel', 'Custom timeline', 'Website']) {
+			await expect(addColumnDialog.getByRole('radio', { name })).toBeVisible();
+		}
 
-		await page.getByRole('option', { name: 'Website' }).click();
+		await selectColumnType(page, 'website');
 		await page.getByLabel('Website URL').fill('example.com');
 		await addColumnDialog.getByRole('button', { name: 'Save' }).click();
 		await expect(addColumnPlaceholder).toHaveCount(0);
@@ -419,7 +416,7 @@ test.describe('nostter deck', () => {
 
 		await page.getByRole('button', { name: 'Add column' }).first().click();
 		const addDialog = page.getByRole('dialog', { name: 'Add column' });
-		await expect(page.getByLabel('Column type')).toHaveText('Follow');
+		await expect(addDialog.getByRole('radio', { name: 'Follow' })).toBeChecked();
 		const targetInput = addDialog.getByLabel('npub or nprofile');
 		const saveButton = addDialog.getByRole('button', { name: 'Save' });
 		await expect(targetInput).toBeVisible();
