@@ -266,14 +266,18 @@ test.describe('nostter deck', () => {
 		const sidebarColumns = sidebar(page).getByTestId('sidebar-column');
 		const searchSidebarColumn = sidebarButton(page, 'Search');
 		const websiteSidebarColumn = sidebarButton(page, 'example.com');
+		const searchDragHandle = searchSidebarColumn.getByTestId('sidebar-column-drag-handle');
+		await expect(searchDragHandle).toHaveCSS('cursor', 'pointer');
+		await searchDragHandle.dispatchEvent('dragstart');
+		await expect(searchDragHandle).toHaveCSS('cursor', 'grabbing');
+		await searchDragHandle.dispatchEvent('dragend');
+		await expect(searchDragHandle).toHaveCSS('cursor', 'pointer');
 		const websiteBox = await websiteSidebarColumn.boundingBox();
 		expect(websiteBox).not.toBeNull();
 
-		await searchSidebarColumn
-			.getByTestId('sidebar-column-drag-handle')
-			.dragTo(websiteSidebarColumn, {
-				targetPosition: { x: websiteBox!.width / 2, y: websiteBox!.height - 1 }
-			});
+		await searchDragHandle.dragTo(websiteSidebarColumn, {
+			targetPosition: { x: websiteBox!.width / 2, y: websiteBox!.height - 1 }
+		});
 
 		await expectColumnOrder(columns, ['example.com', 'Search']);
 		await expect(sidebarColumns).toHaveText(['example.com', 'Search']);

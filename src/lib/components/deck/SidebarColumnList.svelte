@@ -117,7 +117,8 @@
 				role="presentation"
 				data-testid="sidebar-column-drag-handle"
 				class={[
-					'flex size-11 shrink-0 cursor-grab items-center justify-center rounded-md transition active:cursor-grabbing',
+					'flex size-11 shrink-0 items-center justify-center rounded-md transition',
+					draggedColumnId ? 'cursor-grabbing' : 'cursor-pointer',
 					isActive ? 'text-sky-300' : '',
 					isCollapsed && !isActive ? 'group-hover:text-white' : ''
 				]}
