@@ -3,16 +3,19 @@ import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
 export const themePreferences = ['system', 'light', 'dark'] as const;
 export const fontSizePreferences = ['large', 'medium', 'small'] as const;
 export const avatarShapePreferences = ['circle', 'square'] as const;
+export const postActionVisibilityPreferences = ['onInteraction', 'always'] as const;
 
 export type ThemePreference = (typeof themePreferences)[number];
 export type FontSize = (typeof fontSizePreferences)[number];
 export type AvatarShape = (typeof avatarShapePreferences)[number];
+export type PostActionVisibility = (typeof postActionVisibilityPreferences)[number];
 
 export type UserSettings = {
 	theme: ThemePreference;
 	fontSize: FontSize;
 	avatarShape: AvatarShape;
 	includeClientTag: boolean;
+	postActionVisibility: PostActionVisibility;
 };
 
 const userSettingsStorageKey = 'nostter:user-settings';
@@ -21,7 +24,8 @@ const defaultUserSettings: UserSettings = {
 	theme: 'system',
 	fontSize: 'medium',
 	avatarShape: 'circle',
-	includeClientTag: true
+	includeClientTag: true,
+	postActionVisibility: 'onInteraction'
 };
 
 function isThemePreference(value: unknown): value is ThemePreference {
@@ -34,6 +38,13 @@ function isFontSize(value: unknown): value is FontSize {
 
 function isAvatarShape(value: unknown): value is AvatarShape {
 	return typeof value === 'string' && avatarShapePreferences.includes(value as AvatarShape);
+}
+
+function isPostActionVisibility(value: unknown): value is PostActionVisibility {
+	return (
+		typeof value === 'string' &&
+		postActionVisibilityPreferences.includes(value as PostActionVisibility)
+	);
 }
 
 function normalizeUserSettings(value: unknown): UserSettings {
@@ -49,7 +60,10 @@ function normalizeUserSettings(value: unknown): UserSettings {
 		includeClientTag:
 			typeof candidate.includeClientTag === 'boolean'
 				? candidate.includeClientTag
-				: defaultUserSettings.includeClientTag
+				: defaultUserSettings.includeClientTag,
+		postActionVisibility: isPostActionVisibility(candidate.postActionVisibility)
+			? candidate.postActionVisibility
+			: defaultUserSettings.postActionVisibility
 	};
 }
 

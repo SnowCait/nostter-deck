@@ -5,7 +5,7 @@
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { Profile } from '$lib/nostr/profiles';
-	import type { AvatarShape } from '$lib/user-settings';
+	import type { AvatarShape, PostActionVisibility } from '$lib/user-settings';
 	import CustomEmojiText from './CustomEmojiText.svelte';
 	import ProfileAvatar from './ProfileAvatar.svelte';
 	import MutedContentPlaceholder from './MutedContentPlaceholder.svelte';
@@ -19,6 +19,7 @@
 		isLoggedIn: boolean;
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
+		postActionVisibility: PostActionVisibility;
 		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
@@ -35,6 +36,7 @@
 		isLoggedIn,
 		textClass,
 		avatarShape,
+		postActionVisibility,
 		getProfile,
 		requestProfiles,
 		profileRelays,
@@ -47,10 +49,17 @@
 	}: Props = $props();
 	let isMutedPostRevealed = $state(false);
 	let isSensitiveContentRevealed = $state(false);
-	// Keep the controls hidden until their actions are implemented.
-	const arePostActionsEnabled = false;
 	const isPostVisible = $derived(!isMuted || isMutedPostRevealed);
 	const isPostContentVisible = $derived(!post.contentWarning || isSensitiveContentRevealed);
+	const postActionSlotClass = $derived(
+		postActionVisibility === 'always'
+			? 'post-actions-slot post-actions-visible'
+			: 'post-actions-slot post-actions-on-interaction'
+	);
+	const postActionListClass =
+		'absolute -top-2.5 left-0 flex h-7 gap-1 text-slate-500 transition-opacity duration-150 dark:text-slate-400';
+	const postActionButtonClass =
+		'flex size-7 items-center justify-center rounded-md transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-transparent disabled:hover:text-slate-500 dark:hover:bg-slate-800 disabled:dark:hover:bg-transparent disabled:dark:hover:text-slate-400';
 	const keyboardNavigationKey = $derived(
 		post.id ?? `${post.pubkey}:${post.time}:${post.body.slice(0, 80)}`
 	);
@@ -126,7 +135,7 @@
 		</div>
 	{:else}
 		<article
-			class="border-b border-slate-200 p-3 transition hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/80"
+			class="post-card relative border-b border-slate-200 p-3 transition hover:bg-slate-50/80 dark:border-slate-800 dark:hover:bg-slate-900/80"
 		>
 			<PostCardContextList contexts={post.contexts} {post} {textClass} {onOpenThread} />
 
@@ -208,52 +217,46 @@
 							{onOpenHashtag}
 						/>
 					{/if}
-					{#if isLoggedIn && arePostActionsEnabled}
-						<div class="mt-3 grid grid-cols-4 text-slate-500 dark:text-slate-400">
-							<button
-								type="button"
-								class={[
-									'flex h-8 items-center gap-1 rounded-md transition hover:bg-sky-50 hover:text-sky-600 dark:hover:bg-sky-950/40 dark:hover:text-sky-300',
-									textClass.action
-								]}
-								title={m.reply()}
-								aria-label={m.reply()}
-							>
-								<MessageCircle class="size-4" aria-hidden="true" />
-								<span>{post.stats.replies}</span>
-							</button>
-							<button
-								type="button"
-								class={[
-									'flex h-8 items-center gap-1 rounded-md transition hover:bg-emerald-50 hover:text-emerald-600 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300',
-									textClass.action
-								]}
-								title={m.repost()}
-								aria-label={m.repost()}
-							>
-								<Repeat2 class="size-4" aria-hidden="true" />
-								<span>{post.stats.reposts}</span>
-							</button>
-							<button
-								type="button"
-								class={[
-									'flex h-8 items-center gap-1 rounded-md transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-300',
-									textClass.action
-								]}
-								title={m.like()}
-								aria-label={m.like()}
-							>
-								<Heart class="size-4" aria-hidden="true" />
-								<span>{post.stats.likes}</span>
-							</button>
-							<button
-								type="button"
-								class="flex h-8 items-center justify-center rounded-md transition hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-								title={m.share()}
-								aria-label={m.share()}
-							>
-								<Share class="size-4" aria-hidden="true" />
-							</button>
+					{#if isLoggedIn}
+						<div class={postActionSlotClass}>
+							<div class={postActionListClass}>
+								<button
+									type="button"
+									disabled
+									class={postActionButtonClass}
+									title={m.reply()}
+									aria-label={m.reply()}
+								>
+									<MessageCircle class="size-4" aria-hidden="true" />
+								</button>
+								<button
+									type="button"
+									disabled
+									class={postActionButtonClass}
+									title={m.repost()}
+									aria-label={m.repost()}
+								>
+									<Repeat2 class="size-4" aria-hidden="true" />
+								</button>
+								<button
+									type="button"
+									disabled
+									class={postActionButtonClass}
+									title={m.like()}
+									aria-label={m.like()}
+								>
+									<Heart class="size-4" aria-hidden="true" />
+								</button>
+								<button
+									type="button"
+									disabled
+									class={postActionButtonClass}
+									title={m.share()}
+									aria-label={m.share()}
+								>
+									<Share class="size-4" aria-hidden="true" />
+								</button>
+							</div>
 						</div>
 					{/if}
 				</div>
@@ -261,3 +264,44 @@
 		</article>
 	{/if}
 </div>
+
+<style>
+	.post-card {
+		z-index: 0;
+	}
+
+	.post-card:hover,
+	.post-card:focus-within,
+	:global([data-deck-post]:focus-visible) .post-card {
+		z-index: 10;
+	}
+
+	.post-actions-slot {
+		position: relative;
+		height: 0.5rem;
+		margin-top: 0.625rem;
+		overflow: visible;
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	.post-actions-on-interaction {
+		opacity: 1;
+		pointer-events: auto;
+		transition: opacity 150ms ease;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.post-card .post-actions-on-interaction {
+			opacity: 0;
+			pointer-events: none;
+		}
+
+		.post-card:hover .post-actions-on-interaction,
+		.post-card:focus-within .post-actions-on-interaction,
+		:global([data-deck-post]:focus-visible) .post-actions-on-interaction {
+			opacity: 1;
+			pointer-events: auto;
+		}
+	}
+</style>

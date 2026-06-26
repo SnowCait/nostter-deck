@@ -35,7 +35,8 @@ describe('user settings storage', () => {
 			theme: 'system',
 			fontSize: 'medium',
 			avatarShape: 'circle',
-			includeClientTag: true
+			includeClientTag: true,
+			postActionVisibility: 'onInteraction'
 		});
 	});
 
@@ -44,14 +45,16 @@ describe('user settings storage', () => {
 			theme: 'dark',
 			fontSize: 'large',
 			avatarShape: 'square',
-			includeClientTag: false
+			includeClientTag: false,
+			postActionVisibility: 'always'
 		});
 
 		expect(readUserSettings()).toEqual({
 			theme: 'dark',
 			fontSize: 'large',
 			avatarShape: 'square',
-			includeClientTag: false
+			includeClientTag: false,
+			postActionVisibility: 'always'
 		});
 	});
 
@@ -62,5 +65,19 @@ describe('user settings storage', () => {
 		);
 
 		expect(readUserSettings().includeClientTag).toBe(true);
+	});
+
+	test('uses interaction visibility for settings saved before post action visibility existed', () => {
+		storageValues.set(
+			userSettingsStorageKey,
+			JSON.stringify({
+				theme: 'light',
+				fontSize: 'small',
+				avatarShape: 'square',
+				includeClientTag: false
+			})
+		);
+
+		expect(readUserSettings().postActionVisibility).toBe('onInteraction');
 	});
 });

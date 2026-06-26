@@ -20,10 +20,12 @@
 		avatarShapePreferences,
 		fontSizePreferences,
 		readUserSettings,
+		postActionVisibilityPreferences,
 		themePreferences,
 		updateUserSettings,
 		type AvatarShape,
 		type FontSize,
+		type PostActionVisibility,
 		type ThemePreference
 	} from '$lib/user-settings';
 	import ProfileAvatar from './ProfileAvatar.svelte';
@@ -34,9 +36,11 @@
 		isOpen: boolean;
 		fontSize: FontSize;
 		avatarShape: AvatarShape;
+		postActionVisibility: PostActionVisibility;
 		textClass: FontSizeTextClasses;
 		onFontSizeChange: (fontSize: FontSize) => void;
 		onAvatarShapeChange: (avatarShape: AvatarShape) => void;
+		onPostActionVisibilityChange: (visibility: PostActionVisibility) => void;
 		mutedPubkeys: string[];
 		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
@@ -48,9 +52,11 @@
 		isOpen = $bindable(),
 		fontSize,
 		avatarShape,
+		postActionVisibility,
 		textClass,
 		onFontSizeChange,
 		onAvatarShapeChange,
+		onPostActionVisibilityChange,
 		mutedPubkeys,
 		getProfile,
 		requestProfiles,
@@ -80,6 +86,10 @@
 		circle: () => m.avatar_shape_circle(),
 		square: () => m.avatar_shape_square()
 	} satisfies Record<AvatarShape, () => string>;
+	const postActionVisibilityLabels = {
+		onInteraction: () => m.post_action_visibility_on_interaction(),
+		always: () => m.post_action_visibility_always()
+	} satisfies Record<PostActionVisibility, () => string>;
 	const localeOptions = $derived(locales.map((value) => ({ value, label: localeLabels[value] })));
 	const themeOptions = $derived(
 		themePreferences.map((value) => ({ value, label: themeLabels[value]() }))
@@ -89,6 +99,12 @@
 	);
 	const avatarShapeOptions = $derived(
 		avatarShapePreferences.map((value) => ({ value, label: avatarShapeLabels[value]() }))
+	);
+	const postActionVisibilityOptions = $derived(
+		postActionVisibilityPreferences.map((value) => ({
+			value,
+			label: postActionVisibilityLabels[value]()
+		}))
 	);
 	const selectedLocaleLabel = $derived(
 		localeOptions.find(({ value }) => value === currentLocale)?.label ?? ''
@@ -101,6 +117,9 @@
 	);
 	const selectedAvatarShapeLabel = $derived(
 		avatarShapeOptions.find(({ value }) => value === avatarShape)?.label ?? ''
+	);
+	const selectedPostActionVisibilityLabel = $derived(
+		postActionVisibilityOptions.find(({ value }) => value === postActionVisibility)?.label ?? ''
 	);
 
 	$effect(() => {
@@ -144,6 +163,15 @@
 			avatarShape: selectedAvatarShape
 		}));
 		onAvatarShapeChange(selectedAvatarShape);
+	}
+
+	function selectPostActionVisibility(value: string) {
+		const selectedVisibility = value as PostActionVisibility;
+		updateUserSettings((currentSettings) => ({
+			...currentSettings,
+			postActionVisibility: selectedVisibility
+		}));
+		onPostActionVisibilityChange(selectedVisibility);
 	}
 
 	function toggleIncludeClientTag(event: Event) {
@@ -347,6 +375,43 @@
 				</Select.Trigger>
 				<Select.Content class="z-[60]">
 					{#each avatarShapeOptions as option (option.value)}
+						<Select.Item value={option.value} label={option.label} />
+					{/each}
+				</Select.Content>
+			</Select.Root>
+
+			<label
+				id="post-action-visibility-label"
+				class={[
+					'mt-4 mb-2 flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-300',
+					textClass.label
+				]}
+				for="post-action-visibility"
+			>
+				<SlidersHorizontal
+					class="size-4 shrink-0 text-slate-500 dark:text-slate-400"
+					aria-hidden="true"
+				/>
+				<span>{m.post_action_visibility_switcher()}</span>
+			</label>
+			<Select.Root
+				type="single"
+				items={postActionVisibilityOptions}
+				value={postActionVisibility}
+				onValueChange={selectPostActionVisibility}
+			>
+				<Select.Trigger
+					id="post-action-visibility"
+					aria-labelledby="post-action-visibility-label"
+					class={[
+						'h-10 w-full border-slate-300 bg-white px-3 text-slate-950 shadow-none focus-visible:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-900 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-950',
+						textClass.control
+					]}
+				>
+					<span class="truncate">{selectedPostActionVisibilityLabel}</span>
+				</Select.Trigger>
+				<Select.Content class="z-[60]">
+					{#each postActionVisibilityOptions as option (option.value)}
 						<Select.Item value={option.value} label={option.label} />
 					{/each}
 				</Select.Content>

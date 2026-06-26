@@ -17,7 +17,7 @@
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { PublishPostResult } from '$lib/nostr/publish';
 	import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
-	import type { AvatarShape } from '$lib/user-settings';
+	import type { AvatarShape, PostActionVisibility } from '$lib/user-settings';
 	import type { Profile } from '$lib/nostr/profiles';
 	import ChannelColumnSettings from './ChannelColumnSettings.svelte';
 	import ChannelComposer from './ChannelComposer.svelte';
@@ -39,6 +39,7 @@
 		canMoveRight: boolean;
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
+		postActionVisibility: PostActionVisibility;
 		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
@@ -77,6 +78,7 @@
 		canMoveRight,
 		textClass,
 		avatarShape,
+		postActionVisibility,
 		getProfile,
 		requestProfiles,
 		profileRelays,
@@ -382,6 +384,7 @@
 				{isLoggedIn}
 				{textClass}
 				{avatarShape}
+				{postActionVisibility}
 				scrollRoot={timelineScrollElement}
 				{getProfile}
 				{requestProfiles}

@@ -67,7 +67,12 @@
 		selectAccount
 	} from '$lib/nostr/auth.svelte';
 	import { m } from '$lib/paraglide/messages.js';
-	import { readUserSettings, type AvatarShape, type FontSize } from '$lib/user-settings';
+	import {
+		readUserSettings,
+		type AvatarShape,
+		type FontSize,
+		type PostActionVisibility
+	} from '$lib/user-settings';
 
 	const savedColumnDeckStore = readColumnDeckStore();
 	const savedActiveDeck =
@@ -88,6 +93,7 @@
 	const initialUserSettings = readUserSettings();
 	let fontSize = $state<FontSize>(initialUserSettings.fontSize);
 	let avatarShape = $state<AvatarShape>(initialUserSettings.avatarShape);
+	let postActionVisibility = $state<PostActionVisibility>(initialUserSettings.postActionVisibility);
 	let isTimelineCacheReady = $state(false);
 	let mutedPubkeys = $state(readMutedPubkeys());
 
@@ -447,6 +453,10 @@
 	function updateAvatarShape(nextAvatarShape: AvatarShape) {
 		avatarShape = nextAvatarShape;
 	}
+
+	function updatePostActionVisibility(nextVisibility: PostActionVisibility) {
+		postActionVisibility = nextVisibility;
+	}
 </script>
 
 <svelte:window
@@ -471,6 +481,7 @@
 		canMoveRight={columnIndex >= 0 && columnIndex < columnConfigs.length - 1}
 		{textClass}
 		{avatarShape}
+		{postActionVisibility}
 		{getProfile}
 		{requestProfiles}
 		profileRelays={defaultProfileRelays}
@@ -508,6 +519,7 @@
 			{isLoggedIn}
 			{textClass}
 			{avatarShape}
+			{postActionVisibility}
 			{getProfile}
 			{requestProfiles}
 			profileRelays={defaultProfileRelays}
@@ -529,6 +541,7 @@
 			{isLoggedIn}
 			{textClass}
 			{avatarShape}
+			{postActionVisibility}
 			{getProfile}
 			{requestProfiles}
 			profileRelays={defaultProfileRelays}
@@ -592,9 +605,11 @@
 		onCompose={toggleComposePanel}
 		{fontSize}
 		{avatarShape}
+		{postActionVisibility}
 		{textClass}
 		onFontSizeChange={updateFontSize}
 		onAvatarShapeChange={updateAvatarShape}
+		onPostActionVisibilityChange={updatePostActionVisibility}
 		onSelectColumn={focusColumn}
 		onReorderColumn={reorderColumn}
 		{mutedPubkeys}

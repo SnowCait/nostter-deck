@@ -7,7 +7,7 @@
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { Profile } from '$lib/nostr/profiles';
-	import type { AvatarShape } from '$lib/user-settings';
+	import type { AvatarShape, PostActionVisibility } from '$lib/user-settings';
 	import PostCard from './PostCard.svelte';
 
 	type Props = {
@@ -17,6 +17,7 @@
 		isLoggedIn: boolean;
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
+		postActionVisibility: PostActionVisibility;
 		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
@@ -34,6 +35,7 @@
 		isLoggedIn,
 		textClass,
 		avatarShape,
+		postActionVisibility,
 		getProfile,
 		requestProfiles,
 		profileRelays,
@@ -85,6 +87,7 @@
 		{isLoggedIn}
 		{textClass}
 		{avatarShape}
+		{postActionVisibility}
 		{getProfile}
 		{requestProfiles}
 		{profileRelays}

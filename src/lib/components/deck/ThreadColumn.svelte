@@ -4,7 +4,7 @@
 	import type { Post, ThreadPost } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
-	import type { AvatarShape } from '$lib/user-settings';
+	import type { AvatarShape, PostActionVisibility } from '$lib/user-settings';
 	import type { Profile } from '$lib/nostr/profiles';
 	import PostCard from './PostCard.svelte';
 
@@ -17,6 +17,7 @@
 		isLoggedIn: boolean;
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
+		postActionVisibility: PostActionVisibility;
 		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
@@ -37,6 +38,7 @@
 		isLoggedIn,
 		textClass,
 		avatarShape,
+		postActionVisibility,
 		getProfile,
 		requestProfiles,
 		profileRelays,
@@ -113,6 +115,7 @@
 						{isLoggedIn}
 						{textClass}
 						{avatarShape}
+						{postActionVisibility}
 						{getProfile}
 						{requestProfiles}
 						{profileRelays}

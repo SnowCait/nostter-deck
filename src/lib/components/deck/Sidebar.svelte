@@ -16,7 +16,7 @@
 	import type { AccountRecord } from '$lib/nostr/accounts';
 	import type { Profile } from '$lib/nostr/profiles';
 	import { readUiState, updateUiState } from '$lib/ui-state';
-	import type { AvatarShape, FontSize } from '$lib/user-settings';
+	import type { AvatarShape, FontSize, PostActionVisibility } from '$lib/user-settings';
 	import AccountMenu from './AccountMenu.svelte';
 	import DeckMenu from './DeckMenu.svelte';
 	import SidebarColumnList from './SidebarColumnList.svelte';
@@ -45,9 +45,11 @@
 		onCompose: () => void;
 		fontSize: FontSize;
 		avatarShape: AvatarShape;
+		postActionVisibility: PostActionVisibility;
 		textClass: FontSizeTextClasses;
 		onFontSizeChange: (fontSize: FontSize) => void;
 		onAvatarShapeChange: (avatarShape: AvatarShape) => void;
+		onPostActionVisibilityChange: (visibility: PostActionVisibility) => void;
 		onSelectColumn: (columnId: string) => void;
 		onReorderColumn: (columnId: string, targetIndex: number) => void;
 		mutedPubkeys: string[];
@@ -83,9 +85,11 @@
 		onCompose,
 		fontSize,
 		avatarShape,
+		postActionVisibility,
 		textClass,
 		onFontSizeChange,
 		onAvatarShapeChange,
+		onPostActionVisibilityChange,
 		onSelectColumn,
 		onReorderColumn,
 		mutedPubkeys,
@@ -372,9 +376,11 @@
 	bind:isOpen={isSettingsDialogOpen}
 	{fontSize}
 	{avatarShape}
+	{postActionVisibility}
 	{textClass}
 	{onFontSizeChange}
 	{onAvatarShapeChange}
+	{onPostActionVisibilityChange}
 	{mutedPubkeys}
 	{getProfile}
 	{requestProfiles}

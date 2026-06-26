@@ -4,7 +4,7 @@
 	import type { TimelineRuntime } from '$lib/deck/timeline-runtime';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
-	import type { AvatarShape } from '$lib/user-settings';
+	import type { AvatarShape, PostActionVisibility } from '$lib/user-settings';
 	import type { Profile } from '$lib/nostr/profiles';
 	import TimelineEventCard from './TimelineEventCard.svelte';
 
@@ -13,6 +13,7 @@
 		isLoggedIn: boolean;
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
+		postActionVisibility: PostActionVisibility;
 		scrollRoot?: HTMLDivElement;
 		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
@@ -31,6 +32,7 @@
 		isLoggedIn,
 		textClass,
 		avatarShape,
+		postActionVisibility,
 		scrollRoot,
 		getProfile,
 		requestProfiles,
@@ -117,6 +119,7 @@
 			{isLoggedIn}
 			{textClass}
 			{avatarShape}
+			{postActionVisibility}
 			{getProfile}
 			{requestProfiles}
 			{profileRelays}
