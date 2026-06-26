@@ -32,6 +32,7 @@
 		column: ColumnConfig;
 		runtime: TimelineRuntime;
 		id: string;
+		isSingleColumn?: boolean;
 		isLoggedIn: boolean;
 		isSettingsOpen: boolean;
 		canMoveLeft: boolean;
@@ -69,6 +70,7 @@
 		column,
 		runtime,
 		id,
+		isSingleColumn = false,
 		isLoggedIn,
 		isSettingsOpen,
 		canMoveLeft,
@@ -177,7 +179,7 @@
 	tabindex="-1"
 	class={[
 		'flex h-full flex-col overflow-hidden border-r border-slate-200 bg-white transition-[width] outline-none dark:border-slate-800 dark:bg-slate-950',
-		columnWidthClassByWidth[column.width]
+		isSingleColumn ? 'w-full' : columnWidthClassByWidth[column.width]
 	]}
 >
 	<header

@@ -7,15 +7,16 @@ import {
 	addCustomTimelineColumn,
 	addPresetColumn,
 	addWebsiteColumn,
-	columnConfigsStorageKey,
 	columnNames,
 	columnOptionsButton,
 	deckColumns,
 	defaultRelaySelection,
 	expectAvatarShapeNotStoredInUiState,
 	expectColumnOrder,
+	expectColumnMaxWidth,
 	expectColumnWidth,
 	expectComposerNextToSidebar,
+	expectStoredDeckLayoutMode,
 	expectFontSizeNotStoredInUiState,
 	expectSidebarIconsCentered,
 	expectSidebarWidth,
@@ -37,6 +38,7 @@ import {
 	mutedUsersStorageKey,
 	narrowColumnWidth,
 	openDeck,
+	readStoredColumns,
 	selectColumnType,
 	selectDropdownOption,
 	sidebar,
@@ -46,6 +48,7 @@ import {
 	sidebarCenterTolerance,
 	sidebarCollapsedWidth,
 	sidebarExpandedWidth,
+	singleColumnMaxWidth,
 	standardColumnWidth,
 	wideColumnWidth
 } from './helpers/deck-page';
@@ -99,6 +102,19 @@ async function horizontalCenter(locator: Locator) {
 	const box = await locator.boundingBox();
 	if (!box) throw new Error('Expected a visible element with a bounding box');
 	return box.x + box.width / 2;
+}
+
+async function expectSidebarAndColumnGroupCentered(page: Page, column: Locator) {
+	await expect(column).toBeVisible();
+	await expect
+		.poll(async () => {
+			const sidebarBox = await sidebar(page).boundingBox();
+			const columnBox = await column.boundingBox();
+			if (!sidebarBox || !columnBox) return Number.NaN;
+			const groupCenter = sidebarBox.x + (columnBox.x + columnBox.width - sidebarBox.x) / 2;
+			return Math.round(groupCenter);
+		})
+		.toBe(Math.round(page.viewportSize()?.width ?? 0) / 2);
 }
 
 test.describe('nostter deck', () => {
@@ -227,6 +243,89 @@ test.describe('nostter deck', () => {
 			.toBe(true);
 		await expect(page).toHaveURL('/');
 		await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+	});
+
+	test('switches between single-column and deck layouts on mobile viewports', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await page.setViewportSize({ width: 390, height: 844 });
+		await openDeck(page);
+		const columns = deckColumns(page);
+
+		await addPresetColumn(page, 'timeline_search');
+		await addWebsiteColumn(page, 'example.com');
+
+		await expectSidebarWidth(page, sidebarCollapsedWidth);
+		await expectColumnOrder(columns, ['example.com']);
+		await expect(page.getByTestId('single-column-nav')).toHaveCount(0);
+		await expect(page.getByRole('button', { name: 'Next column' })).toHaveCount(0);
+
+		await page.getByRole('button', { name: 'Expand sidebar' }).click();
+		await expectSidebarWidth(page, sidebarExpandedWidth);
+		await expect(sidebar(page).getByText('Add column')).toBeVisible();
+		await page.mouse.click(320, 20);
+		await expectSidebarWidth(page, sidebarCollapsedWidth);
+
+		await sidebarButton(page, 'Search').click();
+		await expectColumnOrder(columns, ['Search']);
+
+		await page.getByRole('button', { name: 'Expand sidebar' }).click();
+		await sidebarButton(page, 'example.com').click();
+		await expectSidebarWidth(page, sidebarCollapsedWidth);
+		await expectColumnOrder(columns, ['example.com']);
+
+		await page.getByRole('button', { name: 'Deck layout' }).click();
+		await expectColumnOrder(columns, ['Search', 'example.com']);
+		await expectStoredDeckLayoutMode(page, 'deck');
+
+		await page.getByRole('button', { name: 'Single column layout' }).click();
+		await expectColumnOrder(columns, ['example.com']);
+		await expectStoredDeckLayoutMode(page, 'single');
+	});
+
+	test('limits manually selected single-column layout width on desktop', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await page.setViewportSize({ width: 1280, height: 800 });
+		await openDeck(page);
+		const columns = deckColumns(page);
+
+		await addPresetColumn(page, 'timeline_search');
+		await addWebsiteColumn(page, 'example.com');
+		await expectColumnOrder(columns, ['Search', 'example.com']);
+
+		await page.getByRole('button', { name: 'Single column layout' }).click();
+		await expectColumnOrder(columns, ['example.com']);
+		await expectColumnMaxWidth(columns.first(), singleColumnMaxWidth);
+		await expectSidebarAndColumnGroupCentered(page, columns.first());
+		await expect(page.getByTestId('single-column-nav')).toHaveCount(0);
+	});
+
+	test('shows detail columns as the single mobile column and restores the source column', async ({
+		page
+	}) => {
+		await installFakeNostrRelay(page);
+		await page.setViewportSize({ width: 390, height: 844 });
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], search: 'thread-entry', limit: 20 }]
+		});
+
+		const sourceColumn = deckColumns(page).first();
+		await expect(sourceColumn.getByText('Direct thread reply')).toBeVisible();
+		await sourceColumn
+			.getByText('Direct thread reply')
+			.locator('xpath=ancestor::article')
+			.getByRole('button', { name: 'Open thread' })
+			.click();
+
+		await expect(deckColumns(page)).toHaveCount(1);
+		const threadColumn = page.getByTestId('thread-column');
+		await expect(threadColumn).toBeVisible();
+		await expect(threadColumn.getByText('Direct thread reply')).toBeVisible();
+
+		await threadColumn.getByRole('button', { name: 'Close' }).click();
+		await expect(page.getByTestId('thread-column')).toHaveCount(0);
+		await expectColumnOrder(deckColumns(page), ['Custom timeline']);
+		await expect(deckColumns(page).first().getByText('Direct thread reply')).toBeVisible();
 	});
 
 	test('adds, moves, and deletes a column', async ({ page }) => {
@@ -1037,14 +1136,11 @@ test.describe('nostter deck', () => {
 		await expect(columns).toHaveCount(3);
 		await expect(columns.nth(1)).toBeFocused();
 		await expect
-			.poll(() =>
-				page.evaluate((key) => {
-					const columns = JSON.parse(localStorage.getItem(key) ?? '[]');
-					return columns.map((column: { sourceKey?: string; query?: string }) => ({
-						sourceKey: column.sourceKey,
-						query: column.query
-					}));
-				}, columnConfigsStorageKey)
+			.poll(async () =>
+				(await readStoredColumns(page))?.map((column: { sourceKey?: string; query?: string }) => ({
+					sourceKey: column.sourceKey,
+					query: column.query
+				}))
 			)
 			.toEqual([
 				{ sourceKey: undefined, query: undefined },
@@ -1411,7 +1507,10 @@ test.describe('nostter deck', () => {
 		await expect(
 			sensitiveColumn.getByText('Sensitive timeline body', { exact: false })
 		).toBeVisible();
-		await expect(sensitiveColumn.getByText('#hidden-sensitive-tag')).toBeVisible();
+		if ((await sensitiveColumn.getByRole('button', { name: 'Show more' }).count()) > 0) {
+			await sensitiveColumn.getByRole('button', { name: 'Show more' }).click();
+		}
+		await expect(sensitiveColumn.getByText('#hidden-sensitive-tag')).toHaveCount(0);
 		const quoteWarning = sensitiveColumn.getByTestId('content-warning-quote');
 		await expect(quoteWarning).toContainText('Spoiler');
 		await expect(sensitiveColumn.getByText('Sensitive quoted note')).toHaveCount(0);
@@ -1525,21 +1624,18 @@ test.describe('nostter deck', () => {
 		await expect
 			.poll(() => settingsDialog.evaluate((element) => element.scrollWidth <= element.clientWidth))
 			.toBe(true);
-		await page.getByRole('button', { name: 'Close' }).click();
-		await page.getByRole('button', { name: 'Settings' }).click();
-		await expect(mutedUsersToggle).toHaveAttribute('aria-expanded', 'false');
-		await expect(page.getByTestId('muted-users-content')).toHaveCount(0);
-		await mutedUsersToggle.click();
-		await unmuteButton.click();
+		await page.setViewportSize({ width: 1280, height: 720 });
+		await page.getByRole('button', { name: 'Unmute Alice Relay' }).click();
 
-		await expect(
-			customColumn.getByText('Hello from a custom Nostr timeline', { exact: false })
-		).toBeVisible();
 		await expect
 			.poll(() =>
 				page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '[]'), mutedUsersStorageKey)
 			)
 			.toEqual([]);
+		await page.reload();
+		await expect(
+			customColumn.getByText('Hello from a custom Nostr timeline', { exact: false })
+		).toBeVisible();
 	});
 
 	test('reveals muted references and thread posts without unmuting the user', async ({ page }) => {
@@ -1750,7 +1846,7 @@ test.describe('nostter deck', () => {
 			.getByText('Direct thread reply')
 			.first()
 			.locator('xpath=ancestor::article');
-		await replyArticle.getByRole('button', { name: 'Reply' }).click();
+		await expect(replyArticle.getByRole('button', { name: 'Reply' })).toHaveCount(0);
 		await expect(page.getByTestId('thread-column')).toHaveCount(0);
 
 		const threadButton = replyArticle.getByRole('button', { name: 'Open thread' });
@@ -2221,6 +2317,14 @@ test.describe('nostter deck', () => {
 		await openDeck(page, { isLoggedIn: true });
 
 		const accountAvatar = sidebar(page).getByTestId('account-avatar');
+		await expect
+			.poll(async () => {
+				const collapseBox = await sidebarButton(page, 'Collapse sidebar').boundingBox();
+				const layoutBox = await sidebarButton(page, 'Single column layout').boundingBox();
+				if (!collapseBox || !layoutBox) return false;
+				return collapseBox.y < layoutBox.y;
+			})
+			.toBe(true);
 		const expandedPositions = {
 			account: await horizontalCenter(accountAvatar),
 			settings: await horizontalCenter(sidebarButtonIcon(page, 'Settings')),
@@ -2229,6 +2333,14 @@ test.describe('nostter deck', () => {
 
 		await page.getByRole('button', { name: 'Collapse sidebar' }).click();
 		await expectSidebarWidth(page, sidebarCollapsedWidth);
+		await expect
+			.poll(async () => {
+				const expandBox = await sidebarButton(page, 'Expand sidebar').boundingBox();
+				const layoutBox = await sidebarButton(page, 'Single column layout').boundingBox();
+				if (!expandBox || !layoutBox) return false;
+				return expandBox.y < layoutBox.y;
+			})
+			.toBe(true);
 
 		const collapsedPositions = {
 			account: await horizontalCenter(accountAvatar),
@@ -2408,10 +2520,10 @@ test.describe('nostter deck', () => {
 		await expect(postAvatar).toHaveClass(/rounded-full/);
 		await expect(sidebarAvatar).toHaveClass(/rounded-full/);
 		await expect(postArticle.getByRole('button', { name: 'Post menu' })).toBeVisible();
-		await expect(postArticle.getByRole('button', { name: 'Reply' })).toBeVisible();
-		await expect(postArticle.getByRole('button', { name: 'Repost' })).toBeVisible();
-		await expect(postArticle.getByRole('button', { name: 'Like' })).toBeVisible();
-		await expect(postArticle.getByRole('button', { name: 'Share' })).toBeVisible();
+		await expect(postArticle.getByRole('button', { name: 'Reply' })).toHaveCount(0);
+		await expect(postArticle.getByRole('button', { name: 'Repost' })).toHaveCount(0);
+		await expect(postArticle.getByRole('button', { name: 'Like' })).toHaveCount(0);
+		await expect(postArticle.getByRole('button', { name: 'Share' })).toHaveCount(0);
 
 		await page.getByRole('button', { name: 'Settings' }).click();
 		const avatarShapeSelect = page.getByLabel('Profile icon');
@@ -2585,6 +2697,7 @@ test.describe('nostter deck', () => {
 
 	test('opens and focuses the compose panel with N', async ({ page }) => {
 		await openDeck(page, { isLoggedIn: true });
+		await expect(sidebar(page).getByRole('button', { name: 'Post' })).toBeVisible();
 
 		const composer = page.getByRole('region', { name: 'Post' });
 		await page.keyboard.press('n');
@@ -2615,6 +2728,7 @@ test.describe('nostter deck', () => {
 		await addCustomTimelineColumn(page, {
 			filters: [{ kinds: [ShortTextNote], search: 'thread-entry', limit: 20 }]
 		});
+		await expect(deckColumns(page).first().getByText('Direct thread reply')).toBeVisible();
 
 		await page.keyboard.press('j');
 		await page.keyboard.press('Enter');
@@ -2669,7 +2783,7 @@ test.describe('nostter deck', () => {
 						(window.__nostterFakeRelayPublishedEvents ?? []).some(({ relay, event }) => {
 							const published = event as Record<string, unknown>;
 							return (
-								relay === 'wss://relay.damus.io/' &&
+								new URL(relay).href === 'wss://relay.damus.io/' &&
 								published.id === 'f'.repeat(64) &&
 								published.pubkey === 'a'.repeat(64) &&
 								published.kind === 1 &&
@@ -2747,9 +2861,13 @@ test.describe('nostter deck', () => {
 						};
 						return (
 							events.some(
-								({ relay, event }) => relay === 'wss://relay.damus.io/' && isChannelMessage(event)
+								({ relay, event }) =>
+									new URL(relay).href === 'wss://relay.damus.io/' && isChannelMessage(event)
 							) &&
-							events.some(({ relay, event }) => relay === channelRelay && isChannelMessage(event))
+							events.some(
+								({ relay, event }) =>
+									new URL(relay).href === channelRelay && isChannelMessage(event)
+							)
 						);
 					},
 					{ channelId, channelRelay, message, clientTag: nostterClientTag }

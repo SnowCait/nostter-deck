@@ -28,18 +28,24 @@ describe('ui state storage', () => {
 	test('falls back when persisted state is invalid JSON', () => {
 		storageValues.set(uiStateStorageKey, 'not-json');
 
-		expect(readUiState()).toEqual({ sidebarCollapsed: false });
+		expect(readUiState()).toEqual({ sidebarCollapsed: false, deckLayoutMode: 'auto' });
 	});
 
 	test('falls back when persisted sidebar state has an invalid shape', () => {
 		storageValues.set(uiStateStorageKey, JSON.stringify({ sidebarCollapsed: 'yes' }));
 
-		expect(readUiState()).toEqual({ sidebarCollapsed: false });
+		expect(readUiState()).toEqual({ sidebarCollapsed: false, deckLayoutMode: 'auto' });
 	});
 
-	test('round-trips valid sidebar state', () => {
-		writeUiState({ sidebarCollapsed: true });
+	test('falls back when persisted deck layout mode has an invalid shape', () => {
+		storageValues.set(uiStateStorageKey, JSON.stringify({ deckLayoutMode: 'wide' }));
 
-		expect(readUiState()).toEqual({ sidebarCollapsed: true });
+		expect(readUiState()).toEqual({ sidebarCollapsed: false, deckLayoutMode: 'auto' });
+	});
+
+	test('round-trips valid ui state', () => {
+		writeUiState({ sidebarCollapsed: true, deckLayoutMode: 'single' });
+
+		expect(readUiState()).toEqual({ sidebarCollapsed: true, deckLayoutMode: 'single' });
 	});
 });

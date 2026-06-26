@@ -60,6 +60,8 @@
 	"collapse_sidebar": "サイドバーを折りたたむ",
 	"collapse_sidebar_short": "折りたたむ",
 	"expand_sidebar": "サイドバーを展開",
+	"show_single_column_layout": "シングルカラム表示",
+	"show_deck_layout": "デッキ表示",
 	"deck_menu": "デッキ",
 	"deck_name": "デッキ名",
 	"deck_new": "デッキを作成",

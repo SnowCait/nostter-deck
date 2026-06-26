@@ -1,14 +1,23 @@
 import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
 
+export const deckLayoutModes = ['auto', 'deck', 'single'] as const;
+export type DeckLayoutMode = (typeof deckLayoutModes)[number];
+
 export type UiState = {
 	sidebarCollapsed: boolean;
+	deckLayoutMode: DeckLayoutMode;
 };
 
 const uiStateStorageKey = 'nostter:ui-state';
 
 const defaultUiState: UiState = {
-	sidebarCollapsed: false
+	sidebarCollapsed: false,
+	deckLayoutMode: 'auto'
 };
+
+function isDeckLayoutMode(value: unknown): value is DeckLayoutMode {
+	return typeof value === 'string' && deckLayoutModes.includes(value as DeckLayoutMode);
+}
 
 function normalizeUiState(value: unknown): UiState {
 	if (!value || typeof value !== 'object') return { ...defaultUiState };
@@ -18,7 +27,10 @@ function normalizeUiState(value: unknown): UiState {
 		sidebarCollapsed:
 			typeof candidate.sidebarCollapsed === 'boolean'
 				? candidate.sidebarCollapsed
-				: defaultUiState.sidebarCollapsed
+				: defaultUiState.sidebarCollapsed,
+		deckLayoutMode: isDeckLayoutMode(candidate.deckLayoutMode)
+			? candidate.deckLayoutMode
+			: defaultUiState.deckLayoutMode
 	};
 }
 

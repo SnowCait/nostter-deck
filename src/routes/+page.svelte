@@ -17,6 +17,7 @@
 		writeColumnDeckStore,
 		type ColumnDeckStore
 	} from '$lib/deck/column-decks';
+	import { createDeckLayoutController } from '$lib/deck/deck-layout-controller.svelte';
 	import { emptyTimelineRuntime } from '$lib/deck/timeline-runtime';
 	import { resetSessionTimelineCache } from '$lib/deck/timeline-cache';
 	import { createDetailColumnController } from '$lib/deck/detail-column-controller.svelte';
@@ -113,10 +114,21 @@
 		getColumnConfigs: () => columnConfigs,
 		isReady: () => isTimelineCacheReady
 	});
+	const deckLayoutController = createDeckLayoutController({
+		getColumns: () => columnConfigs,
+		initialColumnId: savedActiveDeck?.columns[0]?.id ?? ''
+	});
 	let keyboardNavigation = $state<ReturnType<typeof createKeyboardNavigation> | null>(null);
+	const visibleSingleColumn = $derived(
+		columnConfigs.find((column) => column.id === deckLayoutController.visibleColumnId) ?? null
+	);
+	const isDesktopSingleColumn = $derived(
+		deckLayoutController.isSingleColumn && !deckLayoutController.isCompactViewport
+	);
 
 	function focusColumn(columnId: string, preferPost = false) {
-		keyboardNavigation?.focusColumn(columnId, preferPost);
+		deckLayoutController.showColumn(columnId);
+		void tick().then(() => keyboardNavigation?.focusColumn(columnId, preferPost));
 	}
 
 	function getColumnId(columnId: string) {
@@ -144,10 +156,12 @@
 	});
 
 	onMount(() => {
+		const disconnectViewport = deckLayoutController.connectViewport();
 		void resetSessionTimelineCache().then(() => {
 			isTimelineCacheReady = true;
 		});
 		void initializeAuth();
+		return disconnectViewport;
 	});
 
 	$effect(() => {
@@ -226,6 +240,7 @@
 
 		columnConfigs = nextDeck.columns.map((column) => ({ ...column }));
 		activeColumnId = nextDeck.columns[0]?.id ?? '';
+		deckLayoutController.resetSelectedColumn(activeColumnId);
 		writeDeckStore({ ...nextStore, activeDeckId: deckId });
 		await tick();
 		if (activeColumnId) focusColumn(activeColumnId);
@@ -443,8 +458,116 @@
 	<title>{m.app_title()}</title>
 </svelte:head>
 
+{#snippet renderDeckColumn(column: ColumnConfig, isSingleColumn: boolean)}
+	{@const columnIndex = getColumnIndex(column.id)}
+	<DeckColumn
+		{column}
+		runtime={timelineController.runtimes[column.id] ?? emptyColumnRuntime}
+		id={getColumnId(column.id)}
+		{isSingleColumn}
+		{isLoggedIn}
+		isSettingsOpen={openSettingsColumnId === column.id}
+		canMoveLeft={columnIndex > 0}
+		canMoveRight={columnIndex >= 0 && columnIndex < columnConfigs.length - 1}
+		{textClass}
+		{avatarShape}
+		{getProfile}
+		{requestProfiles}
+		profileRelays={defaultProfileRelays}
+		{isMutedUser}
+		onMuteUser={muteUser}
+		onOpenProfile={(profile) => void detailController.openProfile(column.id, profile)}
+		onOpenThread={(post) => void detailController.openThread(column.id, post)}
+		onOpenHashtag={(hashtag) => void openHashtagColumn(column.id, hashtag)}
+		onToggleSettings={() => toggleColumnSettings(column.id)}
+		onDelete={() => deleteColumn(column.id)}
+		onMoveLeft={() => moveColumn(column.id, -1)}
+		onMoveRight={() => moveColumn(column.id, 1)}
+		onTitleChange={(title) => updateColumnTitle(column.id, title)}
+		onIconChange={(icon) => updateColumnIcon(column.id, icon)}
+		onWidthChange={(width) => updateColumnWidth(column.id, width)}
+		onFollowSave={(profile) => saveFollowSettings(column.id, profile)}
+		onSearchSave={(query) => saveSearchSettings(column.id, query)}
+		onChannelSave={(channel) => saveChannelSettings(column.id, channel)}
+		onPublishChannelMessage={composer.publishChannel}
+		onCustomTimelineSave={(filters, relays) =>
+			saveCustomTimelineSettings(column.id, filters, relays)}
+		onLoadOlderTimeline={() => void timelineController.loadOlder(column.id)}
+		onLoadNewerTimeline={() => void timelineController.loadNewer(column.id)}
+	/>
+{/snippet}
+
+{#snippet renderDetailColumn(sourceColumnId: string, isSingleColumn: boolean)}
+	{#if detailController.detailColumn?.type === 'thread'}
+		<ThreadColumn
+			id={getColumnId('thread')}
+			posts={detailController.threadPosts}
+			isLoading={detailController.isThreadLoading}
+			error={detailController.threadError}
+			{isSingleColumn}
+			{isLoggedIn}
+			{textClass}
+			{avatarShape}
+			{getProfile}
+			{requestProfiles}
+			profileRelays={defaultProfileRelays}
+			{isMutedUser}
+			onMuteUser={muteUser}
+			onClose={() => void detailController.close()}
+			onOpenProfile={(profile) => void detailController.openProfile(sourceColumnId, profile)}
+			onOpenThread={(post) => void detailController.openThread(sourceColumnId, post)}
+			onOpenHashtag={(hashtag) => void openHashtagColumn(sourceColumnId, hashtag)}
+		/>
+	{:else if detailController.detailColumn?.type === 'profile'}
+		<ProfileColumn
+			id={getColumnId('profile')}
+			pubkey={detailController.detailColumn.pubkey}
+			posts={detailController.profilePosts}
+			isLoading={detailController.profileRuntime.isLoading}
+			error={detailController.profileRuntime.error}
+			{isSingleColumn}
+			{isLoggedIn}
+			{textClass}
+			{avatarShape}
+			{getProfile}
+			{requestProfiles}
+			profileRelays={defaultProfileRelays}
+			{isMutedUser}
+			onMuteUser={muteUser}
+			onClose={() => void detailController.close()}
+			onOpenProfile={(profile) => void detailController.openProfile(sourceColumnId, profile)}
+			onOpenThread={(post) => void detailController.openThread(sourceColumnId, post)}
+			onOpenHashtag={(hashtag) => void openHashtagColumn(sourceColumnId, hashtag)}
+		/>
+	{/if}
+{/snippet}
+
+{#snippet renderColumnAddPlaceholder(isSingleColumn: boolean)}
+	<div
+		data-testid="column-add-placeholder"
+		class={[
+			'flex h-full shrink-0 flex-col items-center justify-center gap-3 border-r border-dashed border-slate-300 bg-white/60 px-4 text-slate-500 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-400',
+			isSingleColumn ? 'w-full' : 'w-[342px]'
+		]}
+	>
+		<button
+			type="button"
+			class="flex size-11 items-center justify-center rounded-md border border-slate-300 bg-white transition hover:border-slate-400 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:text-slate-50"
+			title={m.add_column()}
+			aria-label={m.add_column()}
+			onclick={openAddColumnDialog}
+		>
+			<Plus class="size-5" aria-hidden="true" />
+		</button>
+		<span class={['font-semibold', textClass.control]}>{m.add_column()}</span>
+	</div>
+{/snippet}
+
 <main
-	class="app-shell flex min-h-0 overflow-hidden bg-[#eef3f7] text-slate-950 dark:bg-slate-950 dark:text-slate-50"
+	class={[
+		'app-shell flex min-h-0 overflow-hidden bg-[#eef3f7] text-slate-950 dark:bg-slate-950 dark:text-slate-50',
+		isDesktopSingleColumn ? 'justify-center' : ''
+	]}
 >
 	<Sidebar
 		columns={columnConfigs}
@@ -479,6 +602,9 @@
 		{requestProfiles}
 		profileRelays={defaultProfileRelays}
 		onUnmuteUser={unmuteUser}
+		isSingleColumnLayout={deckLayoutController.isSingleColumn}
+		isCompactViewport={deckLayoutController.isCompactViewport}
+		onToggleLayoutMode={deckLayoutController.toggleLayoutMode}
 	/>
 
 	{#if isLoggedIn && composer.isOpen}
@@ -592,106 +718,40 @@
 		</section>
 	{/if}
 
-	<section class="flex min-w-0 flex-1 flex-col">
-		<div class="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
-			<div class="flex h-full min-w-max">
-				{#each columnConfigs as column (column.id)}
-					{@const columnIndex = getColumnIndex(column.id)}
-					<DeckColumn
-						{column}
-						runtime={timelineController.runtimes[column.id] ?? emptyColumnRuntime}
-						id={getColumnId(column.id)}
-						{isLoggedIn}
-						isSettingsOpen={openSettingsColumnId === column.id}
-						canMoveLeft={columnIndex > 0}
-						canMoveRight={columnIndex >= 0 && columnIndex < columnConfigs.length - 1}
-						{textClass}
-						{avatarShape}
-						{getProfile}
-						{requestProfiles}
-						profileRelays={defaultProfileRelays}
-						{isMutedUser}
-						onMuteUser={muteUser}
-						onOpenProfile={(profile) => void detailController.openProfile(column.id, profile)}
-						onOpenThread={(post) => void detailController.openThread(column.id, post)}
-						onOpenHashtag={(hashtag) => void openHashtagColumn(column.id, hashtag)}
-						onToggleSettings={() => toggleColumnSettings(column.id)}
-						onDelete={() => deleteColumn(column.id)}
-						onMoveLeft={() => moveColumn(column.id, -1)}
-						onMoveRight={() => moveColumn(column.id, 1)}
-						onTitleChange={(title) => updateColumnTitle(column.id, title)}
-						onIconChange={(icon) => updateColumnIcon(column.id, icon)}
-						onWidthChange={(width) => updateColumnWidth(column.id, width)}
-						onFollowSave={(profile) => saveFollowSettings(column.id, profile)}
-						onSearchSave={(query) => saveSearchSettings(column.id, query)}
-						onChannelSave={(channel) => saveChannelSettings(column.id, channel)}
-						onPublishChannelMessage={composer.publishChannel}
-						onCustomTimelineSave={(filters, relays) =>
-							saveCustomTimelineSettings(column.id, filters, relays)}
-						onLoadOlderTimeline={() => void timelineController.loadOlder(column.id)}
-						onLoadNewerTimeline={() => void timelineController.loadNewer(column.id)}
-					/>
-					{#if detailController.detailColumn?.sourceColumnId === column.id}
-						{#if detailController.detailColumn.type === 'thread'}
-							<ThreadColumn
-								id={getColumnId('thread')}
-								posts={detailController.threadPosts}
-								isLoading={detailController.isThreadLoading}
-								error={detailController.threadError}
-								{isLoggedIn}
-								{textClass}
-								{avatarShape}
-								{getProfile}
-								{requestProfiles}
-								profileRelays={defaultProfileRelays}
-								{isMutedUser}
-								onMuteUser={muteUser}
-								onClose={() => void detailController.close()}
-								onOpenProfile={(profile) => void detailController.openProfile(column.id, profile)}
-								onOpenThread={(post) => void detailController.openThread(column.id, post)}
-								onOpenHashtag={(hashtag) => void openHashtagColumn(column.id, hashtag)}
-							/>
+	<section class={['flex min-w-0 flex-col', isDesktopSingleColumn ? 'flex-[0_1_640px]' : 'flex-1']}>
+		<div
+			class={[
+				'min-h-0 flex-1',
+				deckLayoutController.isSingleColumn
+					? 'overflow-hidden'
+					: 'overflow-x-auto overflow-y-hidden'
+			]}
+		>
+			{#if deckLayoutController.isSingleColumn}
+				<div class="flex h-full w-full min-w-0 flex-col items-center overflow-hidden">
+					<div class="min-h-0 w-full max-w-[640px] flex-1">
+						{#if detailController.detailColumn}
+							{@render renderDetailColumn(detailController.detailColumn.sourceColumnId, true)}
+						{:else if visibleSingleColumn}
+							{@render renderDeckColumn(visibleSingleColumn, true)}
 						{:else}
-							<ProfileColumn
-								id={getColumnId('profile')}
-								pubkey={detailController.detailColumn.pubkey}
-								posts={detailController.profilePosts}
-								isLoading={detailController.profileRuntime.isLoading}
-								error={detailController.profileRuntime.error}
-								{isLoggedIn}
-								{textClass}
-								{avatarShape}
-								{getProfile}
-								{requestProfiles}
-								profileRelays={defaultProfileRelays}
-								{isMutedUser}
-								onMuteUser={muteUser}
-								onClose={() => void detailController.close()}
-								onOpenProfile={(profile) => void detailController.openProfile(column.id, profile)}
-								onOpenThread={(post) => void detailController.openThread(column.id, post)}
-								onOpenHashtag={(hashtag) => void openHashtagColumn(column.id, hashtag)}
-							/>
+							{@render renderColumnAddPlaceholder(true)}
 						{/if}
-					{/if}
-				{/each}
-				{#if columnConfigs.length === 0}
-					<div
-						data-testid="column-add-placeholder"
-						class="flex h-full w-[342px] shrink-0 flex-col items-center justify-center gap-3 border-r border-dashed border-slate-300 bg-white/60 px-4 text-slate-500 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-400"
-					>
-						<button
-							type="button"
-							class="flex size-11 items-center justify-center rounded-md border border-slate-300 bg-white transition hover:border-slate-400 hover:text-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:text-slate-50"
-							title={m.add_column()}
-							aria-label={m.add_column()}
-							onclick={openAddColumnDialog}
-						>
-							<Plus class="size-5" aria-hidden="true" />
-						</button>
-						<span class={['font-semibold', textClass.control]}>{m.add_column()}</span>
 					</div>
-				{/if}
-			</div>
+				</div>
+			{:else}
+				<div class="flex h-full min-w-max">
+					{#each columnConfigs as column (column.id)}
+						{@render renderDeckColumn(column, false)}
+						{#if detailController.detailColumn?.sourceColumnId === column.id}
+							{@render renderDetailColumn(column.id, false)}
+						{/if}
+					{/each}
+					{#if columnConfigs.length === 0}
+						{@render renderColumnAddPlaceholder(false)}
+					{/if}
+				</div>
+			{/if}
 		</div>
 	</section>
 </main>

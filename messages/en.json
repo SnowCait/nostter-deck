@@ -60,6 +60,8 @@
 	"collapse_sidebar": "Collapse sidebar",
 	"collapse_sidebar_short": "Collapse sidebar",
 	"expand_sidebar": "Expand sidebar",
+	"show_single_column_layout": "Single column layout",
+	"show_deck_layout": "Deck layout",
 	"deck_menu": "Decks",
 	"deck_name": "Deck name",
 	"deck_new": "New deck",

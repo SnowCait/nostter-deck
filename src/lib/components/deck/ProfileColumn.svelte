@@ -14,6 +14,7 @@
 	type Props = {
 		id: string;
 		pubkey: string;
+		isSingleColumn?: boolean;
 		posts: Post[];
 		isLoading: boolean;
 		error: string | null;
@@ -34,6 +35,7 @@
 	const {
 		id,
 		pubkey,
+		isSingleColumn = false,
 		posts,
 		isLoading,
 		error,
@@ -74,7 +76,10 @@
 	data-deck-column
 	data-column-id="profile"
 	tabindex="-1"
-	class="flex h-full w-[342px] flex-col overflow-hidden border-r border-slate-200 bg-white outline-none dark:border-slate-800 dark:bg-slate-950"
+	class={[
+		'flex h-full flex-col overflow-hidden border-r border-slate-200 bg-white outline-none dark:border-slate-800 dark:bg-slate-950',
+		isSingleColumn ? 'w-full' : 'w-[342px]'
+	]}
 	data-testid="profile-column"
 >
 	<header

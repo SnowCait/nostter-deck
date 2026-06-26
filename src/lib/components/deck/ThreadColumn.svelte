@@ -11,6 +11,7 @@
 	type Props = {
 		id: string;
 		posts: ThreadPost[];
+		isSingleColumn?: boolean;
 		isLoading: boolean;
 		error: string | null;
 		isLoggedIn: boolean;
@@ -30,6 +31,7 @@
 	let {
 		id,
 		posts,
+		isSingleColumn = false,
 		isLoading,
 		error,
 		isLoggedIn,
@@ -52,7 +54,10 @@
 	data-deck-column
 	data-column-id="thread"
 	tabindex="-1"
-	class="flex h-full w-[342px] flex-col overflow-hidden border-r border-slate-200 bg-white outline-none dark:border-slate-800 dark:bg-slate-950"
+	class={[
+		'flex h-full flex-col overflow-hidden border-r border-slate-200 bg-white outline-none dark:border-slate-800 dark:bg-slate-950',
+		isSingleColumn ? 'w-full' : 'w-[342px]'
+	]}
 	data-testid="thread-column"
 >
 	<header

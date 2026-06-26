@@ -2,10 +2,11 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import { ShortTextNote } from 'nostr-tools/kinds';
 
 export const columnNames: string[] = [];
-export const sidebarButtonNames = ['Add column', 'Settings', 'Log in'];
+export const sidebarButtonNames = ['Add column', 'Single column layout', 'Settings', 'Log in'];
 export const sidebarExpandedWidth = 236;
 export const sidebarCollapsedWidth = 60;
 export const composerWidth = 360;
+export const singleColumnMaxWidth = 640;
 export const narrowColumnWidth = 280;
 export const standardColumnWidth = 342;
 export const wideColumnWidth = 480;
@@ -13,6 +14,7 @@ export const sidebarCenterTolerance = 1;
 export const uiStateStorageKey = 'nostter:ui-state';
 export const userSettingsStorageKey = 'nostter:user-settings';
 export const columnConfigsStorageKey = 'nostter:column-configs';
+export const columnDecksStorageKey = 'nostter:column-decks';
 export const mutedUsersStorageKey = 'nostter:muted-users';
 export const defaultRelaySelection = { type: 'default' };
 
@@ -126,6 +128,25 @@ export function deckColumns(page: Page) {
 	return page.locator('section[id^="deck-column-"]');
 }
 
+export async function readStoredColumns(page: Page) {
+	return page.evaluate(
+		({ columnConfigsKey, columnDecksKey }) => {
+			const legacyValue = window.localStorage.getItem(columnConfigsKey);
+			if (legacyValue) return JSON.parse(legacyValue);
+
+			const deckStoreValue = window.localStorage.getItem(columnDecksKey);
+			if (!deckStoreValue) return null;
+
+			const deckStore = JSON.parse(deckStoreValue);
+			const decks = Array.isArray(deckStore.decks) ? deckStore.decks : [];
+			const activeDeck =
+				decks.find((deck: { id?: string }) => deck.id === deckStore.activeDeckId) ?? decks[0];
+			return Array.isArray(activeDeck?.columns) ? activeDeck.columns : null;
+		},
+		{ columnConfigsKey: columnConfigsStorageKey, columnDecksKey: columnDecksStorageKey }
+	);
+}
+
 export function columnOptionsButton(column: Locator) {
 	return column.locator('header').getByRole('button', { name: 'Column options' });
 }
@@ -158,6 +179,17 @@ export async function expectStoredSidebarCollapsed(page: Page, value: boolean) {
 			page.evaluate((key) => {
 				const storedValue = window.localStorage.getItem(key);
 				return storedValue ? JSON.parse(storedValue).sidebarCollapsed : null;
+			}, uiStateStorageKey)
+		)
+		.toBe(value);
+}
+
+export async function expectStoredDeckLayoutMode(page: Page, value: string) {
+	await expect
+		.poll(async () =>
+			page.evaluate((key) => {
+				const storedValue = window.localStorage.getItem(key);
+				return storedValue ? JSON.parse(storedValue).deckLayoutMode : null;
 			}, uiStateStorageKey)
 		)
 		.toBe(value);
@@ -264,33 +296,33 @@ export async function expectColumnWidth(column: Locator, width: number) {
 	await expect.poll(async () => Math.round((await column.boundingBox())?.width ?? 0)).toBe(width);
 }
 
+export async function expectColumnMaxWidth(column: Locator, width: number) {
+	await expect
+		.poll(async () => Math.round((await column.boundingBox())?.width ?? 0))
+		.toBeLessThanOrEqual(width);
+}
+
 export async function expectStoredColumnConfigWidths(page: Page, widths: string[]) {
 	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				return storedValue
-					? JSON.parse(storedValue).map((column: { width: string }) => column.width)
-					: null;
-			}, columnConfigsStorageKey)
+		.poll(
+			async () =>
+				(await readStoredColumns(page))?.map((column: { width: string }) => column.width) ?? null
 		)
 		.toEqual(widths);
 }
 
 export async function expectStoredColumnIdsAreOpaque(page: Page) {
 	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				if (!storedValue) return null;
+		.poll(async () => {
+			const columns = await readStoredColumns(page);
+			if (!columns) return null;
 
-				return JSON.parse(storedValue).every(
-					(column: { id?: string }) =>
-						typeof column.id === 'string' &&
-						/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(column.id)
-				);
-			}, columnConfigsStorageKey)
-		)
+			return columns.every(
+				(column: { id?: string }) =>
+					typeof column.id === 'string' &&
+					/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(column.id)
+			);
+		})
 		.toBe(true);
 }
 
@@ -299,31 +331,21 @@ export async function expectStoredFirstColumnDisplay(
 	display: { title?: string; icon?: string }
 ) {
 	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				if (!storedValue) return null;
-
-				const column = JSON.parse(storedValue)[0];
-				return column ? { title: column.title ?? null, icon: column.icon ?? null } : null;
-			}, columnConfigsStorageKey)
-		)
+		.poll(async () => {
+			const column = (await readStoredColumns(page))?.[0];
+			return column ? { title: column.title ?? null, icon: column.icon ?? null } : null;
+		})
 		.toEqual({ title: display.title ?? null, icon: display.icon ?? null });
 }
 
 export async function expectStoredWebsiteColumn(page: Page, url: string) {
 	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				if (!storedValue) return null;
-
-				const column = JSON.parse(storedValue).find(
-					(item: { type?: string }) => item.type === 'website'
-				);
-				return column ? { type: column.type, url: column.url, width: column.width } : null;
-			}, columnConfigsStorageKey)
-		)
+		.poll(async () => {
+			const column = (await readStoredColumns(page))?.find(
+				(item: { type?: string }) => item.type === 'website'
+			);
+			return column ? { type: column.type, url: column.url, width: column.width } : null;
+		})
 		.toEqual({ type: 'website', url, width: 'standard' });
 }
 
@@ -333,25 +355,20 @@ export async function expectStoredCustomTimelineColumn(
 	relays: unknown = defaultRelaySelection
 ) {
 	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				if (!storedValue) return null;
-
-				const column = JSON.parse(storedValue).find(
-					(item: { timelineKind?: string }) => item.timelineKind === 'custom'
-				);
-				return column
-					? {
-							type: column.type,
-							timelineKind: column.timelineKind,
-							filters: column.filters,
-							relays: column.relays,
-							width: column.width
-						}
-					: null;
-			}, columnConfigsStorageKey)
-		)
+		.poll(async () => {
+			const column = (await readStoredColumns(page))?.find(
+				(item: { timelineKind?: string }) => item.timelineKind === 'custom'
+			);
+			return column
+				? {
+						type: column.type,
+						timelineKind: column.timelineKind,
+						filters: column.filters,
+						relays: column.relays,
+						width: column.width
+					}
+				: null;
+		})
 		.toEqual({
 			type: 'timeline',
 			timelineKind: 'custom',
@@ -363,26 +380,21 @@ export async function expectStoredCustomTimelineColumn(
 
 export async function expectStoredSearchColumn(page: Page, query: string) {
 	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				if (!storedValue) return null;
-
-				const column = JSON.parse(storedValue).find(
-					(item: { timelineKind?: string; sourceKey?: string }) =>
-						item.timelineKind === 'preset' && item.sourceKey === 'timeline_search'
-				);
-				return column
-					? {
-							type: column.type,
-							timelineKind: column.timelineKind,
-							sourceKey: column.sourceKey,
-							query: column.query,
-							width: column.width
-						}
-					: null;
-			}, columnConfigsStorageKey)
-		)
+		.poll(async () => {
+			const column = (await readStoredColumns(page))?.find(
+				(item: { timelineKind?: string; sourceKey?: string }) =>
+					item.timelineKind === 'preset' && item.sourceKey === 'timeline_search'
+			);
+			return column
+				? {
+						type: column.type,
+						timelineKind: column.timelineKind,
+						sourceKey: column.sourceKey,
+						query: column.query,
+						width: column.width
+					}
+				: null;
+		})
 		.toEqual({
 			type: 'timeline',
 			timelineKind: 'preset',
@@ -398,27 +410,22 @@ export async function expectStoredChannelColumn(
 	relays: string[] = []
 ) {
 	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				if (!storedValue) return null;
-
-				const column = JSON.parse(storedValue).find(
-					(item: { timelineKind?: string; sourceKey?: string }) =>
-						item.timelineKind === 'preset' && item.sourceKey === 'timeline_channel'
-				);
-				return column
-					? {
-							type: column.type,
-							timelineKind: column.timelineKind,
-							sourceKey: column.sourceKey,
-							channelId: column.channelId,
-							relays: column.relays,
-							width: column.width
-						}
-					: null;
-			}, columnConfigsStorageKey)
-		)
+		.poll(async () => {
+			const column = (await readStoredColumns(page))?.find(
+				(item: { timelineKind?: string; sourceKey?: string }) =>
+					item.timelineKind === 'preset' && item.sourceKey === 'timeline_channel'
+			);
+			return column
+				? {
+						type: column.type,
+						timelineKind: column.timelineKind,
+						sourceKey: column.sourceKey,
+						channelId: column.channelId,
+						relays: column.relays,
+						width: column.width
+					}
+				: null;
+		})
 		.toEqual({
 			type: 'timeline',
 			timelineKind: 'preset',
@@ -431,27 +438,22 @@ export async function expectStoredChannelColumn(
 
 export async function expectStoredFollowColumn(page: Page, pubkey: string, relays: string[] = []) {
 	await expect
-		.poll(async () =>
-			page.evaluate((key) => {
-				const storedValue = window.localStorage.getItem(key);
-				if (!storedValue) return null;
-
-				const column = JSON.parse(storedValue).find(
-					(item: { timelineKind?: string; sourceKey?: string }) =>
-						item.timelineKind === 'preset' && item.sourceKey === 'timeline_follow'
-				);
-				return column
-					? {
-							type: column.type,
-							timelineKind: column.timelineKind,
-							sourceKey: column.sourceKey,
-							pubkey: column.pubkey,
-							relays: column.relays,
-							width: column.width
-						}
-					: null;
-			}, columnConfigsStorageKey)
-		)
+		.poll(async () => {
+			const column = (await readStoredColumns(page))?.find(
+				(item: { timelineKind?: string; sourceKey?: string }) =>
+					item.timelineKind === 'preset' && item.sourceKey === 'timeline_follow'
+			);
+			return column
+				? {
+						type: column.type,
+						timelineKind: column.timelineKind,
+						sourceKey: column.sourceKey,
+						pubkey: column.pubkey,
+						relays: column.relays,
+						width: column.width
+					}
+				: null;
+		})
 		.toEqual({
 			type: 'timeline',
 			timelineKind: 'preset',

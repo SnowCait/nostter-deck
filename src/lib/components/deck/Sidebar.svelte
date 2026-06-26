@@ -1,5 +1,13 @@
 <script lang="ts">
-	import { PanelLeftClose, PanelLeftOpen, Plus, Send, Settings } from '@lucide/svelte';
+	import {
+		Columns2,
+		PanelLeftClose,
+		PanelLeftOpen,
+		Plus,
+		Rows2,
+		Send,
+		Settings
+	} from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { ColumnDeck } from '$lib/deck/column-decks';
 	import type { ColumnConfig } from '$lib/deck/types';
@@ -47,6 +55,9 @@
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
 		onUnmuteUser: (pubkey: string) => void;
+		isSingleColumnLayout: boolean;
+		isCompactViewport: boolean;
+		onToggleLayoutMode: () => void;
 	};
 
 	const {
@@ -81,19 +92,42 @@
 		getProfile,
 		requestProfiles,
 		profileRelays,
-		onUnmuteUser
+		onUnmuteUser,
+		isSingleColumnLayout,
+		isCompactViewport,
+		onToggleLayoutMode
 	}: Props = $props();
 	let isCollapsed = $state(readUiState().sidebarCollapsed);
+	let isMobileExpanded = $state(false);
 	let isSettingsDialogOpen = $state(false);
+	const isVisuallyCollapsed = $derived(isCompactViewport ? !isMobileExpanded : isCollapsed);
+	const sidebarLayoutClass = $derived(
+		isCompactViewport ? 'w-[60px]' : isCollapsed ? 'w-[60px]' : 'w-[236px]'
+	);
+	const sidebarPanelClass = $derived(
+		isCompactViewport && isMobileExpanded
+			? 'absolute inset-y-0 left-0 z-40 w-[236px] shadow-2xl'
+			: isVisuallyCollapsed
+				? 'w-[60px]'
+				: 'w-[236px]'
+	);
 
-	const sidebarToggleLabel = () => (isCollapsed ? m.expand_sidebar() : m.collapse_sidebar());
+	const sidebarToggleLabel = () =>
+		isVisuallyCollapsed ? m.expand_sidebar() : m.collapse_sidebar();
+	const layoutToggleLabel = () =>
+		isSingleColumnLayout ? m.show_deck_layout() : m.show_single_column_layout();
 	const sidebarLabelClass = () =>
 		[
 			'min-w-0 overflow-hidden whitespace-nowrap transition-all duration-150 ease-out',
-			isCollapsed ? 'max-w-0 opacity-0' : 'max-w-[150px] opacity-100'
+			isVisuallyCollapsed ? 'max-w-0 opacity-0' : 'max-w-[150px] opacity-100'
 		].join(' ');
 
 	function toggleSidebar() {
+		if (isCompactViewport) {
+			isMobileExpanded = !isMobileExpanded;
+			return;
+		}
+
 		const nextIsCollapsed = !isCollapsed;
 		isCollapsed = nextIsCollapsed;
 		updateUiState((currentState) => ({
@@ -102,168 +136,237 @@
 		}));
 	}
 
+	function closeMobileSidebar() {
+		if (isCompactViewport) isMobileExpanded = false;
+	}
+
+	function selectColumn(columnId: string) {
+		onSelectColumn(columnId);
+		closeMobileSidebar();
+	}
+
+	function addColumn() {
+		onAddColumn();
+		closeMobileSidebar();
+	}
+
+	function compose() {
+		onCompose();
+		closeMobileSidebar();
+	}
+
+	function toggleLayoutMode() {
+		onToggleLayoutMode();
+		closeMobileSidebar();
+	}
+
+	async function selectDeck(deckId: string) {
+		await onSelectDeck(deckId);
+		closeMobileSidebar();
+	}
+
 	function openSettingsDialog() {
 		isSettingsDialogOpen = true;
+		closeMobileSidebar();
 	}
 </script>
 
-<aside
-	class={[
-		'flex h-full min-h-0 shrink-0 flex-col overflow-x-hidden overflow-y-auto overscroll-contain border-r border-slate-800 bg-slate-950 px-2 py-4 text-slate-100 transition-[width] duration-200 ease-out',
-		isCollapsed ? 'w-[60px]' : 'w-[236px]'
-	]}
->
-	<div class="mb-5 flex w-full items-center">
-		<div class="flex w-11 shrink-0 justify-center">
-			<div class="flex size-10 items-center justify-center rounded-md">
-				<img src="/favicon.svg" alt="" class="size-7" aria-hidden="true" />
-			</div>
-		</div>
-		<div class={sidebarLabelClass()}>
-			<h1 class={['flex min-w-0 items-center', textClass.title]}>
-				<img src="/logo.svg" alt={m.app_title()} class="h-7 max-w-[150px] invert" />
-			</h1>
-		</div>
-	</div>
-
-	{#if isLoggedIn}
-		<button
-			type="button"
-			class={[
-				'group mb-4 flex h-11 w-full items-center rounded-md font-bold text-white transition',
-				textClass.control,
-				isCollapsed ? '' : 'bg-sky-500 shadow-sm hover:bg-sky-600'
-			]}
-			title={m.action_post()}
-			aria-label={m.action_post()}
-			onclick={onCompose}
-		>
-			<span
-				class={[
-					'flex size-11 shrink-0 items-center justify-center rounded-md transition',
-					isCollapsed ? 'bg-sky-500 shadow-sm group-hover:bg-sky-600' : ''
-				]}
-			>
-				<Send class="size-4" aria-hidden="true" />
-			</span>
-			<span class={`${sidebarLabelClass()} truncate text-left`}>{m.action_post()}</span>
-		</button>
-	{/if}
-
-	<SidebarColumnList
-		{columns}
-		{activeColumnId}
-		{isCollapsed}
-		{textClass}
-		{onSelectColumn}
-		{onReorderColumn}
-	/>
-
-	<div class="my-3 w-full border-t border-slate-800" aria-hidden="true"></div>
-
+{#if isCompactViewport && isMobileExpanded}
 	<button
 		type="button"
+		class="fixed inset-0 z-30 cursor-default bg-slate-950/30"
+		aria-label={m.collapse_sidebar()}
+		onclick={closeMobileSidebar}
+	></button>
+{/if}
+
+<div class={['relative h-full shrink-0', sidebarLayoutClass]}>
+	<aside
 		class={[
-			'group flex h-11 w-full items-center rounded-md font-medium text-slate-400 transition hover:text-white',
-			textClass.control,
-			isCollapsed ? '' : 'hover:bg-white/10'
+			'flex h-full min-h-0 shrink-0 flex-col overflow-x-hidden overflow-y-auto overscroll-contain border-r border-slate-800 bg-slate-950 px-2 py-4 text-slate-100 transition-[width] duration-200 ease-out',
+			sidebarPanelClass
 		]}
-		title={m.add_column()}
-		aria-label={m.add_column()}
-		onclick={onAddColumn}
 	>
-		<span
-			class={[
-				'flex size-11 shrink-0 items-center justify-center rounded-md transition',
-				isCollapsed ? 'group-hover:bg-white/10' : ''
-			]}
-		>
-			<Plus class="size-5 shrink-0" aria-hidden="true" />
-		</span>
-		<span class={`${sidebarLabelClass()} truncate text-left`}>{m.add_column()}</span>
-	</button>
+		<div class="mb-5 flex w-full items-center">
+			<div class="flex w-11 shrink-0 justify-center">
+				<div class="flex size-10 items-center justify-center rounded-md">
+					<img src="/favicon.svg" alt="" class="size-7" aria-hidden="true" />
+				</div>
+			</div>
+			<div class={sidebarLabelClass()}>
+				<h1 class={['flex min-w-0 items-center', textClass.title]}>
+					<img src="/logo.svg" alt={m.app_title()} class="h-7 max-w-[150px] invert" />
+				</h1>
+			</div>
+		</div>
 
-	<div class="mt-auto flex w-full flex-col gap-2">
+		{#if isLoggedIn}
+			<button
+				type="button"
+				class={[
+					'group mb-4 flex h-11 w-full items-center rounded-md font-bold text-white transition',
+					textClass.control,
+					isVisuallyCollapsed ? '' : 'bg-sky-500 shadow-sm hover:bg-sky-600'
+				]}
+				title={m.action_post()}
+				aria-label={m.action_post()}
+				onclick={compose}
+			>
+				<span
+					class={[
+						'flex size-11 shrink-0 items-center justify-center rounded-md transition',
+						isVisuallyCollapsed ? 'bg-sky-500 shadow-sm group-hover:bg-sky-600' : ''
+					]}
+				>
+					<Send class="size-4" aria-hidden="true" />
+				</span>
+				<span class={`${sidebarLabelClass()} truncate text-left`}>{m.action_post()}</span>
+			</button>
+		{/if}
+
+		<SidebarColumnList
+			{columns}
+			{activeColumnId}
+			isCollapsed={isVisuallyCollapsed}
+			{textClass}
+			onSelectColumn={selectColumn}
+			{onReorderColumn}
+		/>
+
+		<div class="my-3 w-full border-t border-slate-800" aria-hidden="true"></div>
+
 		<button
 			type="button"
 			class={[
 				'group flex h-11 w-full items-center rounded-md font-medium text-slate-400 transition hover:text-white',
 				textClass.control,
-				isCollapsed ? '' : 'hover:bg-white/10'
+				isVisuallyCollapsed ? '' : 'hover:bg-white/10'
 			]}
-			title={sidebarToggleLabel()}
-			aria-label={sidebarToggleLabel()}
-			aria-pressed={isCollapsed}
-			onclick={toggleSidebar}
+			title={m.add_column()}
+			aria-label={m.add_column()}
+			onclick={addColumn}
 		>
 			<span
 				class={[
 					'flex size-11 shrink-0 items-center justify-center rounded-md transition',
-					isCollapsed ? 'group-hover:bg-white/10' : ''
+					isVisuallyCollapsed ? 'group-hover:bg-white/10' : ''
 				]}
 			>
-				{#if isCollapsed}
-					<PanelLeftOpen class="size-5 shrink-0" aria-hidden="true" />
-				{:else}
-					<PanelLeftClose class="size-5 shrink-0" aria-hidden="true" />
-				{/if}
+				<Plus class="size-5 shrink-0" aria-hidden="true" />
 			</span>
-			<span class={`${sidebarLabelClass()} truncate text-left`}>{m.collapse_sidebar_short()}</span>
+			<span class={`${sidebarLabelClass()} truncate text-left`}>{m.add_column()}</span>
 		</button>
 
-		<DeckMenu
-			{decks}
-			{activeDeckId}
-			{isCollapsed}
-			{textClass}
-			{onSelectDeck}
-			{onCreateDeck}
-			{onRenameDeck}
-			{onDuplicateDeck}
-			{onDeleteDeck}
-		/>
-
-		<button
-			type="button"
-			class={[
-				'group flex h-11 w-full items-center rounded-md font-medium text-slate-400 transition hover:text-white',
-				textClass.control,
-				isCollapsed ? '' : 'hover:bg-white/10'
-			]}
-			title={m.nav_settings()}
-			aria-label={m.nav_settings()}
-			onclick={openSettingsDialog}
-		>
-			<span
+		<div class="mt-auto flex w-full flex-col gap-2">
+			<button
+				type="button"
 				class={[
-					'flex size-11 shrink-0 items-center justify-center rounded-md transition',
-					isCollapsed ? 'group-hover:bg-white/10' : ''
+					'group flex h-11 w-full items-center rounded-md font-medium text-slate-400 transition hover:text-white',
+					textClass.control,
+					isVisuallyCollapsed ? '' : 'hover:bg-white/10'
 				]}
+				title={sidebarToggleLabel()}
+				aria-label={sidebarToggleLabel()}
+				aria-pressed={isCollapsed}
+				onclick={toggleSidebar}
 			>
-				<Settings class="size-5 shrink-0" aria-hidden="true" />
-			</span>
-			<span class={`${sidebarLabelClass()} truncate text-left`}>{m.nav_settings()}</span>
-		</button>
+				<span
+					class={[
+						'flex size-11 shrink-0 items-center justify-center rounded-md transition',
+						isVisuallyCollapsed ? 'group-hover:bg-white/10' : ''
+					]}
+				>
+					{#if isVisuallyCollapsed}
+						<PanelLeftOpen class="size-5 shrink-0" aria-hidden="true" />
+					{:else}
+						<PanelLeftClose class="size-5 shrink-0" aria-hidden="true" />
+					{/if}
+				</span>
+				<span class={`${sidebarLabelClass()} truncate text-left`}>{m.collapse_sidebar_short()}</span
+				>
+			</button>
 
-		<AccountMenu
-			{isCollapsed}
-			{isLoggedIn}
-			{authState}
-			{accountPubkey}
-			{accountProfile}
-			onLoginNip07={onLogin}
-			{accounts}
-			{activeAccountId}
-			{onSelectAccount}
-			{onRemoveAccount}
-			{avatarShape}
-			{textClass}
-			{getProfile}
-			{requestProfiles}
-			{profileRelays}
-		/>
-	</div>
-</aside>
+			<button
+				type="button"
+				class={[
+					'group flex h-11 w-full items-center rounded-md font-medium text-slate-400 transition hover:text-white',
+					textClass.control,
+					isVisuallyCollapsed ? '' : 'hover:bg-white/10'
+				]}
+				title={layoutToggleLabel()}
+				aria-label={layoutToggleLabel()}
+				aria-pressed={isSingleColumnLayout}
+				onclick={toggleLayoutMode}
+			>
+				<span
+					class={[
+						'flex size-11 shrink-0 items-center justify-center rounded-md transition',
+						isVisuallyCollapsed ? 'group-hover:bg-white/10' : ''
+					]}
+				>
+					{#if isSingleColumnLayout}
+						<Columns2 class="size-5 shrink-0" aria-hidden="true" />
+					{:else}
+						<Rows2 class="size-5 shrink-0" aria-hidden="true" />
+					{/if}
+				</span>
+				<span class={`${sidebarLabelClass()} truncate text-left`}>{layoutToggleLabel()}</span>
+			</button>
+
+			<DeckMenu
+				{decks}
+				{activeDeckId}
+				isCollapsed={isVisuallyCollapsed}
+				{textClass}
+				onSelectDeck={selectDeck}
+				{onCreateDeck}
+				{onRenameDeck}
+				{onDuplicateDeck}
+				{onDeleteDeck}
+			/>
+
+			<button
+				type="button"
+				class={[
+					'group flex h-11 w-full items-center rounded-md font-medium text-slate-400 transition hover:text-white',
+					textClass.control,
+					isVisuallyCollapsed ? '' : 'hover:bg-white/10'
+				]}
+				title={m.nav_settings()}
+				aria-label={m.nav_settings()}
+				onclick={openSettingsDialog}
+			>
+				<span
+					class={[
+						'flex size-11 shrink-0 items-center justify-center rounded-md transition',
+						isVisuallyCollapsed ? 'group-hover:bg-white/10' : ''
+					]}
+				>
+					<Settings class="size-5 shrink-0" aria-hidden="true" />
+				</span>
+				<span class={`${sidebarLabelClass()} truncate text-left`}>{m.nav_settings()}</span>
+			</button>
+
+			<AccountMenu
+				isCollapsed={isVisuallyCollapsed}
+				{isLoggedIn}
+				{authState}
+				{accountPubkey}
+				{accountProfile}
+				onLoginNip07={onLogin}
+				{accounts}
+				{activeAccountId}
+				{onSelectAccount}
+				{onRemoveAccount}
+				{avatarShape}
+				{textClass}
+				{getProfile}
+				{requestProfiles}
+				{profileRelays}
+			/>
+		</div>
+	</aside>
+</div>
 
 <SettingsDialog
 	bind:isOpen={isSettingsDialogOpen}
