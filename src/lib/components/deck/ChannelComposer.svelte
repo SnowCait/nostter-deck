@@ -17,6 +17,7 @@
 	let publishError = $state(false);
 
 	const canSubmit = $derived(!isPublishing && content.trim().length > 0);
+	const submitLabel = $derived(isPublishing ? m.post_sending() : m.action_post());
 
 	async function publish() {
 		if (!canSubmit) return;
@@ -65,19 +66,21 @@
 				placeholder={m.channel_compose_placeholder()}
 				disabled={isPublishing}
 				aria-keyshortcuts="Control+Enter Meta+Enter"
+				data-channel-compose-input
 				bind:value={content}
 				onkeydown={handleKeydown}
 			></textarea>
 			<button
 				type="submit"
 				class={[
-					'inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-sky-500 px-3 font-bold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300 disabled:dark:bg-slate-800 disabled:dark:text-slate-500',
+					'inline-flex size-10 shrink-0 items-center justify-center rounded-md bg-sky-500 font-bold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300 disabled:dark:bg-slate-800 disabled:dark:text-slate-500',
 					textClass.control
 				]}
+				title={submitLabel}
+				aria-label={submitLabel}
 				disabled={!canSubmit}
 			>
 				<Send class="size-4" aria-hidden="true" />
-				{isPublishing ? m.post_sending() : m.action_post()}
 			</button>
 		</div>
 		{#if publishError}

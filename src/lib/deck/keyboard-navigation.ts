@@ -161,6 +161,30 @@ export function createKeyboardNavigation({
 			?.scrollTo({ top: 0, behavior: 'smooth' });
 	}
 
+	function focusChannelComposerInCurrentColumn() {
+		const columnElement = getFocusedColumnElement();
+		const columnId = columnElement?.dataset.columnId;
+		if (!columnElement || !columnId) return false;
+
+		const column = getColumns().find((candidate) => candidate.id === columnId);
+		if (
+			column?.type !== 'timeline' ||
+			column.timelineKind !== 'preset' ||
+			column.sourceKey !== 'timeline_channel'
+		) {
+			return false;
+		}
+
+		const channelInput = columnElement.querySelector<HTMLTextAreaElement>(
+			'[data-channel-compose-input]'
+		);
+		if (channelInput && !channelInput.disabled) {
+			setActiveColumnId(columnId);
+			channelInput.focus({ preventScroll: true });
+		}
+		return true;
+	}
+
 	async function handleKeyboardNavigation(event: KeyboardEvent) {
 		if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
 		if (isKeyboardOverlayOpen()) return;
@@ -181,6 +205,7 @@ export function createKeyboardNavigation({
 		if (key === 'n') {
 			if (isEditableKeyboardTarget(event.target) || !isLoggedIn()) return;
 			event.preventDefault();
+			if (focusChannelComposerInCurrentColumn()) return;
 			await openCompose();
 			return;
 		}

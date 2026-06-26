@@ -39,6 +39,7 @@ import {
 	narrowColumnWidth,
 	openDeck,
 	readStoredColumns,
+	requiredBox,
 	selectColumnType,
 	selectDropdownOption,
 	sidebar,
@@ -2726,6 +2727,23 @@ test.describe('nostter deck', () => {
 		await expect(composeText).toHaveValue('n');
 	});
 
+	test('focuses the channel composer with N when a channel column is focused', async ({ page }) => {
+		await openDeck(page, { isLoggedIn: true });
+		await addPresetColumn(page, 'timeline_channel', {
+			channelTarget: '4'.repeat(64)
+		});
+
+		const channelColumn = deckColumns(page).last();
+		const channelInput = channelColumn.getByLabel('Channel message');
+		await channelColumn.focus();
+		await page.keyboard.press('n');
+		await expect(channelInput).toBeFocused();
+		await expect(page.getByRole('region', { name: 'Post' })).toHaveCount(0);
+
+		await channelInput.press('n');
+		await expect(channelInput).toHaveValue('n');
+	});
+
 	test('closes the focused composer before closing the focused detail column with Escape', async ({
 		page
 	}) => {
@@ -2821,6 +2839,9 @@ test.describe('nostter deck', () => {
 		const channelColumn = deckColumns(page).last();
 		const composer = channelColumn.getByTestId('channel-composer');
 		const message = 'x'.repeat(281);
+		await columnOptionsButton(channelColumn).click();
+		await selectDropdownOption(page, channelColumn.getByLabel('Column width'), 'Narrow');
+		await expectColumnWidth(channelColumn, narrowColumnWidth);
 		await expect(composer).toBeVisible();
 		await expect(composer.locator('input')).toHaveCount(0);
 		await expect(composer.locator('textarea')).toHaveCount(1);
@@ -2828,6 +2849,19 @@ test.describe('nostter deck', () => {
 		await expect(submitButton).toBeVisible();
 
 		const channelInput = composer.getByLabel('Channel message');
+		await expect(channelInput).toHaveAttribute('placeholder', 'Message');
+		await expect(submitButton).toHaveText('');
+		const composerBox = await requiredBox(composer, 'channel composer');
+		const inputBox = await requiredBox(channelInput, 'channel composer input');
+		const submitButtonBox = await requiredBox(submitButton, 'channel composer submit button');
+		expect(Math.round(submitButtonBox.width)).toBe(40);
+		expect(inputBox.x).toBeGreaterThanOrEqual(composerBox.x);
+		expect(inputBox.x + inputBox.width).toBeLessThanOrEqual(submitButtonBox.x);
+		expect(submitButtonBox.x + submitButtonBox.width).toBeLessThanOrEqual(
+			composerBox.x + composerBox.width + 2
+		);
+		await columnOptionsButton(channelColumn).click();
+
 		await channelInput.fill('   ');
 		await expect(submitButton).toBeDisabled();
 		await channelInput.fill(message);
