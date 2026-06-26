@@ -32,6 +32,7 @@ export type MessageKey =
 	| 'post_action_visibility_switcher'
 	| 'post_action_visibility_on_interaction'
 	| 'post_action_visibility_always'
+	| 'post_action_visibility_help'
 	| 'post_text'
 	| 'schedule_post'
 	| 'collapse_sidebar'

@@ -58,6 +58,7 @@
 	"post_action_visibility_switcher": "Action buttons",
 	"post_action_visibility_on_interaction": "When needed",
 	"post_action_visibility_always": "Always visible",
+	"post_action_visibility_help": "When needed shows actions on hover or focus on desktop. On touch devices, actions stay visible.",
 	"post_text": "Post text",
 	"schedule_post": "Schedule post",
 	"collapse_sidebar": "Collapse sidebar",

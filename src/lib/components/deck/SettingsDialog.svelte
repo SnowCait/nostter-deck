@@ -30,6 +30,7 @@
 	} from '$lib/user-settings';
 	import ProfileAvatar from './ProfileAvatar.svelte';
 	import CustomEmojiText from './CustomEmojiText.svelte';
+	import InputHelpButton from './InputHelpButton.svelte';
 
 	type AppLocale = (typeof locales)[number];
 	type Props = {
@@ -380,20 +381,23 @@
 				</Select.Content>
 			</Select.Root>
 
-			<label
-				id="post-action-visibility-label"
-				class={[
-					'mt-4 mb-2 flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-300',
-					textClass.label
-				]}
-				for="post-action-visibility"
-			>
-				<SlidersHorizontal
-					class="size-4 shrink-0 text-slate-500 dark:text-slate-400"
-					aria-hidden="true"
-				/>
-				<span>{m.post_action_visibility_switcher()}</span>
-			</label>
+			<div class="mt-4 mb-2 flex items-center gap-1">
+				<label
+					id="post-action-visibility-label"
+					class={[
+						'flex min-w-0 items-center gap-2 font-semibold text-slate-700 dark:text-slate-300',
+						textClass.label
+					]}
+					for="post-action-visibility"
+				>
+					<SlidersHorizontal
+						class="size-4 shrink-0 text-slate-500 dark:text-slate-400"
+						aria-hidden="true"
+					/>
+					<span class="min-w-0 truncate">{m.post_action_visibility_switcher()}</span>
+				</label>
+				<InputHelpButton {textClass} helpText={m.post_action_visibility_help()} />
+			</div>
 			<Select.Root
 				type="single"
 				items={postActionVisibilityOptions}

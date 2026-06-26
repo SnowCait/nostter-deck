@@ -58,6 +58,7 @@
 	"post_action_visibility_switcher": "アクションボタン表示",
 	"post_action_visibility_on_interaction": "必要時のみ",
 	"post_action_visibility_always": "常時表示",
+	"post_action_visibility_help": "「必要時のみ」は PC ではホバーまたはフォーカス時に表示します。スマホなどタッチ端末では常に表示します。",
 	"post_text": "投稿本文",
 	"schedule_post": "投稿を予約",
 	"collapse_sidebar": "サイドバーを折りたたむ",
