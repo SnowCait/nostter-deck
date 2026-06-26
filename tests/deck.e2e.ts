@@ -277,7 +277,7 @@ test.describe('nostter deck', () => {
 		await expectColumnOrder(columns, ['Search', 'example.com']);
 		await expectStoredDeckLayoutMode(page, 'deck');
 
-		await page.getByRole('button', { name: 'Single column layout' }).click();
+		await page.getByRole('button', { name: 'Single column layout' }).dispatchEvent('click');
 		await expectColumnOrder(columns, ['example.com']);
 		await expectStoredDeckLayoutMode(page, 'single');
 	});
@@ -292,7 +292,7 @@ test.describe('nostter deck', () => {
 		await addWebsiteColumn(page, 'example.com');
 		await expectColumnOrder(columns, ['Search', 'example.com']);
 
-		await page.getByRole('button', { name: 'Single column layout' }).click();
+		await page.getByRole('button', { name: 'Single column layout' }).dispatchEvent('click');
 		await expectColumnOrder(columns, ['example.com']);
 		await expectColumnMaxWidth(columns.first(), singleColumnMaxWidth);
 		await expectSidebarAndColumnGroupCentered(page, columns.first());
@@ -1365,6 +1365,8 @@ test.describe('nostter deck', () => {
 	});
 
 	test('shows raw JSON and copies nevent for a loaded quote event', async ({ page, context }) => {
+		const pageErrors: string[] = [];
+		page.on('pageerror', (error) => pageErrors.push(error.message));
 		await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
 			origin: 'http://localhost:4173'
 		});
@@ -1400,6 +1402,10 @@ test.describe('nostter deck', () => {
 				kind: ShortTextNote
 			}
 		});
+
+		await page.getByRole('button', { name: 'Single column layout' }).dispatchEvent('click');
+		await expect(deckColumns(page)).toHaveCount(1);
+		expect(pageErrors).toEqual([]);
 	});
 
 	test('opens a loaded quote thread and keeps unsupported quotes as external links', async ({

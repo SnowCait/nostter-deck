@@ -38,10 +38,11 @@
 	let isSensitiveQuoteRevealed = $state(false);
 
 	const quoteState = $derived(getNostrQuoteState(eventId));
+	const loadedQuoteEvent = $derived(quoteState?.status === 'loaded' ? quoteState.event : undefined);
 	const quotedPost = $derived.by(() => {
-		if (quoteState?.status !== 'loaded') return undefined;
+		if (!loadedQuoteEvent) return undefined;
 
-		const post = eventToPost(quoteState.event, getProfile(quoteState.event.pubkey));
+		const post = eventToPost(loadedQuoteEvent, getProfile(loadedQuoteEvent.pubkey));
 		if (!post.thread) return post;
 
 		return {
@@ -54,7 +55,7 @@
 	});
 	const shortenedReference = $derived(`nostr:${neventEncode({ id: eventId }).slice(0, 12)}`);
 	const isMutedQuote = $derived(
-		quoteState?.status === 'loaded' && isMutedUser(quoteState.event.pubkey) && !isMutedQuoteRevealed
+		Boolean(loadedQuoteEvent && isMutedUser(loadedQuoteEvent.pubkey) && !isMutedQuoteRevealed)
 	);
 	const isSensitiveQuote = $derived(
 		Boolean(quotedPost?.contentWarning) && !isSensitiveQuoteRevealed
@@ -115,8 +116,8 @@
 {/snippet}
 
 <div class="relative my-2">
-	{#if quoteState?.status === 'loaded'}
-		<EventJsonMenu sourceEvent={quoteState.event} {textClass} class="absolute top-2 right-2 z-10" />
+	{#if loadedQuoteEvent}
+		<EventJsonMenu sourceEvent={loadedQuoteEvent} {textClass} class="absolute top-2 right-2 z-10" />
 	{/if}
 
 	{#if isMutedQuote}
