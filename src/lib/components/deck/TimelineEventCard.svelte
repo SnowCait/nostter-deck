@@ -23,6 +23,10 @@
 		profileRelays: string[];
 		isMutedUser: (pubkey: string) => boolean;
 		onMuteUser: (pubkey: string) => void;
+		canLikePost: (post: Post) => boolean;
+		isLikePostLiked: (post: Post) => boolean;
+		isLikePostPublishing: (post: Post) => boolean;
+		onLikePost: (post: Post) => void;
 		onOpenProfile: (profile: ProfilePointer) => void;
 		onOpenThread: (post: Post) => void;
 		onOpenHashtag: (hashtag: string) => void;
@@ -41,6 +45,10 @@
 		profileRelays,
 		isMutedUser,
 		onMuteUser,
+		canLikePost,
+		isLikePostLiked,
+		isLikePostPublishing,
+		onLikePost,
 		onOpenProfile,
 		onOpenThread,
 		onOpenHashtag
@@ -94,6 +102,10 @@
 		{isMuted}
 		{isMutedUser}
 		{onMuteUser}
+		{canLikePost}
+		{isLikePostLiked}
+		{isLikePostPublishing}
+		{onLikePost}
 		{onOpenProfile}
 		{onOpenThread}
 		{onOpenHashtag}

@@ -42,6 +42,17 @@ export function hasNip65WriteRelay(relayTags: Nip65RelayTag[]) {
 	return relayTags.some((tag) => tag[2] === undefined || tag[2] === 'write');
 }
 
+export function getNip65ReadRelays(relayTags: Nip65RelayTag[]) {
+	return [
+		...new Set(
+			relayTags.flatMap((tag) => {
+				const relay = normalizeRelay(tag[1]);
+				return relay && (tag[2] === undefined || tag[2] === 'read') ? [relay] : [];
+			})
+		)
+	];
+}
+
 function normalizeNip65Cache(value: unknown): Nip65Cache {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
 
@@ -75,6 +86,14 @@ function writeNip65Cache(cache: Nip65Cache) {
 
 export function getCachedNip65RelayTags(pubkey: string) {
 	return readNip65Cache()[pubkey.toLowerCase()]?.relayTags ?? [];
+}
+
+export async function getNip65ReadRelaysForPubkey(pubkey: string) {
+	const cachedRelayTags = getCachedNip65RelayTags(pubkey);
+	if (cachedRelayTags.length > 0) return getNip65ReadRelays(cachedRelayTags);
+
+	const refreshedRelayTags = await refreshNip65Relays(pubkey);
+	return refreshedRelayTags ? getNip65ReadRelays(refreshedRelayTags) : [];
 }
 
 export function configureDefaultRelays(relayTags: Nip65RelayTag[]) {

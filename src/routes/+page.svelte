@@ -22,6 +22,7 @@
 	import { resetSessionTimelineCache } from '$lib/deck/timeline-cache';
 	import { createDetailColumnController } from '$lib/deck/detail-column-controller.svelte';
 	import { createComposerController } from '$lib/deck/composer-controller.svelte';
+	import { createPostActionController } from '$lib/deck/post-action-controller.svelte';
 	import { createKeyboardNavigation } from '$lib/deck/keyboard-navigation';
 	import {
 		addHashtagColumn,
@@ -115,6 +116,11 @@
 		getSigner: getAuthSigner,
 		getIncludeClientTag: () => readUserSettings().includeClientTag,
 		focusTextarea: () => composeTextarea?.focus()
+	});
+	const postActionController = createPostActionController({
+		getAccountPubkey: () => accountPubkey,
+		getSigner: getAuthSigner,
+		getIncludeClientTag: () => readUserSettings().includeClientTag
 	});
 	const timelineController = createTimelineController({
 		getColumnConfigs: () => columnConfigs,
@@ -487,6 +493,10 @@
 		profileRelays={defaultProfileRelays}
 		{isMutedUser}
 		onMuteUser={muteUser}
+		canLikePost={postActionController.canLike}
+		isLikePostLiked={postActionController.isLiked}
+		isLikePostPublishing={postActionController.isLiking}
+		onLikePost={(post) => void postActionController.likePost(post)}
 		onOpenProfile={(profile) => void detailController.openProfile(column.id, profile)}
 		onOpenThread={(post) => void detailController.openThread(column.id, post)}
 		onOpenHashtag={(hashtag) => void openHashtagColumn(column.id, hashtag)}
@@ -525,6 +535,10 @@
 			profileRelays={defaultProfileRelays}
 			{isMutedUser}
 			onMuteUser={muteUser}
+			canLikePost={postActionController.canLike}
+			isLikePostLiked={postActionController.isLiked}
+			isLikePostPublishing={postActionController.isLiking}
+			onLikePost={(post) => void postActionController.likePost(post)}
 			onClose={() => void detailController.close()}
 			onOpenProfile={(profile) => void detailController.openProfile(sourceColumnId, profile)}
 			onOpenThread={(post) => void detailController.openThread(sourceColumnId, post)}
@@ -547,6 +561,10 @@
 			profileRelays={defaultProfileRelays}
 			{isMutedUser}
 			onMuteUser={muteUser}
+			canLikePost={postActionController.canLike}
+			isLikePostLiked={postActionController.isLiked}
+			isLikePostPublishing={postActionController.isLiking}
+			onLikePost={(post) => void postActionController.likePost(post)}
 			onClose={() => void detailController.close()}
 			onOpenProfile={(profile) => void detailController.openProfile(sourceColumnId, profile)}
 			onOpenThread={(post) => void detailController.openThread(sourceColumnId, post)}

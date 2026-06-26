@@ -26,6 +26,10 @@
 		isMuted?: boolean;
 		isMutedUser?: (pubkey: string) => boolean;
 		onMuteUser?: (pubkey: string) => void;
+		canLikePost?: (post: Post) => boolean;
+		isLikePostLiked?: (post: Post) => boolean;
+		isLikePostPublishing?: (post: Post) => boolean;
+		onLikePost?: (post: Post) => void;
 		onOpenProfile?: (profile: ProfilePointer) => void;
 		onOpenThread?: (post: Post) => void;
 		onOpenHashtag?: (hashtag: string) => void;
@@ -43,6 +47,10 @@
 		isMuted = false,
 		isMutedUser = () => false,
 		onMuteUser,
+		canLikePost = () => false,
+		isLikePostLiked = () => false,
+		isLikePostPublishing = () => false,
+		onLikePost,
 		onOpenProfile,
 		onOpenThread,
 		onOpenHashtag
@@ -60,6 +68,13 @@
 		'absolute -top-2.5 left-0 flex h-7 gap-1 text-slate-500 transition-opacity duration-150 dark:text-slate-400';
 	const postActionButtonClass =
 		'flex size-7 items-center justify-center rounded-md transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:bg-transparent disabled:hover:text-slate-500 dark:hover:bg-slate-800 disabled:dark:hover:bg-transparent disabled:dark:hover:text-slate-400';
+	const likeButtonClass = $derived([
+		postActionButtonClass,
+		isLikePostLiked(post)
+			? 'text-rose-500 disabled:opacity-100 disabled:hover:text-rose-500 dark:text-rose-400 disabled:dark:hover:text-rose-400'
+			: ''
+	]);
+	const isLikeDisabled = $derived(!onLikePost || !canLikePost(post));
 	const keyboardNavigationKey = $derived(
 		post.id ?? `${post.pubkey}:${post.time}:${post.body.slice(0, 80)}`
 	);
@@ -70,6 +85,10 @@
 
 	function mutePostAuthor() {
 		onMuteUser?.(post.pubkey);
+	}
+
+	function likePost() {
+		onLikePost?.(post);
 	}
 
 	function formatPostMessage(message: PostMessage) {
@@ -240,12 +259,18 @@
 								</button>
 								<button
 									type="button"
-									disabled
-									class={postActionButtonClass}
+									disabled={isLikeDisabled}
+									class={likeButtonClass}
 									title={m.like()}
 									aria-label={m.like()}
+									aria-pressed={isLikePostLiked(post)}
+									aria-busy={isLikePostPublishing(post)}
+									onclick={likePost}
 								>
-									<Heart class="size-4" aria-hidden="true" />
+									<Heart
+										class={['size-4', isLikePostLiked(post) ? 'fill-current' : '']}
+										aria-hidden="true"
+									/>
 								</button>
 								<button
 									type="button"

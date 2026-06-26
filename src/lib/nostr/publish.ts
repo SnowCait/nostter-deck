@@ -1,4 +1,4 @@
-import { ChannelMessage, ShortTextNote } from 'nostr-tools/kinds';
+import { ChannelMessage, Reaction, ShortTextNote } from 'nostr-tools/kinds';
 import { now } from 'rx-nostr';
 import { catchError, defaultIfEmpty, filter, firstValueFrom, map, of, take } from 'rxjs';
 import type * as Nostr from 'nostr-typedef';
@@ -14,6 +14,7 @@ export type PublishOptions = {
 };
 
 type PublishEventTemplate = Pick<Nostr.Event, 'kind' | 'tags' | 'content' | 'created_at'>;
+type PublishLikeReactionTarget = Pick<Nostr.Event, 'id' | 'kind' | 'pubkey'>;
 
 const nostterClientTag = [
 	'client',
@@ -102,5 +103,29 @@ export function publishChannelMessage(
 		pubkey,
 		signer,
 		channelRelays
+	);
+}
+
+export function publishLikeReaction(
+	target: PublishLikeReactionTarget,
+	pubkey: string,
+	signer: Nip07Signer,
+	targetReadRelays: string[],
+	{ includeClientTag = false }: PublishOptions = {}
+) {
+	const relayHint = targetReadRelays[0];
+	const eventTag = ['e', target.id, relayHint ?? '', target.pubkey];
+	const pubkeyTag = relayHint ? ['p', target.pubkey, relayHint] : ['p', target.pubkey];
+
+	return publishEvent(
+		{
+			kind: Reaction,
+			tags: withClientTag([eventTag, pubkeyTag, ['k', String(target.kind)]], includeClientTag),
+			content: '+',
+			created_at: now()
+		},
+		pubkey,
+		signer,
+		targetReadRelays
 	);
 }

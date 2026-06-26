@@ -11,6 +11,7 @@
 		ColumnWidth,
 		ChannelTimelineColumnConfig,
 		NostrFilter,
+		Post,
 		RelaySelection
 	} from '$lib/deck/types';
 	import type { TimelineRuntime } from '$lib/deck/timeline-runtime';
@@ -45,6 +46,10 @@
 		profileRelays: string[];
 		isMutedUser: (pubkey: string) => boolean;
 		onMuteUser: (pubkey: string) => void;
+		canLikePost: (post: Post) => boolean;
+		isLikePostLiked: (post: Post) => boolean;
+		isLikePostPublishing: (post: Post) => boolean;
+		onLikePost: (post: Post) => void;
 		onToggleSettings: () => void;
 		onDelete: () => void;
 		onMoveLeft: () => void;
@@ -63,7 +68,7 @@
 		onLoadOlderTimeline: () => void;
 		onLoadNewerTimeline: () => void;
 		onOpenProfile: (profile: ProfilePointer) => void;
-		onOpenThread: (post: import('$lib/deck/types').Post) => void;
+		onOpenThread: (post: Post) => void;
 		onOpenHashtag: (hashtag: string) => void;
 	};
 
@@ -84,6 +89,10 @@
 		profileRelays,
 		isMutedUser,
 		onMuteUser,
+		canLikePost,
+		isLikePostLiked,
+		isLikePostPublishing,
+		onLikePost,
 		onToggleSettings,
 		onDelete,
 		onMoveLeft,
@@ -391,6 +400,10 @@
 				{profileRelays}
 				{isMutedUser}
 				{onMuteUser}
+				{canLikePost}
+				{isLikePostLiked}
+				{isLikePostPublishing}
+				{onLikePost}
 				onLoadOlder={onLoadOlderTimeline}
 				onLoadNewer={onLoadNewerTimeline}
 				{onOpenProfile}

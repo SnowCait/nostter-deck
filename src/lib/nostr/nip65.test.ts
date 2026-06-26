@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
 	extractNip65RelayTags,
 	getCachedNip65RelayTags,
+	getNip65ReadRelays,
 	hasNip65WriteRelay,
 	nip65CacheStorageKey
 } from './nip65';
@@ -45,6 +46,17 @@ describe('NIP-65 relay lists', () => {
 		]);
 		expect(hasNip65WriteRelay(relayTags)).toBe(true);
 		expect(hasNip65WriteRelay([['r', 'wss://read.example', 'read']])).toBe(false);
+	});
+
+	test('selects read-capable relays for publishing tagged events', () => {
+		expect(
+			getNip65ReadRelays([
+				['r', 'wss://write.example', 'write'],
+				['r', 'wss://read.example', 'read'],
+				['r', 'wss://both.example'],
+				['r', 'wss://read.example/', 'read']
+			])
+		).toEqual(['wss://read.example/', 'wss://both.example/']);
 	});
 
 	test('restores cached relay tags for the selected account', () => {

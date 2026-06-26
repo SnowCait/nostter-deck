@@ -1,8 +1,8 @@
-import { ChannelMessage, ShortTextNote } from 'nostr-tools/kinds';
+import { ChannelMessage, Reaction, ShortTextNote } from 'nostr-tools/kinds';
 import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { Nip07Signer } from './auth.svelte';
-import { publishChannelMessage, publishShortTextNote } from './publish';
+import { publishChannelMessage, publishLikeReaction, publishShortTextNote } from './publish';
 
 const send = vi.hoisted(() => vi.fn());
 
@@ -11,8 +11,11 @@ vi.mock('./client', () => ({
 }));
 
 const pubkey = 'a'.repeat(64);
+const targetPubkey = 'c'.repeat(64);
+const targetEventId = 'd'.repeat(64);
 const channelId = 'b'.repeat(64);
 const channelRelay = 'wss://channel.example/';
+const targetRelay = 'wss://target.example/';
 const nostterClientTag = [
 	'client',
 	'nostter deck',
@@ -92,6 +95,62 @@ describe('channel publishing', () => {
 				kind: ChannelMessage,
 				tags: [['e', channelId, '', 'root'], [...nostterClientTag]],
 				content: 'Hello channel'
+			})
+		);
+	});
+
+	test('publishes a NIP-25 like reaction to default write and target read relays', async () => {
+		const signer = createSigner();
+
+		await expect(
+			publishLikeReaction(
+				{ id: targetEventId, pubkey: targetPubkey, kind: ShortTextNote },
+				pubkey,
+				signer,
+				[targetRelay],
+				{ includeClientTag: true }
+			)
+		).resolves.toMatchObject({ ok: true, event: { kind: Reaction } });
+		expect(signer.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				kind: Reaction,
+				tags: [
+					['e', targetEventId, targetRelay, targetPubkey],
+					['p', targetPubkey, targetRelay],
+					['k', String(ShortTextNote)],
+					[...nostterClientTag]
+				],
+				content: '+'
+			})
+		);
+		expect(send).toHaveBeenCalledWith(expect.objectContaining({ kind: Reaction, pubkey }), {
+			completeOn: 'all-ok',
+			errorOnTimeout: true,
+			on: { defaultWriteRelays: true, relays: [targetRelay] }
+		});
+	});
+
+	test('keeps the target pubkey in the NIP-25 e tag without a relay hint', async () => {
+		const signer = createSigner();
+
+		await expect(
+			publishLikeReaction(
+				{ id: targetEventId, pubkey: targetPubkey, kind: ShortTextNote },
+				pubkey,
+				signer,
+				[],
+				{ includeClientTag: false }
+			)
+		).resolves.toMatchObject({ ok: true, event: { kind: Reaction } });
+		expect(signer.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				kind: Reaction,
+				tags: [
+					['e', targetEventId, '', targetPubkey],
+					['p', targetPubkey],
+					['k', String(ShortTextNote)]
+				],
+				content: '+'
 			})
 		);
 	});
