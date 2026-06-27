@@ -3,9 +3,11 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Post, ThreadPost } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
+	import type { CustomEmojiReactionCandidate, EmojiReaction } from '$lib/nostr/emoji-reactions';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape, PostActionVisibility } from '$lib/user-settings';
 	import type { Profile } from '$lib/nostr/profiles';
+	import type { Locale } from '$lib/paraglide/runtime.js';
 	import PostCard from './PostCard.svelte';
 
 	type Props = {
@@ -18,6 +20,8 @@
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
 		postActionVisibility: PostActionVisibility;
+		appLocale: Locale;
+		emojiReactionCandidates: CustomEmojiReactionCandidate[];
 		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
@@ -27,6 +31,9 @@
 		isLikePostLiked: (post: Post) => boolean;
 		isLikePostPublishing: (post: Post) => boolean;
 		onLikePost: (post: Post) => void;
+		canReactWithEmojiPost: (post: Post) => boolean;
+		isEmojiReactionPostPublishing: (post: Post) => boolean;
+		onReactWithEmojiPost: (post: Post, reaction: EmojiReaction) => void;
 		onClose: () => void;
 		onOpenProfile: (profile: ProfilePointer) => void;
 		onOpenThread: (post: Post) => void;
@@ -43,6 +50,8 @@
 		textClass,
 		avatarShape,
 		postActionVisibility,
+		appLocale,
+		emojiReactionCandidates,
 		getProfile,
 		requestProfiles,
 		profileRelays,
@@ -52,6 +61,9 @@
 		isLikePostLiked,
 		isLikePostPublishing,
 		onLikePost,
+		canReactWithEmojiPost,
+		isEmojiReactionPostPublishing,
+		onReactWithEmojiPost,
 		onClose,
 		onOpenProfile,
 		onOpenThread,
@@ -124,6 +136,8 @@
 						{textClass}
 						{avatarShape}
 						{postActionVisibility}
+						{appLocale}
+						{emojiReactionCandidates}
 						{getProfile}
 						{requestProfiles}
 						{profileRelays}
@@ -134,6 +148,9 @@
 						{isLikePostLiked}
 						{isLikePostPublishing}
 						{onLikePost}
+						{canReactWithEmojiPost}
+						{isEmojiReactionPostPublishing}
+						{onReactWithEmojiPost}
 						{onOpenProfile}
 						{onOpenThread}
 						{onOpenHashtag}

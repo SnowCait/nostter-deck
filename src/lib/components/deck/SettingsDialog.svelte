@@ -15,6 +15,7 @@
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import { m } from '$lib/paraglide/messages.js';
 	import { getLocale, locales, setLocale } from '$lib/paraglide/runtime.js';
+	import type { Locale } from '$lib/paraglide/runtime.js';
 	import {
 		applyThemePreference,
 		avatarShapePreferences,
@@ -32,7 +33,6 @@
 	import CustomEmojiText from './CustomEmojiText.svelte';
 	import InputHelpButton from './InputHelpButton.svelte';
 
-	type AppLocale = (typeof locales)[number];
 	type Props = {
 		isOpen: boolean;
 		fontSize: FontSize;
@@ -64,12 +64,12 @@
 		profileRelays,
 		onUnmuteUser
 	}: Props = $props();
-	let currentLocale = $state<AppLocale>(getLocale());
+	let currentLocale = $state<Locale>(getLocale());
 	let themePreference = $state(readUserSettings().theme);
 	let includeClientTag = $state(readUserSettings().includeClientTag);
 	let isMutedUsersExpanded = $state(false);
 
-	const localeLabels: Record<AppLocale, string> = {
+	const localeLabels: Record<Locale, string> = {
 		en: 'EN',
 		ja: 'JA'
 	};
@@ -133,7 +133,7 @@
 	});
 
 	function selectLocale(value: string) {
-		const selectedLocale = value as AppLocale;
+		const selectedLocale = value as Locale;
 		currentLocale = selectedLocale;
 		setLocale(selectedLocale);
 	}

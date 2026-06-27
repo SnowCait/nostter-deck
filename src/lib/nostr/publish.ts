@@ -4,6 +4,7 @@ import { catchError, defaultIfEmpty, filter, firstValueFrom, map, of, take } fro
 import type * as Nostr from 'nostr-typedef';
 import { getNostrClient } from './client';
 import type { Nip07Signer } from './auth.svelte';
+import type { EmojiReaction } from './emoji-reactions';
 
 export type PublishPostResult =
 	| { ok: true; event: Nostr.Event }
@@ -14,7 +15,7 @@ export type PublishOptions = {
 };
 
 type PublishEventTemplate = Pick<Nostr.Event, 'kind' | 'tags' | 'content' | 'created_at'>;
-type PublishLikeReactionTarget = Pick<Nostr.Event, 'id' | 'kind' | 'pubkey'>;
+type PublishReactionTarget = Pick<Nostr.Event, 'id' | 'kind' | 'pubkey'>;
 
 const nostterClientTag = [
 	'client',
@@ -25,6 +26,13 @@ const nostterClientTag = [
 
 function withClientTag(tags: string[][], includeClientTag: boolean) {
 	return includeClientTag ? [...tags, [...nostterClientTag]] : tags;
+}
+
+function createReactionReferenceTags(target: PublishReactionTarget, targetReadRelays: string[]) {
+	const relayHint = targetReadRelays[0];
+	const eventTag = ['e', target.id, relayHint ?? '', target.pubkey];
+	const pubkeyTag = relayHint ? ['p', target.pubkey, relayHint] : ['p', target.pubkey];
+	return [eventTag, pubkeyTag, ['k', String(target.kind)]];
 }
 
 async function publishEvent(
@@ -107,21 +115,51 @@ export function publishChannelMessage(
 }
 
 export function publishLikeReaction(
-	target: PublishLikeReactionTarget,
+	target: PublishReactionTarget,
 	pubkey: string,
 	signer: Nip07Signer,
 	targetReadRelays: string[],
 	{ includeClientTag = false }: PublishOptions = {}
 ) {
-	const relayHint = targetReadRelays[0];
-	const eventTag = ['e', target.id, relayHint ?? '', target.pubkey];
-	const pubkeyTag = relayHint ? ['p', target.pubkey, relayHint] : ['p', target.pubkey];
+	return publishEvent(
+		{
+			kind: Reaction,
+			tags: withClientTag(createReactionReferenceTags(target, targetReadRelays), includeClientTag),
+			content: '+',
+			created_at: now()
+		},
+		pubkey,
+		signer,
+		targetReadRelays
+	);
+}
+
+export function publishEmojiReaction(
+	target: PublishReactionTarget,
+	reaction: EmojiReaction,
+	pubkey: string,
+	signer: Nip07Signer,
+	targetReadRelays: string[],
+	{ includeClientTag = false }: PublishOptions = {}
+) {
+	const emojiTags =
+		reaction.type === 'custom'
+			? [
+					reaction.address
+						? ['emoji', reaction.shortcode, reaction.url, reaction.address]
+						: ['emoji', reaction.shortcode, reaction.url]
+				]
+			: [];
+	const content = reaction.type === 'unicode' ? reaction.emoji : `:${reaction.shortcode}:`;
 
 	return publishEvent(
 		{
 			kind: Reaction,
-			tags: withClientTag([eventTag, pubkeyTag, ['k', String(target.kind)]], includeClientTag),
-			content: '+',
+			tags: withClientTag(
+				[...createReactionReferenceTags(target, targetReadRelays), ...emojiTags],
+				includeClientTag
+			),
+			content,
 			created_at: now()
 		},
 		pubkey,

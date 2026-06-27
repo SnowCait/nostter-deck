@@ -7,8 +7,10 @@ import { eventToPost } from '$lib/nostr/posts';
 import type { Nip07Signer } from '$lib/nostr/auth.svelte';
 
 const publishLikeReaction = vi.hoisted(() => vi.fn());
+const publishEmojiReaction = vi.hoisted(() => vi.fn());
 
 vi.mock('$lib/nostr/publish', () => ({
+	publishEmojiReaction,
 	publishLikeReaction
 }));
 
@@ -80,6 +82,7 @@ function publishedReaction(target: Nostr.Event) {
 describe('post action controller', () => {
 	beforeEach(() => {
 		publishLikeReaction.mockReset();
+		publishEmojiReaction.mockReset();
 	});
 
 	test('publishes a like and remembers the target event as liked', async () => {
@@ -161,5 +164,39 @@ describe('post action controller', () => {
 
 		expect(harness.controller.canLike(post)).toBe(false);
 		expect(publishLikeReaction).not.toHaveBeenCalled();
+	});
+
+	test('prevents duplicate emoji reaction publishing while the same reaction is in flight', async () => {
+		const target = event('5'.repeat(64));
+		const post = eventToPost(target);
+		const harness = createHarness();
+		const reaction = { type: 'unicode', emoji: '🔥' } as const;
+		let resolvePublish!: (value: ReturnType<typeof publishedReaction>) => void;
+		publishEmojiReaction.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolvePublish = resolve;
+			})
+		);
+
+		const firstResult = harness.controller.reactWithEmoji(post, reaction);
+		expect(harness.controller.isReactingWithEmoji(post)).toBe(true);
+		await expect(harness.controller.reactWithEmoji(post, reaction)).resolves.toEqual({
+			ok: false,
+			reason: 'already-publishing'
+		});
+
+		resolvePublish(publishedReaction(target));
+		await expect(firstResult).resolves.toMatchObject({ ok: true });
+
+		expect(publishEmojiReaction).toHaveBeenCalledOnce();
+		expect(publishEmojiReaction).toHaveBeenCalledWith(
+			target,
+			reaction,
+			pubkey,
+			expect.anything(),
+			[targetRelay],
+			{ includeClientTag: true }
+		);
+		expect(harness.controller.isReactingWithEmoji(post)).toBe(false);
 	});
 });

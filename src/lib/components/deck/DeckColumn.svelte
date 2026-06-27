@@ -16,10 +16,12 @@
 	} from '$lib/deck/types';
 	import type { TimelineRuntime } from '$lib/deck/timeline-runtime';
 	import type { FontSizeTextClasses } from '$lib/font-size';
+	import type { CustomEmojiReactionCandidate, EmojiReaction } from '$lib/nostr/emoji-reactions';
 	import type { PublishPostResult } from '$lib/nostr/publish';
 	import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape, PostActionVisibility } from '$lib/user-settings';
 	import type { Profile } from '$lib/nostr/profiles';
+	import type { Locale } from '$lib/paraglide/runtime.js';
 	import ChannelColumnSettings from './ChannelColumnSettings.svelte';
 	import ChannelComposer from './ChannelComposer.svelte';
 	import ColumnIcon from './ColumnIcon.svelte';
@@ -41,6 +43,8 @@
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
 		postActionVisibility: PostActionVisibility;
+		appLocale: Locale;
+		emojiReactionCandidates: CustomEmojiReactionCandidate[];
 		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
@@ -50,6 +54,9 @@
 		isLikePostLiked: (post: Post) => boolean;
 		isLikePostPublishing: (post: Post) => boolean;
 		onLikePost: (post: Post) => void;
+		canReactWithEmojiPost: (post: Post) => boolean;
+		isEmojiReactionPostPublishing: (post: Post) => boolean;
+		onReactWithEmojiPost: (post: Post, reaction: EmojiReaction) => void;
 		onToggleSettings: () => void;
 		onDelete: () => void;
 		onMoveLeft: () => void;
@@ -84,6 +91,8 @@
 		textClass,
 		avatarShape,
 		postActionVisibility,
+		appLocale,
+		emojiReactionCandidates,
 		getProfile,
 		requestProfiles,
 		profileRelays,
@@ -93,6 +102,9 @@
 		isLikePostLiked,
 		isLikePostPublishing,
 		onLikePost,
+		canReactWithEmojiPost,
+		isEmojiReactionPostPublishing,
+		onReactWithEmojiPost,
 		onToggleSettings,
 		onDelete,
 		onMoveLeft,
@@ -394,6 +406,8 @@
 				{textClass}
 				{avatarShape}
 				{postActionVisibility}
+				{appLocale}
+				{emojiReactionCandidates}
 				scrollRoot={timelineScrollElement}
 				{getProfile}
 				{requestProfiles}
@@ -404,6 +418,9 @@
 				{isLikePostLiked}
 				{isLikePostPublishing}
 				{onLikePost}
+				{canReactWithEmojiPost}
+				{isEmojiReactionPostPublishing}
+				{onReactWithEmojiPost}
 				onLoadOlder={onLoadOlderTimeline}
 				onLoadNewer={onLoadNewerTimeline}
 				{onOpenProfile}

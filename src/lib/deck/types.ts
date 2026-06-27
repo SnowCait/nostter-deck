@@ -126,6 +126,8 @@ export type MessageKey =
 	| 'reacted_by'
 	| 'reaction_event_unavailable'
 	| 'like'
+	| 'react_with_emoji'
+	| 'emoji_category_my_emojis'
 	| 'share'
 	| 'verified';
 

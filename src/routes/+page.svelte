@@ -22,6 +22,7 @@
 	import { resetSessionTimelineCache } from '$lib/deck/timeline-cache';
 	import { createDetailColumnController } from '$lib/deck/detail-column-controller.svelte';
 	import { createComposerController } from '$lib/deck/composer-controller.svelte';
+	import { createEmojiReactionController } from '$lib/deck/emoji-reaction-controller.svelte';
 	import { createPostActionController } from '$lib/deck/post-action-controller.svelte';
 	import { createKeyboardNavigation } from '$lib/deck/keyboard-navigation';
 	import {
@@ -68,6 +69,7 @@
 		selectAccount
 	} from '$lib/nostr/auth.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import { getLocale } from '$lib/paraglide/runtime.js';
 	import {
 		readUserSettings,
 		type AvatarShape,
@@ -110,6 +112,7 @@
 			accountProfile?.name ??
 			(accountPubkey ? `${npubEncode(accountPubkey).slice(0, 16)}…` : '')
 	);
+	const appLocale = $derived(getLocale());
 	const textClass = $derived(textClassByFontSize[fontSize]);
 	const composer = createComposerController({
 		getAccountPubkey: () => accountPubkey,
@@ -121,6 +124,9 @@
 		getAccountPubkey: () => accountPubkey,
 		getSigner: getAuthSigner,
 		getIncludeClientTag: () => readUserSettings().includeClientTag
+	});
+	const emojiReactionController = createEmojiReactionController({
+		getAccountPubkey: () => accountPubkey
 	});
 	const timelineController = createTimelineController({
 		getColumnConfigs: () => columnConfigs,
@@ -488,6 +494,8 @@
 		{textClass}
 		{avatarShape}
 		{postActionVisibility}
+		{appLocale}
+		emojiReactionCandidates={emojiReactionController.candidates}
 		{getProfile}
 		{requestProfiles}
 		profileRelays={defaultProfileRelays}
@@ -497,6 +505,10 @@
 		isLikePostLiked={postActionController.isLiked}
 		isLikePostPublishing={postActionController.isLiking}
 		onLikePost={(post) => void postActionController.likePost(post)}
+		canReactWithEmojiPost={postActionController.canReactWithEmoji}
+		isEmojiReactionPostPublishing={postActionController.isReactingWithEmoji}
+		onReactWithEmojiPost={(post, reaction) =>
+			void postActionController.reactWithEmoji(post, reaction)}
 		onOpenProfile={(profile) => void detailController.openProfile(column.id, profile)}
 		onOpenThread={(post) => void detailController.openThread(column.id, post)}
 		onOpenHashtag={(hashtag) => void openHashtagColumn(column.id, hashtag)}
@@ -530,6 +542,8 @@
 			{textClass}
 			{avatarShape}
 			{postActionVisibility}
+			{appLocale}
+			emojiReactionCandidates={emojiReactionController.candidates}
 			{getProfile}
 			{requestProfiles}
 			profileRelays={defaultProfileRelays}
@@ -539,6 +553,10 @@
 			isLikePostLiked={postActionController.isLiked}
 			isLikePostPublishing={postActionController.isLiking}
 			onLikePost={(post) => void postActionController.likePost(post)}
+			canReactWithEmojiPost={postActionController.canReactWithEmoji}
+			isEmojiReactionPostPublishing={postActionController.isReactingWithEmoji}
+			onReactWithEmojiPost={(post, reaction) =>
+				void postActionController.reactWithEmoji(post, reaction)}
 			onClose={() => void detailController.close()}
 			onOpenProfile={(profile) => void detailController.openProfile(sourceColumnId, profile)}
 			onOpenThread={(post) => void detailController.openThread(sourceColumnId, post)}
@@ -556,6 +574,8 @@
 			{textClass}
 			{avatarShape}
 			{postActionVisibility}
+			{appLocale}
+			emojiReactionCandidates={emojiReactionController.candidates}
 			{getProfile}
 			{requestProfiles}
 			profileRelays={defaultProfileRelays}
@@ -565,6 +585,10 @@
 			isLikePostLiked={postActionController.isLiked}
 			isLikePostPublishing={postActionController.isLiking}
 			onLikePost={(post) => void postActionController.likePost(post)}
+			canReactWithEmojiPost={postActionController.canReactWithEmoji}
+			isEmojiReactionPostPublishing={postActionController.isReactingWithEmoji}
+			onReactWithEmojiPost={(post, reaction) =>
+				void postActionController.reactWithEmoji(post, reaction)}
 			onClose={() => void detailController.close()}
 			onOpenProfile={(profile) => void detailController.openProfile(sourceColumnId, profile)}
 			onOpenThread={(post) => void detailController.openThread(sourceColumnId, post)}

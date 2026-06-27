@@ -3,10 +3,13 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Post, PostMessage } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
+	import type { CustomEmojiReactionCandidate, EmojiReaction } from '$lib/nostr/emoji-reactions';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { Profile } from '$lib/nostr/profiles';
+	import type { Locale } from '$lib/paraglide/runtime.js';
 	import type { AvatarShape, PostActionVisibility } from '$lib/user-settings';
 	import CustomEmojiText from './CustomEmojiText.svelte';
+	import EmojiReactionPicker from './EmojiReactionPicker.svelte';
 	import ProfileAvatar from './ProfileAvatar.svelte';
 	import MutedContentPlaceholder from './MutedContentPlaceholder.svelte';
 	import ContentWarningPlaceholder from './ContentWarningPlaceholder.svelte';
@@ -20,6 +23,8 @@
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
 		postActionVisibility: PostActionVisibility;
+		appLocale: Locale;
+		emojiReactionCandidates: CustomEmojiReactionCandidate[];
 		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
@@ -30,6 +35,9 @@
 		isLikePostLiked?: (post: Post) => boolean;
 		isLikePostPublishing?: (post: Post) => boolean;
 		onLikePost?: (post: Post) => void;
+		canReactWithEmojiPost?: (post: Post) => boolean;
+		isEmojiReactionPostPublishing?: (post: Post) => boolean;
+		onReactWithEmojiPost?: (post: Post, reaction: EmojiReaction) => void;
 		onOpenProfile?: (profile: ProfilePointer) => void;
 		onOpenThread?: (post: Post) => void;
 		onOpenHashtag?: (hashtag: string) => void;
@@ -41,6 +49,8 @@
 		textClass,
 		avatarShape,
 		postActionVisibility,
+		appLocale,
+		emojiReactionCandidates,
 		getProfile,
 		requestProfiles,
 		profileRelays,
@@ -51,6 +61,9 @@
 		isLikePostLiked = () => false,
 		isLikePostPublishing = () => false,
 		onLikePost,
+		canReactWithEmojiPost = () => false,
+		isEmojiReactionPostPublishing = () => false,
+		onReactWithEmojiPost,
 		onOpenProfile,
 		onOpenThread,
 		onOpenHashtag
@@ -75,6 +88,7 @@
 			: ''
 	]);
 	const isLikeDisabled = $derived(!onLikePost || !canLikePost(post));
+	const isEmojiReactionDisabled = $derived(!onReactWithEmojiPost || !canReactWithEmojiPost(post));
 	const keyboardNavigationKey = $derived(
 		post.id ?? `${post.pubkey}:${post.time}:${post.body.slice(0, 80)}`
 	);
@@ -89,6 +103,10 @@
 
 	function likePost() {
 		onLikePost?.(post);
+	}
+
+	function reactWithEmoji(reaction: EmojiReaction) {
+		onReactWithEmojiPost?.(post, reaction);
 	}
 
 	function formatPostMessage(message: PostMessage) {
@@ -272,6 +290,14 @@
 										aria-hidden="true"
 									/>
 								</button>
+								<EmojiReactionPicker
+									customEmojis={emojiReactionCandidates}
+									locale={appLocale}
+									disabled={isEmojiReactionDisabled}
+									isPublishing={isEmojiReactionPostPublishing(post)}
+									buttonClass={postActionButtonClass}
+									onSelect={reactWithEmoji}
+								/>
 								<button
 									type="button"
 									disabled

@@ -2,7 +2,12 @@ import { ChannelMessage, Reaction, ShortTextNote } from 'nostr-tools/kinds';
 import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { Nip07Signer } from './auth.svelte';
-import { publishChannelMessage, publishLikeReaction, publishShortTextNote } from './publish';
+import {
+	publishChannelMessage,
+	publishEmojiReaction,
+	publishLikeReaction,
+	publishShortTextNote
+} from './publish';
 
 const send = vi.hoisted(() => vi.fn());
 
@@ -151,6 +156,66 @@ describe('channel publishing', () => {
 					['k', String(ShortTextNote)]
 				],
 				content: '+'
+			})
+		);
+	});
+
+	test('publishes a Unicode NIP-25 emoji reaction', async () => {
+		const signer = createSigner();
+
+		await expect(
+			publishEmojiReaction(
+				{ id: targetEventId, pubkey: targetPubkey, kind: ShortTextNote },
+				{ type: 'unicode', emoji: '🔥' },
+				pubkey,
+				signer,
+				[targetRelay],
+				{ includeClientTag: false }
+			)
+		).resolves.toMatchObject({ ok: true, event: { kind: Reaction } });
+		expect(signer.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				kind: Reaction,
+				tags: [
+					['e', targetEventId, targetRelay, targetPubkey],
+					['p', targetPubkey, targetRelay],
+					['k', String(ShortTextNote)]
+				],
+				content: '🔥'
+			})
+		);
+	});
+
+	test('publishes a custom NIP-25 emoji reaction with an emoji tag', async () => {
+		const signer = createSigner();
+		const address = `30030:${pubkey}:nostter`;
+
+		await expect(
+			publishEmojiReaction(
+				{ id: targetEventId, pubkey: targetPubkey, kind: ShortTextNote },
+				{
+					type: 'custom',
+					shortcode: 'blobcat',
+					url: 'https://emoji.example/blobcat.png',
+					address
+				},
+				pubkey,
+				signer,
+				[targetRelay],
+				{ includeClientTag: true }
+			)
+		).resolves.toMatchObject({ ok: true, event: { kind: Reaction } });
+		expect(signer.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				kind: Reaction,
+				tags: [
+					['e', targetEventId, targetRelay, targetPubkey],
+					['p', targetPubkey, targetRelay],
+					['k', String(ShortTextNote)],
+					['emoji', 'blobcat', 'https://emoji.example/blobcat.png', address],
+					[...nostterClientTag]
+				],
+				content: ':blobcat:'
 			})
 		);
 	});
