@@ -32,6 +32,8 @@
 		"@tauri-apps/plugin-window-state": "^2.4.1",
 		"async-lock": "^1.4.1",
 		"dexie": "^4.4.2",
+		"emoji-picker-element": "^1.29.1",
+		"emoji-picker-element-data": "^1.8.0",
 		"nostr-tools": "^2.23.5",
 		"qrcode": "^1.5.4",
 		"rx-nostr": "^3.7.4",
