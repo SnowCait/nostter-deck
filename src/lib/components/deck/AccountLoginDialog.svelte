@@ -2,6 +2,7 @@
 	import { toDataURL } from 'qrcode';
 	import { m } from '$lib/paraglide/messages.js';
 	import {
+		cancelPendingAuthentication,
 		createNip46ConnectionUri,
 		loginWithNip46Bunker,
 		loginWithNip46ConnectionUri
@@ -17,6 +18,14 @@
 	let bunkerInput = $state('');
 	let nostrConnectUri = $state<string | null>(null);
 	let nostrConnectQr = $state<string | null>(null);
+	let isNostrConnectPending = $state(false);
+
+	$effect(() => {
+		if (isOpen || !isNostrConnectPending) return;
+
+		cancelPendingAuthentication();
+		isNostrConnectPending = false;
+	});
 
 	async function connectBunker() {
 		if (await loginWithNip46Bunker(bunkerInput)) isOpen = false;
@@ -27,11 +36,24 @@
 	}
 
 	async function startNostrConnect() {
+		if (isNostrConnectPending) return;
+
+		isNostrConnectPending = true;
 		const connection = createNip46ConnectionUri();
 		nostrConnectUri = connection.connectionUri;
 		nostrConnectQr = await toDataURL(connection.connectionUri, { margin: 1, width: 240 });
+		if (!isOpen) {
+			isNostrConnectPending = false;
+			return;
+		}
+
 		void loginWithNip46ConnectionUri(connection.connectionUri, connection.clientSecretKey).then(
-			(success) => success && (isOpen = false)
+			(success) => {
+				if (!isNostrConnectPending) return;
+
+				isNostrConnectPending = false;
+				if (success) isOpen = false;
+			}
 		);
 	}
 </script>

@@ -37,6 +37,7 @@ let accountStore = $state<AccountStore>(readAccounts());
 let activeSigner: AuthSigner | null = null;
 let activeBunkerSigner: BunkerSigner | null = null;
 let authAttempt = 0;
+let cancellableAuthAttempt: number | null = null;
 
 function getNip07PublicKeyProvider(): Nip07PublicKeyProvider | null {
 	const candidate = (globalThis as typeof globalThis & { nostr?: unknown }).nostr;
@@ -100,15 +101,45 @@ function setLoggedOutState(status: AuthStatus = loggedOutStatus()) {
 	state = { status, pubkey: null };
 }
 
-function beginAuthentication() {
+function replaceActiveSigner(signer: AuthSigner, bunkerSigner: BunkerSigner | null = null) {
+	const previousBunkerSigner = activeBunkerSigner;
+	activeSigner = signer;
+	activeBunkerSigner = bunkerSigner;
+	if (previousBunkerSigner && previousBunkerSigner !== bunkerSigner) {
+		void previousBunkerSigner.close();
+	}
+}
+
+function beginAuthentication({ preserveActiveSession = false } = {}) {
 	authAttempt += 1;
-	disconnectActiveSigner();
-	state = { status: 'loggingIn', pubkey: null };
-	return authAttempt;
+	cancellableAuthAttempt = preserveActiveSession ? authAttempt : null;
+	if (!preserveActiveSession) {
+		disconnectActiveSigner();
+		state = { status: 'loggingIn', pubkey: null };
+	}
+	return { attempt: authAttempt, preserveActiveSession };
 }
 
 function isCurrentAttempt(attempt: number) {
 	return authAttempt === attempt;
+}
+
+function isLoggedIn() {
+	return state.status === 'loggedIn' && activeSigner !== null;
+}
+
+function finishAuthenticationAttempt(attempt: number) {
+	if (cancellableAuthAttempt === attempt) cancellableAuthAttempt = null;
+}
+
+function failAuthenticationAttempt(
+	attempt: number,
+	preserveActiveSession: boolean,
+	status: AuthStatus = 'error'
+) {
+	if (!isCurrentAttempt(attempt)) return;
+	finishAuthenticationAttempt(attempt);
+	if (!preserveActiveSession) setLoggedOutState(status);
 }
 
 async function getExtensionPubkey(signer: Nip07PublicKeyProvider): Promise<string | null> {
@@ -140,7 +171,7 @@ async function activateNip07() {
 		return false;
 	}
 
-	const attempt = beginAuthentication();
+	const { attempt } = beginAuthentication();
 	const pubkey = await getExtensionPubkey(provider);
 	if (!isCurrentAttempt(attempt)) return false;
 	if (!pubkey) {
@@ -168,9 +199,10 @@ function createNip46Account(
 async function activateNip46(
 	bunker: BunkerPointer,
 	clientSecretKey: Uint8Array,
-	expectedPubkey?: string
+	expectedPubkey?: string,
+	{ preserveActiveSession = false } = {}
 ) {
-	const attempt = beginAuthentication();
+	const { attempt } = beginAuthentication({ preserveActiveSession });
 	let signer: BunkerSigner | null = null;
 	try {
 		signer = BunkerSigner.fromBunker(clientSecretKey, bunker);
@@ -182,14 +214,14 @@ async function activateNip46(
 			return false;
 		}
 
+		finishAuthenticationAttempt(attempt);
 		writeAndSetAccountStore(upsertAccount(createNip46Account(pubkey, signer.bp, clientSecretKey)));
-		activeBunkerSigner = signer;
-		activeSigner = signer as AuthSigner;
+		replaceActiveSigner(signer as AuthSigner, signer);
 		state = { status: 'loggedIn', pubkey };
 		return true;
 	} catch {
 		if (signer) void signer.close();
-		if (isCurrentAttempt(attempt)) setLoggedOutState('error');
+		failAuthenticationAttempt(attempt, preserveActiveSession);
 		return false;
 	}
 }
@@ -219,7 +251,11 @@ export async function selectAccount(accountId: string) {
 
 export async function loginWithNip46Bunker(input: string) {
 	const bunker = await parseBunkerInput(input.trim());
-	return bunker ? activateNip46(bunker, generateSecretKey()) : false;
+	return bunker
+		? activateNip46(bunker, generateSecretKey(), undefined, {
+				preserveActiveSession: isLoggedIn()
+			})
+		: false;
 }
 
 export function createNip46ConnectionUri() {
@@ -236,7 +272,8 @@ export function createNip46ConnectionUri() {
 }
 
 export async function loginWithNip46ConnectionUri(uri: string, clientSecretKey: Uint8Array) {
-	const attempt = beginAuthentication();
+	const preserveActiveSession = isLoggedIn();
+	const { attempt } = beginAuthentication({ preserveActiveSession });
 	let signer: BunkerSigner | null = null;
 	try {
 		signer = await BunkerSigner.fromURI(clientSecretKey, uri);
@@ -247,16 +284,24 @@ export async function loginWithNip46ConnectionUri(uri: string, clientSecretKey: 
 			return false;
 		}
 
+		finishAuthenticationAttempt(attempt);
 		writeAndSetAccountStore(upsertAccount(createNip46Account(pubkey, signer.bp, clientSecretKey)));
-		activeBunkerSigner = signer;
-		activeSigner = signer as AuthSigner;
+		replaceActiveSigner(signer as AuthSigner, signer);
 		state = { status: 'loggedIn', pubkey };
 		return true;
 	} catch {
 		if (signer) void signer.close();
-		if (isCurrentAttempt(attempt)) setLoggedOutState('error');
+		failAuthenticationAttempt(attempt, preserveActiveSession);
 		return false;
 	}
+}
+
+export function cancelPendingAuthentication() {
+	if (cancellableAuthAttempt === null || !isCurrentAttempt(cancellableAuthAttempt)) return false;
+
+	cancellableAuthAttempt = null;
+	authAttempt += 1;
+	return true;
 }
 
 export async function removeAccount(accountId: string) {
@@ -284,6 +329,7 @@ export async function logout() {
 
 export function resetAuthStateForTesting() {
 	authAttempt += 1;
+	cancellableAuthAttempt = null;
 	disconnectActiveSigner();
 	accountStore = readAccounts();
 	state = { status: 'loggedOut', pubkey: null };

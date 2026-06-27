@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { getAccountId, accountsStorageKey } from './accounts';
 import {
+	cancelPendingAuthentication,
 	getAccountStore,
 	getAuthState,
 	initializeAuth,
 	legacyAuthStorageKey,
+	loginWithNip46ConnectionUri,
 	loginWithNip07,
 	logout,
 	removeAccount,
@@ -14,6 +16,7 @@ import {
 
 const pubkeyA = 'a'.repeat(64);
 const pubkeyB = 'b'.repeat(64);
+const clientSecretKey = new Uint8Array(32).fill(1);
 const bunkerMocks = vi.hoisted(() => ({
 	fromBunker: vi.fn(),
 	fromURI: vi.fn(),
@@ -51,6 +54,16 @@ function installNip07(pubkey: string) {
 		getPublicKey: vi.fn(async () => pubkey),
 		signEvent: vi.fn(async (event: Record<string, unknown>) => event)
 	});
+}
+
+function createDeferred<T>() {
+	let resolve!: (value: T) => void;
+	let reject!: (reason?: unknown) => void;
+	const promise = new Promise<T>((promiseResolve, promiseReject) => {
+		resolve = promiseResolve;
+		reject = promiseReject;
+	});
+	return { promise, resolve, reject };
 }
 
 describe('multi-account authentication', () => {
@@ -150,6 +163,68 @@ describe('multi-account authentication', () => {
 		await expect(initializeAuth()).resolves.toBe(true);
 		expect(bunkerMocks.fromBunker).toHaveBeenCalledTimes(1);
 		expect(getAuthState()).toEqual({ status: 'loggedIn', pubkey: pubkeyB });
+	});
+
+	test('keeps the active account while a Nostr Connect login is pending', async () => {
+		installNip07(pubkeyA);
+		await loginWithNip07();
+		const pendingSigner = createDeferred<typeof bunkerMocks.signer>();
+		bunkerMocks.fromURI.mockReturnValueOnce(pendingSigner.promise);
+		bunkerMocks.signer.getPublicKey.mockResolvedValueOnce(pubkeyB);
+
+		const loginPromise = loginWithNip46ConnectionUri('nostrconnect://pending', clientSecretKey);
+
+		expect(getAuthState()).toEqual({ status: 'loggedIn', pubkey: pubkeyA });
+		expect(getAccountStore().activeAccountId).toBe(getAccountId('nip07', pubkeyA));
+
+		pendingSigner.resolve(bunkerMocks.signer);
+		await expect(loginPromise).resolves.toBe(true);
+		expect(getAuthState()).toEqual({ status: 'loggedIn', pubkey: pubkeyB });
+		expect(getAccountStore().activeAccountId).toBe(getAccountId('nip46', pubkeyB));
+	});
+
+	test('does not switch accounts when a pending Nostr Connect login is canceled', async () => {
+		installNip07(pubkeyA);
+		await loginWithNip07();
+		const pendingSigner = createDeferred<typeof bunkerMocks.signer>();
+		bunkerMocks.fromURI.mockReturnValueOnce(pendingSigner.promise);
+		bunkerMocks.signer.getPublicKey.mockResolvedValueOnce(pubkeyB);
+
+		const loginPromise = loginWithNip46ConnectionUri('nostrconnect://pending', clientSecretKey);
+		expect(cancelPendingAuthentication()).toBe(true);
+		pendingSigner.resolve(bunkerMocks.signer);
+
+		await expect(loginPromise).resolves.toBe(false);
+		expect(bunkerMocks.signer.close).toHaveBeenCalledOnce();
+		expect(getAuthState()).toEqual({ status: 'loggedIn', pubkey: pubkeyA });
+		expect(getAccountStore().activeAccountId).toBe(getAccountId('nip07', pubkeyA));
+		expect(getAccountStore().accounts.map(({ id }) => id)).toEqual([
+			getAccountId('nip07', pubkeyA)
+		]);
+	});
+
+	test('keeps the active account when an added Nostr Connect login fails', async () => {
+		installNip07(pubkeyA);
+		await loginWithNip07();
+		bunkerMocks.fromURI.mockRejectedValueOnce(new Error('connection failed'));
+
+		await expect(
+			loginWithNip46ConnectionUri('nostrconnect://failed', clientSecretKey)
+		).resolves.toBe(false);
+
+		expect(getAuthState()).toEqual({ status: 'loggedIn', pubkey: pubkeyA });
+		expect(getAccountStore().activeAccountId).toBe(getAccountId('nip07', pubkeyA));
+	});
+
+	test('marks an initial Nostr Connect login as failed when no account is active', async () => {
+		bunkerMocks.fromURI.mockRejectedValueOnce(new Error('connection failed'));
+
+		await expect(
+			loginWithNip46ConnectionUri('nostrconnect://failed', clientSecretKey)
+		).resolves.toBe(false);
+
+		expect(getAuthState()).toEqual({ status: 'error', pubkey: null });
+		expect(getAccountStore()).toEqual({ activeAccountId: null, accounts: [] });
 	});
 
 	test('ignores the legacy single-account session and requires a fresh login', async () => {
