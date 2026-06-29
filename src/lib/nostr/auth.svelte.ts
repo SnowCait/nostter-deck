@@ -4,8 +4,11 @@ import {
 	parseBunkerInput,
 	type BunkerPointer
 } from 'nostr-tools/nip46';
+import type { WindowNostr } from 'nostr-tools/nip07';
 import { generateSecretKey, getPublicKey } from 'nostr-tools/pure';
+import type { Signer } from 'nostr-tools/signer';
 import { bytesToHex, hexToBytes } from 'nostr-tools/utils';
+import { now, type EventSigner } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import {
 	getAccountId,
@@ -21,10 +24,6 @@ import { defaultRelays } from './relays';
 
 export type AuthStatus = 'loggedOut' | 'loggingIn' | 'loggedIn' | 'unavailable' | 'error';
 
-type Nip07PublicKeyProvider = Pick<Nostr.Nip07.Nostr, 'getPublicKey'>;
-export type Nip07Signer = Pick<Nostr.Nip07.Nostr, 'getPublicKey' | 'signEvent'>;
-export type AuthSigner = Nip07Signer;
-
 export type AuthState = {
 	status: AuthStatus;
 	pubkey: string | null;
@@ -34,25 +33,32 @@ export const legacyAuthStorageKey = 'nostter:auth-account';
 
 let state = $state<AuthState>({ status: 'loggedOut', pubkey: null });
 let accountStore = $state<AccountStore>(readAccounts());
-let activeSigner: AuthSigner | null = null;
+let activeSigner: EventSigner | null = null;
 let activeBunkerSigner: BunkerSigner | null = null;
 let authAttempt = 0;
 let cancellableAuthAttempt: number | null = null;
 
-function getNip07PublicKeyProvider(): Nip07PublicKeyProvider | null {
+function toEventSigner(signer: Signer): EventSigner {
+	return {
+		getPublicKey: () => signer.getPublicKey(),
+		signEvent: async <K extends number>(params: Nostr.EventParameters<K>) =>
+			(await signer.signEvent({
+				kind: params.kind,
+				tags: params.tags ?? [],
+				content: params.content ?? '',
+				created_at: params.created_at ?? now()
+			})) as unknown as Nostr.Event<K>
+	};
+}
+
+function getNip07Provider(): WindowNostr | null {
 	const candidate = (globalThis as typeof globalThis & { nostr?: unknown }).nostr;
 	if (!candidate || typeof candidate !== 'object') return null;
 
-	const provider = candidate as Partial<Nip07PublicKeyProvider>;
-	return typeof provider.getPublicKey === 'function' ? (provider as Nip07PublicKeyProvider) : null;
-}
-
-export function getNip07Signer(): Nip07Signer | null {
-	const candidate = getNip07PublicKeyProvider();
-	if (!candidate) return null;
-
-	const signer = candidate as Partial<Nip07Signer>;
-	return typeof signer.signEvent === 'function' ? (signer as Nip07Signer) : null;
+	const provider = candidate as Partial<WindowNostr>;
+	return typeof provider.getPublicKey === 'function' && typeof provider.signEvent === 'function'
+		? (provider as WindowNostr)
+		: null;
 }
 
 export function getAuthSigner() {
@@ -68,7 +74,7 @@ export function getAccountStore() {
 }
 
 export function isNip07Available() {
-	return getNip07PublicKeyProvider() !== null;
+	return getNip07Provider() !== null;
 }
 
 function normalizePubkey(value: unknown): string | null {
@@ -87,7 +93,7 @@ function writeAndSetAccountStore(store: AccountStore) {
 }
 
 function loggedOutStatus() {
-	return getNip07PublicKeyProvider() ? 'loggedOut' : 'unavailable';
+	return getNip07Provider() ? 'loggedOut' : 'unavailable';
 }
 
 function disconnectActiveSigner() {
@@ -101,7 +107,7 @@ function setLoggedOutState(status: AuthStatus = loggedOutStatus()) {
 	state = { status, pubkey: null };
 }
 
-function replaceActiveSigner(signer: AuthSigner, bunkerSigner: BunkerSigner | null = null) {
+function replaceActiveSigner(signer: EventSigner, bunkerSigner: BunkerSigner | null = null) {
 	const previousBunkerSigner = activeBunkerSigner;
 	activeSigner = signer;
 	activeBunkerSigner = bunkerSigner;
@@ -142,7 +148,9 @@ function failAuthenticationAttempt(
 	if (!preserveActiveSession) setLoggedOutState(status);
 }
 
-async function getExtensionPubkey(signer: Nip07PublicKeyProvider): Promise<string | null> {
+async function getExtensionPubkey(
+	signer: Pick<WindowNostr, 'getPublicKey'>
+): Promise<string | null> {
 	try {
 		return normalizePubkey(await signer.getPublicKey());
 	} catch {
@@ -150,7 +158,7 @@ async function getExtensionPubkey(signer: Nip07PublicKeyProvider): Promise<strin
 	}
 }
 
-function activateNip07Account(signer: Nip07Signer, pubkey: string) {
+function activateNip07Account(signer: WindowNostr, pubkey: string) {
 	const record: AccountRecord = {
 		id: getAccountId('nip07', pubkey),
 		method: 'nip07',
@@ -158,16 +166,15 @@ function activateNip07Account(signer: Nip07Signer, pubkey: string) {
 		createdAt: Date.now()
 	};
 	writeAndSetAccountStore(upsertAccount(record));
-	activeSigner = signer;
+	activeSigner = toEventSigner(signer);
 	state = { status: 'loggedIn', pubkey };
 	return true;
 }
 
 async function activateNip07() {
-	const provider = getNip07PublicKeyProvider();
-	const signer = getNip07Signer();
-	if (!provider || !signer) {
-		setLoggedOutState(provider ? 'error' : 'unavailable');
+	const provider = getNip07Provider();
+	if (!provider) {
+		setLoggedOutState(loggedOutStatus());
 		return false;
 	}
 
@@ -178,7 +185,7 @@ async function activateNip07() {
 		setLoggedOutState('error');
 		return false;
 	}
-	return activateNip07Account(signer, pubkey);
+	return activateNip07Account(provider, pubkey);
 }
 
 function createNip46Account(
@@ -216,7 +223,7 @@ async function activateNip46(
 
 		finishAuthenticationAttempt(attempt);
 		writeAndSetAccountStore(upsertAccount(createNip46Account(pubkey, signer.bp, clientSecretKey)));
-		replaceActiveSigner(signer as AuthSigner, signer);
+		replaceActiveSigner(toEventSigner(signer), signer);
 		state = { status: 'loggedIn', pubkey };
 		return true;
 	} catch {
@@ -286,7 +293,7 @@ export async function loginWithNip46ConnectionUri(uri: string, clientSecretKey: 
 
 		finishAuthenticationAttempt(attempt);
 		writeAndSetAccountStore(upsertAccount(createNip46Account(pubkey, signer.bp, clientSecretKey)));
-		replaceActiveSigner(signer as AuthSigner, signer);
+		replaceActiveSigner(toEventSigner(signer), signer);
 		state = { status: 'loggedIn', pubkey };
 		return true;
 	} catch {

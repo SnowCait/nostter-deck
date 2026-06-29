@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { Reaction, ShortTextNote } from 'nostr-tools/kinds';
+import type { EventSigner } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import { createPostActionController } from './post-action-controller.svelte';
 import type { Post } from './types';
 import { eventToPost } from '$lib/nostr/posts';
-import type { Nip07Signer } from '$lib/nostr/auth.svelte';
 
 const publishLikeReaction = vi.hoisted(() => vi.fn());
 const publishEmojiReaction = vi.hoisted(() => vi.fn());
@@ -41,7 +41,7 @@ function event(
 	} satisfies Nostr.Event;
 }
 
-function createSigner(): Nip07Signer {
+function createSigner(): EventSigner {
 	return {
 		getPublicKey: vi.fn(async () => pubkey),
 		signEvent: vi.fn()
@@ -54,7 +54,7 @@ function createHarness({
 	getTargetReadRelays = vi.fn(async () => [targetRelay])
 }: {
 	getAccountPubkey?: () => string | null;
-	getSigner?: () => Nip07Signer | null;
+	getSigner?: () => EventSigner | null;
 	getTargetReadRelays?: (pubkey: string) => Promise<string[]>;
 } = {}) {
 	return {

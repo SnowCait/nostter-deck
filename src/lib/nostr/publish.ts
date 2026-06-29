@@ -3,7 +3,6 @@ import { now, type EventSigner } from 'rx-nostr';
 import { catchError, defaultIfEmpty, filter, firstValueFrom, map, of, take } from 'rxjs';
 import type * as Nostr from 'nostr-typedef';
 import { getNostrClient } from './client';
-import type { Nip07Signer } from './auth.svelte';
 import type { EmojiReaction } from './emoji-reactions';
 
 export type PublishPostResult =
@@ -39,7 +38,7 @@ function createReactionReferenceTags(target: PublishReactionTarget, targetReadRe
 async function publishEvent(
 	eventTemplate: PublishEventTemplate,
 	pubkey: string,
-	signer: Nip07Signer,
+	signer: EventSigner,
 	relays?: string[]
 ): Promise<PublishPostResult> {
 	let signedEvent: Nostr.Event;
@@ -85,7 +84,7 @@ async function publishEvent(
 export function publishShortTextNote(
 	content: string,
 	pubkey: string,
-	signer: Nip07Signer,
+	signer: EventSigner,
 	{ includeClientTag = false }: PublishOptions = {}
 ) {
 	return publishEvent(
@@ -104,7 +103,7 @@ export function publishChannelMessage(
 	content: string,
 	channelId: string,
 	pubkey: string,
-	signer: Nip07Signer,
+	signer: EventSigner,
 	channelRelays: string[],
 	{ includeClientTag = false }: PublishOptions = {}
 ) {
@@ -124,7 +123,7 @@ export function publishChannelMessage(
 export function publishLikeReaction(
 	target: PublishReactionTarget,
 	pubkey: string,
-	signer: Nip07Signer,
+	signer: EventSigner,
 	targetReadRelays: string[],
 	{ includeClientTag = false }: PublishOptions = {}
 ) {
@@ -144,7 +143,7 @@ export function publishLikeReaction(
 export function publishRepost(
 	target: PublishRepostTarget,
 	pubkey: string,
-	signer: Nip07Signer,
+	signer: EventSigner,
 	{ includeClientTag = false }: PublishOptions = {}
 ) {
 	return publishEvent(
@@ -169,7 +168,7 @@ export function publishEmojiReaction(
 	target: PublishReactionTarget,
 	reaction: EmojiReaction,
 	pubkey: string,
-	signer: Nip07Signer,
+	signer: EventSigner,
 	targetReadRelays: string[],
 	{ includeClientTag = false }: PublishOptions = {}
 ) {

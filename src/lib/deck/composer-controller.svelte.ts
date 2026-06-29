@@ -1,11 +1,11 @@
 import { tick } from 'svelte';
+import type { EventSigner } from 'rx-nostr';
 import type { ChannelTimelineColumnConfig } from './types';
-import type { Nip07Signer } from '$lib/nostr/auth.svelte';
 import { publishChannelMessage, publishShortTextNote } from '$lib/nostr/publish';
 
 type ComposerControllerOptions = {
 	getAccountPubkey: () => string | null;
-	getSigner: () => Nip07Signer | null;
+	getSigner: () => EventSigner | null;
 	getIncludeClientTag: () => boolean;
 	focusTextarea: () => void;
 };

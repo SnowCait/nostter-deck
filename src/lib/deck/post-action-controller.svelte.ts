@@ -1,8 +1,8 @@
 import { SvelteSet } from 'svelte/reactivity';
 import { ShortTextNote } from 'nostr-tools/kinds';
+import type { EventSigner } from 'rx-nostr';
 import type { Post } from './types';
 import { getPostLikeTarget, getPostRepostTarget } from './post-actions';
-import type { Nip07Signer } from '$lib/nostr/auth.svelte';
 import type { EmojiReaction } from '$lib/nostr/emoji-reactions';
 import { getNip65ReadRelaysForPubkey } from '$lib/nostr/nip65';
 import {
@@ -14,7 +14,7 @@ import {
 
 type PostActionControllerOptions = {
 	getAccountPubkey: () => string | null;
-	getSigner: () => Nip07Signer | null;
+	getSigner: () => EventSigner | null;
 	getIncludeClientTag: () => boolean;
 	getTargetReadRelays?: (pubkey: string) => Promise<string[]>;
 };

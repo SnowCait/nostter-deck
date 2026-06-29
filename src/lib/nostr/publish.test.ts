@@ -1,7 +1,7 @@
 import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
+import type { EventSigner } from 'rx-nostr';
 import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import type { Nip07Signer } from './auth.svelte';
 import {
 	publishChannelMessage,
 	publishEmojiReaction,
@@ -29,7 +29,7 @@ const nostterClientTag = [
 	'wss://yabu.me/'
 ];
 
-function createSigner(): Nip07Signer {
+function createSigner(): EventSigner {
 	return {
 		getPublicKey: vi.fn(async () => pubkey),
 		signEvent: vi.fn(async (event) => ({
