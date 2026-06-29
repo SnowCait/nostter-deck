@@ -502,6 +502,10 @@
 		isLikePostLiked={postActionController.isLiked}
 		isLikePostPublishing={postActionController.isLiking}
 		onLikePost={(post) => void postActionController.likePost(post)}
+		canRepostPost={postActionController.canRepost}
+		isRepostPostReposted={postActionController.isReposted}
+		isRepostPostPublishing={postActionController.isReposting}
+		onRepostPost={(post) => void postActionController.repostPost(post)}
 		canReactWithEmojiPost={postActionController.canReactWithEmoji}
 		isEmojiReactionPostPublishing={postActionController.isReactingWithEmoji}
 		onReactWithEmojiPost={(post, reaction) =>
@@ -550,6 +554,10 @@
 			isLikePostLiked={postActionController.isLiked}
 			isLikePostPublishing={postActionController.isLiking}
 			onLikePost={(post) => void postActionController.likePost(post)}
+			canRepostPost={postActionController.canRepost}
+			isRepostPostReposted={postActionController.isReposted}
+			isRepostPostPublishing={postActionController.isReposting}
+			onRepostPost={(post) => void postActionController.repostPost(post)}
 			canReactWithEmojiPost={postActionController.canReactWithEmoji}
 			isEmojiReactionPostPublishing={postActionController.isReactingWithEmoji}
 			onReactWithEmojiPost={(post, reaction) =>
@@ -582,6 +590,10 @@
 			isLikePostLiked={postActionController.isLiked}
 			isLikePostPublishing={postActionController.isLiking}
 			onLikePost={(post) => void postActionController.likePost(post)}
+			canRepostPost={postActionController.canRepost}
+			isRepostPostReposted={postActionController.isReposted}
+			isRepostPostPublishing={postActionController.isReposting}
+			onRepostPost={(post) => void postActionController.repostPost(post)}
 			canReactWithEmojiPost={postActionController.canReactWithEmoji}
 			isEmojiReactionPostPublishing={postActionController.isReactingWithEmoji}
 			onReactWithEmojiPost={(post, reaction) =>

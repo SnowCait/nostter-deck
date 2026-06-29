@@ -35,6 +35,10 @@
 		isLikePostLiked?: (post: Post) => boolean;
 		isLikePostPublishing?: (post: Post) => boolean;
 		onLikePost?: (post: Post) => void;
+		canRepostPost?: (post: Post) => boolean;
+		isRepostPostReposted?: (post: Post) => boolean;
+		isRepostPostPublishing?: (post: Post) => boolean;
+		onRepostPost?: (post: Post) => void;
 		canReactWithEmojiPost?: (post: Post) => boolean;
 		isEmojiReactionPostPublishing?: (post: Post) => boolean;
 		onReactWithEmojiPost?: (post: Post, reaction: EmojiReaction) => void;
@@ -61,6 +65,10 @@
 		isLikePostLiked = () => false,
 		isLikePostPublishing = () => false,
 		onLikePost,
+		canRepostPost = () => false,
+		isRepostPostReposted = () => false,
+		isRepostPostPublishing = () => false,
+		onRepostPost,
 		canReactWithEmojiPost = () => false,
 		isEmojiReactionPostPublishing = () => false,
 		onReactWithEmojiPost,
@@ -87,7 +95,14 @@
 			? 'text-rose-500 disabled:opacity-100 disabled:hover:text-rose-500 dark:text-rose-400 disabled:dark:hover:text-rose-400'
 			: ''
 	]);
+	const repostButtonClass = $derived([
+		postActionButtonClass,
+		isRepostPostReposted(post)
+			? 'text-emerald-600 disabled:opacity-100 disabled:hover:text-emerald-600 dark:text-emerald-400 disabled:dark:hover:text-emerald-400'
+			: ''
+	]);
 	const isLikeDisabled = $derived(!onLikePost || !canLikePost(post));
+	const isRepostDisabled = $derived(!onRepostPost || !canRepostPost(post));
 	const isEmojiReactionDisabled = $derived(!onReactWithEmojiPost || !canReactWithEmojiPost(post));
 	const keyboardNavigationKey = $derived(
 		post.id ?? `${post.pubkey}:${post.time}:${post.body.slice(0, 80)}`
@@ -103,6 +118,10 @@
 
 	function likePost() {
 		onLikePost?.(post);
+	}
+
+	function repostPost() {
+		onRepostPost?.(post);
 	}
 
 	function reactWithEmoji(reaction: EmojiReaction) {
@@ -268,12 +287,18 @@
 								</button>
 								<button
 									type="button"
-									disabled
-									class={postActionButtonClass}
+									disabled={isRepostDisabled}
+									class={repostButtonClass}
 									title={m.repost()}
 									aria-label={m.repost()}
+									aria-pressed={isRepostPostReposted(post)}
+									aria-busy={isRepostPostPublishing(post)}
+									onclick={repostPost}
 								>
-									<Repeat2 class="size-4" aria-hidden="true" />
+									<Repeat2
+										class={['size-4', isRepostPostReposted(post) ? 'stroke-[2.5]' : '']}
+										aria-hidden="true"
+									/>
 								</button>
 								<button
 									type="button"

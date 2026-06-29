@@ -1,12 +1,14 @@
 import { SvelteSet } from 'svelte/reactivity';
+import { ShortTextNote } from 'nostr-tools/kinds';
 import type { Post } from './types';
-import { getPostLikeTarget } from './post-actions';
+import { getPostLikeTarget, getPostRepostTarget } from './post-actions';
 import type { Nip07Signer } from '$lib/nostr/auth.svelte';
 import type { EmojiReaction } from '$lib/nostr/emoji-reactions';
 import { getNip65ReadRelaysForPubkey } from '$lib/nostr/nip65';
 import {
 	publishEmojiReaction,
 	publishLikeReaction,
+	publishRepost,
 	type PublishPostResult
 } from '$lib/nostr/publish';
 
@@ -25,6 +27,18 @@ export type EmojiReactionResult =
 	| PublishPostResult
 	| { ok: false; reason: 'no-target' | 'unauthenticated' | 'already-publishing' };
 
+export type RepostResult =
+	| PublishPostResult
+	| {
+			ok: false;
+			reason:
+				| 'no-target'
+				| 'unsupported-kind'
+				| 'unauthenticated'
+				| 'already-reposted'
+				| 'already-publishing';
+	  };
+
 export function createPostActionController({
 	getAccountPubkey,
 	getSigner,
@@ -32,7 +46,9 @@ export function createPostActionController({
 	getTargetReadRelays = getNip65ReadRelaysForPubkey
 }: PostActionControllerOptions) {
 	const likedTargetEventIds = new SvelteSet<string>();
+	const repostedTargetEventIds = new SvelteSet<string>();
 	const publishingLikeTargetEventIds = new SvelteSet<string>();
+	const publishingRepostTargetEventIds = new SvelteSet<string>();
 	const publishingEmojiReactionKeys = new SvelteSet<string>();
 	const publishingEmojiTargetEventIds = new SvelteSet<string>();
 
@@ -50,6 +66,20 @@ export function createPostActionController({
 		return Boolean(targetId && publishingLikeTargetEventIds.has(targetId));
 	}
 
+	function getRepostTargetId(post: Post) {
+		return getPostRepostTarget(post)?.id ?? null;
+	}
+
+	function isReposted(post: Post) {
+		const targetId = getRepostTargetId(post);
+		return Boolean(targetId && repostedTargetEventIds.has(targetId));
+	}
+
+	function isReposting(post: Post) {
+		const targetId = getRepostTargetId(post);
+		return Boolean(targetId && publishingRepostTargetEventIds.has(targetId));
+	}
+
 	function canLike(post: Post) {
 		return Boolean(
 			getLikeTargetId(post) &&
@@ -57,6 +87,17 @@ export function createPostActionController({
 			getSigner() &&
 			!isLiked(post) &&
 			!isLiking(post)
+		);
+	}
+
+	function canRepost(post: Post) {
+		const target = getPostRepostTarget(post);
+		return Boolean(
+			target?.kind === ShortTextNote &&
+			getAccountPubkey() &&
+			getSigner() &&
+			!isReposted(post) &&
+			!isReposting(post)
 		);
 	}
 
@@ -103,6 +144,29 @@ export function createPostActionController({
 		}
 	}
 
+	async function repostPost(post: Post): Promise<RepostResult> {
+		const target = getPostRepostTarget(post);
+		if (!target) return { ok: false, reason: 'no-target' };
+		if (target.kind !== ShortTextNote) return { ok: false, reason: 'unsupported-kind' };
+
+		const pubkey = getAccountPubkey();
+		const signer = getSigner();
+		if (!pubkey || !signer) return { ok: false, reason: 'unauthenticated' };
+		if (isReposted(post)) return { ok: false, reason: 'already-reposted' };
+		if (isReposting(post)) return { ok: false, reason: 'already-publishing' };
+
+		publishingRepostTargetEventIds.add(target.id);
+		try {
+			const result = await publishRepost(target, pubkey, signer, {
+				includeClientTag: getIncludeClientTag()
+			});
+			if (result.ok) repostedTargetEventIds.add(target.id);
+			return result;
+		} finally {
+			publishingRepostTargetEventIds.delete(target.id);
+		}
+	}
+
 	async function reactWithEmoji(post: Post, reaction: EmojiReaction): Promise<EmojiReactionResult> {
 		const target = getPostLikeTarget(post);
 		if (!target) return { ok: false, reason: 'no-target' };
@@ -136,6 +200,10 @@ export function createPostActionController({
 		isLiked,
 		isLiking,
 		likePost,
+		canRepost,
+		isReposted,
+		isReposting,
+		repostPost,
 		canReactWithEmoji,
 		isReactingWithEmoji,
 		reactWithEmoji

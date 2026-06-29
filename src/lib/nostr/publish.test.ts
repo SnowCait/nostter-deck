@@ -1,4 +1,4 @@
-import { ChannelMessage, Reaction, ShortTextNote } from 'nostr-tools/kinds';
+import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { Nip07Signer } from './auth.svelte';
@@ -6,6 +6,7 @@ import {
 	publishChannelMessage,
 	publishEmojiReaction,
 	publishLikeReaction,
+	publishRepost,
 	publishShortTextNote
 } from './publish';
 
@@ -68,7 +69,11 @@ describe('channel publishing', () => {
 		expect(send).toHaveBeenCalledWith(expect.objectContaining({ kind: ChannelMessage, pubkey }), {
 			completeOn: 'all-ok',
 			errorOnTimeout: true,
-			on: { defaultWriteRelays: true, relays: [channelRelay] }
+			on: { defaultWriteRelays: true, relays: [channelRelay] },
+			signer: expect.objectContaining({
+				getPublicKey: expect.any(Function),
+				signEvent: expect.any(Function)
+			})
 		});
 	});
 
@@ -131,7 +136,11 @@ describe('channel publishing', () => {
 		expect(send).toHaveBeenCalledWith(expect.objectContaining({ kind: Reaction, pubkey }), {
 			completeOn: 'all-ok',
 			errorOnTimeout: true,
-			on: { defaultWriteRelays: true, relays: [targetRelay] }
+			on: { defaultWriteRelays: true, relays: [targetRelay] },
+			signer: expect.objectContaining({
+				getPublicKey: expect.any(Function),
+				signEvent: expect.any(Function)
+			})
 		});
 	});
 
@@ -158,6 +167,31 @@ describe('channel publishing', () => {
 				content: '+'
 			})
 		);
+	});
+
+	test('publishes a NIP-18 repost without relay hints or embedded content', async () => {
+		const signer = createSigner();
+
+		await expect(
+			publishRepost({ id: targetEventId, pubkey: targetPubkey }, pubkey, signer, {
+				includeClientTag: true
+			})
+		).resolves.toMatchObject({ ok: true, event: { kind: Repost } });
+		expect(signer.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				kind: Repost,
+				tags: [['e', targetEventId], ['p', targetPubkey], [...nostterClientTag]],
+				content: ''
+			})
+		);
+		expect(send).toHaveBeenCalledWith(expect.objectContaining({ kind: Repost, pubkey }), {
+			completeOn: 'all-ok',
+			errorOnTimeout: true,
+			signer: expect.objectContaining({
+				getPublicKey: expect.any(Function),
+				signEvent: expect.any(Function)
+			})
+		});
 	});
 
 	test('publishes a Unicode NIP-25 emoji reaction', async () => {

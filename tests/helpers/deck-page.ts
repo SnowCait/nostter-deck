@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { ShortTextNote } from 'nostr-tools/kinds';
+import { ClientAuth, ShortTextNote } from 'nostr-tools/kinds';
 
 export const columnNames: string[] = [];
 export const sidebarButtonNames = ['Add column', 'Single column layout', 'Settings', 'Log in'];
@@ -29,42 +29,45 @@ const columnTypeLabels = {
 export type ColumnType = keyof typeof columnTypeLabels;
 
 export async function openDeck(page: Page, options: { isLoggedIn?: boolean } = {}) {
-	await page.addInitScript(({ isLoggedIn }) => {
-		if (!window.localStorage.getItem('PARAGLIDE_LOCALE')) {
-			window.localStorage.setItem('PARAGLIDE_LOCALE', 'en');
-		}
+	await page.addInitScript(
+		({ clientAuthKind, isLoggedIn }) => {
+			if (!window.localStorage.getItem('PARAGLIDE_LOCALE')) {
+				window.localStorage.setItem('PARAGLIDE_LOCALE', 'en');
+			}
 
-		if (isLoggedIn) {
-			Object.defineProperty(window, 'nostr', {
-				configurable: true,
-				value: {
-					getPublicKey: async () =>
-						'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-					signEvent: async (event: Record<string, unknown>) => ({
-						...event,
-						id: 'f'.repeat(64),
-						pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-						sig: '0'.repeat(128)
+			if (isLoggedIn) {
+				Object.defineProperty(window, 'nostr', {
+					configurable: true,
+					value: {
+						getPublicKey: async () =>
+							'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+						signEvent: async (event: Record<string, unknown>) => ({
+							...event,
+							id: event.kind === clientAuthKind ? 'e'.repeat(64) : 'f'.repeat(64),
+							pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+							sig: '0'.repeat(128)
+						})
+					}
+				});
+				const pubkey = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+				window.localStorage.setItem(
+					'nostter:accounts',
+					JSON.stringify({
+						activeAccountId: `nip07:${pubkey}`,
+						accounts: [
+							{
+								id: `nip07:${pubkey}`,
+								method: 'nip07',
+								pubkey,
+								createdAt: 1
+							}
+						]
 					})
-				}
-			});
-			const pubkey = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-			window.localStorage.setItem(
-				'nostter:accounts',
-				JSON.stringify({
-					activeAccountId: `nip07:${pubkey}`,
-					accounts: [
-						{
-							id: `nip07:${pubkey}`,
-							method: 'nip07',
-							pubkey,
-							createdAt: 1
-						}
-					]
-				})
-			);
-		}
-	}, options);
+				);
+			}
+		},
+		{ ...options, clientAuthKind: ClientAuth }
+	);
 	await page.goto('/');
 }
 

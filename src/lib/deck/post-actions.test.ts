@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { Repost, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
-import { getPostLikeTarget } from './post-actions';
+import { getPostLikeTarget, getPostRepostTarget } from './post-actions';
 import type { Post } from './types';
 import { eventToPost } from '$lib/nostr/posts';
 
@@ -22,6 +22,7 @@ describe('post actions', () => {
 		const source = event('1'.repeat(64));
 
 		expect(getPostLikeTarget(eventToPost(source))).toBe(source);
+		expect(getPostRepostTarget(eventToPost(source))).toBe(source);
 	});
 
 	test('uses the referenced event for repost and reaction cards', () => {
@@ -34,6 +35,7 @@ describe('post actions', () => {
 		} satisfies Post;
 
 		expect(getPostLikeTarget(post)).toBe(referenced);
+		expect(getPostRepostTarget(post)).toBe(referenced);
 	});
 
 	test('does not expose a like target while a referenced event is unavailable', () => {
@@ -46,5 +48,6 @@ describe('post actions', () => {
 		} satisfies Post;
 
 		expect(getPostLikeTarget(post)).toBeNull();
+		expect(getPostRepostTarget(post)).toBeNull();
 	});
 });

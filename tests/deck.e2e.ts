@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { ChannelCreation, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
+import { ChannelCreation, ClientAuth, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import { decode, neventEncode, nprofileEncode, npubEncode } from 'nostr-tools/nip19';
 import { defaultRelays, profileRelays, searchRelays } from '$lib/nostr/relays';
 import { fakeRelayConnectionCounts, installFakeNostrRelay } from './helpers/fake-nostr-relay';
@@ -1853,7 +1853,9 @@ test.describe('nostter deck', () => {
 			.getByText('Direct thread reply')
 			.first()
 			.locator('xpath=ancestor::article');
-		await expect(replyArticle.getByRole('button', { name: 'Reply' })).toHaveCount(0);
+		const replyButton = replyArticle.getByRole('button', { name: 'Reply' });
+		await expect(replyButton).toBeVisible();
+		await expect(replyButton).toBeDisabled();
 		await expect(page.getByTestId('thread-column')).toHaveCount(0);
 
 		const threadButton = replyArticle.getByRole('button', { name: 'Open thread' });
@@ -2527,10 +2529,10 @@ test.describe('nostter deck', () => {
 		await expect(postAvatar).toHaveClass(/rounded-full/);
 		await expect(sidebarAvatar).toHaveClass(/rounded-full/);
 		await expect(postArticle.getByRole('button', { name: 'Post menu' })).toBeVisible();
-		await expect(postArticle.getByRole('button', { name: 'Reply' })).toHaveCount(0);
-		await expect(postArticle.getByRole('button', { name: 'Repost' })).toHaveCount(0);
-		await expect(postArticle.getByRole('button', { name: 'Like' })).toHaveCount(0);
-		await expect(postArticle.getByRole('button', { name: 'Share' })).toHaveCount(0);
+		await expect(postArticle.getByRole('button', { name: 'Reply' })).toBeDisabled();
+		await expect(postArticle.getByRole('button', { name: 'Repost' })).toBeVisible();
+		await expect(postArticle.getByRole('button', { name: 'Like' })).toBeVisible();
+		await expect(postArticle.getByRole('button', { name: 'Share' })).toBeDisabled();
 
 		await page.getByRole('button', { name: 'Settings' }).click();
 		const avatarShapeSelect = page.getByLabel('Profile icon');
@@ -2599,7 +2601,7 @@ test.describe('nostter deck', () => {
 	test('logs in through NIP-07 and removes the active account from the account menu', async ({
 		page
 	}) => {
-		await page.addInitScript(() => {
+		await page.addInitScript((clientAuthKind) => {
 			Object.defineProperty(window, 'nostr', {
 				configurable: true,
 				value: {
@@ -2607,13 +2609,13 @@ test.describe('nostter deck', () => {
 						'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
 					signEvent: async (event: Record<string, unknown>) => ({
 						...event,
-						id: 'f'.repeat(64),
+						id: event.kind === clientAuthKind ? 'e'.repeat(64) : 'f'.repeat(64),
 						pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
 						sig: '0'.repeat(128)
 					})
 				}
 			});
-		});
+		}, ClientAuth);
 		await openDeck(page);
 
 		await sidebar(page).getByRole('button', { name: 'Log in' }).click();
@@ -2822,6 +2824,50 @@ test.describe('nostter deck', () => {
 			.toBe(true);
 	});
 
+	test('publishes a NIP-18 repost without relay hints or embedded content', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page, { isLoggedIn: true });
+		await addCustomTimelineColumn(page);
+
+		const customColumn = deckColumns(page).last();
+		const postArticle = customColumn
+			.locator('article')
+			.filter({ hasText: 'Hello from a custom Nostr timeline' })
+			.first();
+		await expect(postArticle).toBeVisible();
+
+		await postArticle.hover();
+		const repostButton = postArticle.getByRole('button', { name: 'Repost' });
+		await expect(repostButton).toBeEnabled();
+		await repostButton.click();
+
+		await expect
+			.poll(() =>
+				page.evaluate(
+					(clientTag) =>
+						(window.__nostterFakeRelayPublishedEvents ?? []).some(({ event }) => {
+							const published = event as Record<string, unknown>;
+							return (
+								published.id === 'f'.repeat(64) &&
+								published.pubkey === 'a'.repeat(64) &&
+								published.kind === 6 &&
+								JSON.stringify(published.tags) ===
+									JSON.stringify([
+										['e', 'event-custom-timeline-1'],
+										['p', 'a'.repeat(64)],
+										clientTag
+									]) &&
+								published.content === '' &&
+								published.sig === '0'.repeat(128)
+							);
+						}),
+					nostterClientTag
+				)
+			)
+			.toBe(true);
+		await expect(repostButton).toHaveAttribute('aria-pressed', 'true');
+	});
+
 	test('publishes an unlimited NIP-28 message from a channel column', async ({ page }) => {
 		await installFakeNostrRelay(page);
 		await openDeck(page, { isLoggedIn: true });
@@ -3022,18 +3068,22 @@ test.describe('nostter deck', () => {
 
 		await expect
 			.poll(() =>
-				page.evaluate(() =>
-					(window.__nostterFakeRelayAuthEvents ?? []).some(({ relay, event }) => {
-						const authEvent = event as Record<string, unknown>;
-						const tags = authEvent.tags as string[][];
-						return (
-							authEvent.kind === 22242 &&
-							authEvent.pubkey === 'a'.repeat(64) &&
-							authEvent.content === '' &&
-							tags.some((tag) => tag[0] === 'relay' && tag[1] === relay) &&
-							tags.some((tag) => tag[0] === 'challenge' && tag[1] === 'nostter-fake-auth-challenge')
-						);
-					})
+				page.evaluate(
+					(clientAuthKind) =>
+						(window.__nostterFakeRelayAuthEvents ?? []).some(({ relay, event }) => {
+							const authEvent = event as Record<string, unknown>;
+							const tags = authEvent.tags as string[][];
+							return (
+								authEvent.kind === clientAuthKind &&
+								authEvent.pubkey === 'a'.repeat(64) &&
+								authEvent.content === '' &&
+								tags.some((tag) => tag[0] === 'relay' && tag[1] === relay) &&
+								tags.some(
+									(tag) => tag[0] === 'challenge' && tag[1] === 'nostter-fake-auth-challenge'
+								)
+							);
+						}),
+					ClientAuth
 				)
 			)
 			.toBe(true);
@@ -3047,10 +3097,12 @@ test.describe('nostter deck', () => {
 		await expect(page.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expect
 			.poll(() =>
-				page.evaluate(() =>
-					(window.__nostterFakeRelayAuthEvents ?? []).some(
-						({ event }) => (event as Record<string, unknown>).kind === 22242
-					)
+				page.evaluate(
+					(clientAuthKind) =>
+						(window.__nostterFakeRelayAuthEvents ?? []).some(
+							({ event }) => (event as Record<string, unknown>).kind === clientAuthKind
+						),
+					ClientAuth
 				)
 			)
 			.toBe(true);

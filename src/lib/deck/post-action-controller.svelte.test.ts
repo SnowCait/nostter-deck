@@ -8,10 +8,12 @@ import type { Nip07Signer } from '$lib/nostr/auth.svelte';
 
 const publishLikeReaction = vi.hoisted(() => vi.fn());
 const publishEmojiReaction = vi.hoisted(() => vi.fn());
+const publishRepost = vi.hoisted(() => vi.fn());
 
 vi.mock('$lib/nostr/publish', () => ({
 	publishEmojiReaction,
-	publishLikeReaction
+	publishLikeReaction,
+	publishRepost
 }));
 
 const pubkey = 'a'.repeat(64);
@@ -79,10 +81,24 @@ function publishedReaction(target: Nostr.Event) {
 	} as const;
 }
 
+function publishedRepost(target: Nostr.Event) {
+	return {
+		ok: true,
+		event: {
+			...target,
+			id: 'e'.repeat(64),
+			kind: 6,
+			pubkey,
+			content: ''
+		}
+	} as const;
+}
+
 describe('post action controller', () => {
 	beforeEach(() => {
 		publishLikeReaction.mockReset();
 		publishEmojiReaction.mockReset();
+		publishRepost.mockReset();
 	});
 
 	test('publishes a like and remembers the target event as liked', async () => {
@@ -166,8 +182,78 @@ describe('post action controller', () => {
 		expect(publishLikeReaction).not.toHaveBeenCalled();
 	});
 
-	test('prevents duplicate emoji reaction publishing while the same reaction is in flight', async () => {
+	test('publishes a repost and remembers the target event as reposted', async () => {
 		const target = event('5'.repeat(64));
+		const post = eventToPost(target);
+		const harness = createHarness();
+		publishRepost.mockResolvedValueOnce(publishedRepost(target));
+
+		await expect(harness.controller.repostPost(post)).resolves.toMatchObject({ ok: true });
+
+		expect(publishRepost).toHaveBeenCalledWith(target, pubkey, expect.anything(), {
+			includeClientTag: true
+		});
+		expect(harness.getTargetReadRelays).not.toHaveBeenCalled();
+		expect(harness.controller.isReposted(post)).toBe(true);
+		expect(harness.controller.canRepost(post)).toBe(false);
+	});
+
+	test('prevents duplicate repost publishing while a repost is in flight', async () => {
+		const target = event('6'.repeat(64));
+		const post = eventToPost(target);
+		const harness = createHarness();
+		let resolvePublish!: (value: ReturnType<typeof publishedRepost>) => void;
+		publishRepost.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolvePublish = resolve;
+			})
+		);
+
+		const firstResult = harness.controller.repostPost(post);
+		expect(harness.controller.isReposting(post)).toBe(true);
+		await expect(harness.controller.repostPost(post)).resolves.toEqual({
+			ok: false,
+			reason: 'already-publishing'
+		});
+
+		resolvePublish(publishedRepost(target));
+		await expect(firstResult).resolves.toMatchObject({ ok: true });
+
+		expect(publishRepost).toHaveBeenCalledOnce();
+		expect(harness.controller.isReposting(post)).toBe(false);
+	});
+
+	test('does not mark a post as reposted when publishing fails', async () => {
+		const target = event('7'.repeat(64));
+		const post = eventToPost(target);
+		const harness = createHarness();
+		publishRepost.mockResolvedValueOnce({ ok: false, reason: 'relay-failed' });
+
+		await expect(harness.controller.repostPost(post)).resolves.toEqual({
+			ok: false,
+			reason: 'relay-failed'
+		});
+
+		expect(harness.controller.isReposted(post)).toBe(false);
+		expect(harness.controller.canRepost(post)).toBe(true);
+	});
+
+	test('does not publish a repost for non-kind 1 events', async () => {
+		const target = event('8'.repeat(64), { kind: Reaction });
+		const post = eventToPost(target);
+		const harness = createHarness();
+
+		await expect(harness.controller.repostPost(post)).resolves.toEqual({
+			ok: false,
+			reason: 'unsupported-kind'
+		});
+
+		expect(harness.controller.canRepost(post)).toBe(false);
+		expect(publishRepost).not.toHaveBeenCalled();
+	});
+
+	test('prevents duplicate emoji reaction publishing while the same reaction is in flight', async () => {
+		const target = event('9'.repeat(64));
 		const post = eventToPost(target);
 		const harness = createHarness();
 		const reaction = { type: 'unicode', emoji: '🔥' } as const;

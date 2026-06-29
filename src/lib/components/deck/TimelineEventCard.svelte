@@ -31,6 +31,10 @@
 		isLikePostLiked: (post: Post) => boolean;
 		isLikePostPublishing: (post: Post) => boolean;
 		onLikePost: (post: Post) => void;
+		canRepostPost: (post: Post) => boolean;
+		isRepostPostReposted: (post: Post) => boolean;
+		isRepostPostPublishing: (post: Post) => boolean;
+		onRepostPost: (post: Post) => void;
 		canReactWithEmojiPost: (post: Post) => boolean;
 		isEmojiReactionPostPublishing: (post: Post) => boolean;
 		onReactWithEmojiPost: (post: Post, reaction: EmojiReaction) => void;
@@ -58,6 +62,10 @@
 		isLikePostLiked,
 		isLikePostPublishing,
 		onLikePost,
+		canRepostPost,
+		isRepostPostReposted,
+		isRepostPostPublishing,
+		onRepostPost,
 		canReactWithEmojiPost,
 		isEmojiReactionPostPublishing,
 		onReactWithEmojiPost,
@@ -120,6 +128,10 @@
 		{isLikePostLiked}
 		{isLikePostPublishing}
 		{onLikePost}
+		{canRepostPost}
+		{isRepostPostReposted}
+		{isRepostPostPublishing}
+		{onRepostPost}
 		{canReactWithEmojiPost}
 		{isEmojiReactionPostPublishing}
 		{onReactWithEmojiPost}

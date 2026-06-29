@@ -1,5 +1,5 @@
-import { ChannelMessage, Reaction, ShortTextNote } from 'nostr-tools/kinds';
-import { now } from 'rx-nostr';
+import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
+import { now, type EventSigner } from 'rx-nostr';
 import { catchError, defaultIfEmpty, filter, firstValueFrom, map, of, take } from 'rxjs';
 import type * as Nostr from 'nostr-typedef';
 import { getNostrClient } from './client';
@@ -16,6 +16,7 @@ export type PublishOptions = {
 
 type PublishEventTemplate = Pick<Nostr.Event, 'kind' | 'tags' | 'content' | 'created_at'>;
 type PublishReactionTarget = Pick<Nostr.Event, 'id' | 'kind' | 'pubkey'>;
+type PublishRepostTarget = Pick<Nostr.Event, 'id' | 'pubkey'>;
 
 const nostterClientTag = [
 	'client',
@@ -52,10 +53,16 @@ async function publishEvent(
 		return { ok: false, reason: 'account-mismatch' };
 	}
 
+	const signedEventSigner: EventSigner = {
+		getPublicKey: () => signer.getPublicKey(),
+		signEvent: async <K extends number>() => signedEvent as Nostr.Event<K>
+	};
+
 	try {
 		const accepted = await firstValueFrom(
 			getNostrClient()
 				.send(signedEvent, {
+					signer: signedEventSigner,
 					completeOn: 'all-ok',
 					errorOnTimeout: true,
 					...(relays ? { on: { defaultWriteRelays: true, relays } } : {})
@@ -131,6 +138,30 @@ export function publishLikeReaction(
 		pubkey,
 		signer,
 		targetReadRelays
+	);
+}
+
+export function publishRepost(
+	target: PublishRepostTarget,
+	pubkey: string,
+	signer: Nip07Signer,
+	{ includeClientTag = false }: PublishOptions = {}
+) {
+	return publishEvent(
+		{
+			kind: Repost,
+			tags: withClientTag(
+				[
+					['e', target.id],
+					['p', target.pubkey]
+				],
+				includeClientTag
+			),
+			content: '',
+			created_at: now()
+		},
+		pubkey,
+		signer
 	);
 }
 

@@ -373,6 +373,7 @@ export async function installFakeNostrRelay(
 				url: string;
 				authenticated = false;
 				authChallenge = 'nostter-fake-auth-challenge';
+				publishAuthRequired = authMode === 'required';
 				subscriptions = new Map<
 					string,
 					Array<{
@@ -424,8 +425,8 @@ export async function installFakeNostrRelay(
 						const event = message[1] as { id?: string };
 						relayPublishedEvents.push({ relay: this.url, event });
 						setTimeout(() => {
-							if (authMode === 'required' && !this.authenticated) {
-								this.emitMessage(['AUTH', this.authChallenge]);
+							if (authMode === 'required' && (!this.authenticated || this.publishAuthRequired)) {
+								this.publishAuthRequired = false;
 								if (event.id) {
 									this.emitMessage([
 										'OK',
@@ -434,6 +435,7 @@ export async function installFakeNostrRelay(
 										'auth-required: authentication required'
 									]);
 								}
+								this.emitMessage(['AUTH', this.authChallenge]);
 								return;
 							}
 							if (event.id) this.emitMessage(['OK', event.id, !rejectPublish, 'rejected']);
