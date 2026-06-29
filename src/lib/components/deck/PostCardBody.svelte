@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { npubEncode } from 'nostr-tools/nip19';
 	import { linkifyPostContent, type PostContentToken } from '$lib/deck/post-content-links';
 	import {
 		clearUrlPreviewImage,
@@ -12,7 +11,7 @@
 	import type { Post } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
-	import type { Profile } from '$lib/nostr/profiles';
+	import { getProfileDisplayName, type Profile } from '$lib/nostr/profiles';
 	import type { AvatarShape } from '$lib/user-settings';
 	import CustomEmojiText from './CustomEmojiText.svelte';
 	import NostrQuoteCard from './NostrQuoteCard.svelte';
@@ -104,8 +103,7 @@
 		token: Extract<PostContentToken, { type: 'nostrReference' }> & { pubkey: string }
 	) {
 		const profile = getProfile(token.pubkey);
-		const displayName = profile?.display_name ?? profile?.name;
-		return displayName ?? npubEncode(token.pubkey).slice(0, 12);
+		return getProfileDisplayName(profile, token.pubkey);
 	}
 
 	function getProfileReferenceEmojis(

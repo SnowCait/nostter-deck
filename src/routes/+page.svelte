@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount, tick } from 'svelte';
 	import { CalendarClock, Image, Plus, Send, Smile, UserRound, X } from '@lucide/svelte';
-	import { npubEncode } from 'nostr-tools/nip19';
 	import AddColumnDialog from '$lib/components/deck/AddColumnDialog.svelte';
 	import DeckColumn from '$lib/components/deck/DeckColumn.svelte';
 	import KeyboardShortcutsDialog from '$lib/components/deck/KeyboardShortcutsDialog.svelte';
@@ -51,7 +50,7 @@
 		writeMutedPubkeys
 	} from '$lib/muted-users';
 	import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
-	import { getProfile, requestProfiles } from '$lib/nostr/profiles';
+	import { getProfile, getProfileDisplayName, requestProfiles } from '$lib/nostr/profiles';
 	import {
 		clearDefaultRelays,
 		configureCachedNip65Relays,
@@ -108,9 +107,7 @@
 	const accountPubkey = $derived(authState.pubkey);
 	const accountProfile = $derived(accountPubkey ? getProfile(accountPubkey) : undefined);
 	const accountName = $derived(
-		accountProfile?.display_name ??
-			accountProfile?.name ??
-			(accountPubkey ? `${npubEncode(accountPubkey).slice(0, 16)}…` : '')
+		accountPubkey ? getProfileDisplayName(accountProfile, accountPubkey) : ''
 	);
 	const appLocale = $derived(getLocale());
 	const textClass = $derived(textClassByFontSize[fontSize]);

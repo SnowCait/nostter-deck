@@ -7,7 +7,7 @@
 	import type { CustomEmojiReactionCandidate, EmojiReaction } from '$lib/nostr/emoji-reactions';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape, PostActionVisibility } from '$lib/user-settings';
-	import type { Profile } from '$lib/nostr/profiles';
+	import { getProfileDisplayName, type Profile } from '$lib/nostr/profiles';
 	import type { Locale } from '$lib/paraglide/runtime.js';
 	import CustomEmojiText from './CustomEmojiText.svelte';
 	import ProfileAvatar from './ProfileAvatar.svelte';
@@ -75,9 +75,7 @@
 		onOpenHashtag
 	}: Props = $props();
 	const profile = $derived(getProfile(pubkey));
-	const displayName = $derived(
-		profile?.display_name ?? profile?.name ?? npubEncode(pubkey).slice(0, 16)
-	);
+	const displayName = $derived(getProfileDisplayName(profile, pubkey));
 	const npub = $derived(npubEncode(pubkey));
 	const websiteUrl = $derived(normalizeWebsiteUrl(profile?.website));
 

@@ -9,7 +9,7 @@
 		VolumeX
 	} from '@lucide/svelte';
 	import { npubEncode } from 'nostr-tools/nip19';
-	import type { Profile } from '$lib/nostr/profiles';
+	import { getProfileDisplayName, type Profile } from '$lib/nostr/profiles';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import * as Select from '$lib/components/ui/select';
 	import type { FontSizeTextClasses } from '$lib/font-size';
@@ -185,7 +185,7 @@
 
 	function getMutedUserName(pubkey: string) {
 		const profile = getProfile(pubkey);
-		return profile?.display_name ?? profile?.name ?? npubEncode(pubkey).slice(0, 16);
+		return getProfileDisplayName(profile, pubkey);
 	}
 </script>
 

@@ -2,7 +2,7 @@ import { ChannelMessage, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
 import type { Post, PostContext } from '$lib/deck/types';
 import { parseCustomEmojis } from './custom-emoji';
-import type { Profile } from './profiles';
+import { getProfileDisplayName, type Profile } from './profiles';
 
 const accentClasses = [
 	'bg-sky-500',
@@ -236,20 +236,16 @@ function isLikeReaction(content: string) {
 }
 
 function createPostAuthor(pubkey: string, profile?: Profile) {
-	const displayName = profile?.display_name ?? profile?.name;
+	const fallbackName = getProfileDisplayName(undefined, pubkey);
 
 	return {
 		pubkey,
-		author: displayName || shortenPubkey(pubkey),
-		handle: shortenPubkey(pubkey),
+		author: getProfileDisplayName(profile, pubkey),
+		handle: fallbackName,
 		avatarUrl: profile?.picture,
 		authorEmojis: profile?.customEmojis ?? [],
 		accent: accentClasses[hashString(pubkey) % accentClasses.length]
 	};
-}
-
-function shortenPubkey(pubkey: string) {
-	return `${pubkey.slice(0, 8)}:${pubkey.slice(-4)}`;
 }
 
 function formatRelativeTime(createdAt: number) {

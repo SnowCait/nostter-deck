@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
+import { npubEncode } from 'nostr-tools/nip19';
 import type * as Nostr from 'nostr-typedef';
 import type { Profile } from './profiles';
 import {
@@ -106,6 +107,96 @@ describe('posts', () => {
 			repostPubkey,
 			reactionPubkey
 		]);
+	});
+
+	test('falls back to name when display_name is empty', () => {
+		const emptyDisplayNameTarget: Profile = {
+			display_name: '',
+			name: 'Named Target',
+			customEmojis: []
+		};
+		const reaction = event({
+			id: '2'.repeat(64),
+			pubkey: reactionPubkey,
+			kind: Reaction,
+			content: '+'
+		});
+		const repost = event({
+			id: '3'.repeat(64),
+			pubkey: repostPubkey,
+			kind: Repost
+		});
+		const getProfileWithEmptyDisplayName = (pubkey: string): Profile | undefined => {
+			if (pubkey === reactionPubkey) {
+				return { display_name: '', name: 'Named Reaction', customEmojis: [] };
+			}
+			if (pubkey === repostPubkey) {
+				return { display_name: '', name: 'Named Repost', customEmojis: [] };
+			}
+			return getProfile(pubkey);
+		};
+
+		expect(eventToPost(event({}), emptyDisplayNameTarget)).toMatchObject({
+			author: 'Named Target'
+		});
+		expect(reactionEventToPost(reaction, event({}), getProfileWithEmptyDisplayName)).toMatchObject({
+			contexts: [
+				{
+					message: {
+						params: { name: 'Named Reaction' }
+					}
+				}
+			]
+		});
+		expect(repostEventToPost(repost, event({}), getProfileWithEmptyDisplayName)).toMatchObject({
+			contexts: [
+				{
+					message: {
+						params: { name: 'Named Repost' }
+					}
+				}
+			]
+		});
+	});
+
+	test('falls back to the npub prefix when profile names are unavailable', () => {
+		const reaction = event({
+			id: '2'.repeat(64),
+			pubkey: reactionPubkey,
+			kind: Reaction,
+			content: '+'
+		});
+		const repost = event({
+			id: '3'.repeat(64),
+			pubkey: repostPubkey,
+			kind: Repost
+		});
+		const getMissingProfile = () => undefined;
+
+		expect(eventToPost(event({}), undefined)).toMatchObject({
+			author: npubEncode(targetPubkey).slice(0, 12),
+			handle: npubEncode(targetPubkey).slice(0, 12)
+		});
+		expect(reactionEventToPost(reaction, event({}), getMissingProfile)).toMatchObject({
+			author: npubEncode(targetPubkey).slice(0, 12),
+			contexts: [
+				{
+					message: {
+						params: { name: npubEncode(reactionPubkey).slice(0, 12) }
+					}
+				}
+			]
+		});
+		expect(repostEventToPost(repost, event({}), getMissingProfile)).toMatchObject({
+			author: npubEncode(targetPubkey).slice(0, 12),
+			contexts: [
+				{
+					message: {
+						params: { name: npubEncode(repostPubkey).slice(0, 12) }
+					}
+				}
+			]
+		});
 	});
 
 	test.each(['+', ''])('formats %s reaction as a like', (content) => {

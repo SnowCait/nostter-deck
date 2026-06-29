@@ -1,5 +1,6 @@
 import { createRxBackwardReq, latestEach, uniq, type LazyFilter, type ReqPacket } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
+import { npubEncode } from 'nostr-tools/nip19';
 import { bufferTime, from, mergeMap, type Unsubscribable } from 'rxjs';
 import { SvelteMap } from 'svelte/reactivity';
 import { getNostrClient } from './client';
@@ -8,6 +9,8 @@ import { parseCustomEmojis, type CustomEmoji } from './custom-emoji';
 export type Profile = Nostr.Content.Metadata & {
 	customEmojis: CustomEmoji[];
 };
+
+type ProfileNameSource = Pick<Nostr.Content.Metadata, 'display_name' | 'name'>;
 
 const profilesByPubkey = new SvelteMap<string, Profile>();
 const requestedPubkeys = new Set<string>();
@@ -102,6 +105,14 @@ export function getProfile(pubkey: string) {
 	return profilesByPubkey.get(pubkey);
 }
 
+export function getProfileDisplayName(profile: ProfileNameSource | undefined, pubkey: string) {
+	return (
+		getNonEmptyProfileName(profile?.display_name) ??
+		getNonEmptyProfileName(profile?.name) ??
+		npubEncode(pubkey).slice(0, 12)
+	);
+}
+
 export function disposeProfileCache() {
 	profileSubscription?.unsubscribe();
 	profileReq = null;
@@ -119,4 +130,8 @@ function parseProfile(content: string): Nostr.Content.Metadata | null {
 	} catch {
 		return null;
 	}
+}
+
+function getNonEmptyProfileName(value: string | undefined) {
+	return value === undefined || value === '' ? null : value;
 }

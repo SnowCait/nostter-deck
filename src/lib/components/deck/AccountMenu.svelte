@@ -7,7 +7,7 @@
 	import type { AccountRecord } from '$lib/nostr/accounts';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import * as Popover from '$lib/components/ui/popover';
-	import type { Profile } from '$lib/nostr/profiles';
+	import { getProfileDisplayName, type Profile } from '$lib/nostr/profiles';
 	import type { AvatarShape } from '$lib/user-settings';
 	import AccountLoginDialog from './AccountLoginDialog.svelte';
 	import ProfileAvatar from './ProfileAvatar.svelte';
@@ -70,7 +70,7 @@
 	}
 
 	function getAccountName() {
-		return accountProfile?.display_name ?? accountProfile?.name ?? m.account_npub();
+		return accountPubkey ? getProfileDisplayName(accountProfile, accountPubkey) : m.account_npub();
 	}
 
 	function getShortNpub() {
@@ -80,7 +80,7 @@
 
 	function getAccountDisplayName(account: AccountRecord) {
 		const profile = getProfile(account.pubkey);
-		return profile?.display_name ?? profile?.name ?? m.account_npub();
+		return getProfileDisplayName(profile, account.pubkey);
 	}
 
 	function getAccountShortNpub(account: AccountRecord) {
