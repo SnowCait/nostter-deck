@@ -1,6 +1,15 @@
 <script lang="ts">
 	import { onDestroy, onMount, tick } from 'svelte';
-	import { CalendarClock, Image, Plus, Send, Smile, UserRound, X } from '@lucide/svelte';
+	import {
+		CalendarClock,
+		Image,
+		MessageCircle,
+		Plus,
+		Send,
+		Smile,
+		UserRound,
+		X
+	} from '@lucide/svelte';
 	import AddColumnDialog from '$lib/components/deck/AddColumnDialog.svelte';
 	import DeckColumn from '$lib/components/deck/DeckColumn.svelte';
 	import KeyboardShortcutsDialog from '$lib/components/deck/KeyboardShortcutsDialog.svelte';
@@ -498,6 +507,8 @@
 		profileRelays={defaultProfileRelays}
 		{isMutedUser}
 		onMuteUser={muteUser}
+		canReplyPost={composer.canReply}
+		onReplyPost={(post) => void composer.openReply(post)}
 		canLikePost={postActionController.canLike}
 		isLikePostLiked={postActionController.isLiked}
 		isLikePostPublishing={postActionController.isLiking}
@@ -550,6 +561,8 @@
 			profileRelays={defaultProfileRelays}
 			{isMutedUser}
 			onMuteUser={muteUser}
+			canReplyPost={composer.canReply}
+			onReplyPost={(post) => void composer.openReply(post)}
 			canLikePost={postActionController.canLike}
 			isLikePostLiked={postActionController.isLiked}
 			isLikePostPublishing={postActionController.isLiking}
@@ -586,6 +599,8 @@
 			profileRelays={defaultProfileRelays}
 			{isMutedUser}
 			onMuteUser={muteUser}
+			canReplyPost={composer.canReply}
+			onReplyPost={(post) => void composer.openReply(post)}
 			canLikePost={postActionController.canLike}
 			isLikePostLiked={postActionController.isLiked}
 			isLikePostPublishing={postActionController.isLiking}
@@ -683,9 +698,13 @@
 				class="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-3 py-2.5 dark:border-slate-800"
 			>
 				<div class="flex min-w-0 items-center gap-2">
-					<Send class="size-4 shrink-0 text-sky-500" aria-hidden="true" />
+					{#if composer.isReplyMode}
+						<MessageCircle class="size-4 shrink-0 text-sky-500" aria-hidden="true" />
+					{:else}
+						<Send class="size-4 shrink-0 text-sky-500" aria-hidden="true" />
+					{/if}
 					<h2 id="compose-panel-title" class={['min-w-0 truncate font-bold', textClass.heading]}>
-						{m.action_post()}
+						{composer.isReplyMode ? m.reply() : m.action_post()}
 					</h2>
 				</div>
 				<button
@@ -716,14 +735,32 @@
 					<p class={['min-w-0 truncate font-bold', textClass.control]}>{accountName}</p>
 				</div>
 
-				<label class="sr-only" for="compose-text">{m.post_text()}</label>
+				{#if composer.isReplyMode && composer.replyTargetPost}
+					<div
+						class={[
+							'mb-3 shrink-0 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300',
+							textClass.control
+						]}
+					>
+						<p class="truncate font-semibold">
+							{m.replying_to_author({ name: composer.replyTargetPost.author })}
+						</p>
+						<p class={['mt-1 line-clamp-3 whitespace-pre-wrap', textClass.meta]}>
+							{composer.replyTargetPost.body}
+						</p>
+					</div>
+				{/if}
+
+				<label class="sr-only" for="compose-text">
+					{composer.isReplyMode ? m.reply_text() : m.post_text()}
+				</label>
 				<textarea
 					id="compose-text"
 					class={[
 						'min-h-[220px] flex-1 resize-none rounded-md border border-slate-200 bg-white p-3 text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
 						textClass.textarea
 					]}
-					placeholder={m.compose_placeholder()}
+					placeholder={composer.isReplyMode ? m.reply_placeholder() : m.compose_placeholder()}
 					disabled={composer.isPublishing}
 					aria-keyshortcuts="Control+Enter Meta+Enter"
 					bind:this={composeTextarea}
@@ -777,7 +814,11 @@
 						disabled={!composer.canSubmit}
 						onclick={composer.publish}
 					>
-						{composer.isPublishing ? m.post_sending() : m.action_post()}
+						{#if composer.isPublishing}
+							{composer.isReplyMode ? m.reply_sending() : m.post_sending()}
+						{:else}
+							{composer.isReplyMode ? m.reply() : m.action_post()}
+						{/if}
 					</button>
 				</div>
 			</div>

@@ -27,6 +27,8 @@
 		profileRelays: string[];
 		isMutedUser: (pubkey: string) => boolean;
 		onMuteUser: (pubkey: string) => void;
+		canReplyPost: (post: Post) => boolean;
+		onReplyPost: (post: Post) => void;
 		canLikePost: (post: Post) => boolean;
 		isLikePostLiked: (post: Post) => boolean;
 		isLikePostPublishing: (post: Post) => boolean;
@@ -58,6 +60,8 @@
 		profileRelays,
 		isMutedUser,
 		onMuteUser,
+		canReplyPost,
+		onReplyPost,
 		canLikePost,
 		isLikePostLiked,
 		isLikePostPublishing,
@@ -124,6 +128,8 @@
 		{isMuted}
 		{isMutedUser}
 		{onMuteUser}
+		{canReplyPost}
+		{onReplyPost}
 		{canLikePost}
 		{isLikePostLiked}
 		{isLikePostPublishing}

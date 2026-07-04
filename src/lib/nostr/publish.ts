@@ -2,6 +2,7 @@ import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kin
 import { now, type EventSigner } from 'rx-nostr';
 import { catchError, defaultIfEmpty, filter, firstValueFrom, map, of, take } from 'rxjs';
 import type * as Nostr from 'nostr-typedef';
+import { buildNip10ReplyTags } from '$lib/deck/post-actions';
 import { getNostrClient } from './client';
 import type { EmojiReaction } from './emoji-reactions';
 
@@ -16,6 +17,7 @@ export type PublishOptions = {
 type PublishEventTemplate = Pick<Nostr.Event, 'kind' | 'tags' | 'content' | 'created_at'>;
 type PublishReactionTarget = Pick<Nostr.Event, 'id' | 'kind' | 'pubkey'>;
 type PublishRepostTarget = Pick<Nostr.Event, 'id' | 'pubkey'>;
+type PublishReplyTarget = Nostr.Event;
 
 const nostterClientTag = [
 	'client',
@@ -117,6 +119,27 @@ export function publishChannelMessage(
 		pubkey,
 		signer,
 		channelRelays
+	);
+}
+
+export function publishReply(
+	content: string,
+	target: PublishReplyTarget,
+	pubkey: string,
+	signer: EventSigner,
+	targetReadRelays: string[],
+	{ includeClientTag = false }: PublishOptions = {}
+) {
+	return publishEvent(
+		{
+			kind: ShortTextNote,
+			tags: withClientTag(buildNip10ReplyTags(target, targetReadRelays), includeClientTag),
+			content,
+			created_at: now()
+		},
+		pubkey,
+		signer,
+		targetReadRelays
 	);
 }
 

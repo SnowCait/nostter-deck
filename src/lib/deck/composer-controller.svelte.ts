@@ -1,30 +1,55 @@
 import { tick } from 'svelte';
+import { ShortTextNote } from 'nostr-tools/kinds';
 import type { EventSigner } from 'rx-nostr';
-import type { ChannelTimelineColumnConfig } from './types';
-import { publishChannelMessage, publishShortTextNote } from '$lib/nostr/publish';
+import { getPostReplyTarget } from './post-actions';
+import type { ChannelTimelineColumnConfig, Post } from './types';
+import { getNip65ReadRelaysForPubkey } from '$lib/nostr/nip65';
+import { publishChannelMessage, publishReply, publishShortTextNote } from '$lib/nostr/publish';
 
 type ComposerControllerOptions = {
 	getAccountPubkey: () => string | null;
 	getSigner: () => EventSigner | null;
 	getIncludeClientTag: () => boolean;
 	focusTextarea: () => void;
+	getTargetReadRelays?: (pubkey: string) => Promise<string[]>;
 };
 
 export function createComposerController({
 	getAccountPubkey,
 	getSigner,
 	getIncludeClientTag,
-	focusTextarea
+	focusTextarea,
+	getTargetReadRelays = getNip65ReadRelaysForPubkey
 }: ComposerControllerOptions) {
 	let isOpen = $state(false);
 	let content = $state('');
+	let mode = $state<'post' | 'reply'>('post');
+	let replyTargetPost = $state<Post | null>(null);
 	let isPublishing = $state(false);
 	let hasError = $state(false);
-	const canSubmit = $derived(!isPublishing && content.length > 0);
+	const canSubmit = $derived(
+		!isPublishing && content.length > 0 && (mode === 'post' || canReply(replyTargetPost))
+	);
 
 	async function open() {
 		if (!getAccountPubkey()) return;
+		if (mode !== 'post') content = '';
+		mode = 'post';
+		replyTargetPost = null;
 		isOpen = true;
+		await tick();
+		focusTextarea();
+	}
+
+	async function openReply(post: Post) {
+		if (!canReply(post)) return;
+		const currentTargetId = replyTargetPost ? getPostReplyTarget(replyTargetPost)?.id : null;
+		const nextTargetId = getPostReplyTarget(post)?.id ?? null;
+		if (mode !== 'reply' || currentTargetId !== nextTargetId) content = '';
+		mode = 'reply';
+		replyTargetPost = post;
+		isOpen = true;
+		hasError = false;
 		await tick();
 		focusTextarea();
 	}
@@ -37,6 +62,13 @@ export function createComposerController({
 	function reset() {
 		close();
 		content = '';
+		mode = 'post';
+		replyTargetPost = null;
+	}
+
+	function canReply(post: Post | null) {
+		const target = post ? getPostReplyTarget(post) : null;
+		return Boolean(target?.kind === ShortTextNote && getAccountPubkey() && getSigner());
 	}
 
 	async function publish() {
@@ -49,10 +81,29 @@ export function createComposerController({
 
 		isPublishing = true;
 		hasError = false;
-		const result = await publishShortTextNote(content, pubkey, signer, {
-			includeClientTag: getIncludeClientTag()
-		});
-		isPublishing = false;
+		const replyTarget = replyTargetPost ? getPostReplyTarget(replyTargetPost) : null;
+		const result = await (async () => {
+			try {
+				return mode === 'reply' && replyTarget
+					? await publishReply(
+							content,
+							replyTarget,
+							pubkey,
+							signer,
+							await getTargetReadRelays(replyTarget.pubkey),
+							{
+								includeClientTag: getIncludeClientTag()
+							}
+						)
+					: await publishShortTextNote(content, pubkey, signer, {
+							includeClientTag: getIncludeClientTag()
+						});
+			} catch {
+				return { ok: false as const, reason: 'relay-failed' as const };
+			} finally {
+				isPublishing = false;
+			}
+		})();
 		if (!result.ok) {
 			hasError = true;
 			return;
@@ -60,6 +111,8 @@ export function createComposerController({
 
 		content = '';
 		isOpen = false;
+		mode = 'post';
+		replyTargetPost = null;
 	}
 
 	async function publishChannel(channel: ChannelTimelineColumnConfig, content: string) {
@@ -96,9 +149,17 @@ export function createComposerController({
 		get canSubmit() {
 			return canSubmit;
 		},
+		get isReplyMode() {
+			return mode === 'reply';
+		},
+		get replyTargetPost() {
+			return replyTargetPost;
+		},
+		canReply,
 		close,
 		handleKeydown,
 		open,
+		openReply,
 		publish,
 		publishChannel,
 		reset

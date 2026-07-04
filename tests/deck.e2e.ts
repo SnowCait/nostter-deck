@@ -2529,7 +2529,7 @@ test.describe('nostter deck', () => {
 		await expect(postAvatar).toHaveClass(/rounded-full/);
 		await expect(sidebarAvatar).toHaveClass(/rounded-full/);
 		await expect(postArticle.getByRole('button', { name: 'Post menu' })).toBeVisible();
-		await expect(postArticle.getByRole('button', { name: 'Reply' })).toBeDisabled();
+		await expect(postArticle.getByRole('button', { name: 'Reply' })).toBeEnabled();
 		await expect(postArticle.getByRole('button', { name: 'Repost' })).toBeVisible();
 		await expect(postArticle.getByRole('button', { name: 'Like' })).toBeVisible();
 		await expect(postArticle.getByRole('button', { name: 'Share' })).toBeDisabled();
@@ -2815,6 +2815,56 @@ test.describe('nostter deck', () => {
 								published.kind === 1 &&
 								JSON.stringify(published.tags) === JSON.stringify([clientTag]) &&
 								published.content === 'Published from nostter deck.' &&
+								published.sig === '0'.repeat(128)
+							);
+						}),
+					nostterClientTag
+				)
+			)
+			.toBe(true);
+	});
+
+	test('publishes a NIP-10 reply from a post action', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page, { isLoggedIn: true });
+		await addCustomTimelineColumn(page);
+
+		const customColumn = deckColumns(page).last();
+		const postArticle = customColumn
+			.locator('article')
+			.filter({ hasText: 'Hello from a custom Nostr timeline' })
+			.first();
+		await expect(postArticle).toBeVisible();
+
+		await postArticle.hover();
+		const replyButton = postArticle.getByRole('button', { name: 'Reply' });
+		await expect(replyButton).toBeEnabled();
+		await replyButton.click();
+
+		const composer = page.getByRole('region', { name: 'Reply' });
+		await expect(composer).toBeVisible();
+		await expect(composer.getByText('Replying to Alice Relay')).toBeVisible();
+		await composer.getByLabel('Reply text').fill('Reply from nostter deck.');
+		await composer.getByLabel('Reply text').press('ControlOrMeta+Enter');
+		await expect(composer).toBeHidden();
+
+		await expect
+			.poll(() =>
+				page.evaluate(
+					(clientTag) =>
+						(window.__nostterFakeRelayPublishedEvents ?? []).some(({ event }) => {
+							const published = event as Record<string, unknown>;
+							return (
+								published.id === 'f'.repeat(64) &&
+								published.pubkey === 'a'.repeat(64) &&
+								published.kind === 1 &&
+								JSON.stringify(published.tags) ===
+									JSON.stringify([
+										['e', 'event-custom-timeline-1', '', 'root', 'a'.repeat(64)],
+										['p', 'a'.repeat(64)],
+										clientTag
+									]) &&
+								published.content === 'Reply from nostter deck.' &&
 								published.sig === '0'.repeat(128)
 							);
 						}),

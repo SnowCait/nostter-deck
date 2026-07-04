@@ -6,6 +6,7 @@ import {
 	publishChannelMessage,
 	publishEmojiReaction,
 	publishLikeReaction,
+	publishReply,
 	publishRepost,
 	publishShortTextNote
 } from './publish';
@@ -107,6 +108,49 @@ describe('channel publishing', () => {
 				content: 'Hello channel'
 			})
 		);
+	});
+
+	test('publishes a NIP-10 reply to default write and target read relays', async () => {
+		const signer = createSigner();
+
+		await expect(
+			publishReply(
+				'Hello reply',
+				{
+					id: targetEventId,
+					pubkey: targetPubkey,
+					created_at: 100,
+					kind: ShortTextNote,
+					tags: [],
+					content: 'Target',
+					sig: '0'.repeat(128)
+				},
+				pubkey,
+				signer,
+				[targetRelay],
+				{ includeClientTag: true }
+			)
+		).resolves.toMatchObject({ ok: true, event: { kind: ShortTextNote } });
+		expect(signer.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				kind: ShortTextNote,
+				tags: [
+					['e', targetEventId, targetRelay, 'root', targetPubkey],
+					['p', targetPubkey, targetRelay],
+					[...nostterClientTag]
+				],
+				content: 'Hello reply'
+			})
+		);
+		expect(send).toHaveBeenCalledWith(expect.objectContaining({ kind: ShortTextNote, pubkey }), {
+			completeOn: 'all-ok',
+			errorOnTimeout: true,
+			on: { defaultWriteRelays: true, relays: [targetRelay] },
+			signer: expect.objectContaining({
+				getPublicKey: expect.any(Function),
+				signEvent: expect.any(Function)
+			})
+		});
 	});
 
 	test('publishes a NIP-25 like reaction to default write and target read relays', async () => {

@@ -31,6 +31,8 @@
 		isMuted?: boolean;
 		isMutedUser?: (pubkey: string) => boolean;
 		onMuteUser?: (pubkey: string) => void;
+		canReplyPost?: (post: Post) => boolean;
+		onReplyPost?: (post: Post) => void;
 		canLikePost?: (post: Post) => boolean;
 		isLikePostLiked?: (post: Post) => boolean;
 		isLikePostPublishing?: (post: Post) => boolean;
@@ -61,6 +63,8 @@
 		isMuted = false,
 		isMutedUser = () => false,
 		onMuteUser,
+		canReplyPost = () => false,
+		onReplyPost,
 		canLikePost = () => false,
 		isLikePostLiked = () => false,
 		isLikePostPublishing = () => false,
@@ -102,6 +106,7 @@
 			: ''
 	]);
 	const isLikeDisabled = $derived(!onLikePost || !canLikePost(post));
+	const isReplyDisabled = $derived(!onReplyPost || !canReplyPost(post));
 	const isRepostDisabled = $derived(!onRepostPost || !canRepostPost(post));
 	const isEmojiReactionDisabled = $derived(!onReactWithEmojiPost || !canReactWithEmojiPost(post));
 	const keyboardNavigationKey = $derived(
@@ -114,6 +119,10 @@
 
 	function mutePostAuthor() {
 		onMuteUser?.(post.pubkey);
+	}
+
+	function replyPost() {
+		onReplyPost?.(post);
 	}
 
 	function likePost() {
@@ -278,10 +287,11 @@
 							<div class={postActionListClass}>
 								<button
 									type="button"
-									disabled
+									disabled={isReplyDisabled}
 									class={postActionButtonClass}
 									title={m.reply()}
 									aria-label={m.reply()}
+									onclick={replyPost}
 								>
 									<MessageCircle class="size-4" aria-hidden="true" />
 								</button>
