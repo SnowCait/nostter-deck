@@ -13,6 +13,7 @@ import type { NostrFilter, RelaySelection } from '$lib/deck/types';
 import { expandAddressAuthors, getFilterAuthorAddress, type AuthorAddress } from './filters';
 import { getNostrClient } from './client';
 import { requestProfiles } from './profiles';
+import { getVerifiedEmbeddedRepostedEvent } from './reposts';
 import { combineRelays, profileRelays, resolveRelaySelection } from './relays';
 
 export type TimelineEventPhase = 'initial' | 'live';
@@ -142,26 +143,13 @@ export function startCustomTimelineSubscription({
 		addressReq.over();
 	}
 
-	function parseRepostedEvent(repostEvent: Nostr.Event): Nostr.Event | null {
-		if (!repostEvent.content.trim()) return null;
-
-		try {
-			const value = JSON.parse(repostEvent.content);
-			if (!isNostrEvent(value)) return null;
-
-			return value;
-		} catch {
-			return null;
-		}
-	}
-
 	function getReferencedEventId(referenceEvent: Nostr.Event) {
 		return referenceEvent.tags.findLast((tag) => tag[0] === 'e' && tag[1])?.[1] ?? null;
 	}
 
 	function requestReferencedEvent(referenceEvent: Nostr.Event) {
 		const embeddedEvent =
-			referenceEvent.kind === Repost ? parseRepostedEvent(referenceEvent) : null;
+			referenceEvent.kind === Repost ? getVerifiedEmbeddedRepostedEvent(referenceEvent) : null;
 		if (embeddedEvent) {
 			onReferencedEvent(referenceEvent.id, embeddedEvent);
 			requestProfiles([embeddedEvent.pubkey], profileRelayUrls);
@@ -269,21 +257,6 @@ export function startCustomTimelineSubscription({
 			}
 		}
 	};
-}
-
-function isNostrEvent(value: unknown): value is Nostr.Event {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-
-	const event = value as Partial<Nostr.Event>;
-	return (
-		typeof event.id === 'string' &&
-		typeof event.pubkey === 'string' &&
-		typeof event.created_at === 'number' &&
-		typeof event.kind === 'number' &&
-		Array.isArray(event.tags) &&
-		typeof event.content === 'string' &&
-		typeof event.sig === 'string'
-	);
 }
 
 function formatRelayError(relay: string, reason: unknown) {
