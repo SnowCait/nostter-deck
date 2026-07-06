@@ -615,7 +615,9 @@ export async function installFakeNostrRelay(
 											? sensitiveEvent
 											: search === 'sensitive-repost'
 												? sensitiveRepostEvent
-												: textEvent
+												: search === 'quote-source'
+													? quotedTextEvent
+													: textEvent
 							]);
 						}, 5);
 					}

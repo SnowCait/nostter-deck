@@ -41,6 +41,8 @@
 		isRepostPostReposted: (post: Post) => boolean;
 		isRepostPostPublishing: (post: Post) => boolean;
 		onRepostPost: (post: Post) => void;
+		canQuotePost: (post: Post) => boolean;
+		onQuotePost: (post: Post) => void;
 		canReactWithEmojiPost: (post: Post) => boolean;
 		isEmojiReactionPostPublishing: (post: Post) => boolean;
 		onReactWithEmojiPost: (post: Post, reaction: EmojiReaction) => void;
@@ -78,6 +80,8 @@
 		isRepostPostReposted,
 		isRepostPostPublishing,
 		onRepostPost,
+		canQuotePost,
+		onQuotePost,
 		canReactWithEmojiPost,
 		isEmojiReactionPostPublishing,
 		onReactWithEmojiPost,
@@ -264,6 +268,8 @@
 						{isRepostPostReposted}
 						{isRepostPostPublishing}
 						{onRepostPost}
+						{canQuotePost}
+						{onQuotePost}
 						{canReactWithEmojiPost}
 						{isEmojiReactionPostPublishing}
 						{onReactWithEmojiPost}

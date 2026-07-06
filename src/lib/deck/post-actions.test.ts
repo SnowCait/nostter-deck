@@ -1,9 +1,12 @@
 import { describe, expect, test } from 'vitest';
 import { Repost, ShortTextNote } from 'nostr-tools/kinds';
+import { decode } from 'nostr-tools/nip19';
 import type * as Nostr from 'nostr-typedef';
 import {
 	buildNip10ReplyTags,
+	buildNip18QuoteRepost,
 	getPostLikeTarget,
+	getPostQuoteTarget,
 	getPostReplyTarget,
 	getPostRepostTarget
 } from './post-actions';
@@ -40,6 +43,7 @@ describe('post actions', () => {
 		expect(getPostLikeTarget(eventToPost(source))).toBe(source);
 		expect(getPostRepostTarget(eventToPost(source))).toBe(source);
 		expect(getPostReplyTarget(eventToPost(source))).toBe(source);
+		expect(getPostQuoteTarget(eventToPost(source))).toBe(source);
 	});
 
 	test('uses the referenced event for repost and reaction cards', () => {
@@ -54,6 +58,7 @@ describe('post actions', () => {
 		expect(getPostLikeTarget(post)).toBe(referenced);
 		expect(getPostRepostTarget(post)).toBe(referenced);
 		expect(getPostReplyTarget(post)).toBe(referenced);
+		expect(getPostQuoteTarget(post)).toBe(referenced);
 	});
 
 	test('does not expose a like target while a referenced event is unavailable', () => {
@@ -68,6 +73,7 @@ describe('post actions', () => {
 		expect(getPostLikeTarget(post)).toBeNull();
 		expect(getPostRepostTarget(post)).toBeNull();
 		expect(getPostReplyTarget(post)).toBeNull();
+		expect(getPostQuoteTarget(post)).toBeNull();
 	});
 
 	test('builds direct NIP-10 reply tags with a root event and target pubkey', () => {
@@ -116,5 +122,29 @@ describe('post actions', () => {
 			['e', target.id, targetRelay, 'reply', replyPubkey],
 			['p', replyPubkey, targetRelay]
 		]);
+	});
+
+	test('builds NIP-18 quote repost content and q tag with a relay hint', () => {
+		const target = eventWithPatch('c'.repeat(64), { pubkey: replyPubkey });
+		const result = buildNip18QuoteRepost('Quote this  ', target, [targetRelay]);
+		const reference = result.content.split('\n\n').at(-1);
+
+		expect(result.tags).toEqual([['q', target.id, targetRelay, replyPubkey]]);
+		expect(result.content).toMatch(/^Quote this\n\nnostr:nevent/);
+		expect(reference).toBeDefined();
+
+		const decoded = decode(reference!.replace(/^nostr:/, ''));
+		expect(decoded).toMatchObject({
+			type: 'nevent',
+			data: { id: target.id, author: replyPubkey, kind: ShortTextNote, relays: [targetRelay] }
+		});
+	});
+
+	test('builds NIP-18 quote repost tags without relay hints', () => {
+		const target = eventWithPatch('d'.repeat(64), { pubkey: replyPubkey });
+		const result = buildNip18QuoteRepost('Quote this', target, []);
+
+		expect(result.tags).toEqual([['q', target.id, '', replyPubkey]]);
+		expect(result.content).toContain('\n\nnostr:nevent');
 	});
 });

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Heart, MessageCircle, Repeat2, Share, ShieldCheck } from '@lucide/svelte';
+	import { Heart, MessageCircle, Quote, Repeat2, Share, ShieldCheck } from '@lucide/svelte';
+	import * as Popover from '$lib/components/ui/popover';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Post, PostMessage } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
@@ -41,6 +42,8 @@
 		isRepostPostReposted?: (post: Post) => boolean;
 		isRepostPostPublishing?: (post: Post) => boolean;
 		onRepostPost?: (post: Post) => void;
+		canQuotePost?: (post: Post) => boolean;
+		onQuotePost?: (post: Post) => void;
 		canReactWithEmojiPost?: (post: Post) => boolean;
 		isEmojiReactionPostPublishing?: (post: Post) => boolean;
 		onReactWithEmojiPost?: (post: Post, reaction: EmojiReaction) => void;
@@ -73,6 +76,8 @@
 		isRepostPostReposted = () => false,
 		isRepostPostPublishing = () => false,
 		onRepostPost,
+		canQuotePost = () => false,
+		onQuotePost,
 		canReactWithEmojiPost = () => false,
 		isEmojiReactionPostPublishing = () => false,
 		onReactWithEmojiPost,
@@ -82,6 +87,7 @@
 	}: Props = $props();
 	let isMutedPostRevealed = $state(false);
 	let isSensitiveContentRevealed = $state(false);
+	let isRepostMenuOpen = $state(false);
 	const isPostVisible = $derived(!isMuted || isMutedPostRevealed);
 	const isPostContentVisible = $derived(!post.contentWarning || isSensitiveContentRevealed);
 	const postActionSlotClass = $derived(
@@ -108,6 +114,8 @@
 	const isLikeDisabled = $derived(!onLikePost || !canLikePost(post));
 	const isReplyDisabled = $derived(!onReplyPost || !canReplyPost(post));
 	const isRepostDisabled = $derived(!onRepostPost || !canRepostPost(post));
+	const isQuoteDisabled = $derived(!onQuotePost || !canQuotePost(post));
+	const isRepostMenuDisabled = $derived(isRepostDisabled && isQuoteDisabled);
 	const isEmojiReactionDisabled = $derived(!onReactWithEmojiPost || !canReactWithEmojiPost(post));
 	const keyboardNavigationKey = $derived(
 		post.id ?? `${post.pubkey}:${post.time}:${post.body.slice(0, 80)}`
@@ -131,6 +139,12 @@
 
 	function repostPost() {
 		onRepostPost?.(post);
+		isRepostMenuOpen = false;
+	}
+
+	function quotePost() {
+		onQuotePost?.(post);
+		isRepostMenuOpen = false;
 	}
 
 	function reactWithEmoji(reaction: EmojiReaction) {
@@ -295,21 +309,42 @@
 								>
 									<MessageCircle class="size-4" aria-hidden="true" />
 								</button>
-								<button
-									type="button"
-									disabled={isRepostDisabled}
-									class={repostButtonClass}
-									title={m.repost()}
-									aria-label={m.repost()}
-									aria-pressed={isRepostPostReposted(post)}
-									aria-busy={isRepostPostPublishing(post)}
-									onclick={repostPost}
-								>
-									<Repeat2
-										class={['size-4', isRepostPostReposted(post) ? 'stroke-[2.5]' : '']}
-										aria-hidden="true"
-									/>
-								</button>
+								<Popover.Root bind:open={isRepostMenuOpen}>
+									<Popover.Trigger
+										type="button"
+										disabled={isRepostMenuDisabled}
+										class={repostButtonClass}
+										title={m.repost()}
+										aria-label={m.repost()}
+										aria-pressed={isRepostPostReposted(post)}
+										aria-busy={isRepostPostPublishing(post)}
+									>
+										<Repeat2
+											class={['size-4', isRepostPostReposted(post) ? 'stroke-[2.5]' : '']}
+											aria-hidden="true"
+										/>
+									</Popover.Trigger>
+									<Popover.Content align="start" sideOffset={4} class="w-44 gap-1 p-1">
+										<button
+											type="button"
+											disabled={isRepostDisabled}
+											class="flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-left font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent dark:text-slate-200 dark:hover:bg-slate-800 disabled:dark:hover:bg-transparent"
+											onclick={repostPost}
+										>
+											<Repeat2 class="size-4 shrink-0" aria-hidden="true" />
+											<span class="truncate">{m.repost()}</span>
+										</button>
+										<button
+											type="button"
+											disabled={isQuoteDisabled}
+											class="flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-left font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent dark:text-slate-200 dark:hover:bg-slate-800 disabled:dark:hover:bg-transparent"
+											onclick={quotePost}
+										>
+											<Quote class="size-4 shrink-0" aria-hidden="true" />
+											<span class="truncate">{m.quote()}</span>
+										</button>
+									</Popover.Content>
+								</Popover.Root>
 								<button
 									type="button"
 									disabled={isLikeDisabled}

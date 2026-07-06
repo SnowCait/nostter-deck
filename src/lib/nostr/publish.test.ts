@@ -6,6 +6,7 @@ import {
 	publishChannelMessage,
 	publishEmojiReaction,
 	publishLikeReaction,
+	publishQuoteRepost,
 	publishReply,
 	publishRepost,
 	publishShortTextNote
@@ -140,6 +141,41 @@ describe('channel publishing', () => {
 					[...nostterClientTag]
 				],
 				content: 'Hello reply'
+			})
+		);
+		expect(send).toHaveBeenCalledWith(expect.objectContaining({ kind: ShortTextNote, pubkey }), {
+			completeOn: 'all-ok',
+			errorOnTimeout: true,
+			on: { defaultWriteRelays: true, relays: [targetRelay] },
+			signer: expect.objectContaining({
+				getPublicKey: expect.any(Function),
+				signEvent: expect.any(Function)
+			})
+		});
+	});
+
+	test('publishes a NIP-18 quote repost with a q tag and NIP-21 reference', async () => {
+		const signer = createSigner();
+		const target = {
+			id: targetEventId,
+			pubkey: targetPubkey,
+			created_at: 100,
+			kind: ShortTextNote,
+			tags: [],
+			content: 'Target',
+			sig: '0'.repeat(128)
+		};
+
+		await expect(
+			publishQuoteRepost('Hello quote', target, pubkey, signer, [targetRelay], {
+				includeClientTag: true
+			})
+		).resolves.toMatchObject({ ok: true, event: { kind: ShortTextNote } });
+		expect(signer.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				kind: ShortTextNote,
+				tags: [['q', targetEventId, targetRelay, targetPubkey], [...nostterClientTag]],
+				content: expect.stringMatching(/^Hello quote\n\nnostr:nevent/)
 			})
 		);
 		expect(send).toHaveBeenCalledWith(expect.objectContaining({ kind: ShortTextNote, pubkey }), {

@@ -2,7 +2,7 @@ import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kin
 import { now, type EventSigner } from 'rx-nostr';
 import { catchError, defaultIfEmpty, filter, firstValueFrom, map, of, take } from 'rxjs';
 import type * as Nostr from 'nostr-typedef';
-import { buildNip10ReplyTags } from '$lib/deck/post-actions';
+import { buildNip10ReplyTags, buildNip18QuoteRepost } from '$lib/deck/post-actions';
 import { getNostrClient } from './client';
 import type { EmojiReaction } from './emoji-reactions';
 
@@ -18,6 +18,7 @@ type PublishEventTemplate = Pick<Nostr.Event, 'kind' | 'tags' | 'content' | 'cre
 type PublishReactionTarget = Pick<Nostr.Event, 'id' | 'kind' | 'pubkey'>;
 type PublishRepostTarget = Pick<Nostr.Event, 'id' | 'pubkey'>;
 type PublishReplyTarget = Nostr.Event;
+type PublishQuoteTarget = Nostr.Event;
 
 const nostterClientTag = [
 	'client',
@@ -135,6 +136,29 @@ export function publishReply(
 			kind: ShortTextNote,
 			tags: withClientTag(buildNip10ReplyTags(target, targetReadRelays), includeClientTag),
 			content,
+			created_at: now()
+		},
+		pubkey,
+		signer,
+		targetReadRelays
+	);
+}
+
+export function publishQuoteRepost(
+	content: string,
+	target: PublishQuoteTarget,
+	pubkey: string,
+	signer: EventSigner,
+	targetReadRelays: string[],
+	{ includeClientTag = false }: PublishOptions = {}
+) {
+	const quote = buildNip18QuoteRepost(content, target, targetReadRelays);
+
+	return publishEvent(
+		{
+			kind: ShortTextNote,
+			tags: withClientTag(quote.tags, includeClientTag),
+			content: quote.content,
 			created_at: now()
 		},
 		pubkey,

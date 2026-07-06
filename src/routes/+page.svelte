@@ -5,6 +5,7 @@
 		Image,
 		MessageCircle,
 		Plus,
+		Quote,
 		Send,
 		Smile,
 		UserRound,
@@ -517,6 +518,8 @@
 		isRepostPostReposted={postActionController.isReposted}
 		isRepostPostPublishing={postActionController.isReposting}
 		onRepostPost={(post) => void postActionController.repostPost(post)}
+		canQuotePost={composer.canQuote}
+		onQuotePost={(post) => void composer.openQuote(post)}
 		canReactWithEmojiPost={postActionController.canReactWithEmoji}
 		isEmojiReactionPostPublishing={postActionController.isReactingWithEmoji}
 		onReactWithEmojiPost={(post, reaction) =>
@@ -571,6 +574,8 @@
 			isRepostPostReposted={postActionController.isReposted}
 			isRepostPostPublishing={postActionController.isReposting}
 			onRepostPost={(post) => void postActionController.repostPost(post)}
+			canQuotePost={composer.canQuote}
+			onQuotePost={(post) => void composer.openQuote(post)}
 			canReactWithEmojiPost={postActionController.canReactWithEmoji}
 			isEmojiReactionPostPublishing={postActionController.isReactingWithEmoji}
 			onReactWithEmojiPost={(post, reaction) =>
@@ -609,6 +614,8 @@
 			isRepostPostReposted={postActionController.isReposted}
 			isRepostPostPublishing={postActionController.isReposting}
 			onRepostPost={(post) => void postActionController.repostPost(post)}
+			canQuotePost={composer.canQuote}
+			onQuotePost={(post) => void composer.openQuote(post)}
 			canReactWithEmojiPost={postActionController.canReactWithEmoji}
 			isEmojiReactionPostPublishing={postActionController.isReactingWithEmoji}
 			onReactWithEmojiPost={(post, reaction) =>
@@ -700,11 +707,13 @@
 				<div class="flex min-w-0 items-center gap-2">
 					{#if composer.isReplyMode}
 						<MessageCircle class="size-4 shrink-0 text-sky-500" aria-hidden="true" />
+					{:else if composer.isQuoteMode}
+						<Quote class="size-4 shrink-0 text-sky-500" aria-hidden="true" />
 					{:else}
 						<Send class="size-4 shrink-0 text-sky-500" aria-hidden="true" />
 					{/if}
 					<h2 id="compose-panel-title" class={['min-w-0 truncate font-bold', textClass.heading]}>
-						{composer.isReplyMode ? m.reply() : m.action_post()}
+						{composer.isReplyMode ? m.reply() : composer.isQuoteMode ? m.quote() : m.action_post()}
 					</h2>
 				</div>
 				<button
@@ -749,10 +758,28 @@
 							{composer.replyTargetPost.body}
 						</p>
 					</div>
+				{:else if composer.isQuoteMode && composer.quoteTargetPost}
+					<div
+						class={[
+							'mb-3 shrink-0 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300',
+							textClass.control
+						]}
+					>
+						<p class="truncate font-semibold">
+							{m.quoting_author({ name: composer.quoteTargetPost.author })}
+						</p>
+						<p class={['mt-1 line-clamp-3 whitespace-pre-wrap', textClass.meta]}>
+							{composer.quoteTargetPost.body}
+						</p>
+					</div>
 				{/if}
 
 				<label class="sr-only" for="compose-text">
-					{composer.isReplyMode ? m.reply_text() : m.post_text()}
+					{composer.isReplyMode
+						? m.reply_text()
+						: composer.isQuoteMode
+							? m.quote_text()
+							: m.post_text()}
 				</label>
 				<textarea
 					id="compose-text"
@@ -760,7 +787,11 @@
 						'min-h-[220px] flex-1 resize-none rounded-md border border-slate-200 bg-white p-3 text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
 						textClass.textarea
 					]}
-					placeholder={composer.isReplyMode ? m.reply_placeholder() : m.compose_placeholder()}
+					placeholder={composer.isReplyMode
+						? m.reply_placeholder()
+						: composer.isQuoteMode
+							? m.quote_placeholder()
+							: m.compose_placeholder()}
 					disabled={composer.isPublishing}
 					aria-keyshortcuts="Control+Enter Meta+Enter"
 					bind:this={composeTextarea}
@@ -815,9 +846,17 @@
 						onclick={composer.publish}
 					>
 						{#if composer.isPublishing}
-							{composer.isReplyMode ? m.reply_sending() : m.post_sending()}
+							{composer.isReplyMode
+								? m.reply_sending()
+								: composer.isQuoteMode
+									? m.quote_sending()
+									: m.post_sending()}
 						{:else}
-							{composer.isReplyMode ? m.reply() : m.action_post()}
+							{composer.isReplyMode
+								? m.reply()
+								: composer.isQuoteMode
+									? m.quote()
+									: m.action_post()}
 						{/if}
 					</button>
 				</div>

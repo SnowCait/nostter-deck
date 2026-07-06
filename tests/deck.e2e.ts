@@ -2890,6 +2890,10 @@ test.describe('nostter deck', () => {
 		const repostButton = postArticle.getByRole('button', { name: 'Repost' });
 		await expect(repostButton).toBeEnabled();
 		await repostButton.click();
+		await page
+			.locator('[data-slot="popover-content"]')
+			.getByRole('button', { name: 'Repost' })
+			.click();
 
 		await expect
 			.poll(() =>
@@ -2916,6 +2920,61 @@ test.describe('nostter deck', () => {
 			)
 			.toBe(true);
 		await expect(repostButton).toHaveAttribute('aria-pressed', 'true');
+	});
+
+	test('publishes a NIP-18 quote from the repost menu', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page, { isLoggedIn: true });
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [ShortTextNote], search: 'quote-source', limit: 20 }]
+		});
+
+		const customColumn = deckColumns(page).last();
+		const postArticle = customColumn
+			.locator('article')
+			.filter({ hasText: 'Quoted short text note' });
+		await expect(postArticle).toBeVisible();
+
+		await postArticle.hover();
+		await postArticle.getByRole('button', { name: 'Repost' }).click();
+		await page
+			.locator('[data-slot="popover-content"]')
+			.getByRole('button', { name: 'Quote' })
+			.click();
+
+		const composer = page.getByRole('region', { name: 'Quote' });
+		await expect(composer).toBeVisible();
+		await expect(composer.getByText('Quoting Alice Relay')).toBeVisible();
+		await composer.getByLabel('Quote text').fill('Quote from nostter deck.');
+		await composer.getByLabel('Quote text').press('ControlOrMeta+Enter');
+		await expect(composer).toBeHidden();
+
+		await expect
+			.poll(() =>
+				page.evaluate(
+					(clientTag) =>
+						(window.__nostterFakeRelayPublishedEvents ?? []).some(({ event }) => {
+							const published = event as Record<string, unknown>;
+							if (
+								published.id !== 'f'.repeat(64) ||
+								published.pubkey !== 'a'.repeat(64) ||
+								published.kind !== 1 ||
+								JSON.stringify(published.tags) !==
+									JSON.stringify([['q', '1'.repeat(64), '', 'a'.repeat(64)], clientTag]) ||
+								typeof published.content !== 'string' ||
+								!published.content.startsWith('Quote from nostter deck.\n\nnostr:nevent') ||
+								published.sig !== '0'.repeat(128)
+							) {
+								return false;
+							}
+
+							const reference = published.content.split('\n\n').at(-1);
+							return Boolean(reference?.startsWith('nostr:nevent'));
+						}),
+					nostterClientTag
+				)
+			)
+			.toBe(true);
 	});
 
 	test('publishes an unlimited NIP-28 message from a channel column', async ({ page }) => {

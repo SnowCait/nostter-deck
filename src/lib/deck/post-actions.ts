@@ -1,5 +1,6 @@
 import type * as Nostr from 'nostr-typedef';
 import type { Post } from './types';
+import { neventEncode } from 'nostr-tools/nip19';
 
 export function getPostLikeTarget(post: Post): Nostr.Event | null {
 	if (post.referenceType) return post.events.referenced ?? null;
@@ -12,6 +13,11 @@ export function getPostRepostTarget(post: Post): Nostr.Event | null {
 }
 
 export function getPostReplyTarget(post: Post): Nostr.Event | null {
+	if (post.referenceType) return post.events.referenced ?? null;
+	return post.events.source;
+}
+
+export function getPostQuoteTarget(post: Post): Nostr.Event | null {
 	if (post.referenceType) return post.events.referenced ?? null;
 	return post.events.source;
 }
@@ -33,6 +39,25 @@ export function buildNip10ReplyTags(target: Nostr.Event, targetReadRelays: strin
 			: [createRootEventTag(rootId, rootRelayHint, rootAuthorPubkey), replyTag];
 
 	return [...eventTags, ...getReplyPubkeyTags(target, relayHint)];
+}
+
+export function buildNip18QuoteRepost(
+	content: string,
+	target: Nostr.Event,
+	targetReadRelays: string[]
+) {
+	const relayHint = targetReadRelays[0] ?? '';
+	const quoteReference = `nostr:${neventEncode({
+		id: target.id,
+		author: target.pubkey,
+		kind: target.kind,
+		...(relayHint ? { relays: [relayHint] } : {})
+	})}`;
+
+	return {
+		content: `${content.trimEnd()}\n\n${quoteReference}`,
+		tags: [['q', target.id, relayHint, target.pubkey]]
+	};
 }
 
 function createRootEventTag(rootId: string, relayHint: string, rootAuthorPubkey: string | null) {
