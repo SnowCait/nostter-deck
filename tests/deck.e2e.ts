@@ -2961,6 +2961,82 @@ test.describe('nostter deck', () => {
 			.toBe(true);
 	});
 
+	test('pastes images into the composer and uploads them when publishing a post', async ({
+		page
+	}) => {
+		const blossomUrl = `https://blossom.band/${'d'.repeat(64)}.webp`;
+		let uploadRequests = 0;
+		await page.route('https://blossom.band/media', async (route) => {
+			uploadRequests += 1;
+			const headers = route.request().headers();
+			expect(headers.authorization).toMatch(/^Nostr /);
+			expect(headers['content-type']).toBe('image/png');
+			expect(headers['x-sha-256']).toMatch(/^[0-9a-f]{64}$/);
+			await route.fulfill({
+				status: 201,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					url: blossomUrl,
+					sha256: 'd'.repeat(64),
+					size: 128,
+					type: 'image/webp',
+					uploaded: 100
+				})
+			});
+		});
+		await installFakeNostrRelay(page);
+		await openDeck(page, { isLoggedIn: true });
+
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+		const composer = page.getByRole('region', { name: 'Post' });
+		const textarea = composer.getByLabel('Post text');
+		await textarea.focus();
+		const wasPasteCanceled = await textarea.evaluate(
+			(element, bytes) => {
+				const clipboardData = new DataTransfer();
+				clipboardData.items.add(
+					new File([new Uint8Array(bytes)], '', {
+						type: 'image/png'
+					})
+				);
+				const event = new ClipboardEvent('paste', {
+					bubbles: true,
+					cancelable: true,
+					clipboardData
+				});
+				return !element.dispatchEvent(event);
+			},
+			Array.from(Buffer.from('pasted image'))
+		);
+		expect(wasPasteCanceled).toBe(true);
+		await expect(
+			composer.getByTestId('compose-media-list').getByText('pasted-image-1.png')
+		).toBeVisible();
+		expect(uploadRequests).toBe(0);
+
+		await textarea.fill('Post with pasted image.');
+		await composer.getByRole('button', { name: 'Post', exact: true }).click();
+
+		await expect(composer).toBeHidden();
+		expect(uploadRequests).toBe(1);
+		await expect
+			.poll(() =>
+				page.evaluate(
+					({ clientTag, blossomUrl }) =>
+						(window.__nostterFakeRelayPublishedEvents ?? []).some(({ event }) => {
+							const published = event as Record<string, unknown>;
+							return (
+								published.kind === 1 &&
+								JSON.stringify(published.tags) === JSON.stringify([clientTag]) &&
+								published.content === `Post with pasted image.\n${blossomUrl}`
+							);
+						}),
+					{ clientTag: nostterClientTag, blossomUrl }
+				)
+			)
+			.toBe(true);
+	});
+
 	test('publishes a NIP-10 reply from a post action', async ({ page }) => {
 		await installFakeNostrRelay(page);
 		await openDeck(page, { isLoggedIn: true });
