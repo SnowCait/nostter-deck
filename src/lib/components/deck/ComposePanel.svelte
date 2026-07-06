@@ -33,6 +33,40 @@
 		textClass,
 		textarea = $bindable()
 	}: Props = $props();
+
+	let mediaInput = $state<HTMLInputElement>();
+	const mediaNoticeText = $derived(getMediaNoticeText(composer.mediaNotice));
+
+	function openMediaPicker() {
+		mediaInput?.click();
+	}
+
+	function handleMediaChange(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		if (input.files) composer.addMediaFiles(input.files);
+		input.value = '';
+	}
+
+	function formatFileSize(size: number) {
+		const mib = size / (1024 * 1024);
+		return `${mib.toFixed(mib >= 10 ? 0 : 1)} MiB`;
+	}
+
+	function getMediaNoticeText(notice: string | null) {
+		if (!notice?.startsWith('media-count-exceeded:')) return null;
+		const count = Number(notice.split(':')[1]);
+		return Number.isFinite(count) ? m.media_count_exceeded({ count }) : null;
+	}
+
+	function getMediaErrorText(
+		reason: 'unsupported-file' | 'file-too-large' | 'signing-failed' | 'upload-failed' | undefined,
+		message: string | undefined
+	) {
+		if (reason === 'unsupported-file') return m.media_unsupported_file();
+		if (reason === 'file-too-large') return m.media_file_too_large();
+		if (reason === 'signing-failed') return m.media_signing_failed();
+		return message ?? m.media_upload_failed();
+	}
 </script>
 
 <section
@@ -139,12 +173,21 @@
 		></textarea>
 
 		<div class="mt-3 flex items-center gap-1">
+			<input
+				class="sr-only"
+				type="file"
+				accept="image/*"
+				multiple
+				bind:this={mediaInput}
+				onchange={handleMediaChange}
+			/>
 			<button
 				type="button"
-				class="flex size-9 cursor-not-allowed items-center justify-center rounded-md text-slate-400 dark:text-slate-600"
-				title={m.coming_soon()}
+				class="flex size-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 disabled:cursor-not-allowed disabled:text-slate-400 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-50 disabled:dark:text-slate-600"
+				title={m.add_media()}
 				aria-label={m.add_media()}
-				disabled
+				disabled={composer.isPublishing}
+				onclick={openMediaPicker}
 			>
 				<Image class="size-4" aria-hidden="true" />
 			</button>
@@ -168,6 +211,71 @@
 			</button>
 		</div>
 
+		{#if mediaNoticeText}
+			<p class={['mt-2 text-amber-600 dark:text-amber-300', textClass.meta]} role="status">
+				{mediaNoticeText}
+			</p>
+		{/if}
+
+		{#if composer.mediaAttachments.length > 0}
+			<div class="mt-3 flex flex-col gap-2" data-testid="compose-media-list">
+				{#each composer.mediaAttachments as media (media.id)}
+					<div
+						class="flex min-w-0 items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900/70"
+					>
+						<div
+							class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+						>
+							{#if media.previewUrl}
+								<img
+									class="h-full w-full object-cover"
+									src={media.previewUrl}
+									alt=""
+									aria-hidden="true"
+								/>
+							{:else}
+								<Image class="size-5" aria-hidden="true" />
+							{/if}
+						</div>
+						<div class="min-w-0 flex-1">
+							<p
+								class={[
+									'truncate font-semibold text-slate-700 dark:text-slate-200',
+									textClass.meta
+								]}
+							>
+								{media.name}
+							</p>
+							<p class={['truncate text-slate-500 dark:text-slate-400', textClass.meta]}>
+								{#if media.status === 'uploading'}
+									{m.media_uploading()}
+								{:else if media.status === 'uploaded'}
+									{m.media_uploaded()}
+								{:else}
+									{formatFileSize(media.size)}
+								{/if}
+							</p>
+							{#if media.status === 'failed'}
+								<p class={['mt-1 text-rose-600 dark:text-rose-400', textClass.meta]} role="alert">
+									{getMediaErrorText(media.errorReason, media.errorMessage)}
+								</p>
+							{/if}
+						</div>
+						<button
+							type="button"
+							class="flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-200 hover:text-slate-950 disabled:cursor-not-allowed disabled:text-slate-400 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-50 disabled:dark:text-slate-600"
+							aria-label={m.remove_media({ name: media.name })}
+							title={m.remove_media({ name: media.name })}
+							disabled={composer.isPublishing}
+							onclick={() => composer.removeMediaAttachment(media.id)}
+						>
+							<X class="size-4" aria-hidden="true" />
+						</button>
+					</div>
+				{/each}
+			</div>
+		{/if}
+
 		{#if composer.hasError}
 			<p class={['mt-3 text-rose-600 dark:text-rose-400', textClass.control]} role="alert">
 				{m.post_failed()}
@@ -185,11 +293,13 @@
 				onclick={composer.publish}
 			>
 				{#if composer.isPublishing}
-					{composer.isReplyMode
-						? m.reply_sending()
-						: composer.isQuoteMode
-							? m.quote_sending()
-							: m.post_sending()}
+					{composer.isUploadingMedia
+						? m.media_uploading()
+						: composer.isReplyMode
+							? m.reply_sending()
+							: composer.isQuoteMode
+								? m.quote_sending()
+								: m.post_sending()}
 				{:else}
 					{composer.isReplyMode ? m.reply() : composer.isQuoteMode ? m.quote() : m.action_post()}
 				{/if}

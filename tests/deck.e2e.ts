@@ -2904,6 +2904,63 @@ test.describe('nostter deck', () => {
 			.toBe(true);
 	});
 
+	test('uploads selected images to Blossom media when publishing a post', async ({ page }) => {
+		const blossomUrl = `https://blossom.band/${'c'.repeat(64)}.webp`;
+		let uploadRequests = 0;
+		await page.route('https://blossom.band/media', async (route) => {
+			uploadRequests += 1;
+			const headers = route.request().headers();
+			expect(headers.authorization).toMatch(/^Nostr /);
+			expect(headers['content-type']).toBe('image/png');
+			expect(headers['x-sha-256']).toMatch(/^[0-9a-f]{64}$/);
+			await route.fulfill({
+				status: 201,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					url: blossomUrl,
+					sha256: 'c'.repeat(64),
+					size: 128,
+					type: 'image/webp',
+					uploaded: 100
+				})
+			});
+		});
+		await installFakeNostrRelay(page);
+		await openDeck(page, { isLoggedIn: true });
+
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+		const composer = page.getByRole('region', { name: 'Post' });
+		await composer.locator('input[type="file"]').setInputFiles({
+			name: 'photo.png',
+			mimeType: 'image/png',
+			buffer: Buffer.from('fake image')
+		});
+		await expect(composer.getByTestId('compose-media-list').getByText('photo.png')).toBeVisible();
+		expect(uploadRequests).toBe(0);
+
+		await composer.getByLabel('Post text').fill('Post with image.');
+		await composer.getByRole('button', { name: 'Post', exact: true }).click();
+
+		await expect(composer).toBeHidden();
+		expect(uploadRequests).toBe(1);
+		await expect
+			.poll(() =>
+				page.evaluate(
+					({ clientTag, blossomUrl }) =>
+						(window.__nostterFakeRelayPublishedEvents ?? []).some(({ event }) => {
+							const published = event as Record<string, unknown>;
+							return (
+								published.kind === 1 &&
+								JSON.stringify(published.tags) === JSON.stringify([clientTag]) &&
+								published.content === `Post with image.\n${blossomUrl}`
+							);
+						}),
+					{ clientTag: nostterClientTag, blossomUrl }
+				)
+			)
+			.toBe(true);
+	});
+
 	test('publishes a NIP-10 reply from a post action', async ({ page }) => {
 		await installFakeNostrRelay(page);
 		await openDeck(page, { isLoggedIn: true });

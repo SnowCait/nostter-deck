@@ -20,6 +20,7 @@ vi.mock('$lib/nostr/publish', () => ({
 const pubkey = 'a'.repeat(64);
 const targetPubkey = 'b'.repeat(64);
 const targetRelay = 'wss://target.example/';
+type UploadMedia = NonNullable<Parameters<typeof createComposerController>[0]['uploadMedia']>;
 
 function event(id: string, patch: Partial<Nostr.Event> = {}) {
 	return {
@@ -41,12 +42,37 @@ function createSigner(): EventSigner {
 	};
 }
 
+function file(name: string, options: { type?: string; size?: number } = {}) {
+	const candidate = new File(['image'], name, { type: options.type ?? 'image/png' });
+	if (options.size !== undefined) {
+		Object.defineProperty(candidate, 'size', { value: options.size });
+	}
+	return candidate;
+}
+
+function uploaded(url: string) {
+	return {
+		ok: true as const,
+		descriptor: {
+			url,
+			sha256: 'c'.repeat(64),
+			size: 100,
+			type: 'image/webp',
+			uploaded: 100
+		}
+	};
+}
+
 function createHarness({
 	getAccountPubkey = () => pubkey,
-	getSigner = () => createSigner()
+	getSigner = () => createSigner(),
+	uploadMedia = vi.fn(async (media: File) =>
+		uploaded(`https://blossom.band/${media.name}.webp`)
+	) as unknown as UploadMedia
 }: {
 	getAccountPubkey?: () => string | null;
 	getSigner?: () => EventSigner | null;
+	uploadMedia?: UploadMedia;
 } = {}) {
 	const focusTextarea = vi.fn();
 	const getTargetReadRelays = vi.fn(async () => [targetRelay]);
@@ -55,10 +81,11 @@ function createHarness({
 		getSigner,
 		getIncludeClientTag: () => true,
 		focusTextarea,
-		getTargetReadRelays
+		getTargetReadRelays,
+		uploadMedia
 	});
 
-	return { controller, focusTextarea, getTargetReadRelays };
+	return { controller, focusTextarea, getTargetReadRelays, uploadMedia };
 }
 
 describe('composer controller', () => {
@@ -223,5 +250,104 @@ describe('composer controller', () => {
 		const unsupported = createHarness();
 		await unsupported.controller.openQuote(eventToPost(event('c'.repeat(64), { kind: Reaction })));
 		expect(unsupported.controller.isOpen).toBe(false);
+	});
+
+	test('keeps selected images local until publishing', async () => {
+		const harness = createHarness();
+
+		await harness.controller.open();
+		harness.controller.addMediaFiles([file('first.png')]);
+
+		expect(harness.controller.mediaAttachments).toHaveLength(1);
+		expect(harness.controller.mediaAttachments[0]).toMatchObject({
+			name: 'first.png',
+			status: 'selected'
+		});
+		expect(harness.uploadMedia).not.toHaveBeenCalled();
+		expect(harness.controller.canSubmit).toBe(true);
+	});
+
+	test('uploads selected images one by one and appends their URLs before publishing', async () => {
+		const uploadMedia = vi
+			.fn()
+			.mockResolvedValueOnce(uploaded('https://blossom.band/first.webp'))
+			.mockResolvedValueOnce(
+				uploaded('https://blossom.band/second.webp')
+			) as unknown as UploadMedia & ReturnType<typeof vi.fn>;
+		const harness = createHarness({ uploadMedia });
+		publishShortTextNote.mockResolvedValueOnce({
+			ok: true,
+			event: event('f'.repeat(64), { pubkey, content: 'Published post' })
+		});
+
+		await harness.controller.open();
+		harness.controller.content = 'Post body';
+		harness.controller.addMediaFiles([file('first.png'), file('second.png')]);
+		await harness.controller.publish();
+
+		expect(uploadMedia).toHaveBeenCalledTimes(2);
+		expect(uploadMedia.mock.calls[0][0].name).toBe('first.png');
+		expect(uploadMedia.mock.calls[1][0].name).toBe('second.png');
+		expect(publishShortTextNote).toHaveBeenCalledWith(
+			'Post body\nhttps://blossom.band/first.webp\nhttps://blossom.band/second.webp',
+			pubkey,
+			expect.anything(),
+			{ includeClientTag: true }
+		);
+		expect(harness.controller.isOpen).toBe(false);
+		expect(harness.controller.mediaAttachments).toHaveLength(0);
+	});
+
+	test('does not publish when Blossom upload fails and keeps the draft', async () => {
+		const uploadMedia = vi.fn(async () => ({
+			ok: false as const,
+			reason: 'upload-failed' as const,
+			message: 'Too large'
+		})) as unknown as UploadMedia & ReturnType<typeof vi.fn>;
+		const harness = createHarness({ uploadMedia });
+
+		await harness.controller.open();
+		harness.controller.content = 'Keep this post';
+		harness.controller.addMediaFiles([file('first.png')]);
+		await harness.controller.publish();
+
+		expect(publishShortTextNote).not.toHaveBeenCalled();
+		expect(harness.controller.isOpen).toBe(true);
+		expect(harness.controller.content).toBe('Keep this post');
+		expect(harness.controller.hasError).toBe(true);
+		expect(harness.controller.mediaAttachments[0]).toMatchObject({
+			status: 'failed',
+			errorReason: 'upload-failed',
+			errorMessage: 'Too large'
+		});
+	});
+
+	test('marks invalid selected images as failed', async () => {
+		const harness = createHarness();
+
+		await harness.controller.open();
+		harness.controller.addMediaFiles([
+			file('note.txt', { type: 'text/plain' }),
+			file('huge.png', { size: 20 * 1024 * 1024 + 1 })
+		]);
+
+		expect(harness.controller.mediaAttachments).toMatchObject([
+			{ name: 'note.txt', status: 'failed', errorReason: 'unsupported-file' },
+			{ name: 'huge.png', status: 'failed', errorReason: 'file-too-large' }
+		]);
+		expect(harness.controller.canSubmit).toBe(false);
+	});
+
+	test('accepts only the first ten selected images and records an overflow notice', async () => {
+		const harness = createHarness();
+
+		await harness.controller.open();
+		harness.controller.addMediaFiles(
+			Array.from({ length: 12 }, (_, index) => file(`image-${index}.png`))
+		);
+
+		expect(harness.controller.mediaAttachments).toHaveLength(10);
+		expect(harness.controller.mediaAttachments.at(-1)?.name).toBe('image-9.png');
+		expect(harness.controller.mediaNotice).toBe('media-count-exceeded:2');
 	});
 });
