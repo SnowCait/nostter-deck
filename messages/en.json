@@ -188,6 +188,8 @@
 	"react_with_emoji": "React with emoji",
 	"emoji_category_my_emojis": "My emojis",
 	"share": "Share",
+	"shared": "Shared",
+	"share_failed": "Could not share",
 	"keyboard_shortcuts": "Keyboard shortcuts",
 	"keyboard_shortcuts_navigation": "Navigation",
 	"keyboard_shortcuts_post_actions": "Post actions",

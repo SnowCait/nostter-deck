@@ -90,15 +90,37 @@ export function encodeNpub(pubkey: string) {
 	return npubEncode(pubkey);
 }
 
-export function encodeEventPointer(event: Nostr.Event): EncodedEventPointer | null {
+function canEncodeEventPointer(event: Nostr.Event) {
 	if (
 		!eventIdPattern.test(event.id) ||
 		!eventIdPattern.test(event.pubkey) ||
 		!Number.isSafeInteger(event.kind) ||
 		event.kind < 0
 	) {
+		return false;
+	}
+
+	return true;
+}
+
+export function encodeNeventPointer(event: Nostr.Event, relays: string[] = []): string | null {
+	if (!canEncodeEventPointer(event)) return null;
+
+	try {
+		const relayHints = relays.filter((relay) => relay !== '');
+		return neventEncode({
+			id: event.id,
+			author: event.pubkey,
+			kind: event.kind,
+			...(relayHints.length > 0 ? { relays: relayHints } : {})
+		});
+	} catch {
 		return null;
 	}
+}
+
+export function encodeEventPointer(event: Nostr.Event): EncodedEventPointer | null {
+	if (!canEncodeEventPointer(event)) return null;
 
 	try {
 		const identifier = isReplaceableKind(event.kind)
@@ -117,13 +139,12 @@ export function encodeEventPointer(event: Nostr.Event): EncodedEventPointer | nu
 			};
 		}
 
+		const encoded = encodeNeventPointer(event);
+		if (!encoded) return null;
+
 		return {
 			type: 'nevent',
-			value: neventEncode({
-				id: event.id,
-				author: event.pubkey,
-				kind: event.kind
-			})
+			value: encoded
 		};
 	} catch {
 		return null;

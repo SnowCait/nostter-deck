@@ -138,6 +138,8 @@ export type MessageKey =
 	| 'react_with_emoji'
 	| 'emoji_category_my_emojis'
 	| 'share'
+	| 'shared'
+	| 'share_failed'
 	| 'verified';
 
 export type ColumnTitleKey = Extract<

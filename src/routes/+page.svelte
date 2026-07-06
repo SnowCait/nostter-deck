@@ -33,6 +33,7 @@
 	import { createComposerController } from '$lib/deck/composer-controller.svelte';
 	import { createEmojiReactionController } from '$lib/deck/emoji-reaction-controller.svelte';
 	import { createPostActionController } from '$lib/deck/post-action-controller.svelte';
+	import { createPostShareController } from '$lib/deck/post-share-controller.svelte';
 	import { createKeyboardNavigation } from '$lib/deck/keyboard-navigation';
 	import {
 		addHashtagColumn,
@@ -132,6 +133,7 @@
 		getSigner: getAuthSigner,
 		getIncludeClientTag: () => readUserSettings().includeClientTag
 	});
+	const postShareController = createPostShareController();
 	const emojiReactionController = createEmojiReactionController({
 		getAccountPubkey: () => accountPubkey
 	});
@@ -524,6 +526,8 @@
 		isEmojiReactionPostPublishing={postActionController.isReactingWithEmoji}
 		onReactWithEmojiPost={(post, reaction) =>
 			void postActionController.reactWithEmoji(post, reaction)}
+		canSharePost={postShareController.canSharePost}
+		onSharePost={(post) => postShareController.sharePost(post)}
 		onOpenProfile={(profile) => void detailController.openProfile(column.id, profile)}
 		onOpenThread={(post) => void detailController.openThread(column.id, post)}
 		onOpenHashtag={(hashtag) => void openHashtagColumn(column.id, hashtag)}
@@ -580,6 +584,8 @@
 			isEmojiReactionPostPublishing={postActionController.isReactingWithEmoji}
 			onReactWithEmojiPost={(post, reaction) =>
 				void postActionController.reactWithEmoji(post, reaction)}
+			canSharePost={postShareController.canSharePost}
+			onSharePost={(post) => postShareController.sharePost(post)}
 			onClose={() => void detailController.close()}
 			onOpenProfile={(profile) => void detailController.openProfile(sourceColumnId, profile)}
 			onOpenThread={(post) => void detailController.openThread(sourceColumnId, post)}
@@ -620,6 +626,8 @@
 			isEmojiReactionPostPublishing={postActionController.isReactingWithEmoji}
 			onReactWithEmojiPost={(post, reaction) =>
 				void postActionController.reactWithEmoji(post, reaction)}
+			canSharePost={postShareController.canSharePost}
+			onSharePost={(post) => postShareController.sharePost(post)}
 			onClose={() => void detailController.close()}
 			onOpenProfile={(profile) => void detailController.openProfile(sourceColumnId, profile)}
 			onOpenThread={(post) => void detailController.openThread(sourceColumnId, post)}

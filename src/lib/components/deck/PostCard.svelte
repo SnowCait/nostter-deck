@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { Heart, MessageCircle, Quote, Repeat2, Share, ShieldCheck } from '@lucide/svelte';
+	import { Heart, MessageCircle, Quote, Repeat2, ShieldCheck } from '@lucide/svelte';
 	import * as Popover from '$lib/components/ui/popover';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Post, PostMessage } from '$lib/deck/types';
+	import type { SharePostResult } from '$lib/deck/post-share-controller.svelte';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { CustomEmojiReactionCandidate, EmojiReaction } from '$lib/nostr/emoji-reactions';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
@@ -47,6 +48,8 @@
 		canReactWithEmojiPost?: (post: Post) => boolean;
 		isEmojiReactionPostPublishing?: (post: Post) => boolean;
 		onReactWithEmojiPost?: (post: Post, reaction: EmojiReaction) => void;
+		canSharePost?: (post: Post) => boolean;
+		onSharePost?: (post: Post) => Promise<SharePostResult> | SharePostResult;
 		onOpenProfile?: (profile: ProfilePointer) => void;
 		onOpenThread?: (post: Post) => void;
 		onOpenHashtag?: (hashtag: string) => void;
@@ -81,6 +84,8 @@
 		canReactWithEmojiPost = () => false,
 		isEmojiReactionPostPublishing = () => false,
 		onReactWithEmojiPost,
+		canSharePost = () => false,
+		onSharePost,
 		onOpenProfile,
 		onOpenThread,
 		onOpenHashtag
@@ -151,6 +156,10 @@
 		onReactWithEmojiPost?.(post, reaction);
 	}
 
+	function sharePost() {
+		return onSharePost?.(post) ?? { ok: false as const, reason: 'unsupported' as const };
+	}
+
 	function formatPostMessage(message: PostMessage) {
 		switch (message.key) {
 			case 'replying_to':
@@ -191,6 +200,8 @@
 				{textClass}
 				muteLabel={m.mute_user({ name: post.author })}
 				onMute={mutePostAuthor}
+				canShare={canSharePost(post)}
+				onShare={sharePost}
 				class="absolute top-3 right-3"
 			/>
 		</div>
@@ -209,6 +220,8 @@
 				{textClass}
 				muteLabel={m.mute_user({ name: post.author })}
 				onMute={mutePostAuthor}
+				canShare={canSharePost(post)}
+				onShare={sharePost}
 				class="absolute top-3 right-3"
 			/>
 		</div>
@@ -267,6 +280,8 @@
 							{textClass}
 							muteLabel={m.mute_user({ name: post.author })}
 							onMute={mutePostAuthor}
+							canShare={canSharePost(post)}
+							onShare={sharePost}
 						/>
 					</div>
 
@@ -368,15 +383,6 @@
 									buttonClass={postActionButtonClass}
 									onSelect={reactWithEmoji}
 								/>
-								<button
-									type="button"
-									disabled
-									class={postActionButtonClass}
-									title={m.share()}
-									aria-label={m.share()}
-								>
-									<Share class="size-4" aria-hidden="true" />
-								</button>
 							</div>
 						</div>
 					{/if}

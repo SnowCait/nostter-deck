@@ -1,6 +1,8 @@
 import type * as Nostr from 'nostr-typedef';
 import type { Post } from './types';
-import { neventEncode } from 'nostr-tools/nip19';
+import { encodeEventPointer, encodeNeventPointer } from '$lib/nostr/nip19';
+
+const postShareUrlBase = 'https://nostter.app/';
 
 export function getPostLikeTarget(post: Post): Nostr.Event | null {
 	if (post.referenceType) return post.events.referenced ?? null;
@@ -20,6 +22,19 @@ export function getPostReplyTarget(post: Post): Nostr.Event | null {
 export function getPostQuoteTarget(post: Post): Nostr.Event | null {
 	if (post.referenceType) return post.events.referenced ?? null;
 	return post.events.source;
+}
+
+export function getPostShareTarget(post: Post): Nostr.Event | null {
+	if (post.referenceType) return post.events.referenced ?? null;
+	return post.events.source;
+}
+
+export function buildPostShareUrl(post: Post): string | null {
+	const target = getPostShareTarget(post);
+	if (!target) return null;
+
+	const pointer = encodeEventPointer(target);
+	return pointer ? `${postShareUrlBase}${pointer.value}` : null;
 }
 
 export function buildNip10ReplyTags(target: Nostr.Event, targetReadRelays: string[]) {
@@ -47,12 +62,8 @@ export function buildNip18QuoteRepost(
 	targetReadRelays: string[]
 ) {
 	const relayHint = targetReadRelays[0] ?? '';
-	const quoteReference = `nostr:${neventEncode({
-		id: target.id,
-		author: target.pubkey,
-		kind: target.kind,
-		...(relayHint ? { relays: [relayHint] } : {})
-	})}`;
+	const encodedPointer = encodeNeventPointer(target, relayHint ? [relayHint] : []);
+	const quoteReference = `nostr:${encodedPointer ?? target.id}`;
 
 	return {
 		content: `${content.trimEnd()}\n\n${quoteReference}`,

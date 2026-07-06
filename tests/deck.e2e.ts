@@ -1489,6 +1489,86 @@ test.describe('nostter deck', () => {
 		});
 	});
 
+	test('shares addressable posts from the post menu with the Web Share API', async ({ page }) => {
+		await page.addInitScript(() => {
+			const shareTarget = window as Window & { __nostterSharedData?: ShareData[] };
+			shareTarget.__nostterSharedData = [];
+			Object.defineProperty(window.navigator, 'share', {
+				configurable: true,
+				value: async (data: ShareData) => {
+					shareTarget.__nostterSharedData?.push(data);
+				}
+			});
+		});
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [30000], limit: 20 }]
+		});
+
+		const article = deckColumns(page)
+			.first()
+			.locator('article')
+			.filter({ hasText: 'Addressable timeline event' });
+		await expect(article.getByRole('button', { name: 'Share' })).toHaveCount(0);
+		await article.getByRole('button', { name: 'Post menu' }).click();
+		await page.getByRole('button', { name: 'Share' }).click();
+
+		const sharedData = await page.evaluate(
+			() => (window as Window & { __nostterSharedData?: ShareData[] }).__nostterSharedData ?? []
+		);
+		expect(sharedData).toHaveLength(1);
+		expect(sharedData[0].url).toMatch(/^https:\/\/nostter\.app\/naddr/);
+		expect(decode(sharedData[0].url!.replace('https://nostter.app/', ''))).toEqual({
+			type: 'naddr',
+			data: {
+				identifier: 'favorites',
+				pubkey: 'd'.repeat(64),
+				kind: 30000,
+				relays: []
+			}
+		});
+	});
+
+	test('copies share URLs from the post menu when Web Share API is unavailable', async ({
+		page,
+		context
+	}) => {
+		await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
+			origin: 'http://localhost:4173'
+		});
+		await page.addInitScript(() => {
+			Object.defineProperty(window.navigator, 'share', {
+				configurable: true,
+				value: undefined
+			});
+		});
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		await addCustomTimelineColumn(page, {
+			filters: [{ kinds: [30000], limit: 20 }]
+		});
+
+		const article = deckColumns(page)
+			.first()
+			.locator('article')
+			.filter({ hasText: 'Addressable timeline event' });
+		await article.getByRole('button', { name: 'Post menu' }).click();
+		await page.getByRole('button', { name: 'Share' }).click();
+
+		const shareUrl = await page.evaluate(() => navigator.clipboard.readText());
+		expect(shareUrl).toMatch(/^https:\/\/nostter\.app\/naddr/);
+		expect(decode(shareUrl.replace('https://nostter.app/', ''))).toEqual({
+			type: 'naddr',
+			data: {
+				identifier: 'favorites',
+				pubkey: 'd'.repeat(64),
+				kind: 30000,
+				relays: []
+			}
+		});
+	});
+
 	test('hides and reveals NIP-36 content across timeline, profile, thread, and quotes', async ({
 		page
 	}) => {
@@ -2532,7 +2612,7 @@ test.describe('nostter deck', () => {
 		await expect(postArticle.getByRole('button', { name: 'Reply' })).toBeEnabled();
 		await expect(postArticle.getByRole('button', { name: 'Repost' })).toBeVisible();
 		await expect(postArticle.getByRole('button', { name: 'Like' })).toBeVisible();
-		await expect(postArticle.getByRole('button', { name: 'Share' })).toBeDisabled();
+		await expect(postArticle.getByRole('button', { name: 'Share' })).toHaveCount(0);
 
 		await page.getByRole('button', { name: 'Settings' }).click();
 		const avatarShapeSelect = page.getByLabel('Profile icon');

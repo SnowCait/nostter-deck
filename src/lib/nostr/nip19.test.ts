@@ -2,7 +2,12 @@ import { describe, expect, test } from 'vitest';
 import { ChannelCreation, ShortTextNote } from 'nostr-tools/kinds';
 import { decode, neventEncode } from 'nostr-tools/nip19';
 import type * as Nostr from 'nostr-typedef';
-import { decodeChannelPointer, decodeEventPointer, encodeEventPointer } from './nip19';
+import {
+	decodeChannelPointer,
+	decodeEventPointer,
+	encodeEventPointer,
+	encodeNeventPointer
+} from './nip19';
 
 function event(patch: Partial<Nostr.Event> = {}): Nostr.Event {
 	return {
@@ -78,6 +83,38 @@ describe('nip19 pointers', () => {
 		});
 	});
 
+	test('encodes nevent pointers with relay hints', () => {
+		const pointer = encodeNeventPointer(event(), ['wss://relay.example/', '']);
+
+		expect(decode(pointer ?? '')).toEqual({
+			type: 'nevent',
+			data: {
+				id: 'a'.repeat(64),
+				relays: ['wss://relay.example/'],
+				author: 'b'.repeat(64),
+				kind: ShortTextNote
+			}
+		});
+	});
+
+	test('encodes addressable events as nevent pointers when requested explicitly', () => {
+		const pointer = encodeNeventPointer(
+			event({
+				kind: 30_023,
+				tags: [['d', 'article']]
+			})
+		);
+
+		expect(decode(pointer ?? '')).toMatchObject({
+			type: 'nevent',
+			data: {
+				id: 'a'.repeat(64),
+				author: 'b'.repeat(64),
+				kind: 30_023
+			}
+		});
+	});
+
 	test.each(['article', ''])(
 		'encodes addressable events with identifier %j as naddr pointers',
 		(identifier) => {
@@ -132,6 +169,7 @@ describe('nip19 pointers', () => {
 		'rejects invalid event pointers: %o',
 		(patch) => {
 			expect(encodeEventPointer(event(patch))).toBeNull();
+			expect(encodeNeventPointer(event(patch))).toBeNull();
 		}
 	);
 });

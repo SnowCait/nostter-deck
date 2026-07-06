@@ -15,6 +15,7 @@
 		RelaySelection
 	} from '$lib/deck/types';
 	import type { TimelineRuntime } from '$lib/deck/timeline-runtime';
+	import type { SharePostResult } from '$lib/deck/post-share-controller.svelte';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { CustomEmojiReactionCandidate, EmojiReaction } from '$lib/nostr/emoji-reactions';
 	import type { PublishPostResult } from '$lib/nostr/publish';
@@ -65,6 +66,8 @@
 		canReactWithEmojiPost: (post: Post) => boolean;
 		isEmojiReactionPostPublishing: (post: Post) => boolean;
 		onReactWithEmojiPost: (post: Post, reaction: EmojiReaction) => void;
+		canSharePost: (post: Post) => boolean;
+		onSharePost: (post: Post) => Promise<SharePostResult> | SharePostResult;
 		onToggleSettings: () => void;
 		onDelete: () => void;
 		onMoveLeft: () => void;
@@ -121,6 +124,8 @@
 		canReactWithEmojiPost,
 		isEmojiReactionPostPublishing,
 		onReactWithEmojiPost,
+		canSharePost,
+		onSharePost,
 		onToggleSettings,
 		onDelete,
 		onMoveLeft,
@@ -445,6 +450,8 @@
 				{canReactWithEmojiPost}
 				{isEmojiReactionPostPublishing}
 				{onReactWithEmojiPost}
+				{canSharePost}
+				{onSharePost}
 				onLoadOlder={onLoadOlderTimeline}
 				onLoadNewer={onLoadNewerTimeline}
 				{onOpenProfile}

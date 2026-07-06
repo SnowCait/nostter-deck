@@ -3,12 +3,14 @@ import { Repost, ShortTextNote } from 'nostr-tools/kinds';
 import { decode } from 'nostr-tools/nip19';
 import type * as Nostr from 'nostr-typedef';
 import {
+	buildPostShareUrl,
 	buildNip10ReplyTags,
 	buildNip18QuoteRepost,
 	getPostLikeTarget,
 	getPostQuoteTarget,
 	getPostReplyTarget,
-	getPostRepostTarget
+	getPostRepostTarget,
+	getPostShareTarget
 } from './post-actions';
 import type { Post } from './types';
 import { eventToPost } from '$lib/nostr/posts';
@@ -44,6 +46,7 @@ describe('post actions', () => {
 		expect(getPostRepostTarget(eventToPost(source))).toBe(source);
 		expect(getPostReplyTarget(eventToPost(source))).toBe(source);
 		expect(getPostQuoteTarget(eventToPost(source))).toBe(source);
+		expect(getPostShareTarget(eventToPost(source))).toBe(source);
 	});
 
 	test('uses the referenced event for repost and reaction cards', () => {
@@ -59,6 +62,7 @@ describe('post actions', () => {
 		expect(getPostRepostTarget(post)).toBe(referenced);
 		expect(getPostReplyTarget(post)).toBe(referenced);
 		expect(getPostQuoteTarget(post)).toBe(referenced);
+		expect(getPostShareTarget(post)).toBe(referenced);
 	});
 
 	test('does not expose a like target while a referenced event is unavailable', () => {
@@ -74,10 +78,74 @@ describe('post actions', () => {
 		expect(getPostRepostTarget(post)).toBeNull();
 		expect(getPostReplyTarget(post)).toBeNull();
 		expect(getPostQuoteTarget(post)).toBeNull();
+		expect(getPostShareTarget(post)).toBeNull();
+	});
+
+	test('builds a nostter nevent share URL for direct posts', () => {
+		const source = event('4'.repeat(64));
+		const shareUrl = buildPostShareUrl(eventToPost(source));
+		const encodedPointer = shareUrl?.replace('https://nostter.app/', '');
+
+		expect(shareUrl).toMatch(/^https:\/\/nostter\.app\/nevent/);
+		expect(decode(encodedPointer ?? '')).toMatchObject({
+			type: 'nevent',
+			data: { id: source.id, author: source.pubkey, kind: ShortTextNote }
+		});
+	});
+
+	test('builds a nostter naddr share URL for addressable posts', () => {
+		const source = eventWithPatch('5'.repeat(64), {
+			kind: 30_023,
+			tags: [['d', 'article']]
+		});
+		const shareUrl = buildPostShareUrl(eventToPost(source));
+		const encodedPointer = shareUrl?.replace('https://nostter.app/', '');
+
+		expect(shareUrl).toMatch(/^https:\/\/nostter\.app\/naddr/);
+		expect(decode(encodedPointer ?? '')).toEqual({
+			type: 'naddr',
+			data: {
+				identifier: 'article',
+				pubkey: source.pubkey,
+				kind: 30_023,
+				relays: []
+			}
+		});
+	});
+
+	test('builds share URLs from referenced events for repost cards', () => {
+		const source = event('6'.repeat(64), Repost);
+		const referenced = event('7'.repeat(64));
+		const post = {
+			...eventToPost(referenced),
+			events: { source, referenced },
+			referenceType: 'repost'
+		} satisfies Post;
+		const shareUrl = buildPostShareUrl(post);
+		const encodedPointer = shareUrl?.replace('https://nostter.app/', '');
+
+		expect(decode(encodedPointer ?? '')).toMatchObject({
+			type: 'nevent',
+			data: { id: referenced.id, author: referenced.pubkey, kind: ShortTextNote }
+		});
+	});
+
+	test('does not build a share URL when the target event is unavailable or invalid', () => {
+		const source = eventWithPatch('8'.repeat(64), { kind: Repost });
+		const unavailablePost = {
+			...eventToPost(source),
+			events: { source },
+			referenceType: 'repost',
+			referenceStatus: 'unavailable'
+		} satisfies Post;
+		const invalidPost = eventToPost(eventWithPatch('invalid', {}));
+
+		expect(buildPostShareUrl(unavailablePost)).toBeNull();
+		expect(buildPostShareUrl(invalidPost)).toBeNull();
 	});
 
 	test('builds direct NIP-10 reply tags with a root event and target pubkey', () => {
-		const target = eventWithPatch('5'.repeat(64), { pubkey: replyPubkey });
+		const target = eventWithPatch('9'.repeat(64), { pubkey: replyPubkey });
 
 		expect(buildNip10ReplyTags(target, [targetRelay])).toEqual([
 			['e', target.id, targetRelay, 'root', replyPubkey],
@@ -86,12 +154,12 @@ describe('post actions', () => {
 	});
 
 	test('builds nested NIP-10 reply tags with root before reply', () => {
-		const rootId = '6'.repeat(64);
-		const target = eventWithPatch('7'.repeat(64), {
+		const rootId = 'a'.repeat(64);
+		const target = eventWithPatch('b'.repeat(64), {
 			pubkey: replyPubkey,
 			tags: [
 				['e', rootId, rootRelay, 'root', rootPubkey],
-				['e', '8'.repeat(64), 'wss://parent.example/', 'reply', 'e'.repeat(64)],
+				['e', 'c'.repeat(64), 'wss://parent.example/', 'reply', 'e'.repeat(64)],
 				['p', rootPubkey, rootRelay],
 				['p', mentionedPubkey, mentionedRelay],
 				['p', replyPubkey, 'wss://duplicate.example/']
@@ -108,12 +176,12 @@ describe('post actions', () => {
 	});
 
 	test('uses the first legacy e tag as the root when reply markers are absent', () => {
-		const rootId = '9'.repeat(64);
-		const target = eventWithPatch('a'.repeat(64), {
+		const rootId = 'd'.repeat(64);
+		const target = eventWithPatch('e'.repeat(64), {
 			pubkey: replyPubkey,
 			tags: [
 				['e', rootId, rootRelay],
-				['e', 'b'.repeat(64), 'wss://previous.example/']
+				['e', 'f'.repeat(64), 'wss://previous.example/']
 			]
 		});
 

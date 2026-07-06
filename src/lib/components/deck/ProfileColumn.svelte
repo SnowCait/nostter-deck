@@ -4,6 +4,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { Post } from '$lib/deck/types';
+	import type { SharePostResult } from '$lib/deck/post-share-controller.svelte';
 	import type { CustomEmojiReactionCandidate, EmojiReaction } from '$lib/nostr/emoji-reactions';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape, PostActionVisibility } from '$lib/user-settings';
@@ -46,6 +47,8 @@
 		canReactWithEmojiPost: (post: Post) => boolean;
 		isEmojiReactionPostPublishing: (post: Post) => boolean;
 		onReactWithEmojiPost: (post: Post, reaction: EmojiReaction) => void;
+		canSharePost: (post: Post) => boolean;
+		onSharePost: (post: Post) => Promise<SharePostResult> | SharePostResult;
 		onClose: () => void;
 		onOpenProfile: (profile: ProfilePointer) => void;
 		onOpenThread: (post: Post) => void;
@@ -85,6 +88,8 @@
 		canReactWithEmojiPost,
 		isEmojiReactionPostPublishing,
 		onReactWithEmojiPost,
+		canSharePost,
+		onSharePost,
 		onClose,
 		onOpenProfile,
 		onOpenThread,
@@ -273,6 +278,8 @@
 						{canReactWithEmojiPost}
 						{isEmojiReactionPostPublishing}
 						{onReactWithEmojiPost}
+						{canSharePost}
+						{onSharePost}
 						{onOpenProfile}
 						{onOpenThread}
 						{onOpenHashtag}

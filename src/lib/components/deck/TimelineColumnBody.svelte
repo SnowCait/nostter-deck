@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Post } from '$lib/deck/types';
+	import type { SharePostResult } from '$lib/deck/post-share-controller.svelte';
 	import type { TimelineRuntime } from '$lib/deck/timeline-runtime';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { CustomEmojiReactionCandidate, EmojiReaction } from '$lib/nostr/emoji-reactions';
@@ -39,6 +40,8 @@
 		canReactWithEmojiPost: (post: Post) => boolean;
 		isEmojiReactionPostPublishing: (post: Post) => boolean;
 		onReactWithEmojiPost: (post: Post, reaction: EmojiReaction) => void;
+		canSharePost: (post: Post) => boolean;
+		onSharePost: (post: Post) => Promise<SharePostResult> | SharePostResult;
 		onLoadOlder: () => void;
 		onLoadNewer: () => void;
 		onOpenProfile: (profile: ProfilePointer) => void;
@@ -75,6 +78,8 @@
 		canReactWithEmojiPost,
 		isEmojiReactionPostPublishing,
 		onReactWithEmojiPost,
+		canSharePost,
+		onSharePost,
 		onLoadOlder,
 		onLoadNewer,
 		onOpenProfile,
@@ -178,6 +183,8 @@
 			{canReactWithEmojiPost}
 			{isEmojiReactionPostPublishing}
 			{onReactWithEmojiPost}
+			{canSharePost}
+			{onSharePost}
 			{onOpenProfile}
 			{onOpenThread}
 			{onOpenHashtag}

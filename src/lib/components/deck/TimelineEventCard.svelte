@@ -4,6 +4,7 @@
 	import { eventToPost, reactionEventToPost, repostEventToPost } from '$lib/nostr/posts';
 	import { getReferencedEventId } from '$lib/deck/timeline-runtime';
 	import type { Post } from '$lib/deck/types';
+	import type { SharePostResult } from '$lib/deck/post-share-controller.svelte';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { CustomEmojiReactionCandidate, EmojiReaction } from '$lib/nostr/emoji-reactions';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
@@ -42,6 +43,8 @@
 		canReactWithEmojiPost: (post: Post) => boolean;
 		isEmojiReactionPostPublishing: (post: Post) => boolean;
 		onReactWithEmojiPost: (post: Post, reaction: EmojiReaction) => void;
+		canSharePost: (post: Post) => boolean;
+		onSharePost: (post: Post) => Promise<SharePostResult> | SharePostResult;
 		onOpenProfile: (profile: ProfilePointer) => void;
 		onOpenThread: (post: Post) => void;
 		onOpenHashtag: (hashtag: string) => void;
@@ -77,6 +80,8 @@
 		canReactWithEmojiPost,
 		isEmojiReactionPostPublishing,
 		onReactWithEmojiPost,
+		canSharePost,
+		onSharePost,
 		onOpenProfile,
 		onOpenThread,
 		onOpenHashtag
@@ -147,6 +152,8 @@
 		{canReactWithEmojiPost}
 		{isEmojiReactionPostPublishing}
 		{onReactWithEmojiPost}
+		{canSharePost}
+		{onSharePost}
 		{onOpenProfile}
 		{onOpenThread}
 		{onOpenHashtag}
