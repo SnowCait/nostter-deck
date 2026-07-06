@@ -29,16 +29,22 @@ function hasDuplicateName(decks: ColumnDeck[], name: string, exceptId?: string) 
 }
 
 function normalizeColumnDecks(value: unknown): ColumnDeck[] {
-	if (!Array.isArray(value)) return [];
+	if (!Array.isArray(value)) {
+		return [];
+	}
 
 	const deckIds = new Set<string>();
 	const decks: ColumnDeck[] = [];
 	for (const valueItem of value) {
-		if (!valueItem || typeof valueItem !== 'object') continue;
+		if (!valueItem || typeof valueItem !== 'object') {
+			continue;
+		}
 		const candidate = valueItem as Partial<ColumnDeck>;
 		const id = typeof candidate.id === 'string' ? candidate.id : '';
 		const name = normalizeDeckName(candidate.name);
-		if (!id || !name || deckIds.has(id) || hasDuplicateName(decks, name)) continue;
+		if (!id || !name || deckIds.has(id) || hasDuplicateName(decks, name)) {
+			continue;
+		}
 
 		decks.push({
 			id,
@@ -52,10 +58,14 @@ function normalizeColumnDecks(value: unknown): ColumnDeck[] {
 }
 
 function normalizeColumnDeckStore(value: unknown): ColumnDeckStore | null {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		return null;
+	}
 	const candidate = value as Partial<ColumnDeckStore>;
 	const decks = normalizeColumnDecks(candidate.decks);
-	if (decks.length === 0) return null;
+	if (decks.length === 0) {
+		return null;
+	}
 
 	const activeDeckId = decks.some((deck) => deck.id === candidate.activeDeckId)
 		? (candidate.activeDeckId as string)
@@ -69,7 +79,9 @@ export function createColumnDeck(
 	columns: ColumnConfig[] = []
 ): ColumnDeck | null {
 	const normalizedName = normalizeDeckName(name);
-	if (!id || !normalizedName) return null;
+	if (!id || !normalizedName) {
+		return null;
+	}
 	return { id, name: normalizedName, columns };
 }
 
@@ -79,7 +91,9 @@ export function readColumnDeckStore(): ColumnDeckStore {
 		null,
 		normalizeColumnDeckStore
 	);
-	if (stored) return stored;
+	if (stored) {
+		return stored;
+	}
 
 	const migrated: ColumnDeckStore = {
 		activeDeckId: defaultColumnDeckId,
@@ -97,7 +111,9 @@ export function readColumnDeckStore(): ColumnDeckStore {
 
 export function writeColumnDeckStore(store: ColumnDeckStore) {
 	const normalized = normalizeColumnDeckStore(store);
-	if (!normalized) return;
+	if (!normalized) {
+		return;
+	}
 	writeJsonStorage(
 		columnDecksStorageKey,
 		normalized,

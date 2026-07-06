@@ -54,7 +54,9 @@ export function createTimelineEventBatcher({
 		phase: TimelineEventPhase
 	) {
 		const runtime = getRuntime(columnId) ?? emptyTimelineRuntime();
-		if (runtime.timelineKey !== timelineKey) return;
+		if (runtime.timelineKey !== timelineKey) {
+			return;
+		}
 
 		const pendingBatch = pendingBatches.get(columnId);
 		if (pendingBatch?.timelineKey === timelineKey) {
@@ -83,7 +85,9 @@ export function createTimelineEventBatcher({
 		}
 
 		const runtime = getRuntime(columnId) ?? emptyTimelineRuntime();
-		if (!runtime.visibleEventIds.includes(referenceEventId)) return;
+		if (!runtime.visibleEventIds.includes(referenceEventId)) {
+			return;
+		}
 
 		setRuntime(columnId, {
 			...runtime,
@@ -107,7 +111,9 @@ export function createTimelineEventBatcher({
 		}
 
 		const runtime = getRuntime(columnId) ?? emptyTimelineRuntime();
-		if (!runtime.visibleEventIds.includes(referenceEventId)) return;
+		if (!runtime.visibleEventIds.includes(referenceEventId)) {
+			return;
+		}
 
 		updateRuntime(columnId, {
 			unavailableReferenceEventIds: runtime.unavailableReferenceEventIds.includes(referenceEventId)
@@ -118,7 +124,9 @@ export function createTimelineEventBatcher({
 
 	function flushPendingBatch(columnId: string) {
 		const pendingBatch = pendingBatches.get(columnId);
-		if (!pendingBatch) return;
+		if (!pendingBatch) {
+			return;
+		}
 
 		pendingBatches.delete(columnId);
 		const events = deduplicatePendingEvents(pendingBatch.events);
@@ -129,7 +137,9 @@ export function createTimelineEventBatcher({
 		);
 
 		const runtime = getRuntime(columnId) ?? emptyTimelineRuntime();
-		if (runtime.timelineKey !== pendingBatch.timelineKey || runtime.hasNewerStored) return;
+		if (runtime.timelineKey !== pendingBatch.timelineKey || runtime.hasNewerStored) {
+			return;
+		}
 
 		const runtimeWithEvents = {
 			...runtime,
@@ -174,7 +184,9 @@ export function createTimelineEventBatcher({
 
 	function cancelPendingBatch(columnId: string) {
 		const pendingBatch = pendingBatches.get(columnId);
-		if (!pendingBatch) return;
+		if (!pendingBatch) {
+			return;
+		}
 
 		clearTimeout(pendingBatch.timeoutId);
 		pendingBatches.delete(columnId);
@@ -202,7 +214,9 @@ export function deduplicatePendingEvents(events: PendingTimelineEvent[]) {
 
 	for (let index = events.length - 1; index >= 0; index -= 1) {
 		const pendingEvent = events[index];
-		if (seenEventIds.has(pendingEvent.event.id)) continue;
+		if (seenEventIds.has(pendingEvent.event.id)) {
+			continue;
+		}
 
 		seenEventIds.add(pendingEvent.event.id);
 		deduplicatedEvents.push(pendingEvent);

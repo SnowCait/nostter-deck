@@ -135,10 +135,14 @@ export async function readStoredColumns(page: Page) {
 	return page.evaluate(
 		({ columnConfigsKey, columnDecksKey }) => {
 			const legacyValue = window.localStorage.getItem(columnConfigsKey);
-			if (legacyValue) return JSON.parse(legacyValue);
+			if (legacyValue) {
+				return JSON.parse(legacyValue);
+			}
 
 			const deckStoreValue = window.localStorage.getItem(columnDecksKey);
-			if (!deckStoreValue) return null;
+			if (!deckStoreValue) {
+				return null;
+			}
 
 			const deckStore = JSON.parse(deckStoreValue);
 			const decks = Array.isArray(deckStore.decks) ? deckStore.decks : [];
@@ -318,7 +322,9 @@ export async function expectStoredColumnIdsAreOpaque(page: Page) {
 	await expect
 		.poll(async () => {
 			const columns = await readStoredColumns(page);
-			if (!columns) return null;
+			if (!columns) {
+				return null;
+			}
 
 			return columns.every(
 				(column: { id?: string }) =>

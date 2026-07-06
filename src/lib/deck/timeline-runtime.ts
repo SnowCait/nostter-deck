@@ -65,7 +65,9 @@ export function isFetchableTimelineColumn(column: ColumnConfig): column is Fetch
 }
 
 export function getTimelineRequest(column: ColumnConfig): TimelineRequest | null {
-	if (!isFetchableTimelineColumn(column)) return null;
+	if (!isFetchableTimelineColumn(column)) {
+		return null;
+	}
 
 	if (column.timelineKind === 'custom') {
 		return {
@@ -111,7 +113,9 @@ export function getTimelineSignature(request: TimelineRequest) {
 }
 
 export function compareEventsByNip01(left: Nostr.Event, right: Nostr.Event) {
-	if (left.created_at !== right.created_at) return right.created_at - left.created_at;
+	if (left.created_at !== right.created_at) {
+		return right.created_at - left.created_at;
+	}
 
 	return left.id.localeCompare(right.id);
 }
@@ -168,7 +172,9 @@ function mergeHistoricalEventIds(
 	existingEventIds: string[],
 	incomingEventIds: string[]
 ) {
-	if (incomingEventIds.length === 0) return existingEventIds;
+	if (incomingEventIds.length === 0) {
+		return existingEventIds;
+	}
 	if (incomingEventIds.length === 1) {
 		return insertHistoricalEventId(runtime, existingEventIds, incomingEventIds[0]);
 	}
@@ -209,7 +215,9 @@ function insertHistoricalEventId(
 	existingEventIds: string[],
 	incomingEventId: string
 ) {
-	if (existingEventIds.length === 0) return [incomingEventId];
+	if (existingEventIds.length === 0) {
+		return [incomingEventId];
+	}
 
 	const incomingEvent = runtime.loadedEventsById[incomingEventId];
 	const firstEvent = runtime.loadedEventsById[existingEventIds[0]];
@@ -246,7 +254,9 @@ function uniqueFromEnd(eventIds: string[]) {
 
 	for (let index = eventIds.length - 1; index >= 0; index -= 1) {
 		const eventId = eventIds[index];
-		if (seenEventIds.has(eventId)) continue;
+		if (seenEventIds.has(eventId)) {
+			continue;
+		}
 
 		seenEventIds.add(eventId);
 		uniqueEventIds.push(eventId);
@@ -256,7 +266,9 @@ function uniqueFromEnd(eventIds: string[]) {
 }
 
 export function getReferencedEventId(event: Nostr.Event) {
-	if (event.kind !== Repost && event.kind !== Reaction) return null;
+	if (event.kind !== Repost && event.kind !== Reaction) {
+		return null;
+	}
 
 	return event.tags.findLast((tag) => tag[0] === 'e' && tag[1])?.[1] ?? null;
 }
@@ -268,7 +280,9 @@ export function timelineRuntimeToPosts(
 ) {
 	return runtime.visibleEventIds.flatMap((eventId) => {
 		const event = runtime.loadedEventsById[eventId];
-		if (!event) return [];
+		if (!event) {
+			return [];
+		}
 
 		const referencedEventId = getReferencedEventId(event);
 		const referencedEvent = runtime.loadedEventsById[referencedEventId ?? ''];
@@ -285,7 +299,9 @@ export function timelineRuntimeToPosts(
 					? 'unavailable'
 					: 'loading';
 		}
-		if (!post.referenceType && post.mutePubkeys.some(isMuted)) return [];
+		if (!post.referenceType && post.mutePubkeys.some(isMuted)) {
+			return [];
+		}
 
 		return [post];
 	});

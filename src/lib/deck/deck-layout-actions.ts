@@ -7,12 +7,18 @@ export function getEffectiveDeckLayoutMode(
 	mode: DeckLayoutMode,
 	isCompactViewport: boolean
 ): EffectiveDeckLayoutMode {
-	if (mode === 'single') return 'single';
-	if (mode === 'deck') return 'deck';
+	if (mode === 'single') {
+		return 'single';
+	}
+	if (mode === 'deck') {
+		return 'deck';
+	}
 	return isCompactViewport ? 'single' : 'deck';
 }
 
 export function resolveSingleColumnId(columns: ColumnIdentity[], preferredColumnId: string) {
-	if (columns.some((column) => column.id === preferredColumnId)) return preferredColumnId;
+	if (columns.some((column) => column.id === preferredColumnId)) {
+		return preferredColumnId;
+	}
 	return columns[0]?.id ?? '';
 }

@@ -101,7 +101,9 @@
 	const websiteUrl = $derived(normalizeWebsiteUrl(profile?.website));
 
 	function normalizeWebsiteUrl(value: string | undefined) {
-		if (!value) return null;
+		if (!value) {
+			return null;
+		}
 
 		try {
 			const url = new URL(value);

@@ -53,7 +53,9 @@ function toEventSigner(signer: Signer): EventSigner {
 
 function getNip07Provider(): WindowNostr | null {
 	const candidate = (globalThis as typeof globalThis & { nostr?: unknown }).nostr;
-	if (!candidate || typeof candidate !== 'object') return null;
+	if (!candidate || typeof candidate !== 'object') {
+		return null;
+	}
 
 	const provider = candidate as Partial<WindowNostr>;
 	return typeof provider.getPublicKey === 'function' && typeof provider.signEvent === 'function'
@@ -78,7 +80,9 @@ export function isNip07Available() {
 }
 
 function normalizePubkey(value: unknown): string | null {
-	if (typeof value !== 'string' || !/^[0-9a-f]{64}$/i.test(value)) return null;
+	if (typeof value !== 'string' || !/^[0-9a-f]{64}$/i.test(value)) {
+		return null;
+	}
 	return value.toLowerCase();
 }
 
@@ -135,7 +139,9 @@ function isLoggedIn() {
 }
 
 function finishAuthenticationAttempt(attempt: number) {
-	if (cancellableAuthAttempt === attempt) cancellableAuthAttempt = null;
+	if (cancellableAuthAttempt === attempt) {
+		cancellableAuthAttempt = null;
+	}
 }
 
 function failAuthenticationAttempt(
@@ -143,9 +149,13 @@ function failAuthenticationAttempt(
 	preserveActiveSession: boolean,
 	status: AuthStatus = 'error'
 ) {
-	if (!isCurrentAttempt(attempt)) return;
+	if (!isCurrentAttempt(attempt)) {
+		return;
+	}
 	finishAuthenticationAttempt(attempt);
-	if (!preserveActiveSession) setLoggedOutState(status);
+	if (!preserveActiveSession) {
+		setLoggedOutState(status);
+	}
 }
 
 async function getExtensionPubkey(
@@ -180,7 +190,9 @@ async function activateNip07() {
 
 	const { attempt } = beginAuthentication();
 	const pubkey = await getExtensionPubkey(provider);
-	if (!isCurrentAttempt(attempt)) return false;
+	if (!isCurrentAttempt(attempt)) {
+		return false;
+	}
 	if (!pubkey) {
 		setLoggedOutState('error');
 		return false;
@@ -215,7 +227,9 @@ async function activateNip46(
 		signer = BunkerSigner.fromBunker(clientSecretKey, bunker);
 		await signer.connect();
 		const pubkey = normalizePubkey(await signer.getPublicKey());
-		if (!pubkey || (expectedPubkey && pubkey !== expectedPubkey)) throw new Error('Invalid signer');
+		if (!pubkey || (expectedPubkey && pubkey !== expectedPubkey)) {
+			throw new Error('Invalid signer');
+		}
 		if (!isCurrentAttempt(attempt)) {
 			void signer.close();
 			return false;
@@ -227,7 +241,9 @@ async function activateNip46(
 		state = { status: 'loggedIn', pubkey };
 		return true;
 	} catch {
-		if (signer) void signer.close();
+		if (signer) {
+			void signer.close();
+		}
 		failAuthenticationAttempt(attempt, preserveActiveSession);
 		return false;
 	}
@@ -238,7 +254,9 @@ export async function loginWithNip07() {
 }
 
 export async function initializeAuth() {
-	if (typeof localStorage !== 'undefined') localStorage.removeItem(legacyAuthStorageKey);
+	if (typeof localStorage !== 'undefined') {
+		localStorage.removeItem(legacyAuthStorageKey);
+	}
 	const store = refreshAccountStore();
 	if (!store.activeAccountId) {
 		setLoggedOutState();
@@ -249,10 +267,14 @@ export async function initializeAuth() {
 
 export async function selectAccount(accountId: string) {
 	const account = refreshAccountStore().accounts.find(({ id }) => id === accountId);
-	if (!account) return false;
+	if (!account) {
+		return false;
+	}
 
 	writeAndSetAccountStore(setActiveAccount(accountId));
-	if (account.method === 'nip07') return activateNip07();
+	if (account.method === 'nip07') {
+		return activateNip07();
+	}
 	return activateNip46(account.bunker, hexToBytes(account.clientSecretKey), account.pubkey);
 }
 
@@ -285,7 +307,9 @@ export async function loginWithNip46ConnectionUri(uri: string, clientSecretKey: 
 	try {
 		signer = await BunkerSigner.fromURI(clientSecretKey, uri);
 		const pubkey = normalizePubkey(await signer.getPublicKey());
-		if (!pubkey) throw new Error('Invalid signer');
+		if (!pubkey) {
+			throw new Error('Invalid signer');
+		}
 		if (!isCurrentAttempt(attempt)) {
 			void signer.close();
 			return false;
@@ -297,14 +321,18 @@ export async function loginWithNip46ConnectionUri(uri: string, clientSecretKey: 
 		state = { status: 'loggedIn', pubkey };
 		return true;
 	} catch {
-		if (signer) void signer.close();
+		if (signer) {
+			void signer.close();
+		}
 		failAuthenticationAttempt(attempt, preserveActiveSession);
 		return false;
 	}
 }
 
 export function cancelPendingAuthentication() {
-	if (cancellableAuthAttempt === null || !isCurrentAttempt(cancellableAuthAttempt)) return false;
+	if (cancellableAuthAttempt === null || !isCurrentAttempt(cancellableAuthAttempt)) {
+		return false;
+	}
 
 	cancellableAuthAttempt = null;
 	authAttempt += 1;
@@ -314,7 +342,9 @@ export function cancelPendingAuthentication() {
 export async function removeAccount(accountId: string) {
 	const wasActive = accountStore.activeAccountId === accountId;
 	const nextStore = writeAndSetAccountStore(removeStoredAccount(accountId));
-	if (!wasActive) return true;
+	if (!wasActive) {
+		return true;
+	}
 
 	if (!nextStore.activeAccountId) {
 		authAttempt += 1;

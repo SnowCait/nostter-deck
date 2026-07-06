@@ -166,7 +166,9 @@
 	}
 
 	async function toggleComposePanel() {
-		if (!isLoggedIn) return;
+		if (!isLoggedIn) {
+			return;
+		}
 
 		if (composer.isOpen) {
 			composer.close();

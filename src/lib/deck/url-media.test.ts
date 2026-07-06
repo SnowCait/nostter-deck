@@ -83,7 +83,9 @@ describe('url media metadata', () => {
 		const responses = urls.map(() => deferredResponse());
 		const fetchMock = vi.fn<typeof fetch>((input) => {
 			const index = urls.indexOf(input.toString());
-			if (index < 0) throw new Error(`Unexpected URL: ${input.toString()}`);
+			if (index < 0) {
+				throw new Error(`Unexpected URL: ${input.toString()}`);
+			}
 
 			return responses[index].promise;
 		});
@@ -253,8 +255,12 @@ describe('url media metadata', () => {
 				);
 			}
 
-			if (url === firstUrl) return firstOpenGraphResponse.promise;
-			if (url === secondUrl) return secondOpenGraphResponse.promise;
+			if (url === firstUrl) {
+				return firstOpenGraphResponse.promise;
+			}
+			if (url === secondUrl) {
+				return secondOpenGraphResponse.promise;
+			}
 			throw new Error(`Unexpected URL: ${url}`);
 		});
 		vi.stubGlobal('fetch', fetchMock);

@@ -23,7 +23,9 @@ export function updateColumnTitle(
 ): ColumnConfig[] {
 	const nextTitle = title.trim();
 	return columns.map((column) => {
-		if (column.id !== columnId) return column;
+		if (column.id !== columnId) {
+			return column;
+		}
 
 		if (!nextTitle) {
 			const nextColumn = { ...column };
@@ -41,7 +43,9 @@ export function updateColumnIcon(
 	icon: ColumnIconKey | null
 ): ColumnConfig[] {
 	return columns.map((column) => {
-		if (column.id !== columnId) return column;
+		if (column.id !== columnId) {
+			return column;
+		}
 
 		if (!icon || icon === getDefaultColumnIconKey(column)) {
 			const nextColumn = { ...column };
@@ -87,7 +91,9 @@ export function saveSearchSettings(
 	query: string
 ): ColumnConfig[] {
 	const nextQuery = query.trim();
-	if (nextQuery.length === 0) return columns;
+	if (nextQuery.length === 0) {
+		return columns;
+	}
 
 	return columns.map((column) =>
 		column.id === columnId &&

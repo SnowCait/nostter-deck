@@ -7,10 +7,18 @@ export function isColumnIconKey(value: unknown): value is ColumnIconKey {
 }
 
 export function getDefaultColumnIconKey(column: ColumnConfig): ColumnIconKey {
-	if (column.type === 'website') return 'globe';
-	if (column.timelineKind === 'custom') return 'radio';
-	if (column.sourceKey === 'timeline_follow') return 'users';
-	if (column.sourceKey === 'timeline_channel') return 'messages';
+	if (column.type === 'website') {
+		return 'globe';
+	}
+	if (column.timelineKind === 'custom') {
+		return 'radio';
+	}
+	if (column.sourceKey === 'timeline_follow') {
+		return 'users';
+	}
+	if (column.sourceKey === 'timeline_channel') {
+		return 'messages';
+	}
 
 	return 'search';
 }

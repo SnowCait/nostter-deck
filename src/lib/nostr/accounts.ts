@@ -31,16 +31,22 @@ export const accountsStorageKey = 'nostter:accounts';
 const emptyStore: AccountStore = { activeAccountId: null, accounts: [] };
 
 function normalizePubkey(value: unknown): string | null {
-	if (typeof value !== 'string' || !/^[0-9a-f]{64}$/i.test(value)) return null;
+	if (typeof value !== 'string' || !/^[0-9a-f]{64}$/i.test(value)) {
+		return null;
+	}
 	return value.toLowerCase();
 }
 
 function normalizeBunker(value: unknown): BunkerPointer | null {
-	if (!value || typeof value !== 'object') return null;
+	if (!value || typeof value !== 'object') {
+		return null;
+	}
 
 	const candidate = value as Partial<BunkerPointer>;
 	const pubkey = normalizePubkey(candidate.pubkey);
-	if (!pubkey || !Array.isArray(candidate.relays)) return null;
+	if (!pubkey || !Array.isArray(candidate.relays)) {
+		return null;
+	}
 
 	return {
 		pubkey,
@@ -50,7 +56,9 @@ function normalizeBunker(value: unknown): BunkerPointer | null {
 }
 
 function normalizeAccount(value: unknown): AccountRecord | null {
-	if (!value || typeof value !== 'object') return null;
+	if (!value || typeof value !== 'object') {
+		return null;
+	}
 
 	const candidate = value as Partial<AccountRecord> & {
 		bunker?: unknown;
@@ -67,8 +75,9 @@ function normalizeAccount(value: unknown): AccountRecord | null {
 	}
 
 	const id = getAccountId(candidate.method, pubkey);
-	if (candidate.method === 'nip07')
+	if (candidate.method === 'nip07') {
 		return { id, method: 'nip07', pubkey, createdAt: candidate.createdAt };
+	}
 
 	const bunker = normalizeBunker(candidate.bunker);
 	if (
@@ -89,7 +98,9 @@ function normalizeAccount(value: unknown): AccountRecord | null {
 }
 
 function normalizeStore(value: unknown): AccountStore {
-	if (!value || typeof value !== 'object') return { ...emptyStore };
+	if (!value || typeof value !== 'object') {
+		return { ...emptyStore };
+	}
 
 	const candidate = value as Partial<AccountStore>;
 	const accounts = Array.isArray(candidate.accounts)
@@ -141,7 +152,9 @@ export function setActiveAccount(accountId: string | null) {
 export function removeAccount(accountId: string) {
 	const store = readAccounts();
 	const removedIndex = store.accounts.findIndex((account) => account.id === accountId);
-	if (removedIndex < 0) return store;
+	if (removedIndex < 0) {
+		return store;
+	}
 
 	const accounts = store.accounts.filter(({ id }) => id !== accountId);
 	const activeAccountId =

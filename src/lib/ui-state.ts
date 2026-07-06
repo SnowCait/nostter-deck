@@ -20,7 +20,9 @@ function isDeckLayoutMode(value: unknown): value is DeckLayoutMode {
 }
 
 function normalizeUiState(value: unknown): UiState {
-	if (!value || typeof value !== 'object') return { ...defaultUiState };
+	if (!value || typeof value !== 'object') {
+		return { ...defaultUiState };
+	}
 
 	const candidate = value as Partial<UiState>;
 	return {

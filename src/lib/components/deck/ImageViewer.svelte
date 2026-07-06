@@ -18,15 +18,21 @@
 	const hasNextImage = $derived(currentIndex < images.length - 1);
 
 	function showPreviousImage() {
-		if (hasPreviousImage) currentIndex -= 1;
+		if (hasPreviousImage) {
+			currentIndex -= 1;
+		}
 	}
 
 	function showNextImage() {
-		if (hasNextImage) currentIndex += 1;
+		if (hasNextImage) {
+			currentIndex += 1;
+		}
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
-		if (!open) return;
+		if (!open) {
+			return;
+		}
 
 		if (event.key === 'ArrowLeft') {
 			event.preventDefault();
@@ -43,14 +49,21 @@
 
 	function handleTouchEnd(event: TouchEvent) {
 		const touchEndX = event.changedTouches[0]?.clientX;
-		if (touchStartX === undefined || touchEndX === undefined) return;
+		if (touchStartX === undefined || touchEndX === undefined) {
+			return;
+		}
 
 		const distance = touchEndX - touchStartX;
 		touchStartX = undefined;
-		if (Math.abs(distance) < 50) return;
+		if (Math.abs(distance) < 50) {
+			return;
+		}
 
-		if (distance > 0) showPreviousImage();
-		else showNextImage();
+		if (distance > 0) {
+			showPreviousImage();
+		} else {
+			showNextImage();
+		}
 	}
 </script>
 

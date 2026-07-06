@@ -24,14 +24,17 @@ function isPubkey(value: unknown): value is string {
 export function extractNip65RelayTags(tags: Nostr.Event['tags']): Nip65RelayTag[] {
 	const relayTags: Nip65RelayTag[] = [];
 	for (const tag of tags) {
-		if (tag[0] !== 'r' || typeof tag[1] !== 'string') continue;
+		if (tag[0] !== 'r' || typeof tag[1] !== 'string') {
+			continue;
+		}
 
 		const marker = tag[2];
 		if (
 			!normalizeRelay(tag[1]) ||
 			(marker !== undefined && marker !== 'read' && marker !== 'write')
-		)
+		) {
 			continue;
+		}
 
 		relayTags.push(marker ? ['r', tag[1], marker] : ['r', tag[1]]);
 	}
@@ -54,19 +57,24 @@ export function getNip65ReadRelays(relayTags: Nip65RelayTag[]) {
 }
 
 function normalizeNip65Cache(value: unknown): Nip65Cache {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		return {};
+	}
 
 	const entries: Nip65Cache = {};
 	for (const [pubkey, entry] of Object.entries(value)) {
-		if (!isPubkey(pubkey) || !entry || typeof entry !== 'object') continue;
+		if (!isPubkey(pubkey) || !entry || typeof entry !== 'object') {
+			continue;
+		}
 		const candidate = entry as Partial<Nip65CacheEntry>;
 		const updatedAt = candidate.updatedAt;
 		if (
 			typeof updatedAt !== 'number' ||
 			!Number.isFinite(updatedAt) ||
 			!Array.isArray(candidate.relayTags)
-		)
+		) {
 			continue;
+		}
 
 		entries[pubkey.toLowerCase()] = {
 			updatedAt,
@@ -90,7 +98,9 @@ export function getCachedNip65RelayTags(pubkey: string) {
 
 export async function getNip65ReadRelaysForPubkey(pubkey: string) {
 	const cachedRelayTags = getCachedNip65RelayTags(pubkey);
-	if (cachedRelayTags.length > 0) return getNip65ReadRelays(cachedRelayTags);
+	if (cachedRelayTags.length > 0) {
+		return getNip65ReadRelays(cachedRelayTags);
+	}
 
 	const refreshedRelayTags = await refreshNip65Relays(pubkey);
 	return refreshedRelayTags ? getNip65ReadRelays(refreshedRelayTags) : [];
@@ -110,7 +120,9 @@ export function clearDefaultRelays() {
 
 export async function refreshNip65Relays(pubkey: string) {
 	const relayTags = await requestNip65RelayTags(pubkey);
-	if (relayTags === null) return null;
+	if (relayTags === null) {
+		return null;
+	}
 
 	const cache = readNip65Cache();
 	cache[pubkey.toLowerCase()] = { updatedAt: Date.now(), relayTags };
@@ -124,7 +136,9 @@ function requestNip65RelayTags(pubkey: string): Promise<Nip65RelayTag[] | null> 
 		let latestEvent: Nostr.Event | null = null;
 		let finished = false;
 		const finish = (value: Nip65RelayTag[] | null) => {
-			if (finished) return;
+			if (finished) {
+				return;
+			}
 			finished = true;
 			clearTimeout(timeoutId);
 			subscription.unsubscribe();
@@ -134,8 +148,9 @@ function requestNip65RelayTags(pubkey: string): Promise<Nip65RelayTag[] | null> 
 			.use(request)
 			.subscribe({
 				next: ({ event }) => {
-					if (event.kind !== RelayList || event.pubkey.toLowerCase() !== pubkey.toLowerCase())
+					if (event.kind !== RelayList || event.pubkey.toLowerCase() !== pubkey.toLowerCase()) {
 						return;
+					}
 					if (
 						!latestEvent ||
 						event.created_at > latestEvent.created_at ||

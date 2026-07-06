@@ -106,7 +106,9 @@ function tokenizeText(
 	let currentIndex = 0;
 
 	for (const match of text.matchAll(hashtagPattern)) {
-		if (!hashtagTags.has(match[2].toLowerCase())) continue;
+		if (!hashtagTags.has(match[2].toLowerCase())) {
+			continue;
+		}
 
 		const prefix = match[1];
 		const hashtag = match[0].slice(prefix.length);
@@ -137,15 +139,23 @@ function trimTrailingUrlPunctuation(value: string) {
 function parseLinkCandidate(
 	value: string
 ): Extract<PostContentToken, { type: 'link' | 'nostrReference' }> | null {
-	if (value.length === 0) return null;
+	if (value.length === 0) {
+		return null;
+	}
 
 	const nostrReference = parseNostrReference(value);
-	if (nostrReference) return nostrReference;
+	if (nostrReference) {
+		return nostrReference;
+	}
 
-	if (!URL.canParse(value)) return null;
+	if (!URL.canParse(value)) {
+		return null;
+	}
 
 	const url = new URL(value);
-	if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+	if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+		return null;
+	}
 
 	return {
 		type: 'link',
@@ -158,12 +168,18 @@ function parseNostrReference(
 	value: string
 ): Extract<PostContentToken, { type: 'nostrReference' }> | null {
 	const match = nostrReferencePattern.exec(value);
-	if (!match) return null;
+	if (!match) {
+		return null;
+	}
 
 	const entityType = match[2].toLowerCase();
-	if (!isNostrReferenceEntityType(entityType)) return null;
+	if (!isNostrReferenceEntityType(entityType)) {
+		return null;
+	}
 	const nostrReference = parseNostrReferenceData(match[1], entityType);
-	if (!nostrReference) return null;
+	if (!nostrReference) {
+		return null;
+	}
 
 	return {
 		type: 'nostrReference',
@@ -178,7 +194,9 @@ function parseNostrReference(
 function parseNostrReferenceData(identifier: string, entityType: NostrReferenceEntityType) {
 	try {
 		const decoded = decode(identifier);
-		if (decoded.type !== entityType) return null;
+		if (decoded.type !== entityType) {
+			return null;
+		}
 
 		switch (decoded.type) {
 			case 'npub':
@@ -210,7 +228,9 @@ function isNostrReferenceEntityType(value: string): value is NostrReferenceEntit
 }
 
 function ensureUrlCanParse() {
-	if (typeof URL.canParse === 'function') return;
+	if (typeof URL.canParse === 'function') {
+		return;
+	}
 
 	Object.defineProperty(URL, 'canParse', {
 		configurable: true,

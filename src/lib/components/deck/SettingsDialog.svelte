@@ -124,12 +124,16 @@
 	);
 
 	$effect(() => {
-		if (!isOpen || !isMutedUsersExpanded || mutedPubkeys.length === 0) return;
+		if (!isOpen || !isMutedUsersExpanded || mutedPubkeys.length === 0) {
+			return;
+		}
 		requestProfiles(mutedPubkeys, profileRelays);
 	});
 
 	$effect(() => {
-		if (!isOpen) isMutedUsersExpanded = false;
+		if (!isOpen) {
+			isMutedUsersExpanded = false;
+		}
 	});
 
 	function selectLocale(value: string) {

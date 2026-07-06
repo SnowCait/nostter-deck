@@ -3,11 +3,15 @@ function canUseLocalStorage() {
 }
 
 export function readJsonStorage<T>(key: string, fallback: T, normalize: (value: unknown) => T): T {
-	if (!canUseLocalStorage()) return fallback;
+	if (!canUseLocalStorage()) {
+		return fallback;
+	}
 
 	try {
 		const storedValue = localStorage.getItem(key);
-		if (!storedValue) return fallback;
+		if (!storedValue) {
+			return fallback;
+		}
 
 		return normalize(JSON.parse(storedValue));
 	} catch {
@@ -16,7 +20,9 @@ export function readJsonStorage<T>(key: string, fallback: T, normalize: (value: 
 }
 
 export function writeJsonStorage<T>(key: string, value: T, normalize: (value: unknown) => T) {
-	if (!canUseLocalStorage()) return;
+	if (!canUseLocalStorage()) {
+		return;
+	}
 
 	localStorage.setItem(key, JSON.stringify(normalize(value)));
 }

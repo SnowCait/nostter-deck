@@ -48,7 +48,9 @@ export function startThreadSubscription({
 		.pipe(uniq())
 		.subscribe({
 			next: ({ event }) => {
-				if (event.kind !== ShortTextNote) return;
+				if (event.kind !== ShortTextNote) {
+					return;
+				}
 				eventsById.set(event.id, event);
 				void storeEvent(event);
 			},
@@ -88,7 +90,9 @@ export function buildThreadEvents(events: Nostr.Event[], rootId: string): Thread
 	const childrenByParentId = new Map<string, Nostr.Event[]>();
 
 	for (const event of events) {
-		if (event.id === rootId) continue;
+		if (event.id === rootId) {
+			continue;
+		}
 		const parentId = getThreadReference(event)?.parentId ?? rootId;
 		const children = childrenByParentId.get(parentId) ?? [];
 		children.push(event);
@@ -102,19 +106,29 @@ export function buildThreadEvents(events: Nostr.Event[], rootId: string): Thread
 	const result: ThreadEvent[] = [];
 	const visited = new Set<string>();
 	function append(event: Nostr.Event, depth: number) {
-		if (visited.has(event.id)) return;
+		if (visited.has(event.id)) {
+			return;
+		}
 		visited.add(event.id);
 		result.push({ event, depth });
-		for (const child of childrenByParentId.get(event.id) ?? []) append(child, depth + 1);
+		for (const child of childrenByParentId.get(event.id) ?? []) {
+			append(child, depth + 1);
+		}
 	}
 
 	const root = eventsById.get(rootId);
-	if (root) append(root, 0);
-	for (const event of [...events].sort(compareChronologically)) append(event, root ? 1 : 0);
+	if (root) {
+		append(root, 0);
+	}
+	for (const event of [...events].sort(compareChronologically)) {
+		append(event, root ? 1 : 0);
+	}
 	return result;
 }
 
 function compareChronologically(left: Nostr.Event, right: Nostr.Event) {
-	if (left.created_at !== right.created_at) return left.created_at - right.created_at;
+	if (left.created_at !== right.created_at) {
+		return left.created_at - right.created_at;
+	}
 	return left.id.localeCompare(right.id);
 }

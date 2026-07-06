@@ -4,7 +4,9 @@ const mutedUsersStorageKey = 'nostter:muted-users';
 const pubkeyPattern = /^[0-9a-f]{64}$/i;
 
 export function normalizeMutedPubkeys(value: unknown): string[] {
-	if (!Array.isArray(value)) return [];
+	if (!Array.isArray(value)) {
+		return [];
+	}
 
 	return [
 		...new Set(

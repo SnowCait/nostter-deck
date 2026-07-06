@@ -18,7 +18,9 @@
 	const canSave = $derived(queryDraft.trim().length > 0);
 
 	$effect(() => {
-		if (queryDraftColumnId === column.id && queryDraftSource === column.query) return;
+		if (queryDraftColumnId === column.id && queryDraftSource === column.query) {
+			return;
+		}
 
 		queryDraftColumnId = column.id;
 		queryDraftSource = column.query;
@@ -26,7 +28,9 @@
 	});
 
 	function save() {
-		if (!canSave) return;
+		if (!canSave) {
+			return;
+		}
 
 		onSave(queryDraft);
 	}

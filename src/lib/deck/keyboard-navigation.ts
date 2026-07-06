@@ -41,7 +41,9 @@ export function createKeyboardNavigation({
 
 	function focusPost(columnId: string, postElement: HTMLElement) {
 		const postKey = postElement.dataset.postKey;
-		if (postKey) lastFocusedPostKeyByColumnId[columnId] = postKey;
+		if (postKey) {
+			lastFocusedPostKeyByColumnId[columnId] = postKey;
+		}
 		setActiveColumnId(columnId);
 		postElement.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 		postElement.focus({ preventScroll: true });
@@ -94,7 +96,9 @@ export function createKeyboardNavigation({
 	}
 
 	function isEditableKeyboardTarget(target: EventTarget | null) {
-		if (!(target instanceof Element)) return false;
+		if (!(target instanceof Element)) {
+			return false;
+		}
 		return Boolean(
 			target.closest(
 				'input, textarea, select, iframe, [contenteditable="true"], [role="option"], [role="menuitem"]'
@@ -107,8 +111,12 @@ export function createKeyboardNavigation({
 	}
 
 	function isKeyboardNavigationBlocked(target: EventTarget | null, key: string) {
-		if (!(target instanceof Element)) return false;
-		if (isEditableKeyboardTarget(target)) return true;
+		if (!(target instanceof Element)) {
+			return false;
+		}
+		if (isEditableKeyboardTarget(target)) {
+			return true;
+		}
 		if (target.closest('button, a, [role="button"], [role="link"]')) {
 			return !['h', 'j', 'k', 'l'].includes(key);
 		}
@@ -119,17 +127,25 @@ export function createKeyboardNavigation({
 		const columnElements = getDisplayedColumnElements();
 		const currentColumn = getFocusedColumnElement();
 		const currentIndex = currentColumn ? columnElements.indexOf(currentColumn) : -1;
-		if (currentIndex < 0) return;
+		if (currentIndex < 0) {
+			return;
+		}
 		const nextColumnId = columnElements[currentIndex + direction]?.dataset.columnId;
-		if (nextColumnId) focusColumn(nextColumnId, true);
+		if (nextColumnId) {
+			focusColumn(nextColumnId, true);
+		}
 	}
 
 	function movePostFocus(direction: -1 | 1) {
 		const columnElement = getFocusedColumnElement();
 		const columnId = columnElement?.dataset.columnId;
-		if (!columnElement || !columnId) return;
+		if (!columnElement || !columnId) {
+			return;
+		}
 		const postElements = getPostElements(columnElement);
-		if (postElements.length === 0) return;
+		if (postElements.length === 0) {
+			return;
+		}
 		const activeElement = document.activeElement;
 		const currentPost =
 			activeElement instanceof Element
@@ -149,13 +165,17 @@ export function createKeyboardNavigation({
 			activeElement instanceof Element
 				? activeElement.closest<HTMLElement>('[data-deck-post]')
 				: null;
-		if (!postElement || activeElement !== postElement) return;
+		if (!postElement || activeElement !== postElement) {
+			return;
+		}
 		postElement.querySelector<HTMLElement>(selector)?.click();
 	}
 
 	function scrollActiveTimelineToTop() {
 		const activeColumn = getColumns().find((column) => column.id === getActiveColumnId());
-		if (activeColumn?.type !== 'timeline') return;
+		if (activeColumn?.type !== 'timeline') {
+			return;
+		}
 		getColumnElement(getActiveColumnId())
 			?.querySelector<HTMLDivElement>('[data-testid="timeline-scroll"]')
 			?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -164,7 +184,9 @@ export function createKeyboardNavigation({
 	function focusChannelComposerInCurrentColumn() {
 		const columnElement = getFocusedColumnElement();
 		const columnId = columnElement?.dataset.columnId;
-		if (!columnElement || !columnId) return false;
+		if (!columnElement || !columnId) {
+			return false;
+		}
 
 		const column = getColumns().find((candidate) => candidate.id === columnId);
 		if (
@@ -186,8 +208,12 @@ export function createKeyboardNavigation({
 	}
 
 	async function handleKeyboardNavigation(event: KeyboardEvent) {
-		if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
-		if (isKeyboardOverlayOpen()) return;
+		if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) {
+			return;
+		}
+		if (isKeyboardOverlayOpen()) {
+			return;
+		}
 		if (event.key === 'Escape') {
 			if (isComposeOpen() && (isComposePanelKeyboardTarget(event.target) || !hasDetailColumn())) {
 				event.preventDefault();
@@ -203,25 +229,35 @@ export function createKeyboardNavigation({
 
 		const key = event.key.toLowerCase();
 		if (key === 'n') {
-			if (isEditableKeyboardTarget(event.target) || !isLoggedIn()) return;
+			if (isEditableKeyboardTarget(event.target) || !isLoggedIn()) {
+				return;
+			}
 			event.preventDefault();
-			if (focusChannelComposerInCurrentColumn()) return;
+			if (focusChannelComposerInCurrentColumn()) {
+				return;
+			}
 			await openCompose();
 			return;
 		}
 		if (event.key === '?' || (event.code === 'Slash' && event.shiftKey)) {
-			if (isEditableKeyboardTarget(event.target)) return;
+			if (isEditableKeyboardTarget(event.target)) {
+				return;
+			}
 			event.preventDefault();
 			openKeyboardShortcuts();
 			return;
 		}
 		if (event.key === 'Home') {
-			if (isEditableKeyboardTarget(event.target)) return;
+			if (isEditableKeyboardTarget(event.target)) {
+				return;
+			}
 			event.preventDefault();
 			scrollActiveTimelineToTop();
 			return;
 		}
-		if (isKeyboardNavigationBlocked(event.target, key)) return;
+		if (isKeyboardNavigationBlocked(event.target, key)) {
+			return;
+		}
 		if (key === 'h' || event.key === 'ArrowLeft') {
 			event.preventDefault();
 			moveColumnFocus(-1);
@@ -245,13 +281,19 @@ export function createKeyboardNavigation({
 
 	function handleFocusIn(event: FocusEvent) {
 		const target = event.target;
-		if (!(target instanceof Element)) return;
+		if (!(target instanceof Element)) {
+			return;
+		}
 		const columnElement = target.closest<HTMLElement>('[data-deck-column]');
 		const columnId = columnElement?.dataset.columnId;
-		if (!columnId) return;
+		if (!columnId) {
+			return;
+		}
 		setActiveColumnId(columnId);
 		const postKey = target.closest<HTMLElement>('[data-deck-post]')?.dataset.postKey;
-		if (postKey) lastFocusedPostKeyByColumnId[columnId] = postKey;
+		if (postKey) {
+			lastFocusedPostKeyByColumnId[columnId] = postKey;
+		}
 	}
 
 	function resetFocusMemory() {

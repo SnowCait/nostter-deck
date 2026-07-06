@@ -5,33 +5,45 @@ import { encodeEventPointer, encodeNeventPointer } from '$lib/nostr/nip19';
 const postShareUrlBase = 'https://nostter.app/';
 
 export function getPostLikeTarget(post: Post): Nostr.Event | null {
-	if (post.referenceType) return post.events.referenced ?? null;
+	if (post.referenceType) {
+		return post.events.referenced ?? null;
+	}
 	return post.events.source;
 }
 
 export function getPostRepostTarget(post: Post): Nostr.Event | null {
-	if (post.referenceType) return post.events.referenced ?? null;
+	if (post.referenceType) {
+		return post.events.referenced ?? null;
+	}
 	return post.events.source;
 }
 
 export function getPostReplyTarget(post: Post): Nostr.Event | null {
-	if (post.referenceType) return post.events.referenced ?? null;
+	if (post.referenceType) {
+		return post.events.referenced ?? null;
+	}
 	return post.events.source;
 }
 
 export function getPostQuoteTarget(post: Post): Nostr.Event | null {
-	if (post.referenceType) return post.events.referenced ?? null;
+	if (post.referenceType) {
+		return post.events.referenced ?? null;
+	}
 	return post.events.source;
 }
 
 export function getPostShareTarget(post: Post): Nostr.Event | null {
-	if (post.referenceType) return post.events.referenced ?? null;
+	if (post.referenceType) {
+		return post.events.referenced ?? null;
+	}
 	return post.events.source;
 }
 
 export function buildPostShareUrl(post: Post): string | null {
 	const target = getPostShareTarget(post);
-	if (!target) return null;
+	if (!target) {
+		return null;
+	}
 
 	const pointer = encodeEventPointer(target);
 	return pointer ? `${postShareUrlBase}${pointer.value}` : null;
@@ -87,10 +99,14 @@ function getReplyPubkeyTags(target: Nostr.Event, relayHint: string) {
 
 	for (const tag of target.tags) {
 		const pubkey = tag[0] === 'p' && tag[1] && /^[0-9a-f]{64}$/i.test(tag[1]) ? tag[1] : null;
-		if (!pubkey) continue;
+		if (!pubkey) {
+			continue;
+		}
 
 		const normalizedPubkey = pubkey.toLowerCase();
-		if (pubkeyTags.has(normalizedPubkey)) continue;
+		if (pubkeyTags.has(normalizedPubkey)) {
+			continue;
+		}
 		pubkeyTags.set(normalizedPubkey, tag[2] ?? '');
 	}
 

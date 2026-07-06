@@ -48,7 +48,9 @@ export function startCustomTimelineSubscription({
 	let isLoading = false;
 
 	function setLoading(nextIsLoading: boolean) {
-		if (isLoading === nextIsLoading) return;
+		if (isLoading === nextIsLoading) {
+			return;
+		}
 
 		isLoading = nextIsLoading;
 		onLoadingChange(nextIsLoading);
@@ -157,7 +159,9 @@ export function startCustomTimelineSubscription({
 		}
 
 		const referencedEventId = getReferencedEventId(referenceEvent);
-		if (!referencedEventId) return;
+		if (!referencedEventId) {
+			return;
+		}
 
 		const referenceReq = createRxBackwardReq();
 		let hasReferencedEvent = false;
@@ -173,7 +177,9 @@ export function startCustomTimelineSubscription({
 				},
 				complete: () => {
 					removeSubscription();
-					if (!hasReferencedEvent) onReferencedEventUnavailable(referenceEvent.id);
+					if (!hasReferencedEvent) {
+						onReferencedEventUnavailable(referenceEvent.id);
+					}
 				}
 			});
 
@@ -233,7 +239,9 @@ export function startCustomTimelineSubscription({
 
 	addSubscription(
 		rxNostr.createAllErrorObservable().subscribe(({ from, reason }) => {
-			if (!relayUrls.includes(from)) return;
+			if (!relayUrls.includes(from)) {
+				return;
+			}
 
 			setLoading(false);
 			onError(formatRelayError(from, reason));

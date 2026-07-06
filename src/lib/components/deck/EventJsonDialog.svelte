@@ -54,7 +54,9 @@
 	}
 
 	function clearCopyStatus() {
-		if (copyStatusTimeout) clearTimeout(copyStatusTimeout);
+		if (copyStatusTimeout) {
+			clearTimeout(copyStatusTimeout);
+		}
 		copyStatusTimeout = undefined;
 		copyStatus = 'idle';
 	}

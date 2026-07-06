@@ -32,11 +32,17 @@ export function createEmojiReactionController({
 			try {
 				const relays = combineRelays(await getReadRelays(pubkey), [...defaultRelays]);
 				const nextCandidates = await loadCandidates(pubkey, relays);
-				if (requestId === currentRequestId) candidates = nextCandidates;
+				if (requestId === currentRequestId) {
+					candidates = nextCandidates;
+				}
 			} catch {
-				if (requestId === currentRequestId) candidates = [];
+				if (requestId === currentRequestId) {
+					candidates = [];
+				}
 			} finally {
-				if (requestId === currentRequestId) isLoading = false;
+				if (requestId === currentRequestId) {
+					isLoading = false;
+				}
 			}
 		})();
 	});

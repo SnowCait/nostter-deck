@@ -45,7 +45,9 @@ export function requestUrlMediaMetadata(urls: string[]) {
 		}
 
 		const normalizedUrl = parsedUrl.href;
-		if (mediaByUrl.has(normalizedUrl)) continue;
+		if (mediaByUrl.has(normalizedUrl)) {
+			continue;
+		}
 
 		if (!canRequestUrlMetadata(parsedUrl) || failedMetadataOrigins.has(parsedUrl.origin)) {
 			mediaByUrl.set(normalizedUrl, { status: 'link', url: normalizedUrl });
@@ -58,10 +60,14 @@ export function requestUrlMediaMetadata(urls: string[]) {
 }
 
 export function setUrlImageDimensions(url: string, width: number, height: number) {
-	if (width <= 0 || height <= 0) return;
+	if (width <= 0 || height <= 0) {
+		return;
+	}
 
 	const media = mediaByUrl.get(url);
-	if (media?.status !== 'image') return;
+	if (media?.status !== 'image') {
+		return;
+	}
 
 	mediaByUrl.set(url, {
 		...media,
@@ -72,7 +78,9 @@ export function setUrlImageDimensions(url: string, width: number, height: number
 
 export function clearUrlPreviewImage(url: string) {
 	const media = mediaByUrl.get(url);
-	if (media?.status !== 'link' || !media.imageUrl) return;
+	if (media?.status !== 'link' || !media.imageUrl) {
+		return;
+	}
 
 	mediaByUrl.set(url, {
 		status: 'link',
@@ -151,13 +159,17 @@ async function loadAndApplyOpenGraphMetadata(url: URL) {
 	const origin = url.origin;
 
 	await openGraphLock.acquire(origin, async () => {
-		if (failedOpenGraphOrigins.has(origin)) return;
+		if (failedOpenGraphOrigins.has(origin)) {
+			return;
+		}
 
 		try {
 			const response = await fetchWithMetadataLimit(normalizedUrl);
 			const openGraphMetadata = parseOpenGraphMetadata(await response.text(), url);
 			const media = mediaByUrl.get(normalizedUrl);
-			if (media?.status !== 'link') return;
+			if (media?.status !== 'link') {
+				return;
+			}
 
 			mediaByUrl.set(normalizedUrl, {
 				...media,
@@ -175,7 +187,9 @@ function parseOpenGraphMetadata(html: string, baseUrl: URL) {
 			? undefined
 			: new DOMParser().parseFromString(html, 'text/html');
 
-	if (!document) return parseOpenGraphMetadataFallback(html, baseUrl);
+	if (!document) {
+		return parseOpenGraphMetadataFallback(html, baseUrl);
+	}
 
 	return {
 		title: firstText([
@@ -239,7 +253,9 @@ function firstText(values: Array<string | null | undefined>) {
 }
 
 function resolveMetadataUrl(url: string | undefined, baseUrl: URL) {
-	if (!url) return undefined;
+	if (!url) {
+		return undefined;
+	}
 
 	try {
 		return new URL(url, baseUrl).href;
@@ -278,5 +294,7 @@ function acquireMetadataFetchSlot() {
 function releaseMetadataFetchSlot() {
 	activeMetadataFetches = Math.max(0, activeMetadataFetches - 1);
 	const next = metadataFetchQueue.shift();
-	if (next) next();
+	if (next) {
+		next();
+	}
 }

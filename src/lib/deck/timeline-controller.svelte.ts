@@ -63,7 +63,9 @@ export function createTimelineController({ getColumnConfigs, isReady }: Timeline
 	});
 
 	$effect(() => {
-		if (!isReady()) return;
+		if (!isReady()) {
+			return;
+		}
 
 		subscriptionManager.sync(getTimelineSubscriptionTargets(getColumnConfigs()));
 	});
@@ -98,7 +100,9 @@ export function createTimelineController({ getColumnConfigs, isReady }: Timeline
 	function getTimelineSubscriptionTargets(columns: ColumnConfig[]): TimelineSubscriptionTarget[] {
 		return columns.filter(isFetchableTimelineColumn).flatMap((column) => {
 			const request = getTimelineRequest(column);
-			if (!request) return [];
+			if (!request) {
+				return [];
+			}
 
 			const filters = $state.snapshot(request.filters);
 			const relays = $state.snapshot(request.relays);

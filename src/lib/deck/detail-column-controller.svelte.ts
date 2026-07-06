@@ -126,17 +126,23 @@ export function createDetailColumnController({
 			filters: [{ kinds: [ShortTextNote, Repost], authors: [pubkey], limit: 20 }],
 			relays: { type: 'custom', urls: relays },
 			onEvent: (event) => {
-				if (profilePostRequestId !== requestId) return;
+				if (profilePostRequestId !== requestId) {
+					return;
+				}
 				const runtime = profilePostRuntimes[pubkey] ?? emptyTimelineRuntime(pubkey);
 				setProfilePostRuntime(pubkey, addProfilePostEvent(runtime, event));
 			},
 			onReferencedEvent: (referenceEventId, event) => {
-				if (profilePostRequestId !== requestId) return;
+				if (profilePostRequestId !== requestId) {
+					return;
+				}
 				const runtime = profilePostRuntimes[pubkey] ?? emptyTimelineRuntime(pubkey);
 				setProfilePostRuntime(pubkey, addProfileReferencedEvent(runtime, referenceEventId, event));
 			},
 			onReferencedEventUnavailable: (referenceEventId) => {
-				if (profilePostRequestId !== requestId) return;
+				if (profilePostRequestId !== requestId) {
+					return;
+				}
 				const runtime = profilePostRuntimes[pubkey] ?? emptyTimelineRuntime(pubkey);
 				setProfilePostRuntime(
 					pubkey,
@@ -144,12 +150,16 @@ export function createDetailColumnController({
 				);
 			},
 			onLoadingChange: (isLoading) => {
-				if (profilePostRequestId !== requestId) return;
+				if (profilePostRequestId !== requestId) {
+					return;
+				}
 				const runtime = profilePostRuntimes[pubkey] ?? emptyTimelineRuntime(pubkey);
 				setProfilePostRuntime(pubkey, { ...runtime, isLoading });
 			},
 			onError: (error) => {
-				if (profilePostRequestId !== requestId) return;
+				if (profilePostRequestId !== requestId) {
+					return;
+				}
 				const runtime = profilePostRuntimes[pubkey] ?? emptyTimelineRuntime(pubkey);
 				setProfilePostRuntime(pubkey, { ...runtime, error, isLoading: false });
 			}
@@ -157,7 +167,9 @@ export function createDetailColumnController({
 	}
 
 	async function openThread(sourceColumnId: string, post: Post) {
-		if (!post.thread) return;
+		if (!post.thread) {
+			return;
+		}
 		if (detailColumn?.type === 'thread' && detailColumn.eventId === post.thread.event.id) {
 			await close();
 			return;
@@ -176,15 +188,21 @@ export function createDetailColumnController({
 			selectedEvent: post.thread.event,
 			relays: getSourceRelays(sourceColumnId),
 			onEvents: (events) => {
-				if (threadRequestId !== requestId) return;
+				if (threadRequestId !== requestId) {
+					return;
+				}
 				threadEvents = events;
 			},
 			onLoadingChange: (isLoading) => {
-				if (threadRequestId !== requestId) return;
+				if (threadRequestId !== requestId) {
+					return;
+				}
 				isThreadLoading = isLoading;
 			},
 			onError: (message) => {
-				if (threadRequestId !== requestId) return;
+				if (threadRequestId !== requestId) {
+					return;
+				}
 				threadError = message;
 				isThreadLoading = false;
 			}

@@ -44,7 +44,9 @@
 	function openDialog(event: MouseEvent) {
 		event.preventDefault();
 		event.stopPropagation();
-		if (entries.length === 0) return;
+		if (entries.length === 0) {
+			return;
+		}
 
 		isMenuOpen = false;
 		isDialogOpen = true;
@@ -60,7 +62,9 @@
 	async function share(event: MouseEvent) {
 		event.preventDefault();
 		event.stopPropagation();
-		if (!canShare || !onShare) return;
+		if (!canShare || !onShare) {
+			return;
+		}
 
 		clearShareStatus();
 		const result = await onShare();
@@ -77,7 +81,9 @@
 	}
 
 	function clearShareStatus() {
-		if (shareStatusTimeout) clearTimeout(shareStatusTimeout);
+		if (shareStatusTimeout) {
+			clearTimeout(shareStatusTimeout);
+		}
 		shareStatusTimeout = undefined;
 		shareStatus = 'idle';
 	}

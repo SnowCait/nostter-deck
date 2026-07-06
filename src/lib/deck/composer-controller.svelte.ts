@@ -71,7 +71,9 @@ export function createComposerController({
 	);
 
 	async function open() {
-		if (!getAccountPubkey()) return;
+		if (!getAccountPubkey()) {
+			return;
+		}
 		if (mode !== 'post') {
 			content = '';
 			clearMediaAttachments();
@@ -85,7 +87,9 @@ export function createComposerController({
 	}
 
 	async function openReply(post: Post) {
-		if (!canReply(post)) return;
+		if (!canReply(post)) {
+			return;
+		}
 		const currentTargetId = replyTargetPost ? getPostReplyTarget(replyTargetPost)?.id : null;
 		const nextTargetId = getPostReplyTarget(post)?.id ?? null;
 		if (mode !== 'reply' || currentTargetId !== nextTargetId) {
@@ -102,7 +106,9 @@ export function createComposerController({
 	}
 
 	async function openQuote(post: Post) {
-		if (!canQuote(post)) return;
+		if (!canQuote(post)) {
+			return;
+		}
 		const currentTargetId = quoteTargetPost ? getPostQuoteTarget(quoteTargetPost)?.id : null;
 		const nextTargetId = getPostQuoteTarget(post)?.id ?? null;
 		if (mode !== 'quote' || currentTargetId !== nextTargetId) {
@@ -157,7 +163,9 @@ export function createComposerController({
 		const result = await (async () => {
 			try {
 				const mediaUploadResult = await uploadSelectedMedia(signer);
-				if (!mediaUploadResult.ok) return mediaUploadResult;
+				if (!mediaUploadResult.ok) {
+					return mediaUploadResult;
+				}
 				const publishContent = appendMediaUrls(content, mediaUploadResult.urls);
 
 				if (mode === 'reply' && replyTarget) {
@@ -211,34 +219,44 @@ export function createComposerController({
 	async function publishChannel(channel: ChannelTimelineColumnConfig, content: string) {
 		const pubkey = getAccountPubkey();
 		const signer = getSigner();
-		if (!pubkey || !signer) return { ok: false as const, reason: 'signing-failed' as const };
+		if (!pubkey || !signer) {
+			return { ok: false as const, reason: 'signing-failed' as const };
+		}
 		return publishChannelMessage(content, channel.channelId, pubkey, signer, channel.relays, {
 			includeClientTag: getIncludeClientTag()
 		});
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
-		if (event.key !== 'Enter' || (!event.ctrlKey && !event.metaKey)) return;
+		if (event.key !== 'Enter' || (!event.ctrlKey && !event.metaKey)) {
+			return;
+		}
 		event.preventDefault();
 		void publish();
 	}
 
 	function addMediaFiles(files: ArrayLike<File>) {
-		if (isPublishing) return;
+		if (isPublishing) {
+			return;
+		}
 
 		mediaNotice = null;
 		const selectedFiles = Array.from(files);
 		const acceptedLimit = Math.max(0, maxBlossomImageCount - mediaAttachments.length);
 		const acceptedFiles = selectedFiles.slice(0, acceptedLimit);
 		const ignoredCount = selectedFiles.length - acceptedFiles.length;
-		if (ignoredCount > 0) mediaNotice = `media-count-exceeded:${ignoredCount}`;
+		if (ignoredCount > 0) {
+			mediaNotice = `media-count-exceeded:${ignoredCount}`;
+		}
 
 		const nextAttachments = acceptedFiles.map((file) => createMediaAttachment(file));
 		mediaAttachments = [...mediaAttachments, ...nextAttachments];
 	}
 
 	function removeMediaAttachment(id: string) {
-		if (isPublishing) return;
+		if (isPublishing) {
+			return;
+		}
 
 		const attachment = mediaAttachments.find((media) => media.id === id);
 		if (attachment?.previewUrl && typeof URL.revokeObjectURL === 'function') {
@@ -272,7 +290,9 @@ export function createComposerController({
 	}
 
 	function createMediaPreviewUrl(file: File) {
-		if (typeof URL.createObjectURL !== 'function' || !file.type.startsWith('image/')) return null;
+		if (typeof URL.createObjectURL !== 'function' || !file.type.startsWith('image/')) {
+			return null;
+		}
 		return URL.createObjectURL(file);
 	}
 
@@ -287,7 +307,9 @@ export function createComposerController({
 				continue;
 			}
 
-			if (attachment.status === 'failed') return { ok: false, reason: 'relay-failed' };
+			if (attachment.status === 'failed') {
+				return { ok: false, reason: 'relay-failed' };
+			}
 
 			updateMediaAttachment(attachment.id, { status: 'uploading' });
 			const result = await uploadMedia(attachment.file, signer);
@@ -326,7 +348,9 @@ export function createComposerController({
 	}
 
 	function appendMediaUrls(value: string, urls: string[]) {
-		if (urls.length === 0) return value;
+		if (urls.length === 0) {
+			return value;
+		}
 		const separator = value.length > 0 && !value.endsWith('\n') ? '\n' : '';
 		return `${value}${separator}${urls.join('\n')}`;
 	}

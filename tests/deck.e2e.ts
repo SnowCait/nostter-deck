@@ -101,7 +101,9 @@ async function pressKeyboardShortcuts(page: Page) {
 async function horizontalCenter(locator: Locator) {
 	await expect(locator).toBeVisible();
 	const box = await locator.boundingBox();
-	if (!box) throw new Error('Expected a visible element with a bounding box');
+	if (!box) {
+		throw new Error('Expected a visible element with a bounding box');
+	}
 	return box.x + box.width / 2;
 }
 
@@ -111,7 +113,9 @@ async function expectSidebarAndColumnGroupCentered(page: Page, column: Locator) 
 		.poll(async () => {
 			const sidebarBox = await sidebar(page).boundingBox();
 			const columnBox = await column.boundingBox();
-			if (!sidebarBox || !columnBox) return Number.NaN;
+			if (!sidebarBox || !columnBox) {
+				return Number.NaN;
+			}
 			const groupCenter = sidebarBox.x + (columnBox.x + columnBox.width - sidebarBox.x) / 2;
 			return Math.round(groupCenter);
 		})
@@ -1652,9 +1656,13 @@ test.describe('nostter deck', () => {
 		await expect(column.getByTestId('muted-post').first()).toBeVisible();
 		await expect(column.getByTestId('content-warning')).toHaveCount(0);
 		for (let index = 0; index < 3; index += 1) {
-			if ((await column.getByTestId('content-warning').count()) > 0) break;
+			if ((await column.getByTestId('content-warning').count()) > 0) {
+				break;
+			}
 			const nextMutedPost = column.getByTestId('muted-post').first();
-			if ((await nextMutedPost.count()) === 0) break;
+			if ((await nextMutedPost.count()) === 0) {
+				break;
+			}
 			await nextMutedPost.getByRole('button', { name: 'Show post' }).click();
 		}
 		await expect(column.getByTestId('content-warning')).toBeVisible();
@@ -2410,7 +2418,9 @@ test.describe('nostter deck', () => {
 			.poll(async () => {
 				const collapseBox = await sidebarButton(page, 'Collapse sidebar').boundingBox();
 				const layoutBox = await sidebarButton(page, 'Single column layout').boundingBox();
-				if (!collapseBox || !layoutBox) return false;
+				if (!collapseBox || !layoutBox) {
+					return false;
+				}
 				return collapseBox.y < layoutBox.y;
 			})
 			.toBe(true);
@@ -2426,7 +2436,9 @@ test.describe('nostter deck', () => {
 			.poll(async () => {
 				const expandBox = await sidebarButton(page, 'Expand sidebar').boundingBox();
 				const layoutBox = await sidebarButton(page, 'Single column layout').boundingBox();
-				if (!expandBox || !layoutBox) return false;
+				if (!expandBox || !layoutBox) {
+					return false;
+				}
 				return expandBox.y < layoutBox.y;
 			})
 			.toBe(true);

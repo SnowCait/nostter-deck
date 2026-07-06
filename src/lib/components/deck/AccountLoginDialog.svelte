@@ -21,22 +21,30 @@
 	let isNostrConnectPending = $state(false);
 
 	$effect(() => {
-		if (isOpen || !isNostrConnectPending) return;
+		if (isOpen || !isNostrConnectPending) {
+			return;
+		}
 
 		cancelPendingAuthentication();
 		isNostrConnectPending = false;
 	});
 
 	async function connectBunker() {
-		if (await loginWithNip46Bunker(bunkerInput)) isOpen = false;
+		if (await loginWithNip46Bunker(bunkerInput)) {
+			isOpen = false;
+		}
 	}
 
 	async function connectNip07() {
-		if (await onLoginNip07()) isOpen = false;
+		if (await onLoginNip07()) {
+			isOpen = false;
+		}
 	}
 
 	async function startNostrConnect() {
-		if (isNostrConnectPending) return;
+		if (isNostrConnectPending) {
+			return;
+		}
 
 		isNostrConnectPending = true;
 		const connection = createNip46ConnectionUri();
@@ -49,10 +57,14 @@
 
 		void loginWithNip46ConnectionUri(connection.connectionUri, connection.clientSecretKey).then(
 			(success) => {
-				if (!isNostrConnectPending) return;
+				if (!isNostrConnectPending) {
+					return;
+				}
 
 				isNostrConnectPending = false;
-				if (success) isOpen = false;
+				if (success) {
+					isOpen = false;
+				}
 			}
 		);
 	}

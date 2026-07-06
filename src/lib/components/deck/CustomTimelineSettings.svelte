@@ -59,7 +59,9 @@
 	}
 
 	function save() {
-		if (!parsedFilterDraft || !parsedRelayDraft) return;
+		if (!parsedFilterDraft || !parsedRelayDraft) {
+			return;
+		}
 
 		onSave(parsedFilterDraft, parsedRelayDraft);
 	}

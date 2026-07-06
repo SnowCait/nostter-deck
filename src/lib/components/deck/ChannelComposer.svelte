@@ -20,7 +20,9 @@
 	const submitLabel = $derived(isPublishing ? m.post_sending() : m.action_post());
 
 	async function publish() {
-		if (!canSubmit) return;
+		if (!canSubmit) {
+			return;
+		}
 
 		isPublishing = true;
 		publishError = false;
@@ -36,7 +38,9 @@
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
-		if (event.key !== 'Enter' || (!event.ctrlKey && !event.metaKey)) return;
+		if (event.key !== 'Enter' || (!event.ctrlKey && !event.metaKey)) {
+			return;
+		}
 
 		event.preventDefault();
 		void publish();

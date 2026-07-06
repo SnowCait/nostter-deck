@@ -1,6 +1,8 @@
 export function normalizeWebsiteUrl(value: string) {
 	const trimmedValue = value.trim();
-	if (!trimmedValue) return null;
+	if (!trimmedValue) {
+		return null;
+	}
 
 	const valueWithScheme = /^[a-z][a-z\d+.-]*:/i.test(trimmedValue)
 		? trimmedValue
@@ -8,7 +10,9 @@ export function normalizeWebsiteUrl(value: string) {
 
 	try {
 		const url = new URL(valueWithScheme);
-		if (url.protocol !== 'https:' || !url.hostname) return null;
+		if (url.protocol !== 'https:' || !url.hostname) {
+			return null;
+		}
 
 		return url.toString();
 	} catch {

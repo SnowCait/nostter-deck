@@ -12,7 +12,9 @@ export function createUniqueColumnId(
 
 	while (true) {
 		const id = createId();
-		if (!columnIds.has(id)) return id;
+		if (!columnIds.has(id)) {
+			return id;
+		}
 	}
 }
 
@@ -23,7 +25,9 @@ export function addHashtagColumn(
 	createId: () => string = () => crypto.randomUUID()
 ): HashtagColumnResult | null {
 	const query = hashtag.trim();
-	if (!query) return null;
+	if (!query) {
+		return null;
+	}
 
 	const existingColumn = columns.find(
 		(column): column is SearchTimelineColumnConfig =>
@@ -32,7 +36,9 @@ export function addHashtagColumn(
 			column.sourceKey === 'timeline_search' &&
 			column.query === query
 	);
-	if (existingColumn) return { type: 'existing', column: existingColumn };
+	if (existingColumn) {
+		return { type: 'existing', column: existingColumn };
+	}
 
 	const column: SearchTimelineColumnConfig = {
 		id: createUniqueColumnId(columns, createId),
@@ -51,7 +57,9 @@ export function addHashtagColumn(
 
 export function removeColumn(columns: ColumnConfig[], columnId: string) {
 	const index = columns.findIndex((column) => column.id === columnId);
-	if (index < 0) return null;
+	if (index < 0) {
+		return null;
+	}
 
 	return {
 		index,
@@ -62,7 +70,9 @@ export function removeColumn(columns: ColumnConfig[], columnId: string) {
 export function moveColumn(columns: ColumnConfig[], columnId: string, direction: -1 | 1) {
 	const currentIndex = columns.findIndex((column) => column.id === columnId);
 	const nextIndex = currentIndex + direction;
-	if (currentIndex < 0 || nextIndex < 0 || nextIndex >= columns.length) return null;
+	if (currentIndex < 0 || nextIndex < 0 || nextIndex >= columns.length) {
+		return null;
+	}
 
 	const nextColumns = [...columns];
 	const [column] = nextColumns.splice(currentIndex, 1);
@@ -72,13 +82,17 @@ export function moveColumn(columns: ColumnConfig[], columnId: string, direction:
 
 export function reorderColumn(columns: ColumnConfig[], columnId: string, targetIndex: number) {
 	const currentIndex = columns.findIndex((column) => column.id === columnId);
-	if (currentIndex < 0) return null;
+	if (currentIndex < 0) {
+		return null;
+	}
 
 	const nextColumns = [...columns];
 	const [column] = nextColumns.splice(currentIndex, 1);
 	const adjustedTargetIndex = currentIndex < targetIndex ? targetIndex - 1 : targetIndex;
 	const nextIndex = Math.max(0, Math.min(adjustedTargetIndex, nextColumns.length));
-	if (nextIndex === currentIndex) return null;
+	if (nextIndex === currentIndex) {
+		return null;
+	}
 
 	nextColumns.splice(nextIndex, 0, column);
 	return nextColumns;

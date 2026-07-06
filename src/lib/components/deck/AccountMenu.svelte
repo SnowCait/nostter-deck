@@ -74,7 +74,9 @@
 	}
 
 	function getShortNpub() {
-		if (!accountPubkey) return '';
+		if (!accountPubkey) {
+			return '';
+		}
 		return `${npubEncode(accountPubkey).slice(0, 16)}…`;
 	}
 
@@ -92,11 +94,15 @@
 	}
 
 	async function selectSavedAccount(accountId: string) {
-		if (accountId === activeAccountId || pendingAccountId) return;
+		if (accountId === activeAccountId || pendingAccountId) {
+			return;
+		}
 		pendingAccountId = accountId;
 		const success = await onSelectAccount(accountId);
 		pendingAccountId = null;
-		if (success) isAccountMenuOpen = false;
+		if (success) {
+			isAccountMenuOpen = false;
+		}
 	}
 
 	function requestAccountRemoval(account: AccountRecord) {
@@ -106,7 +112,9 @@
 	}
 
 	async function removeSavedAccount() {
-		if (!accountToRemove || pendingAccountId) return;
+		if (!accountToRemove || pendingAccountId) {
+			return;
+		}
 		pendingAccountId = accountToRemove.id;
 		await onRemoveAccount(accountToRemove.id);
 		pendingAccountId = null;
@@ -115,7 +123,9 @@
 	}
 
 	$effect(() => {
-		if (!isAccountMenuOpen || accounts.length === 0) return;
+		if (!isAccountMenuOpen || accounts.length === 0) {
+			return;
+		}
 		requestProfiles(
 			accounts.map((account) => account.pubkey),
 			profileRelays
@@ -123,7 +133,9 @@
 	});
 
 	$effect(() => {
-		if (!isRemoveAccountDialogOpen) accountToRemove = null;
+		if (!isRemoveAccountDialogOpen) {
+			accountToRemove = null;
+		}
 	});
 </script>
 

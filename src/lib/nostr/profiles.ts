@@ -20,7 +20,9 @@ let profileReq: ReturnType<typeof createRxBackwardReq> | null = null;
 let profileSubscription: Unsubscribable | null = null;
 
 function ensureProfileReq() {
-	if (profileReq) return profileReq;
+	if (profileReq) {
+		return profileReq;
+	}
 
 	profileReq = createRxBackwardReq();
 	const batchedProfileReq = profileReq.pipe(
@@ -35,7 +37,9 @@ function ensureProfileReq() {
 		)
 		.subscribe(({ event }) => {
 			const profile = parseProfile(event.content);
-			if (!profile) return;
+			if (!profile) {
+				return;
+			}
 
 			profilesByPubkey.set(event.pubkey, {
 				...profile,
@@ -50,7 +54,9 @@ function mergeProfileReqPackets(packets: ReqPacket[]) {
 	const packetsByRelaySignature = new Map<string, ReqPacket>();
 
 	for (const packet of packets) {
-		if (packet.filters.length === 0) continue;
+		if (packet.filters.length === 0) {
+			continue;
+		}
 
 		const relays = packet.relays ? [...packet.relays].sort() : [];
 		const relaySignature = JSON.stringify(relays);
@@ -65,7 +71,9 @@ function mergeProfileReqPackets(packets: ReqPacket[]) {
 			}
 		}
 
-		if (authors.size === 0) continue;
+		if (authors.size === 0) {
+			continue;
+		}
 
 		packetsByRelaySignature.set(relaySignature, {
 			filters: [
@@ -84,13 +92,17 @@ function mergeProfileReqPackets(packets: ReqPacket[]) {
 export function requestProfiles(pubkeys: string[], relays: string[]) {
 	const nextPubkeys: string[] = [];
 	for (const pubkey of pubkeys) {
-		if (requestedPubkeys.has(pubkey) || profilesByPubkey.has(pubkey)) continue;
+		if (requestedPubkeys.has(pubkey) || profilesByPubkey.has(pubkey)) {
+			continue;
+		}
 
 		requestedPubkeys.add(pubkey);
 		nextPubkeys.push(pubkey);
 	}
 
-	if (nextPubkeys.length === 0) return;
+	if (nextPubkeys.length === 0) {
+		return;
+	}
 
 	ensureProfileReq().emit(
 		{
@@ -124,7 +136,9 @@ export function disposeProfileCache() {
 function parseProfile(content: string): Nostr.Content.Metadata | null {
 	try {
 		const value = JSON.parse(content);
-		if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+		if (!value || typeof value !== 'object' || Array.isArray(value)) {
+			return null;
+		}
 
 		return value as Nostr.Content.Metadata;
 	} catch {

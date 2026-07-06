@@ -3,9 +3,15 @@ import type { ColumnConfig } from './types';
 import { getWebsiteHostname } from './website-url';
 
 export function getColumnTitle(column: ColumnConfig) {
-	if (column.title?.trim()) return column.title.trim();
-	if (column.type === 'website') return getWebsiteHostname(column.url);
-	if (column.timelineKind === 'custom') return m.column_type_custom_timeline();
+	if (column.title?.trim()) {
+		return column.title.trim();
+	}
+	if (column.type === 'website') {
+		return getWebsiteHostname(column.url);
+	}
+	if (column.timelineKind === 'custom') {
+		return m.column_type_custom_timeline();
+	}
 
 	return m[column.sourceKey]();
 }

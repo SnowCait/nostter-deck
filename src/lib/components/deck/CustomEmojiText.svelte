@@ -12,7 +12,9 @@
 	let failedUrls = $state<string[]>([]);
 
 	function handleImageError(url: string) {
-		if (!failedUrls.includes(url)) failedUrls = [...failedUrls, url];
+		if (!failedUrls.includes(url)) {
+			failedUrls = [...failedUrls, url];
+		}
 	}
 </script>
 

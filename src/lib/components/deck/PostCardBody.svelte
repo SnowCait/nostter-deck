@@ -54,7 +54,9 @@
 	const directImageUrls = $derived(
 		enableEnrichment
 			? bodyTokens.flatMap((token) => {
-					if (token.type !== 'link') return [];
+					if (token.type !== 'link') {
+						return [];
+					}
 					const media = getUrlMediaMetadata(token.href);
 					return media?.status === 'image' ? [media.url] : [];
 				})
@@ -67,7 +69,9 @@
 	let failedEmojiUrls = $state<string[]>([]);
 
 	$effect(() => {
-		if (!enableEnrichment) return;
+		if (!enableEnrichment) {
+			return;
+		}
 
 		requestUrlMediaMetadata([
 			...new Set(bodyTokens.flatMap((token) => (token.type === 'link' ? [token.href] : [])))
@@ -75,10 +79,14 @@
 	});
 
 	$effect(() => {
-		if (!enableEnrichment) return;
+		if (!enableEnrichment) {
+			return;
+		}
 
 		const profileReferenceTokens = bodyTokens.filter(isProfileReferenceToken);
-		if (profileReferenceTokens.length === 0) return;
+		if (profileReferenceTokens.length === 0) {
+			return;
+		}
 
 		requestProfiles(
 			[...new Set(profileReferenceTokens.map((token) => token.pubkey))],
@@ -102,7 +110,9 @@
 	}
 
 	function getNostrReferenceText(token: Extract<PostContentToken, { type: 'nostrReference' }>) {
-		if (!isProfileReferenceToken(token)) return token.text;
+		if (!isProfileReferenceToken(token)) {
+			return token.text;
+		}
 
 		return `@${getProfileReferenceName(token)}`;
 	}
@@ -145,7 +155,9 @@
 	}
 
 	function getImagePreviewStyle(media: UrlMediaMetadata | undefined) {
-		if (media?.status !== 'image' || !media.width || !media.height) return '';
+		if (media?.status !== 'image' || !media.width || !media.height) {
+			return '';
+		}
 
 		return `width: min(100%, ${(12 * media.width) / media.height}rem); aspect-ratio: ${media.width} / ${media.height}`;
 	}
@@ -164,7 +176,9 @@
 
 	function loadPreviewImage(event: Event, url: string) {
 		const image = event.currentTarget as HTMLImageElement | null;
-		if (!image) return;
+		if (!image) {
+			return;
+		}
 
 		setUrlImageDimensions(url, image.naturalWidth, image.naturalHeight);
 	}
@@ -175,14 +189,18 @@
 
 	function openImageViewer(tokenIndex: number) {
 		currentImageIndex = bodyTokens.slice(0, tokenIndex + 1).reduce((imageIndex, token) => {
-			if (token.type !== 'link') return imageIndex;
+			if (token.type !== 'link') {
+				return imageIndex;
+			}
 			return getUrlMediaMetadata(token.href)?.status === 'image' ? imageIndex + 1 : imageIndex;
 		}, -1);
 		isImageViewerOpen = true;
 	}
 
 	function handleEmojiError(url: string) {
-		if (!failedEmojiUrls.includes(url)) failedEmojiUrls = [...failedEmojiUrls, url];
+		if (!failedEmojiUrls.includes(url)) {
+			failedEmojiUrls = [...failedEmojiUrls, url];
+		}
 	}
 </script>
 

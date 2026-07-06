@@ -44,15 +44,21 @@
 
 	function handleMediaChange(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
-		if (input.files) composer.addMediaFiles(input.files);
+		if (input.files) {
+			composer.addMediaFiles(input.files);
+		}
 		input.value = '';
 	}
 
 	function handlePaste(event: ClipboardEvent) {
-		if (composer.isPublishing) return;
+		if (composer.isPublishing) {
+			return;
+		}
 
 		const files = getPastedImageFiles(event);
-		if (files.length === 0) return;
+		if (files.length === 0) {
+			return;
+		}
 
 		event.preventDefault();
 		composer.addMediaFiles(files);
@@ -60,7 +66,9 @@
 
 	function getPastedImageFiles(event: ClipboardEvent) {
 		const clipboardData = event.clipboardData;
-		if (!clipboardData) return [];
+		if (!clipboardData) {
+			return [];
+		}
 
 		const itemFiles = Array.from(clipboardData.items)
 			.filter((item) => item.kind === 'file' && item.type.toLowerCase().startsWith('image/'))
@@ -78,7 +86,9 @@
 	}
 
 	function withPastedImageName(file: File) {
-		if (file.name.trim()) return file;
+		if (file.name.trim()) {
+			return file;
+		}
 
 		pastedImageCount += 1;
 		return new File([file], `pasted-image-${pastedImageCount}.${getImageExtension(file.type)}`, {
@@ -88,9 +98,13 @@
 	}
 
 	function getImageExtension(type: string) {
-		if (type === 'image/jpeg') return 'jpg';
+		if (type === 'image/jpeg') {
+			return 'jpg';
+		}
 		const subtype = type.toLowerCase().match(/^image\/([a-z0-9.+-]+)$/u)?.[1];
-		if (!subtype || subtype === 'svg+xml') return 'png';
+		if (!subtype || subtype === 'svg+xml') {
+			return 'png';
+		}
 		return subtype.replace(/[^a-z0-9]+/gu, '-');
 	}
 
@@ -100,7 +114,9 @@
 	}
 
 	function getMediaNoticeText(notice: string | null) {
-		if (!notice?.startsWith('media-count-exceeded:')) return null;
+		if (!notice?.startsWith('media-count-exceeded:')) {
+			return null;
+		}
 		const count = Number(notice.split(':')[1]);
 		return Number.isFinite(count) ? m.media_count_exceeded({ count }) : null;
 	}
@@ -109,9 +125,15 @@
 		reason: 'unsupported-file' | 'file-too-large' | 'signing-failed' | 'upload-failed' | undefined,
 		message: string | undefined
 	) {
-		if (reason === 'unsupported-file') return m.media_unsupported_file();
-		if (reason === 'file-too-large') return m.media_file_too_large();
-		if (reason === 'signing-failed') return m.media_signing_failed();
+		if (reason === 'unsupported-file') {
+			return m.media_unsupported_file();
+		}
+		if (reason === 'file-too-large') {
+			return m.media_file_too_large();
+		}
+		if (reason === 'signing-failed') {
+			return m.media_signing_failed();
+		}
 		return message ?? m.media_upload_failed();
 	}
 </script>

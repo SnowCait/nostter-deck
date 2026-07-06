@@ -10,7 +10,9 @@ export function isProfilePostEvent(event: Nostr.Event) {
 }
 
 export function addProfilePostEvent(runtime: TimelineRuntime, event: Nostr.Event) {
-	if (!isProfilePostEvent(event)) return runtime;
+	if (!isProfilePostEvent(event)) {
+		return runtime;
+	}
 
 	const loadedEventsById = { ...runtime.loadedEventsById, [event.id]: event };
 	const visibleEventIds = [...new Set([...runtime.visibleEventIds, event.id])].sort(

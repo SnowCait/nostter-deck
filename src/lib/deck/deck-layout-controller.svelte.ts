@@ -28,7 +28,9 @@ export function createDeckLayoutController({
 	}
 
 	function connectViewport() {
-		if (typeof window === 'undefined') return () => {};
+		if (typeof window === 'undefined') {
+			return () => {};
+		}
 
 		const mediaQuery = window.matchMedia('(max-width: 767px)');
 		const updateCompactViewport = () => {

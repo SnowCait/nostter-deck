@@ -56,7 +56,9 @@ function isPubkey(value: string) {
 function normalizeEmojiUrl(value: string) {
 	try {
 		const url = new URL(value);
-		if (url.protocol !== 'https:') return null;
+		if (url.protocol !== 'https:') {
+			return null;
+		}
 		return url.href;
 	} catch {
 		return null;
@@ -83,7 +85,9 @@ export function parseEmojiSetCategory(
 ): EmojiCandidateSource | null {
 	const identifier = getEmojiSetIdentifier(event);
 	const address = getEmojiSetAddress(event);
-	if (!identifier || !address) return null;
+	if (!identifier || !address) {
+		return null;
+	}
 
 	return {
 		address,
@@ -96,7 +100,9 @@ export function parseEmojiSetCategory(
 export function parseEmojiSetReference(value: string, relay?: string): EmojiSetReference | null {
 	const [kind, pubkey, ...identifierParts] = value.split(':');
 	const identifier = identifierParts.join(':');
-	if (kind !== String(Emojisets) || !isPubkey(pubkey) || identifier.length === 0) return null;
+	if (kind !== String(Emojisets) || !isPubkey(pubkey) || identifier.length === 0) {
+		return null;
+	}
 
 	const normalizedRelay = relay ? normalizeRelay(relay) : null;
 	return {
@@ -111,13 +117,17 @@ export function parseUserEmojiSetReferences(tags: Nostr.Event['tags']): EmojiSet
 	const references: EmojiSetReference[] = [];
 	const seen = new Set<string>();
 	for (const tag of tags) {
-		if (tag[0] !== 'a' || typeof tag[1] !== 'string') continue;
+		if (tag[0] !== 'a' || typeof tag[1] !== 'string') {
+			continue;
+		}
 
 		const reference = parseEmojiSetReference(
 			tag[1],
 			typeof tag[2] === 'string' ? tag[2] : undefined
 		);
-		if (!reference || seen.has(reference.address)) continue;
+		if (!reference || seen.has(reference.address)) {
+			continue;
+		}
 
 		seen.add(reference.address);
 		references.push(reference);
@@ -131,7 +141,9 @@ export function parseEmojiTagCandidates(
 ): RawEmojiCandidate[] {
 	const sourceOptions = typeof source === 'string' ? { address: source } : source;
 	return tags.flatMap((tag) => {
-		if (tag[0] !== 'emoji' || typeof tag[1] !== 'string' || typeof tag[2] !== 'string') return [];
+		if (tag[0] !== 'emoji' || typeof tag[1] !== 'string' || typeof tag[2] !== 'string') {
+			return [];
+		}
 		return [
 			{
 				shortcode: tag[1],
@@ -163,10 +175,14 @@ export function normalizeCustomEmojiReactionCandidates(
 	>();
 
 	for (const candidate of candidates) {
-		if (!isValidShortcode(candidate.shortcode)) continue;
+		if (!isValidShortcode(candidate.shortcode)) {
+			continue;
+		}
 
 		const url = normalizeEmojiUrl(candidate.url);
-		if (!url) continue;
+		if (!url) {
+			continue;
+		}
 
 		const groupKey = `${candidate.categoryId ?? ''}\u0000${url}`;
 		const entry = byUrl.get(groupKey) ?? {
@@ -180,7 +196,9 @@ export function normalizeCustomEmojiReactionCandidates(
 			entry.shortcodeSet.add(candidate.shortcode);
 			entry.shortcodes.push(candidate.shortcode);
 		}
-		if (!entry.address && candidate.address) entry.address = candidate.address;
+		if (!entry.address && candidate.address) {
+			entry.address = candidate.address;
+		}
 		byUrl.set(groupKey, entry);
 	}
 
@@ -230,7 +248,9 @@ export async function loadUserEmojiReactionCandidates(
 		{ kinds: [UserEmojiList], authors: [pubkey], limit: 1 },
 		requestRelays
 	);
-	if (!userEmojiList) return [];
+	if (!userEmojiList) {
+		return [];
+	}
 
 	const userEmojiCategory = {
 		categoryId: `${UserEmojiList}:${userEmojiList.pubkey}`,
@@ -254,7 +274,9 @@ export async function loadUserEmojiReactionCandidates(
 		}))
 	);
 	const emojiSetCandidates = emojiSetEvents.flatMap(({ event, categoryOrder }) => {
-		if (!event) return [];
+		if (!event) {
+			return [];
+		}
 		const category = parseEmojiSetCategory(event, categoryOrder);
 		return category ? parseEmojiTagCandidates(event.tags, category) : [];
 	});
@@ -268,7 +290,9 @@ function requestLatestEvent(filter: LazyFilter, relays: string[]): Promise<Nostr
 		let latestEvent: Nostr.Event | null = null;
 		let finished = false;
 		const finish = (value: Nostr.Event | null) => {
-			if (finished) return;
+			if (finished) {
+				return;
+			}
 			finished = true;
 			clearTimeout(timeoutId);
 			subscription.unsubscribe();

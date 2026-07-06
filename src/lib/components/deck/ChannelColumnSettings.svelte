@@ -19,7 +19,9 @@
 	const parsedTargetDraft = $derived(decodeChannelPointer(targetDraft));
 
 	$effect(() => {
-		if (targetDraftColumnId === column.id && targetDraftSource === column.channelId) return;
+		if (targetDraftColumnId === column.id && targetDraftSource === column.channelId) {
+			return;
+		}
 
 		targetDraftColumnId = column.id;
 		targetDraftSource = column.channelId;
@@ -27,7 +29,9 @@
 	});
 
 	function save() {
-		if (!parsedTargetDraft) return;
+		if (!parsedTargetDraft) {
+			return;
+		}
 
 		onSave(parsedTargetDraft);
 	}

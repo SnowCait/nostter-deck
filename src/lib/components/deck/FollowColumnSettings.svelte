@@ -19,7 +19,9 @@
 	const parsedTargetDraft = $derived(decodeProfilePointer(targetDraft));
 
 	$effect(() => {
-		if (targetDraftColumnId === column.id && targetDraftSource === column.pubkey) return;
+		if (targetDraftColumnId === column.id && targetDraftSource === column.pubkey) {
+			return;
+		}
 
 		targetDraftColumnId = column.id;
 		targetDraftSource = column.pubkey;
@@ -27,7 +29,9 @@
 	});
 
 	function save() {
-		if (!parsedTargetDraft) return;
+		if (!parsedTargetDraft) {
+			return;
+		}
 
 		onSave(parsedTargetDraft);
 	}

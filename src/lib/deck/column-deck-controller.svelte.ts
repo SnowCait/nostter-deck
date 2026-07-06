@@ -82,7 +82,9 @@ export function createColumnDeckController({
 		const deckIds = new Set(store.decks.map((deck) => deck.id));
 		while (true) {
 			const id = createId();
-			if (!deckIds.has(id)) return id;
+			if (!deckIds.has(id)) {
+				return id;
+			}
 		}
 	}
 
@@ -94,7 +96,9 @@ export function createColumnDeckController({
 		return () => {
 			while (true) {
 				const id = createId();
-				if (columnIds.has(id)) continue;
+				if (columnIds.has(id)) {
+					continue;
+				}
 				columnIds.add(id);
 				return id;
 			}
@@ -103,7 +107,9 @@ export function createColumnDeckController({
 
 	async function activateDeck(nextStore: ColumnDeckStore, deckId: string) {
 		const nextDeck = nextStore.decks.find((deck) => deck.id === deckId);
-		if (!nextDeck) return;
+		if (!nextDeck) {
+			return;
+		}
 
 		await beforeActivateDeck();
 		openSettingsColumnId = null;
@@ -114,23 +120,33 @@ export function createColumnDeckController({
 		resetSelectedColumn(activeColumnId);
 		writeStore({ ...nextStore, activeDeckId: deckId });
 		await afterStateChange();
-		if (activeColumnId) focusColumn(activeColumnId);
+		if (activeColumnId) {
+			focusColumn(activeColumnId);
+		}
 	}
 
 	async function selectDeck(deckId: string) {
-		if (deckId === store.activeDeckId) return;
+		if (deckId === store.activeDeckId) {
+			return;
+		}
 		await activateDeck(store, deckId);
 	}
 
 	async function createDeck(name: string) {
-		if (hasColumnDeckName(store.decks, name)) return;
+		if (hasColumnDeckName(store.decks, name)) {
+			return;
+		}
 		const deck = createColumnDeck(createDeckId(), name);
-		if (!deck) return;
+		if (!deck) {
+			return;
+		}
 		await activateDeck({ ...store, decks: [...store.decks, deck] }, deck.id);
 	}
 
 	function renameDeck(deckId: string, name: string) {
-		if (hasColumnDeckName(store.decks, name, deckId)) return;
+		if (hasColumnDeckName(store.decks, name, deckId)) {
+			return;
+		}
 		writeStore({
 			...store,
 			decks: store.decks.map((deck) => (deck.id === deckId ? { ...deck, name: name.trim() } : deck))
@@ -138,23 +154,33 @@ export function createColumnDeckController({
 	}
 
 	async function duplicateDeck(deckId: string, name: string) {
-		if (hasColumnDeckName(store.decks, name)) return;
+		if (hasColumnDeckName(store.decks, name)) {
+			return;
+		}
 		const sourceDeck = getDeck(deckId);
-		if (!sourceDeck) return;
+		if (!sourceDeck) {
+			return;
+		}
 		const deck = duplicateColumnDeck(
 			sourceDeck,
 			createDeckId(),
 			name,
 			createDeckColumnIdGenerator()
 		);
-		if (!deck) return;
+		if (!deck) {
+			return;
+		}
 		await activateDeck({ ...store, decks: [...store.decks, deck] }, deck.id);
 	}
 
 	async function deleteDeck(deckId: string) {
-		if (store.decks.length <= 1) return;
+		if (store.decks.length <= 1) {
+			return;
+		}
 		const deckIndex = store.decks.findIndex((deck) => deck.id === deckId);
-		if (deckIndex < 0) return;
+		if (deckIndex < 0) {
+			return;
+		}
 		const nextDecks = store.decks.filter((deck) => deck.id !== deckId);
 		const nextStore = { ...store, decks: nextDecks };
 		if (deckId !== store.activeDeckId) {
@@ -174,7 +200,9 @@ export function createColumnDeckController({
 
 	async function openHashtagColumn(sourceColumnId: string, hashtag: string) {
 		const result = addHashtagColumn(columns, sourceColumnId, hashtag);
-		if (!result) return;
+		if (!result) {
+			return;
+		}
 
 		if (result.type === 'existing') {
 			focusColumn(result.column.id);
@@ -188,13 +216,17 @@ export function createColumnDeckController({
 
 	async function deleteColumn(columnId: string) {
 		const result = removeColumn(columns, columnId);
-		if (!result) return;
+		if (!result) {
+			return;
+		}
 
 		setColumns(result.columns);
 		onColumnDeleted(columnId);
 		openSettingsColumnId = null;
 
-		if (activeColumnId !== columnId) return;
+		if (activeColumnId !== columnId) {
+			return;
+		}
 
 		const nextActiveColumn = result.columns[Math.min(result.index, result.columns.length - 1)];
 		activeColumnId = nextActiveColumn?.id ?? '';
@@ -207,7 +239,9 @@ export function createColumnDeckController({
 
 	async function moveColumn(columnId: string, direction: -1 | 1) {
 		const nextColumns = moveColumnConfig(columns, columnId, direction);
-		if (!nextColumns) return;
+		if (!nextColumns) {
+			return;
+		}
 		setColumns(nextColumns);
 
 		await afterStateChange();
@@ -216,7 +250,9 @@ export function createColumnDeckController({
 
 	function reorderColumn(columnId: string, targetIndex: number) {
 		const nextColumns = reorderColumnConfig(columns, columnId, targetIndex);
-		if (!nextColumns) return;
+		if (!nextColumns) {
+			return;
+		}
 		setColumns(nextColumns);
 	}
 

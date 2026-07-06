@@ -61,7 +61,9 @@ export function createTimelinePagination({
 	async function hydrateReferencedEvents(columnId: string) {
 		const runtime = getRuntime(columnId) ?? emptyTimelineRuntime();
 		const referencedEventIds = getMissingReferencedEventIds(runtime);
-		if (referencedEventIds.length === 0) return;
+		if (referencedEventIds.length === 0) {
+			return;
+		}
 
 		const referencedEventsById = await loadEventsByIds(referencedEventIds);
 		const currentRuntime = getRuntime(columnId) ?? runtime;
@@ -79,10 +81,14 @@ export function createTimelinePagination({
 
 	async function loadOlder(columnId: string) {
 		const runtime = getRuntime(columnId) ?? emptyTimelineRuntime();
-		if (runtime.isLoadingOlder || !runtime.hasOlderStored) return;
+		if (runtime.isLoadingOlder || !runtime.hasOlderStored) {
+			return;
+		}
 
 		const cursor = getVisibleCursor(runtime, 'older');
-		if (!cursor) return;
+		if (!cursor) {
+			return;
+		}
 
 		updateRuntime(columnId, { isLoadingOlder: true });
 		const page = await loadOlderTimelineEvents(
@@ -126,10 +132,14 @@ export function createTimelinePagination({
 
 	async function loadNewer(columnId: string) {
 		const runtime = getRuntime(columnId) ?? emptyTimelineRuntime();
-		if (runtime.isLoadingNewer || !runtime.hasNewerStored) return;
+		if (runtime.isLoadingNewer || !runtime.hasNewerStored) {
+			return;
+		}
 
 		const cursor = getVisibleCursor(runtime, 'newer');
-		if (!cursor) return;
+		if (!cursor) {
+			return;
+		}
 
 		updateRuntime(columnId, { isLoadingNewer: true });
 		const page = await loadNewerTimelineEvents(
@@ -173,7 +183,9 @@ export function createTimelinePagination({
 
 	async function withReferencedEvents(runtime: TimelineRuntime): Promise<TimelineRuntime> {
 		const referencedEventIds = getMissingReferencedEventIds(runtime);
-		if (referencedEventIds.length === 0) return runtime;
+		if (referencedEventIds.length === 0) {
+			return runtime;
+		}
 
 		return {
 			...runtime,
@@ -201,7 +213,9 @@ export function getMissingReferencedEventIds(runtime: TimelineRuntime) {
 }
 
 export function trimVisibleEventIds(eventIds: string[], trimSide: 'newer' | 'older') {
-	if (eventIds.length <= maxVisibleTimelineEvents) return eventIds;
+	if (eventIds.length <= maxVisibleTimelineEvents) {
+		return eventIds;
+	}
 
 	return trimSide === 'newer'
 		? eventIds.slice(eventIds.length - maxVisibleTimelineEvents)
@@ -221,7 +235,9 @@ export function pruneLoadedEvents(runtime: TimelineRuntime): TimelineRuntime {
 	const retainedEventIds = new Set(runtime.visibleEventIds);
 	for (const eventId of runtime.visibleEventIds) {
 		const referencedEventId = getReferencedEventId(runtime.loadedEventsById[eventId]);
-		if (referencedEventId) retainedEventIds.add(referencedEventId);
+		if (referencedEventId) {
+			retainedEventIds.add(referencedEventId);
+		}
 	}
 
 	return {

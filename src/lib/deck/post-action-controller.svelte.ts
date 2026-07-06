@@ -107,7 +107,9 @@ export function createPostActionController({
 
 	function getEmojiReactionKey(post: Post, reaction: EmojiReaction) {
 		const targetId = getLikeTargetId(post);
-		if (!targetId) return null;
+		if (!targetId) {
+			return null;
+		}
 
 		const reactionKey =
 			reaction.type === 'unicode'
@@ -123,13 +125,21 @@ export function createPostActionController({
 
 	async function likePost(post: Post): Promise<LikePostResult> {
 		const target = getPostLikeTarget(post);
-		if (!target) return { ok: false, reason: 'no-target' };
+		if (!target) {
+			return { ok: false, reason: 'no-target' };
+		}
 
 		const pubkey = getAccountPubkey();
 		const signer = getSigner();
-		if (!pubkey || !signer) return { ok: false, reason: 'unauthenticated' };
-		if (isLiked(post)) return { ok: false, reason: 'already-liked' };
-		if (isLiking(post)) return { ok: false, reason: 'already-publishing' };
+		if (!pubkey || !signer) {
+			return { ok: false, reason: 'unauthenticated' };
+		}
+		if (isLiked(post)) {
+			return { ok: false, reason: 'already-liked' };
+		}
+		if (isLiking(post)) {
+			return { ok: false, reason: 'already-publishing' };
+		}
 
 		publishingLikeTargetEventIds.add(target.id);
 		try {
@@ -137,7 +147,9 @@ export function createPostActionController({
 			const result = await publishLikeReaction(target, pubkey, signer, targetReadRelays, {
 				includeClientTag: getIncludeClientTag()
 			});
-			if (result.ok) likedTargetEventIds.add(target.id);
+			if (result.ok) {
+				likedTargetEventIds.add(target.id);
+			}
 			return result;
 		} finally {
 			publishingLikeTargetEventIds.delete(target.id);
@@ -146,21 +158,33 @@ export function createPostActionController({
 
 	async function repostPost(post: Post): Promise<RepostResult> {
 		const target = getPostRepostTarget(post);
-		if (!target) return { ok: false, reason: 'no-target' };
-		if (target.kind !== ShortTextNote) return { ok: false, reason: 'unsupported-kind' };
+		if (!target) {
+			return { ok: false, reason: 'no-target' };
+		}
+		if (target.kind !== ShortTextNote) {
+			return { ok: false, reason: 'unsupported-kind' };
+		}
 
 		const pubkey = getAccountPubkey();
 		const signer = getSigner();
-		if (!pubkey || !signer) return { ok: false, reason: 'unauthenticated' };
-		if (isReposted(post)) return { ok: false, reason: 'already-reposted' };
-		if (isReposting(post)) return { ok: false, reason: 'already-publishing' };
+		if (!pubkey || !signer) {
+			return { ok: false, reason: 'unauthenticated' };
+		}
+		if (isReposted(post)) {
+			return { ok: false, reason: 'already-reposted' };
+		}
+		if (isReposting(post)) {
+			return { ok: false, reason: 'already-publishing' };
+		}
 
 		publishingRepostTargetEventIds.add(target.id);
 		try {
 			const result = await publishRepost(target, pubkey, signer, {
 				includeClientTag: getIncludeClientTag()
 			});
-			if (result.ok) repostedTargetEventIds.add(target.id);
+			if (result.ok) {
+				repostedTargetEventIds.add(target.id);
+			}
 			return result;
 		} finally {
 			publishingRepostTargetEventIds.delete(target.id);
@@ -169,16 +193,23 @@ export function createPostActionController({
 
 	async function reactWithEmoji(post: Post, reaction: EmojiReaction): Promise<EmojiReactionResult> {
 		const target = getPostLikeTarget(post);
-		if (!target) return { ok: false, reason: 'no-target' };
+		if (!target) {
+			return { ok: false, reason: 'no-target' };
+		}
 
 		const pubkey = getAccountPubkey();
 		const signer = getSigner();
-		if (!pubkey || !signer) return { ok: false, reason: 'unauthenticated' };
+		if (!pubkey || !signer) {
+			return { ok: false, reason: 'unauthenticated' };
+		}
 
 		const reactionKey = getEmojiReactionKey(post, reaction);
-		if (!reactionKey) return { ok: false, reason: 'no-target' };
-		if (publishingEmojiReactionKeys.has(reactionKey))
+		if (!reactionKey) {
+			return { ok: false, reason: 'no-target' };
+		}
+		if (publishingEmojiReactionKeys.has(reactionKey)) {
 			return { ok: false, reason: 'already-publishing' };
+		}
 
 		publishingEmojiReactionKeys.add(reactionKey);
 		publishingEmojiTargetEventIds.add(target.id);

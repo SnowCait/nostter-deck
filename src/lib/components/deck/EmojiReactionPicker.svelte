@@ -40,7 +40,9 @@
 		const entries: { id: string; label: string; order: number }[] = [];
 		for (const candidate of customEmojis) {
 			const categoryId = candidate.categoryId ?? fallbackCategoryLabel;
-			if (entries.some((entry) => entry.id === categoryId)) continue;
+			if (entries.some((entry) => entry.id === categoryId)) {
+				continue;
+			}
 
 			entries.push({
 				id: categoryId,
@@ -86,7 +88,9 @@
 	});
 
 	$effect(() => {
-		if (!pickerElement) return;
+		if (!pickerElement) {
+			return;
+		}
 
 		pickerElement.locale = locale;
 		pickerElement.i18n = i18nByLocale[locale];
@@ -136,7 +140,9 @@
 		}
 
 		const candidate = customEmojis.find((customEmoji) => customEmoji.pickerName === emoji.name);
-		if (!candidate) return;
+		if (!candidate) {
+			return;
+		}
 
 		onSelect({
 			type: 'custom',

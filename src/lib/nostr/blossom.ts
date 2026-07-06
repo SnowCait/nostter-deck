@@ -40,8 +40,12 @@ export function isSupportedBlossomImage(file: Pick<File, 'type' | 'size'>) {
 }
 
 export function getBlossomImageValidationError(file: Pick<File, 'type' | 'size'>) {
-	if (!file.type.toLowerCase().startsWith('image/')) return 'unsupported-file' as const;
-	if (file.size > maxBlossomImageSizeBytes) return 'file-too-large' as const;
+	if (!file.type.toLowerCase().startsWith('image/')) {
+		return 'unsupported-file' as const;
+	}
+	if (file.size > maxBlossomImageSizeBytes) {
+		return 'file-too-large' as const;
+	}
 	return null;
 }
 
@@ -51,11 +55,15 @@ export async function uploadBlossomImage(
 	{ fetcher = fetch, timestamp = now }: BlossomUploadOptions = {}
 ): Promise<BlossomUploadResult> {
 	const validationError = getBlossomImageValidationError(file);
-	if (validationError) return { ok: false, reason: validationError };
+	if (validationError) {
+		return { ok: false, reason: validationError };
+	}
 
 	const sha256 = await calculateSha256Hex(file);
 	const signedAuthorization = await signBlossomAuthorization(signer, sha256, timestamp);
-	if (!signedAuthorization) return { ok: false, reason: 'signing-failed' };
+	if (!signedAuthorization) {
+		return { ok: false, reason: 'signing-failed' };
+	}
 
 	try {
 		const response = await fetcher(blossomMediaEndpointUrl, {
@@ -118,7 +126,9 @@ export function encodeAuthorizationToken(event: Nostr.Event) {
 }
 
 export function normalizeBlobDescriptor(value: unknown): BlossomBlobDescriptor | null {
-	if (!value || typeof value !== 'object') return null;
+	if (!value || typeof value !== 'object') {
+		return null;
+	}
 
 	const candidate = value as Partial<BlossomBlobDescriptor>;
 	if (
@@ -131,14 +141,24 @@ export function normalizeBlobDescriptor(value: unknown): BlossomBlobDescriptor |
 		return null;
 	}
 
-	if (!sha256Pattern.test(candidate.sha256.toLowerCase())) return null;
-	if (!candidate.type.toLowerCase().startsWith('image/')) return null;
-	if (!Number.isFinite(candidate.size) || candidate.size < 0) return null;
-	if (!Number.isFinite(candidate.uploaded) || candidate.uploaded < 0) return null;
+	if (!sha256Pattern.test(candidate.sha256.toLowerCase())) {
+		return null;
+	}
+	if (!candidate.type.toLowerCase().startsWith('image/')) {
+		return null;
+	}
+	if (!Number.isFinite(candidate.size) || candidate.size < 0) {
+		return null;
+	}
+	if (!Number.isFinite(candidate.uploaded) || candidate.uploaded < 0) {
+		return null;
+	}
 
 	try {
 		const url = new URL(candidate.url);
-		if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+		if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+			return null;
+		}
 		return {
 			url: url.href,
 			sha256: candidate.sha256.toLowerCase(),
@@ -153,7 +173,9 @@ export function normalizeBlobDescriptor(value: unknown): BlossomBlobDescriptor |
 
 async function getUploadErrorMessage(response: Response) {
 	const reason = response.headers.get('X-Reason')?.trim();
-	if (reason) return reason;
+	if (reason) {
+		return reason;
+	}
 
 	try {
 		const text = (await response.text()).trim();

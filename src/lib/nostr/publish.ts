@@ -77,7 +77,9 @@ async function publishEvent(
 					catchError(() => of(false))
 				)
 		);
-		if (!accepted) return { ok: false, reason: 'relay-failed' };
+		if (!accepted) {
+			return { ok: false, reason: 'relay-failed' };
+		}
 		return { ok: true, event: signedEvent };
 	} catch {
 		return { ok: false, reason: 'relay-failed' };

@@ -28,7 +28,9 @@ function isLoopbackHostname(hostname: string) {
 		return true;
 	}
 
-	if (hostname === '[::1]') return true;
+	if (hostname === '[::1]') {
+		return true;
+	}
 
 	const ipv4Parts = hostname.split('.');
 	return (
@@ -39,7 +41,9 @@ function isLoopbackHostname(hostname: string) {
 }
 
 export function normalizeRelay(value: unknown): string | null {
-	if (typeof value !== 'string') return null;
+	if (typeof value !== 'string') {
+		return null;
+	}
 
 	try {
 		const url = new URL(value.trim());
@@ -60,19 +64,27 @@ export function combineRelays(...relayGroups: readonly string[][]) {
 }
 
 export function normalizeRelays(value: unknown): string[] | null {
-	if (!Array.isArray(value) || value.length === 0) return null;
+	if (!Array.isArray(value) || value.length === 0) {
+		return null;
+	}
 
 	const relays = value.map(normalizeRelay);
-	if (relays.some((relay) => relay === null)) return null;
+	if (relays.some((relay) => relay === null)) {
+		return null;
+	}
 
 	return uniqueRelays(relays as string[]);
 }
 
 export function normalizeRelaySelection(value: unknown): RelaySelection | null {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		return null;
+	}
 
 	const candidate = value as Partial<RelaySelection>;
-	if (candidate.type === 'default') return { type: 'default' };
+	if (candidate.type === 'default') {
+		return { type: 'default' };
+	}
 
 	if (candidate.type === 'custom') {
 		const urls = normalizeRelays(candidate.urls);
@@ -88,13 +100,17 @@ export function resolveRelaySelection(selection: RelaySelection) {
 
 export function parseCustomRelays(value: string): string[] | null {
 	const trimmedValue = value.trim();
-	if (trimmedValue.length === 0) return [];
+	if (trimmedValue.length === 0) {
+		return [];
+	}
 
 	let values: unknown[];
 	if (trimmedValue.startsWith('[')) {
 		try {
 			const parsedValue: unknown = JSON.parse(trimmedValue);
-			if (!Array.isArray(parsedValue)) return null;
+			if (!Array.isArray(parsedValue)) {
+				return null;
+			}
 			values = parsedValue;
 		} catch {
 			return null;
@@ -107,17 +123,23 @@ export function parseCustomRelays(value: string): string[] | null {
 	}
 
 	const relays = values.map(normalizeRelay);
-	if (relays.some((relay) => relay === null)) return null;
+	if (relays.some((relay) => relay === null)) {
+		return null;
+	}
 
 	return uniqueRelays(relays as string[]);
 }
 
 export function resolveRelays(selectedRelays: string[], customRelays: string): string[] | null {
 	const normalizedSelectedRelays = selectedRelays.map(normalizeRelay);
-	if (normalizedSelectedRelays.some((relay) => relay === null)) return null;
+	if (normalizedSelectedRelays.some((relay) => relay === null)) {
+		return null;
+	}
 
 	const parsedCustomRelays = parseCustomRelays(customRelays);
-	if (!parsedCustomRelays) return null;
+	if (!parsedCustomRelays) {
+		return null;
+	}
 
 	const relays = uniqueRelays([...(normalizedSelectedRelays as string[]), ...parsedCustomRelays]);
 	return relays.length > 0 ? relays : null;
@@ -128,7 +150,9 @@ export function resolveRelayDraft(
 	customRelays: string
 ): RelaySelection | null {
 	const relays = resolveRelays(selectedRelays, customRelays);
-	if (!relays) return null;
+	if (!relays) {
+		return null;
+	}
 
 	const isDefaultSelection =
 		customRelays.trim().length === 0 &&

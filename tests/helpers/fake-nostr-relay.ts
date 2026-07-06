@@ -52,7 +52,9 @@ export async function installFakeNostrRelay(
 				const headers = new Headers(init?.headers ?? request?.headers);
 				if (headers.get('Accept') === 'application/nostr+json') {
 					relayNip11Requests.push(request?.url ?? String(input));
-					if (failNip11) throw new TypeError('Failed to fetch');
+					if (failNip11) {
+						throw new TypeError('Failed to fetch');
+					}
 
 					return new Response('{}', {
 						headers: { 'Content-Type': 'application/nostr+json' }
@@ -393,7 +395,9 @@ export async function installFakeNostrRelay(
 					setTimeout(() => {
 						this.readyState = FakeWebSocket.OPEN;
 						this.dispatch('open');
-						if (authMode === 'challenge') this.emitMessage(['AUTH', this.authChallenge]);
+						if (authMode === 'challenge') {
+							this.emitMessage(['AUTH', this.authChallenge]);
+						}
 					}, 0);
 				}
 
@@ -407,7 +411,9 @@ export async function installFakeNostrRelay(
 
 				send(data: string) {
 					const message = JSON.parse(data);
-					if (!Array.isArray(message)) return;
+					if (!Array.isArray(message)) {
+						return;
+					}
 					if (message[0] === 'CLOSE') {
 						this.subscriptions.delete(message[1]);
 						return;
@@ -417,7 +423,9 @@ export async function installFakeNostrRelay(
 						relayAuthEvents.push({ relay: this.url, event });
 						this.authenticated = true;
 						setTimeout(() => {
-							if (event.id) this.emitMessage(['OK', event.id, true, 'authenticated']);
+							if (event.id) {
+								this.emitMessage(['OK', event.id, true, 'authenticated']);
+							}
 						}, 0);
 						return;
 					}
@@ -438,11 +446,15 @@ export async function installFakeNostrRelay(
 								this.emitMessage(['AUTH', this.authChallenge]);
 								return;
 							}
-							if (event.id) this.emitMessage(['OK', event.id, !rejectPublish, 'rejected']);
+							if (event.id) {
+								this.emitMessage(['OK', event.id, !rejectPublish, 'rejected']);
+							}
 						}, 0);
 						return;
 					}
-					if (message[0] !== 'REQ') return;
+					if (message[0] !== 'REQ') {
+						return;
+					}
 
 					const subId = message[1] as string;
 					if (authMode === 'required' && !this.authenticated) {
@@ -536,7 +548,9 @@ export async function installFakeNostrRelay(
 							filter.kinds?.includes(relayListKind) && filter.authors?.includes(textEvent.pubkey)
 					);
 					for (const filter of filters) {
-						if (!filter.kinds?.includes(0) || !filter.authors) continue;
+						if (!filter.kinds?.includes(0) || !filter.authors) {
+							continue;
+						}
 
 						const key = [...filter.authors].sort().join(',');
 						relayProfileAuthorRequests[key] = (relayProfileAuthorRequests[key] ?? 0) + 1;
@@ -650,7 +664,9 @@ export async function installFakeNostrRelay(
 					}
 
 					for (const quotedEvent of [quotedTextEvent, quotedChannelEvent, quotedSensitiveEvent]) {
-						if (!requestedEventIds.includes(quotedEvent.id)) continue;
+						if (!requestedEventIds.includes(quotedEvent.id)) {
+							continue;
+						}
 
 						relayEventIdRequests[quotedEvent.id] = (relayEventIdRequests[quotedEvent.id] ?? 0) + 1;
 						setTimeout(() => {
@@ -663,10 +679,18 @@ export async function installFakeNostrRelay(
 					}
 
 					function searchPreviewEvent(search: string | undefined) {
-						if (search === 'bulk') return bulkEvents[0] ?? textEvent;
-						if (search === 'thread-entry') return threadReplyEvent;
-						if (search === 'sensitive') return sensitiveEvent;
-						if (search === 'sensitive-repost') return sensitiveRepostEvent;
+						if (search === 'bulk') {
+							return bulkEvents[0] ?? textEvent;
+						}
+						if (search === 'thread-entry') {
+							return threadReplyEvent;
+						}
+						if (search === 'sensitive') {
+							return sensitiveEvent;
+						}
+						if (search === 'sensitive-repost') {
+							return sensitiveRepostEvent;
+						}
 						return search === 'edited' ? editedSearchEvent : textEvent;
 					}
 
@@ -756,7 +780,9 @@ export async function installFakeNostrRelay(
 			window.__nostterFakeRelayEmitSearchEvent = (search, event) => {
 				for (const socket of relaySockets) {
 					for (const [subId, filters] of socket.subscriptions) {
-						if (!filters.some((filter) => filter.search === search)) continue;
+						if (!filters.some((filter) => filter.search === search)) {
+							continue;
+						}
 						socket.emitMessage(['EVENT', subId, event]);
 					}
 				}

@@ -106,10 +106,14 @@
 	}
 
 	function save() {
-		if (!canSaveColumn) return;
+		if (!canSaveColumn) {
+			return;
+		}
 
 		const nextColumn = createColumnConfigFromDraft(getColumnDraft(createColumnId()));
-		if (!nextColumn) return;
+		if (!nextColumn) {
+			return;
+		}
 
 		onSave(nextColumn);
 		isOpen = false;

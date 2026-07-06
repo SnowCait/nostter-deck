@@ -140,7 +140,9 @@ function createPost(event: Nostr.Event, profile?: Profile): Post {
 
 export function getContentWarning(tags: Nostr.Event['tags']): Post['contentWarning'] | null {
 	const tag = tags.find(([name]) => name === 'content-warning');
-	if (!tag) return null;
+	if (!tag) {
+		return null;
+	}
 
 	const reason = tag[1]?.trim();
 	return reason ? { reason } : {};
@@ -169,7 +171,9 @@ function getReferenceMutePubkeys(referenceEvent: Nostr.Event, referencedEvent?: 
 }
 
 export function getThreadReference(event: Nostr.Event): Post['thread'] | null {
-	if (event.kind !== ShortTextNote) return null;
+	if (event.kind !== ShortTextNote) {
+		return null;
+	}
 
 	const eventTags = event.tags.filter((tag) => tag[0] === 'e' && tag[1]);
 	if (eventTags.length === 0) {
@@ -202,15 +206,21 @@ function isTextLikePostEvent(event: Nostr.Event) {
 }
 
 function isReplyEvent(event: Nostr.Event) {
-	if (event.kind === ShortTextNote) return isShortTextNoteReplyEvent(event);
-	if (event.kind === ChannelMessage) return isChannelMessageReplyEvent(event);
+	if (event.kind === ShortTextNote) {
+		return isShortTextNoteReplyEvent(event);
+	}
+	if (event.kind === ChannelMessage) {
+		return isChannelMessageReplyEvent(event);
+	}
 
 	return false;
 }
 
 export function isShortTextNoteReplyEvent(event: Nostr.Event) {
 	const eventTags = event.tags.filter((tag) => tag[0] === 'e' && tag[1]);
-	if (eventTags.length === 0) return false;
+	if (eventTags.length === 0) {
+		return false;
+	}
 
 	const markedEventTags = eventTags.filter((tag) => tag[3]);
 	if (markedEventTags.length > 0) {
@@ -222,7 +232,9 @@ export function isShortTextNoteReplyEvent(event: Nostr.Event) {
 
 function isChannelMessageReplyEvent(event: Nostr.Event) {
 	const eventTags = event.tags.filter((tag) => tag[0] === 'e' && tag[1]);
-	if (eventTags.length === 0) return false;
+	if (eventTags.length === 0) {
+		return false;
+	}
 
 	return eventTags.some((tag) => tag[3] === 'reply') || eventTags.length >= 2;
 }
@@ -250,13 +262,19 @@ function createPostAuthor(pubkey: string, profile?: Profile) {
 
 function formatRelativeTime(createdAt: number) {
 	const elapsedSeconds = Math.max(0, Math.floor(Date.now() / 1000) - createdAt);
-	if (elapsedSeconds < 60) return `${elapsedSeconds}s`;
+	if (elapsedSeconds < 60) {
+		return `${elapsedSeconds}s`;
+	}
 
 	const elapsedMinutes = Math.floor(elapsedSeconds / 60);
-	if (elapsedMinutes < 60) return `${elapsedMinutes}m`;
+	if (elapsedMinutes < 60) {
+		return `${elapsedMinutes}m`;
+	}
 
 	const elapsedHours = Math.floor(elapsedMinutes / 60);
-	if (elapsedHours < 24) return `${elapsedHours}h`;
+	if (elapsedHours < 24) {
+		return `${elapsedHours}h`;
+	}
 
 	return `${Math.floor(elapsedHours / 24)}d`;
 }

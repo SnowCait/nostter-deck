@@ -197,7 +197,9 @@
 			return;
 		}
 
-		if (!activityRoot) return;
+		if (!activityRoot) {
+			return;
+		}
 
 		const observer = new IntersectionObserver(
 			(entries) => {
@@ -228,7 +230,9 @@
 	}
 
 	function scrollTimeline(event: Event) {
-		if (column.type !== 'timeline') return;
+		if (column.type !== 'timeline') {
+			return;
+		}
 
 		const element = event.currentTarget as HTMLDivElement;
 		const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight;

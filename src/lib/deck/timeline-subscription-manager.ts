@@ -58,7 +58,9 @@ export function createTimelineSubscriptionManager({
 		const activeColumnIds = new Set(targets.map((target) => target.columnId));
 
 		for (const [columnId, subscription] of subscriptions) {
-			if (activeColumnIds.has(columnId)) continue;
+			if (activeColumnIds.has(columnId)) {
+				continue;
+			}
 
 			subscription.stop();
 			subscriptions.delete(columnId);
@@ -68,7 +70,9 @@ export function createTimelineSubscriptionManager({
 		}
 
 		for (const target of targets) {
-			if (subscriptions.get(target.columnId)?.signature === target.signature) continue;
+			if (subscriptions.get(target.columnId)?.signature === target.signature) {
+				continue;
+			}
 
 			subscriptions.get(target.columnId)?.stop();
 			cancelPendingBatch(target.columnId);

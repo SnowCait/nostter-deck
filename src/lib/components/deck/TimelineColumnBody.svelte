@@ -100,12 +100,16 @@
 	}
 
 	$effect(() => {
-		if (!scrollRoot) return;
+		if (!scrollRoot) {
+			return;
+		}
 
 		const observer = new IntersectionObserver(
 			(entries) => {
 				for (const entry of entries) {
-					if (!entry.isIntersecting) continue;
+					if (!entry.isIntersecting) {
+						continue;
+					}
 
 					if (entry.target === newerSentinel && runtime.hasNewerStored && !runtime.isLoadingNewer) {
 						onLoadNewer();
@@ -118,8 +122,12 @@
 			{ root: scrollRoot, rootMargin: '8px 0px' }
 		);
 
-		if (newerSentinel) observer.observe(newerSentinel);
-		if (olderSentinel) observer.observe(olderSentinel);
+		if (newerSentinel) {
+			observer.observe(newerSentinel);
+		}
+		if (olderSentinel) {
+			observer.observe(olderSentinel);
+		}
 
 		return () => observer.disconnect();
 	});

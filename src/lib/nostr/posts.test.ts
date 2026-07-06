@@ -30,9 +30,15 @@ function event(patch: Partial<Nostr.Event>): Nostr.Event {
 }
 
 function getProfile(pubkey: string): Profile | undefined {
-	if (pubkey === reactionPubkey) return { display_name: 'Alice', customEmojis: [] };
-	if (pubkey === targetPubkey) return { display_name: 'Bob', customEmojis: [] };
-	if (pubkey === repostPubkey) return { display_name: 'Carol', customEmojis: [] };
+	if (pubkey === reactionPubkey) {
+		return { display_name: 'Alice', customEmojis: [] };
+	}
+	if (pubkey === targetPubkey) {
+		return { display_name: 'Bob', customEmojis: [] };
+	}
+	if (pubkey === repostPubkey) {
+		return { display_name: 'Carol', customEmojis: [] };
+	}
 	return undefined;
 }
 

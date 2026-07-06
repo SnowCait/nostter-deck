@@ -16,11 +16,17 @@ export function parseCustomEmojis(tags: Nostr.Event['tags']): CustomEmoji[] {
 	const emojisByShortcode = new Map<string, CustomEmoji>();
 
 	for (const tag of tags) {
-		if (tag[0] !== 'emoji' || !tag[1] || !tag[2]) continue;
-		if (!shortcodePattern.test(tag[1]) || emojisByShortcode.has(tag[1])) continue;
+		if (tag[0] !== 'emoji' || !tag[1] || !tag[2]) {
+			continue;
+		}
+		if (!shortcodePattern.test(tag[1]) || emojisByShortcode.has(tag[1])) {
+			continue;
+		}
 
 		const url = parseEmojiUrl(tag[2]);
-		if (!url) continue;
+		if (!url) {
+			continue;
+		}
 
 		emojisByShortcode.set(tag[1], { shortcode: tag[1], url });
 	}
@@ -32,7 +38,9 @@ export function tokenizeCustomEmojiText(
 	text: string,
 	customEmojis: CustomEmoji[]
 ): CustomEmojiTextToken[] {
-	if (customEmojis.length === 0) return [{ type: 'text', text }];
+	if (customEmojis.length === 0) {
+		return [{ type: 'text', text }];
+	}
 
 	const emojiByShortcode = new Map(customEmojis.map((emoji) => [emoji.shortcode, emoji]));
 	const tokens: CustomEmojiTextToken[] = [];
@@ -41,7 +49,9 @@ export function tokenizeCustomEmojiText(
 	for (const match of text.matchAll(shortcodeCandidatePattern)) {
 		const matchIndex = match.index ?? 0;
 		const emoji = emojiByShortcode.get(match[1]);
-		if (!emoji) continue;
+		if (!emoji) {
+			continue;
+		}
 
 		if (matchIndex > currentIndex) {
 			tokens.push({ type: 'text', text: text.slice(currentIndex, matchIndex) });

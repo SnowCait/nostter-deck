@@ -20,7 +20,9 @@ export function createPostShareController({
 
 	async function sharePost(post: Post): Promise<SharePostResult> {
 		const url = buildPostShareUrl(post);
-		if (!url) return { ok: false, reason: 'no-target' };
+		if (!url) {
+			return { ok: false, reason: 'no-target' };
+		}
 
 		const navigator = getNavigator();
 		if (navigator?.share) {
@@ -28,11 +30,15 @@ export function createPostShareController({
 				await navigator.share({ url });
 				return { ok: true, method: 'web-share' };
 			} catch (error) {
-				if (isAbortError(error)) return { ok: false, reason: 'cancelled' };
+				if (isAbortError(error)) {
+					return { ok: false, reason: 'cancelled' };
+				}
 			}
 		}
 
-		if (!navigator?.clipboard?.writeText) return { ok: false, reason: 'unsupported' };
+		if (!navigator?.clipboard?.writeText) {
+			return { ok: false, reason: 'unsupported' };
+		}
 
 		try {
 			await navigator.clipboard.writeText(url);

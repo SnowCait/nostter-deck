@@ -32,27 +32,41 @@ function normalizeColumnDisplayConfig(
 }
 
 export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
-	if (!Array.isArray(value) || value.length === 0) return [];
+	if (!Array.isArray(value) || value.length === 0) {
+		return [];
+	}
 
 	const columns = value.flatMap((item): ColumnConfig[] => {
-		if (!item || typeof item !== 'object') return [];
+		if (!item || typeof item !== 'object') {
+			return [];
+		}
 
 		const candidate = item as Partial<ColumnConfig>;
-		if (typeof candidate.id !== 'string' || candidate.id.length === 0) return [];
-		if (!isColumnWidth(candidate.width)) return [];
+		if (typeof candidate.id !== 'string' || candidate.id.length === 0) {
+			return [];
+		}
+		if (!isColumnWidth(candidate.width)) {
+			return [];
+		}
 
 		if (candidate.type === 'timeline') {
 			if (candidate.timelineKind === 'preset') {
-				if (!isColumnSourceKey(candidate.sourceKey)) return [];
+				if (!isColumnSourceKey(candidate.sourceKey)) {
+					return [];
+				}
 				const pubkey = (candidate as { pubkey?: unknown }).pubkey;
 				const relays = (candidate as { relays?: unknown }).relays;
 				const query = (candidate as { query?: unknown }).query;
 				const channelId = (candidate as { channelId?: unknown }).channelId;
 				if (candidate.sourceKey === 'timeline_follow') {
-					if (typeof pubkey !== 'string' || !/^[0-9a-f]{64}$/i.test(pubkey)) return [];
+					if (typeof pubkey !== 'string' || !/^[0-9a-f]{64}$/i.test(pubkey)) {
+						return [];
+					}
 					const normalizedRelays =
 						Array.isArray(relays) && relays.length > 0 ? normalizeRelays(relays) : [];
-					if (!normalizedRelays) return [];
+					if (!normalizedRelays) {
+						return [];
+					}
 
 					const column = {
 						id: candidate.id,
@@ -72,7 +86,9 @@ export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 					];
 				}
 				if (candidate.sourceKey === 'timeline_search') {
-					if (typeof query !== 'string' || query.trim().length === 0) return [];
+					if (typeof query !== 'string' || query.trim().length === 0) {
+						return [];
+					}
 
 					const column = {
 						id: candidate.id,
@@ -91,10 +107,14 @@ export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 					];
 				}
 				if (candidate.sourceKey === 'timeline_channel') {
-					if (typeof channelId !== 'string' || !/^[0-9a-f]{64}$/i.test(channelId)) return [];
+					if (typeof channelId !== 'string' || !/^[0-9a-f]{64}$/i.test(channelId)) {
+						return [];
+					}
 					const normalizedRelays =
 						Array.isArray(relays) && relays.length > 0 ? normalizeRelays(relays) : [];
-					if (!normalizedRelays) return [];
+					if (!normalizedRelays) {
+						return [];
+					}
 
 					const column = {
 						id: candidate.id,
@@ -119,9 +139,13 @@ export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 
 			if (candidate.timelineKind === 'custom') {
 				const filters = normalizeNostrFilters(candidate.filters);
-				if (!filters) return [];
+				if (!filters) {
+					return [];
+				}
 				const relays = normalizeRelaySelection(candidate.relays);
-				if (!relays) return [];
+				if (!relays) {
+					return [];
+				}
 
 				const column = {
 					id: candidate.id,
@@ -144,10 +168,14 @@ export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 		}
 
 		if (candidate.type === 'website') {
-			if (typeof candidate.url !== 'string') return [];
+			if (typeof candidate.url !== 'string') {
+				return [];
+			}
 
 			const url = normalizeWebsiteUrl(candidate.url);
-			if (!url) return [];
+			if (!url) {
+				return [];
+			}
 
 			const column = {
 				id: candidate.id,

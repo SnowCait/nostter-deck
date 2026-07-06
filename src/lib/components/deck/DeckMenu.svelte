@@ -67,9 +67,15 @@
 	}
 
 	async function saveName() {
-		if (!canSaveName) return;
-		if (nameAction === 'create') await onCreateDeck(normalizedDeckName);
-		if (nameAction === 'rename' && targetDeck) onRenameDeck(targetDeck.id, normalizedDeckName);
+		if (!canSaveName) {
+			return;
+		}
+		if (nameAction === 'create') {
+			await onCreateDeck(normalizedDeckName);
+		}
+		if (nameAction === 'rename' && targetDeck) {
+			onRenameDeck(targetDeck.id, normalizedDeckName);
+		}
 		if (nameAction === 'duplicate' && targetDeck) {
 			await onDuplicateDeck(targetDeck.id, normalizedDeckName);
 		}
@@ -83,7 +89,9 @@
 	}
 
 	async function confirmDelete() {
-		if (!targetDeck || decks.length <= 1) return;
+		if (!targetDeck || decks.length <= 1) {
+			return;
+		}
 		await onDeleteDeck(targetDeck.id);
 		isDeleteDialogOpen = false;
 		targetDeck = null;

@@ -141,7 +141,9 @@
 	}
 
 	function closeMobileSidebar() {
-		if (isCompactViewport) isMobileExpanded = false;
+		if (isCompactViewport) {
+			isMobileExpanded = false;
+		}
 	}
 
 	function selectColumn(columnId: string) {

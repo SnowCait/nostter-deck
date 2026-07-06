@@ -48,7 +48,9 @@ function isPostActionVisibility(value: unknown): value is PostActionVisibility {
 }
 
 function normalizeUserSettings(value: unknown): UserSettings {
-	if (!value || typeof value !== 'object') return { ...defaultUserSettings };
+	if (!value || typeof value !== 'object') {
+		return { ...defaultUserSettings };
+	}
 
 	const candidate = value as Partial<UserSettings>;
 	return {
@@ -68,8 +70,12 @@ function normalizeUserSettings(value: unknown): UserSettings {
 }
 
 function shouldUseDarkTheme(theme: ThemePreference) {
-	if (theme === 'dark') return true;
-	if (theme === 'light') return false;
+	if (theme === 'dark') {
+		return true;
+	}
+	if (theme === 'light') {
+		return false;
+	}
 
 	return (
 		typeof window !== 'undefined' &&
@@ -90,7 +96,9 @@ export function updateUserSettings(updater: (currentSettings: UserSettings) => U
 }
 
 export function applyThemePreference(theme: ThemePreference = readUserSettings().theme) {
-	if (typeof document === 'undefined') return;
+	if (typeof document === 'undefined') {
+		return;
+	}
 
 	const isDark = shouldUseDarkTheme(theme);
 	document.documentElement.classList.toggle('dark', isDark);
@@ -98,7 +106,9 @@ export function applyThemePreference(theme: ThemePreference = readUserSettings()
 }
 
 export function watchSystemThemePreference() {
-	if (typeof window === 'undefined' || !window.matchMedia) return () => {};
+	if (typeof window === 'undefined' || !window.matchMedia) {
+		return () => {};
+	}
 
 	const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 	const handleChange = () => applyThemePreference();

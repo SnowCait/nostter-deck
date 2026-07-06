@@ -120,7 +120,9 @@
 			return;
 		}
 
-		if (!scrollRoot) return;
+		if (!scrollRoot) {
+			return;
+		}
 
 		const observer = new IntersectionObserver(
 			(entries) => {

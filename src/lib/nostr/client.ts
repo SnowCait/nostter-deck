@@ -20,12 +20,16 @@ let nostrClient: RxNostr | null = null;
 const activeAccountSigner: EventSigner = {
 	async getPublicKey() {
 		const signer = getAuthSigner();
-		if (!signer) throw new Error('NIP-42 authentication requires an active account');
+		if (!signer) {
+			throw new Error('NIP-42 authentication requires an active account');
+		}
 		return signer.getPublicKey();
 	},
 	async signEvent<K extends number>(params: Nostr.EventParameters<K>) {
 		const signer = getAuthSigner();
-		if (!signer) throw new Error('NIP-42 authentication requires an active account');
+		if (!signer) {
+			throw new Error('NIP-42 authentication requires an active account');
+		}
 		return (await signer.signEvent({
 			...params,
 			tags: params.tags ?? [],

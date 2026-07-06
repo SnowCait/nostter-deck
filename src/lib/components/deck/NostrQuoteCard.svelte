@@ -40,10 +40,14 @@
 	const quoteState = $derived(getNostrQuoteState(eventId));
 	const loadedQuoteEvent = $derived(quoteState?.status === 'loaded' ? quoteState.event : undefined);
 	const quotedPost = $derived.by(() => {
-		if (!loadedQuoteEvent) return undefined;
+		if (!loadedQuoteEvent) {
+			return undefined;
+		}
 
 		const post = eventToPost(loadedQuoteEvent, getProfile(loadedQuoteEvent.pubkey));
-		if (!post.thread) return post;
+		if (!post.thread) {
+			return post;
+		}
 
 		return {
 			...post,
@@ -63,7 +67,9 @@
 	const canOpenThread = $derived(Boolean(quotedPost?.thread && onOpenThread));
 
 	function openThread() {
-		if (!quotedPost?.thread) return;
+		if (!quotedPost?.thread) {
+			return;
+		}
 		onOpenThread?.(quotedPost);
 	}
 
