@@ -66,6 +66,7 @@
 	}: Props = $props();
 
 	const emptyColumnRuntime = emptyTimelineRuntime();
+	let deckScrollElement: HTMLDivElement | undefined = $state();
 	const visibleSingleColumn = $derived(
 		columnDeckController.columns.find(
 			(column) => column.id === deckLayoutController.visibleColumnId
@@ -84,6 +85,7 @@
 		runtime={timelineController.runtimes[column.id] ?? emptyColumnRuntime}
 		id={getColumnId(column.id)}
 		{isSingleColumn}
+		activityRoot={deckScrollElement}
 		{isLoggedIn}
 		isSettingsOpen={columnDeckController.openSettingsColumnId === column.id}
 		canMoveLeft={columnIndex > 0}
@@ -230,6 +232,7 @@
 
 <section class={['flex min-w-0 flex-col', isDesktopSingleColumn ? 'flex-[0_1_640px]' : 'flex-1']}>
 	<div
+		bind:this={deckScrollElement}
 		class={[
 			'min-h-0 flex-1',
 			deckLayoutController.isSingleColumn ? 'overflow-hidden' : 'overflow-x-auto overflow-y-hidden'

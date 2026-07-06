@@ -13,6 +13,7 @@
 
 	type Props = {
 		runtime: TimelineRuntime;
+		isColumnActive: boolean;
 		isLoggedIn: boolean;
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
@@ -51,6 +52,7 @@
 
 	const {
 		runtime,
+		isColumnActive,
 		isLoggedIn,
 		textClass,
 		avatarShape,
@@ -157,6 +159,8 @@
 			{eventId}
 			{getEvent}
 			{isReferenceUnavailable}
+			{isColumnActive}
+			{scrollRoot}
 			{isLoggedIn}
 			{textClass}
 			{avatarShape}

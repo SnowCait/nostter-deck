@@ -25,6 +25,7 @@
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
 		isMutedUser: (pubkey: string) => boolean;
+		enableEnrichment?: boolean;
 		onOpenProfile?: (profile: ProfilePointer) => void;
 		onOpenThread?: (post: Post) => void;
 		onOpenHashtag?: (hashtag: string) => void;
@@ -38,6 +39,7 @@
 		requestProfiles,
 		profileRelays,
 		isMutedUser,
+		enableEnrichment = true,
 		onOpenProfile,
 		onOpenThread,
 		onOpenHashtag
@@ -50,11 +52,13 @@
 	const bodyTokens = $derived(linkifyPostContent(post.body, post.bodyEmojis, bodyHashtags));
 	const isBodyCollapsible = $derived(post.body.length > 500 || post.body.split('\n').length > 12);
 	const directImageUrls = $derived(
-		bodyTokens.flatMap((token) => {
-			if (token.type !== 'link') return [];
-			const media = getUrlMediaMetadata(token.href);
-			return media?.status === 'image' ? [media.url] : [];
-		})
+		enableEnrichment
+			? bodyTokens.flatMap((token) => {
+					if (token.type !== 'link') return [];
+					const media = getUrlMediaMetadata(token.href);
+					return media?.status === 'image' ? [media.url] : [];
+				})
+			: []
 	);
 
 	let isBodyExpanded = $state(false);
@@ -63,12 +67,16 @@
 	let failedEmojiUrls = $state<string[]>([]);
 
 	$effect(() => {
+		if (!enableEnrichment) return;
+
 		requestUrlMediaMetadata([
 			...new Set(bodyTokens.flatMap((token) => (token.type === 'link' ? [token.href] : [])))
 		]);
 	});
 
 	$effect(() => {
+		if (!enableEnrichment) return;
+
 		const profileReferenceTokens = bodyTokens.filter(isProfileReferenceToken);
 		if (profileReferenceTokens.length === 0) return;
 
@@ -189,84 +197,95 @@
 	>
 		{#each bodyTokens as token, index (index)}
 			{#if token.type === 'link'}
-				{@const media = getUrlMediaMetadata(token.href)}
-				{#if media?.status === 'image'}
-					<button
-						type="button"
-						data-testid="url-preview"
-						data-url={media.url}
-						style={getImagePreviewStyle(media)}
-						class={[
-							'my-2 flex overflow-hidden rounded-md border border-slate-200 bg-slate-50 text-slate-600 transition hover:border-slate-300 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-800',
-							hasImageDimensions(media) ? '' : 'h-48'
-						]}
-						aria-label={m.open_image_viewer()}
-						onclick={() => openImageViewer(index)}
-					>
-						<img
-							src={media.url}
-							alt={token.text}
-							class="h-full w-full object-contain"
-							loading="lazy"
-							onload={(event) => loadPreviewImage(event, media.url)}
-						/>
-					</button>
-				{:else}
+				{#if !enableEnrichment}
 					<a
 						href={token.href}
 						target="_blank"
 						rel="external noopener noreferrer"
-						data-testid="url-preview"
-						class="my-2 flex h-48 overflow-hidden rounded-md border border-slate-200 bg-slate-50 text-slate-600 transition hover:border-slate-300 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-800"
+						class="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-300 dark:hover:text-sky-200"
 					>
-						{#if media?.status === 'link'}
-							<span class="flex min-w-0 flex-1 flex-col">
-								{#if media.imageUrl}
-									<img
-										src={media.imageUrl}
-										alt=""
-										class="h-36 w-full shrink-0 object-cover"
-										loading="lazy"
-										onerror={() => handleLinkPreviewImageError(media.url)}
-									/>
-								{/if}
-								<span
-									class={[
-										'flex min-h-0 flex-1 flex-col justify-center gap-2',
-										media.imageUrl ? 'p-3' : 'p-4'
-									]}
-								>
+						{token.text}
+					</a>
+				{:else}
+					{@const media = getUrlMediaMetadata(token.href)}
+					{#if media?.status === 'image'}
+						<button
+							type="button"
+							data-testid="url-preview"
+							data-url={media.url}
+							style={getImagePreviewStyle(media)}
+							class={[
+								'my-2 flex overflow-hidden rounded-md border border-slate-200 bg-slate-50 text-slate-600 transition hover:border-slate-300 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-800',
+								hasImageDimensions(media) ? '' : 'h-48'
+							]}
+							aria-label={m.open_image_viewer()}
+							onclick={() => openImageViewer(index)}
+						>
+							<img
+								src={media.url}
+								alt={token.text}
+								class="h-full w-full object-contain"
+								loading="lazy"
+								onload={(event) => loadPreviewImage(event, media.url)}
+							/>
+						</button>
+					{:else}
+						<a
+							href={token.href}
+							target="_blank"
+							rel="external noopener noreferrer"
+							data-testid="url-preview"
+							class="my-2 flex h-48 overflow-hidden rounded-md border border-slate-200 bg-slate-50 text-slate-600 transition hover:border-slate-300 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-800"
+						>
+							{#if media?.status === 'link'}
+								<span class="flex min-w-0 flex-1 flex-col">
+									{#if media.imageUrl}
+										<img
+											src={media.imageUrl}
+											alt=""
+											class="h-36 w-full shrink-0 object-cover"
+											loading="lazy"
+											onerror={() => handleLinkPreviewImageError(media.url)}
+										/>
+									{/if}
 									<span
 										class={[
-											'line-clamp-2 font-bold [overflow-wrap:anywhere] text-slate-800 dark:text-slate-100',
-											textClass.account
+											'flex min-h-0 flex-1 flex-col justify-center gap-2',
+											media.imageUrl ? 'p-3' : 'p-4'
 										]}
 									>
-										{getLinkPreviewTitle(media, token.href)}
-									</span>
-									{#if shouldShowFallbackLinkUrl(media)}
 										<span
 											class={[
-												'line-clamp-2 [overflow-wrap:anywhere] text-slate-500 dark:text-slate-400',
-												textClass.meta
+												'line-clamp-2 font-bold [overflow-wrap:anywhere] text-slate-800 dark:text-slate-100',
+												textClass.account
 											]}
 										>
-											{token.href}
+											{getLinkPreviewTitle(media, token.href)}
 										</span>
-									{/if}
+										{#if shouldShowFallbackLinkUrl(media)}
+											<span
+												class={[
+													'line-clamp-2 [overflow-wrap:anywhere] text-slate-500 dark:text-slate-400',
+													textClass.meta
+												]}
+											>
+												{token.href}
+											</span>
+										{/if}
+									</span>
 								</span>
-							</span>
-						{:else}
-							<span class="flex w-full flex-col justify-center gap-3 p-4" aria-hidden="true">
-								<span class="h-4 w-1/3 rounded bg-slate-200 dark:bg-slate-800"></span>
-								<span class="h-4 w-3/4 rounded bg-slate-200 dark:bg-slate-800"></span>
-								<span class="h-4 w-1/2 rounded bg-slate-200 dark:bg-slate-800"></span>
-							</span>
-						{/if}
-					</a>
+							{:else}
+								<span class="flex w-full flex-col justify-center gap-3 p-4" aria-hidden="true">
+									<span class="h-4 w-1/3 rounded bg-slate-200 dark:bg-slate-800"></span>
+									<span class="h-4 w-3/4 rounded bg-slate-200 dark:bg-slate-800"></span>
+									<span class="h-4 w-1/2 rounded bg-slate-200 dark:bg-slate-800"></span>
+								</span>
+							{/if}
+						</a>
+					{/if}
 				{/if}
 			{:else if token.type === 'nostrReference'}
-				{#if isEventReferenceToken(token)}
+				{#if isEventReferenceToken(token) && enableEnrichment}
 					<NostrQuoteCard
 						href={token.href}
 						eventId={token.eventId}
@@ -277,6 +296,15 @@
 						{isMutedUser}
 						{onOpenThread}
 					/>
+				{:else if isEventReferenceToken(token)}
+					<a
+						href={token.href}
+						target="_blank"
+						rel="external noopener noreferrer"
+						class="font-medium text-sky-600 hover:text-sky-700 dark:text-sky-300 dark:hover:text-sky-200"
+					>
+						{getNostrReferenceText(token)}
+					</a>
 				{:else if isProfileReferenceToken(token)}
 					<button
 						type="button"

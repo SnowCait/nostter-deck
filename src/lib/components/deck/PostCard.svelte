@@ -50,6 +50,7 @@
 		onReactWithEmojiPost?: (post: Post, reaction: EmojiReaction) => void;
 		canSharePost?: (post: Post) => boolean;
 		onSharePost?: (post: Post) => Promise<SharePostResult> | SharePostResult;
+		enableEnrichment?: boolean;
 		onOpenProfile?: (profile: ProfilePointer) => void;
 		onOpenThread?: (post: Post) => void;
 		onOpenHashtag?: (hashtag: string) => void;
@@ -86,6 +87,7 @@
 		onReactWithEmojiPost,
 		canSharePost = () => false,
 		onSharePost,
+		enableEnrichment = true,
 		onOpenProfile,
 		onOpenThread,
 		onOpenHashtag
@@ -306,6 +308,7 @@
 							{requestProfiles}
 							{profileRelays}
 							{isMutedUser}
+							{enableEnrichment}
 							{onOpenProfile}
 							{onOpenThread}
 							{onOpenHashtag}

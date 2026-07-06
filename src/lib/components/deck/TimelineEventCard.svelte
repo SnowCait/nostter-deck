@@ -17,6 +17,8 @@
 		eventId: string;
 		getEvent: (eventId: string) => Nostr.Event | undefined;
 		isReferenceUnavailable: (eventId: string) => boolean;
+		isColumnActive: boolean;
+		scrollRoot?: HTMLDivElement;
 		isLoggedIn: boolean;
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
@@ -54,6 +56,8 @@
 		eventId,
 		getEvent,
 		isReferenceUnavailable,
+		isColumnActive,
+		scrollRoot,
 		isLoggedIn,
 		textClass,
 		avatarShape,
@@ -87,6 +91,9 @@
 		onOpenHashtag
 	}: Props = $props();
 
+	let cardElement: HTMLDivElement | undefined = $state();
+	let isPostNearViewport = $state(false);
+
 	const event = $derived(getEvent(eventId));
 	const referencedEventId = $derived(event ? getReferencedEventId(event) : null);
 	const referencedEvent = $derived(referencedEventId ? getEvent(referencedEventId) : undefined);
@@ -100,6 +107,31 @@
 	const isHidden = $derived(
 		Boolean(post && !post.referenceType && post.mutePubkeys.some(isMutedUser))
 	);
+	const enableEnrichment = $derived(isColumnActive && isPostNearViewport);
+
+	$effect(() => {
+		if (!isColumnActive) {
+			isPostNearViewport = false;
+			return;
+		}
+
+		if (!cardElement || typeof IntersectionObserver === 'undefined') {
+			isPostNearViewport = true;
+			return;
+		}
+
+		if (!scrollRoot) return;
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				isPostNearViewport = entries.some((entry) => entry.isIntersecting);
+			},
+			{ root: scrollRoot, rootMargin: '900px 0px' }
+		);
+
+		observer.observe(cardElement);
+		return () => observer.disconnect();
+	});
 
 	function createPost(
 		sourceEvent: Nostr.Event,
@@ -122,40 +154,43 @@
 	}
 </script>
 
-{#if post && !isHidden}
-	<PostCard
-		{post}
-		{isLoggedIn}
-		{textClass}
-		{avatarShape}
-		{postActionVisibility}
-		{appLocale}
-		{emojiReactionCandidates}
-		{getProfile}
-		{requestProfiles}
-		{profileRelays}
-		{isMuted}
-		{isMutedUser}
-		{onMuteUser}
-		{canReplyPost}
-		{onReplyPost}
-		{canLikePost}
-		{isLikePostLiked}
-		{isLikePostPublishing}
-		{onLikePost}
-		{canRepostPost}
-		{isRepostPostReposted}
-		{isRepostPostPublishing}
-		{onRepostPost}
-		{canQuotePost}
-		{onQuotePost}
-		{canReactWithEmojiPost}
-		{isEmojiReactionPostPublishing}
-		{onReactWithEmojiPost}
-		{canSharePost}
-		{onSharePost}
-		{onOpenProfile}
-		{onOpenThread}
-		{onOpenHashtag}
-	/>
-{/if}
+<div bind:this={cardElement}>
+	{#if post && !isHidden}
+		<PostCard
+			{post}
+			{isLoggedIn}
+			{textClass}
+			{avatarShape}
+			{postActionVisibility}
+			{appLocale}
+			{emojiReactionCandidates}
+			{getProfile}
+			{requestProfiles}
+			{profileRelays}
+			{isMuted}
+			{isMutedUser}
+			{onMuteUser}
+			{canReplyPost}
+			{onReplyPost}
+			{canLikePost}
+			{isLikePostLiked}
+			{isLikePostPublishing}
+			{onLikePost}
+			{canRepostPost}
+			{isRepostPostReposted}
+			{isRepostPostPublishing}
+			{onRepostPost}
+			{canQuotePost}
+			{onQuotePost}
+			{canReactWithEmojiPost}
+			{isEmojiReactionPostPublishing}
+			{onReactWithEmojiPost}
+			{canSharePost}
+			{onSharePost}
+			{enableEnrichment}
+			{onOpenProfile}
+			{onOpenThread}
+			{onOpenHashtag}
+		/>
+	{/if}
+</div>

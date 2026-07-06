@@ -37,6 +37,7 @@
 		runtime: TimelineRuntime;
 		id: string;
 		isSingleColumn?: boolean;
+		activityRoot?: HTMLDivElement;
 		isLoggedIn: boolean;
 		isSettingsOpen: boolean;
 		canMoveLeft: boolean;
@@ -95,6 +96,7 @@
 		runtime,
 		id,
 		isSingleColumn = false,
+		activityRoot,
 		isLoggedIn,
 		isSettingsOpen,
 		canMoveLeft,
@@ -179,7 +181,34 @@
 		'flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100';
 	const settingsActionClass =
 		'flex h-9 min-w-0 items-center justify-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 disabled:dark:hover:bg-transparent';
+	let columnElement: HTMLElement | undefined = $state();
 	let timelineScrollElement: HTMLDivElement | undefined = $state();
+	let isColumnNearViewport = $state(false);
+	const isColumnActive = $derived(isSingleColumn || isColumnNearViewport);
+
+	$effect(() => {
+		if (isSingleColumn) {
+			isColumnNearViewport = true;
+			return;
+		}
+
+		if (!columnElement || typeof IntersectionObserver === 'undefined') {
+			isColumnNearViewport = true;
+			return;
+		}
+
+		if (!activityRoot) return;
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				isColumnNearViewport = entries.some((entry) => entry.isIntersecting);
+			},
+			{ root: activityRoot, rootMargin: '0px 700px' }
+		);
+
+		observer.observe(columnElement);
+		return () => observer.disconnect();
+	});
 
 	function selectColumnWidth(value: string) {
 		onWidthChange(value as ColumnWidth);
@@ -218,6 +247,7 @@
 
 <section
 	{id}
+	bind:this={columnElement}
 	data-deck-column
 	data-column-id={column.id}
 	tabindex="-1"
@@ -414,15 +444,20 @@
 		onscroll={scrollTimeline}
 	>
 		{#if column.type === 'website'}
-			<iframe
-				class="h-full w-full border-0 bg-white dark:bg-slate-950"
-				src={column.url}
-				title={getColumnTitle(column)}
-				sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
-			></iframe>
+			{#if isColumnActive}
+				<iframe
+					class="h-full w-full border-0 bg-white dark:bg-slate-950"
+					src={column.url}
+					title={getColumnTitle(column)}
+					sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
+				></iframe>
+			{:else}
+				<div class="h-full w-full bg-slate-50 dark:bg-slate-900" aria-hidden="true"></div>
+			{/if}
 		{:else}
 			<TimelineColumnBody
 				{runtime}
+				{isColumnActive}
 				{isLoggedIn}
 				{textClass}
 				{avatarShape}

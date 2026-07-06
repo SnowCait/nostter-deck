@@ -78,6 +78,30 @@ describe('url media metadata', () => {
 		);
 	});
 
+	test('limits concurrent metadata fetches across origins', async () => {
+		const urls = Array.from({ length: 6 }, (_, index) => `https://parallel-${index}.example/image`);
+		const responses = urls.map(() => deferredResponse());
+		const fetchMock = vi.fn<typeof fetch>((input) => {
+			const index = urls.indexOf(input.toString());
+			if (index < 0) throw new Error(`Unexpected URL: ${input.toString()}`);
+
+			return responses[index].promise;
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		requestUrlMediaMetadata(urls);
+		await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+		expect(fetchMock).toHaveBeenCalledTimes(4);
+
+		responses[0].resolve(new Response(undefined, { headers: { 'Content-Type': 'image/png' } }));
+		await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
+
+		for (const response of responses.slice(1)) {
+			response.resolve(new Response(undefined, { headers: { 'Content-Type': 'image/png' } }));
+		}
+		await vi.waitFor(() => expect(getUrlMediaMetadata(urls[5])?.status).toBe('image'));
+	});
+
 	test('skips queued HEAD requests after an origin fails metadata loading', async () => {
 		const failedUrl = 'https://cors-blocked.example/image';
 		const queuedUrl = 'https://cors-blocked.example/queued-image';

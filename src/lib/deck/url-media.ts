@@ -28,6 +28,9 @@ const failedOpenGraphOrigins = new Set<string>();
 const metadataLock = new AsyncLock();
 const openGraphLock = new AsyncLock();
 const simplexSmpHostnamePattern = /^smp\d+\.simplex\.im$/i;
+const maxConcurrentMetadataFetches = 4;
+let activeMetadataFetches = 0;
+const metadataFetchQueue: Array<() => void> = [];
 
 export function getUrlMediaMetadata(url: string) {
 	return mediaByUrl.get(url);
@@ -108,7 +111,7 @@ async function loadUrlMediaMetadata(url: URL) {
 		}
 
 		try {
-			const response = await fetch(normalizedUrl, { method: 'HEAD' });
+			const response = await fetchWithMetadataLimit(normalizedUrl, { method: 'HEAD' });
 			const contentType = response.headers.get('content-type') ?? undefined;
 			const normalizedContentType = contentType?.toLowerCase() ?? '';
 
@@ -151,7 +154,7 @@ async function loadAndApplyOpenGraphMetadata(url: URL) {
 		if (failedOpenGraphOrigins.has(origin)) return;
 
 		try {
-			const response = await fetch(normalizedUrl);
+			const response = await fetchWithMetadataLimit(normalizedUrl);
 			const openGraphMetadata = parseOpenGraphMetadata(await response.text(), url);
 			const media = mediaByUrl.get(normalizedUrl);
 			if (media?.status !== 'link') return;
@@ -247,4 +250,33 @@ function resolveMetadataUrl(url: string | undefined, baseUrl: URL) {
 
 function escapeRegExp(value: string) {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+async function fetchWithMetadataLimit(input: RequestInfo | URL, init?: RequestInit) {
+	await acquireMetadataFetchSlot();
+	try {
+		return init === undefined ? await fetch(input) : await fetch(input, init);
+	} finally {
+		releaseMetadataFetchSlot();
+	}
+}
+
+function acquireMetadataFetchSlot() {
+	if (activeMetadataFetches < maxConcurrentMetadataFetches) {
+		activeMetadataFetches += 1;
+		return Promise.resolve();
+	}
+
+	return new Promise<void>((resolve) => {
+		metadataFetchQueue.push(() => {
+			activeMetadataFetches += 1;
+			resolve();
+		});
+	});
+}
+
+function releaseMetadataFetchSlot() {
+	activeMetadataFetches = Math.max(0, activeMetadataFetches - 1);
+	const next = metadataFetchQueue.shift();
+	if (next) next();
 }
