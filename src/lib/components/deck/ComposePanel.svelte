@@ -176,7 +176,7 @@
 		<div class="mb-3 flex shrink-0 items-center gap-3">
 			<ProfileAvatar
 				shape={avatarShape}
-				sizeClass="size-9"
+				sizeClass="size-10"
 				imageUrl={accountProfile?.picture}
 				fallbackClass="bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
 				testId="account-avatar"
