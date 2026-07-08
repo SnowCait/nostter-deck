@@ -5,7 +5,11 @@
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { Post } from '$lib/deck/types';
 	import type { SharePostResult } from '$lib/deck/post-share-controller.svelte';
-	import type { CustomEmojiReactionCandidate, EmojiReaction } from '$lib/nostr/emoji-reactions';
+	import type {
+		CustomEmojiReactionCandidate,
+		EmojiReaction,
+		LikeReaction
+	} from '$lib/nostr/emoji-reactions';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape, PostActionVisibility } from '$lib/user-settings';
 	import { getProfileDisplayName, type Profile } from '$lib/nostr/profiles';
@@ -25,6 +29,7 @@
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
 		postActionVisibility: PostActionVisibility;
+		likeReaction: LikeReaction;
 		appLocale: Locale;
 		emojiReactionCandidates: CustomEmojiReactionCandidate[];
 		getProfile: (pubkey: string) => Profile | undefined;
@@ -66,6 +71,7 @@
 		textClass,
 		avatarShape,
 		postActionVisibility,
+		likeReaction,
 		appLocale,
 		emojiReactionCandidates,
 		getProfile,
@@ -257,6 +263,7 @@
 						{textClass}
 						{avatarShape}
 						{postActionVisibility}
+						{likeReaction}
 						{appLocale}
 						{emojiReactionCandidates}
 						{getProfile}

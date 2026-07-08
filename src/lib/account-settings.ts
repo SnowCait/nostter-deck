@@ -1,0 +1,146 @@
+import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
+import type { LikeReaction } from '$lib/nostr/emoji-reactions';
+
+export type AccountSettings = {
+	likeReaction: LikeReaction;
+};
+
+export type AccountSettingsStore = Record<string, AccountSettings>;
+
+const accountSettingsStorageKey = 'nostter:account-settings';
+const defaultLikeReaction: LikeReaction = { type: 'plus' };
+const defaultAccountSettings: AccountSettings = {
+	likeReaction: defaultLikeReaction
+};
+
+function isPubkey(value: string) {
+	return /^[0-9a-f]{64}$/i.test(value);
+}
+
+function isValidShortcode(value: string) {
+	return /^[A-Za-z0-9_+-]+$/.test(value);
+}
+
+function normalizeHttpsUrl(value: string) {
+	try {
+		const url = new URL(value);
+		return url.protocol === 'https:' ? url.href : null;
+	} catch {
+		return null;
+	}
+}
+
+function normalizeLikeReaction(value: unknown): LikeReaction {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		return defaultLikeReaction;
+	}
+
+	const candidate = value as Partial<LikeReaction>;
+	if (candidate.type === 'plus') {
+		return defaultLikeReaction;
+	}
+	if (candidate.type === 'unicode') {
+		return typeof candidate.emoji === 'string' && candidate.emoji.trim().length > 0
+			? { type: 'unicode', emoji: candidate.emoji }
+			: defaultLikeReaction;
+	}
+	if (candidate.type === 'custom') {
+		const url = typeof candidate.url === 'string' ? normalizeHttpsUrl(candidate.url) : null;
+		if (typeof candidate.shortcode !== 'string' || !isValidShortcode(candidate.shortcode) || !url) {
+			return defaultLikeReaction;
+		}
+
+		return {
+			type: 'custom',
+			shortcode: candidate.shortcode,
+			url,
+			...(typeof candidate.address === 'string' && candidate.address.length > 0
+				? { address: candidate.address }
+				: {})
+		};
+	}
+
+	return defaultLikeReaction;
+}
+
+function normalizeAccountSettings(value: unknown): AccountSettings {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		return { ...defaultAccountSettings };
+	}
+
+	const candidate = value as Partial<AccountSettings>;
+	return {
+		likeReaction: normalizeLikeReaction(candidate.likeReaction)
+	};
+}
+
+function normalizeAccountSettingsStore(value: unknown): AccountSettingsStore {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		return {};
+	}
+
+	const store: AccountSettingsStore = {};
+	for (const [pubkey, settings] of Object.entries(value)) {
+		const normalizedPubkey = pubkey.toLowerCase();
+		if (!isPubkey(normalizedPubkey)) {
+			continue;
+		}
+		store[normalizedPubkey] = normalizeAccountSettings(settings);
+	}
+	return store;
+}
+
+export function getDefaultLikeReaction(): LikeReaction {
+	return { ...defaultLikeReaction };
+}
+
+export function getDefaultAccountSettings(): AccountSettings {
+	return {
+		likeReaction: getDefaultLikeReaction()
+	};
+}
+
+export function readAccountSettingsStore(): AccountSettingsStore {
+	return readJsonStorage(accountSettingsStorageKey, {}, normalizeAccountSettingsStore);
+}
+
+export function writeAccountSettingsStore(store: AccountSettingsStore) {
+	writeJsonStorage(accountSettingsStorageKey, store, normalizeAccountSettingsStore);
+}
+
+export function readAccountSettings(pubkey: string | null | undefined): AccountSettings {
+	if (!pubkey) {
+		return getDefaultAccountSettings();
+	}
+
+	return readAccountSettingsStore()[pubkey.toLowerCase()] ?? getDefaultAccountSettings();
+}
+
+export function updateAccountSettings(
+	pubkey: string,
+	updater: (currentSettings: AccountSettings) => AccountSettings
+) {
+	const normalizedPubkey = pubkey.toLowerCase();
+	const store = readAccountSettingsStore();
+	writeAccountSettingsStore({
+		...store,
+		[normalizedPubkey]: updater(store[normalizedPubkey] ?? getDefaultAccountSettings())
+	});
+}
+
+export function readLikeReaction(pubkey: string | null | undefined): LikeReaction {
+	return readAccountSettings(pubkey).likeReaction;
+}
+
+export function writeLikeReaction(pubkey: string, likeReaction: LikeReaction) {
+	updateAccountSettings(pubkey, (settings) => ({
+		...settings,
+		likeReaction
+	}));
+}
+
+export function resetLikeReaction(pubkey: string) {
+	writeLikeReaction(pubkey, getDefaultLikeReaction());
+}
+
+export { accountSettingsStorageKey };

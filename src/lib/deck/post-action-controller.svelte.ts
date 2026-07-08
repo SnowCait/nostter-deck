@@ -3,7 +3,8 @@ import { ShortTextNote } from 'nostr-tools/kinds';
 import type { EventSigner } from 'rx-nostr';
 import type { Post } from './types';
 import { getPostLikeTarget, getPostRepostTarget } from './post-actions';
-import type { EmojiReaction } from '$lib/nostr/emoji-reactions';
+import type { EmojiReaction, LikeReaction } from '$lib/nostr/emoji-reactions';
+import { getDefaultLikeReaction } from '$lib/account-settings';
 import { getNip65ReadRelaysForPubkey } from '$lib/nostr/nip65';
 import {
 	publishEmojiReaction,
@@ -16,6 +17,7 @@ type PostActionControllerOptions = {
 	getAccountPubkey: () => string | null;
 	getSigner: () => EventSigner | null;
 	getIncludeClientTag: () => boolean;
+	getLikeReaction?: () => LikeReaction;
 	getTargetReadRelays?: (pubkey: string) => Promise<string[]>;
 };
 
@@ -43,6 +45,7 @@ export function createPostActionController({
 	getAccountPubkey,
 	getSigner,
 	getIncludeClientTag,
+	getLikeReaction = getDefaultLikeReaction,
 	getTargetReadRelays = getNip65ReadRelaysForPubkey
 }: PostActionControllerOptions) {
 	const likedTargetEventIds = new SvelteSet<string>();
@@ -145,7 +148,8 @@ export function createPostActionController({
 		try {
 			const targetReadRelays = await getTargetReadRelays(target.pubkey);
 			const result = await publishLikeReaction(target, pubkey, signer, targetReadRelays, {
-				includeClientTag: getIncludeClientTag()
+				includeClientTag: getIncludeClientTag(),
+				reaction: getLikeReaction()
 			});
 			if (result.ok) {
 				likedTargetEventIds.add(target.id);

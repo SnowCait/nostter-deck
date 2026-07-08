@@ -4,7 +4,11 @@
 	import type { SharePostResult } from '$lib/deck/post-share-controller.svelte';
 	import type { TimelineRuntime } from '$lib/deck/timeline-runtime';
 	import type { FontSizeTextClasses } from '$lib/font-size';
-	import type { CustomEmojiReactionCandidate, EmojiReaction } from '$lib/nostr/emoji-reactions';
+	import type {
+		CustomEmojiReactionCandidate,
+		EmojiReaction,
+		LikeReaction
+	} from '$lib/nostr/emoji-reactions';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape, PostActionVisibility } from '$lib/user-settings';
 	import type { Profile } from '$lib/nostr/profiles';
@@ -18,6 +22,7 @@
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
 		postActionVisibility: PostActionVisibility;
+		likeReaction: LikeReaction;
 		appLocale: Locale;
 		emojiReactionCandidates: CustomEmojiReactionCandidate[];
 		scrollRoot?: HTMLDivElement;
@@ -57,6 +62,7 @@
 		textClass,
 		avatarShape,
 		postActionVisibility,
+		likeReaction,
 		appLocale,
 		emojiReactionCandidates,
 		scrollRoot,
@@ -173,6 +179,7 @@
 			{textClass}
 			{avatarShape}
 			{postActionVisibility}
+			{likeReaction}
 			{appLocale}
 			{emojiReactionCandidates}
 			{getProfile}

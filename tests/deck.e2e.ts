@@ -7,6 +7,7 @@ import {
 	addCustomTimelineColumn,
 	addPresetColumn,
 	addWebsiteColumn,
+	accountSettingsStorageKey,
 	columnNames,
 	columnOptionsButton,
 	deckColumns,
@@ -61,6 +62,7 @@ const expectedProfileRelayConnections = Object.fromEntries(
 const expectedProfileRelayRequestCount = expectedProfileRelayUrls.length;
 const contactListAuthorPubkey = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 const textEventPubkey = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const accountNpub = npubEncode(textEventPubkey);
 const staleContactPubkey = 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc';
 const followRelayHint = 'wss://follow.example/';
 const contactListNpub = npubEncode(contactListAuthorPubkey);
@@ -2574,6 +2576,127 @@ test.describe('nostter deck', () => {
 		await page.reload();
 		await page.getByRole('button', { name: 'Settings' }).click();
 		await expect(page.getByLabel('Attach client information')).not.toBeChecked();
+	});
+
+	test('uses account-specific Like settings for the like button and published reaction', async ({
+		page
+	}) => {
+		await installFakeNostrRelay(page);
+		await page.addInitScript(
+			({ key, pubkey }) => {
+				window.localStorage.setItem(
+					key,
+					JSON.stringify({
+						[pubkey]: { likeReaction: { type: 'unicode', emoji: '⭐️' } }
+					})
+				);
+			},
+			{ key: accountSettingsStorageKey, pubkey: textEventPubkey }
+		);
+		await openDeck(page, { isLoggedIn: true });
+		await addCustomTimelineColumn(page);
+
+		await page.getByRole('button', { name: 'Settings' }).click();
+		const settingsDialog = page.getByRole('dialog', { name: 'Settings' });
+		await expect(settingsDialog.getByText('Alice Relay')).toBeVisible();
+		await expect(
+			settingsDialog.getByText(`${accountNpub.slice(0, 12)}...${accountNpub.slice(-8)}`)
+		).toBeVisible();
+		await expect(settingsDialog.getByText('⭐️')).toBeVisible();
+		await settingsDialog.getByRole('button', { name: 'Close' }).click();
+		await expect(settingsDialog).toHaveCount(0);
+
+		const postArticle = page.locator('article').filter({
+			hasText: 'Hello from a custom Nostr timeline'
+		});
+		const likeButton = postArticle.getByRole('button', { name: 'Like' });
+		await expect(likeButton.locator('[data-like-icon="star"]')).toBeVisible();
+		await likeButton.dispatchEvent('click');
+
+		await expect
+			.poll(() =>
+				page.evaluate(() =>
+					(window.__nostterFakeRelayPublishedEvents ?? []).some(({ event }) => {
+						const published = event as { kind?: unknown; content?: unknown };
+						return published.kind === 7 && published.content === '⭐️';
+					})
+				)
+			)
+			.toBe(true);
+	});
+
+	test('does not expose the default Like content in settings', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page, { isLoggedIn: true });
+
+		await page.getByRole('button', { name: 'Settings' }).click();
+		const settingsDialog = page.getByRole('dialog', { name: 'Settings' });
+		await expect(settingsDialog.getByText('Alice Relay')).toBeVisible();
+		await expect(settingsDialog.getByText('Default', { exact: true })).toBeVisible();
+		await expect(settingsDialog.getByText('Default (+)', { exact: true })).toHaveCount(0);
+	});
+
+	test('publishes custom emoji tags from account-specific Like settings', async ({ page }) => {
+		const emojiUrl = 'https://emoji.example/blobcat.png';
+		const emojiAddress = `30030:${textEventPubkey}:cats`;
+		await installFakeNostrRelay(page);
+		await page.addInitScript(
+			({ key, pubkey, url, address }) => {
+				window.localStorage.setItem(
+					key,
+					JSON.stringify({
+						[pubkey]: {
+							likeReaction: {
+								type: 'custom',
+								shortcode: 'blobcat',
+								url,
+								address
+							}
+						}
+					})
+				);
+			},
+			{
+				key: accountSettingsStorageKey,
+				pubkey: textEventPubkey,
+				url: emojiUrl,
+				address: emojiAddress
+			}
+		);
+		await openDeck(page, { isLoggedIn: true });
+		await addCustomTimelineColumn(page);
+
+		const postArticle = page.locator('article').filter({
+			hasText: 'Hello from a custom Nostr timeline'
+		});
+		const likeButton = postArticle.getByRole('button', { name: 'Like' });
+		await expect(likeButton.locator('[data-like-icon="heart"]')).toBeVisible();
+		await likeButton.dispatchEvent('click');
+
+		await expect
+			.poll(() =>
+				page.evaluate(
+					({ url, address }) =>
+						(window.__nostterFakeRelayPublishedEvents ?? []).some(({ event }) => {
+							const published = event as { kind?: unknown; content?: unknown; tags?: unknown };
+							return (
+								published.kind === 7 &&
+								published.content === ':blobcat:' &&
+								Array.isArray(published.tags) &&
+								published.tags.some(
+									(tag) =>
+										Array.isArray(tag) &&
+										tag[0] === 'emoji' &&
+										tag[1] === 'blobcat' &&
+										tag[2] === url &&
+										tag[3] === address
+								)
+							);
+						}),
+					{ url: emojiUrl, address: emojiAddress }
+				)
+			)
+			.toBe(true);
 	});
 
 	test('changes and persists the font size from user settings', async ({ page }) => {

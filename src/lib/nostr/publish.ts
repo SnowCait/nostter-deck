@@ -4,7 +4,7 @@ import { catchError, defaultIfEmpty, filter, firstValueFrom, map, of, take } fro
 import type * as Nostr from 'nostr-typedef';
 import { buildNip10ReplyTags, buildNip18QuoteRepost } from '$lib/deck/post-actions';
 import { getNostrClient } from './client';
-import type { EmojiReaction } from './emoji-reactions';
+import type { EmojiReaction, LikeReaction } from './emoji-reactions';
 
 export type PublishPostResult =
 	| { ok: true; event: Nostr.Event }
@@ -12,6 +12,10 @@ export type PublishPostResult =
 
 export type PublishOptions = {
 	includeClientTag?: boolean;
+};
+
+export type PublishLikeReactionOptions = PublishOptions & {
+	reaction?: LikeReaction;
 };
 
 type PublishEventTemplate = Pick<Nostr.Event, 'kind' | 'tags' | 'content' | 'created_at'>;
@@ -36,6 +40,27 @@ function createReactionReferenceTags(target: PublishReactionTarget, targetReadRe
 	const eventTag = ['e', target.id, relayHint ?? '', target.pubkey];
 	const pubkeyTag = relayHint ? ['p', target.pubkey, relayHint] : ['p', target.pubkey];
 	return [eventTag, pubkeyTag, ['k', String(target.kind)]];
+}
+
+function createEmojiReactionPayload(reaction: EmojiReaction) {
+	const tags =
+		reaction.type === 'custom'
+			? [
+					reaction.address
+						? ['emoji', reaction.shortcode, reaction.url, reaction.address]
+						: ['emoji', reaction.shortcode, reaction.url]
+				]
+			: [];
+	const content = reaction.type === 'unicode' ? reaction.emoji : `:${reaction.shortcode}:`;
+	return { content, tags };
+}
+
+function createLikeReactionPayload(reaction: LikeReaction) {
+	if (reaction.type === 'plus') {
+		return { content: '+', tags: [] };
+	}
+
+	return createEmojiReactionPayload(reaction);
 }
 
 async function publishEvent(
@@ -174,13 +199,17 @@ export function publishLikeReaction(
 	pubkey: string,
 	signer: EventSigner,
 	targetReadRelays: string[],
-	{ includeClientTag = false }: PublishOptions = {}
+	{ includeClientTag = false, reaction = { type: 'plus' } }: PublishLikeReactionOptions = {}
 ) {
+	const payload = createLikeReactionPayload(reaction);
 	return publishEvent(
 		{
 			kind: Reaction,
-			tags: withClientTag(createReactionReferenceTags(target, targetReadRelays), includeClientTag),
-			content: '+',
+			tags: withClientTag(
+				[...createReactionReferenceTags(target, targetReadRelays), ...payload.tags],
+				includeClientTag
+			),
+			content: payload.content,
 			created_at: now()
 		},
 		pubkey,
@@ -221,24 +250,16 @@ export function publishEmojiReaction(
 	targetReadRelays: string[],
 	{ includeClientTag = false }: PublishOptions = {}
 ) {
-	const emojiTags =
-		reaction.type === 'custom'
-			? [
-					reaction.address
-						? ['emoji', reaction.shortcode, reaction.url, reaction.address]
-						: ['emoji', reaction.shortcode, reaction.url]
-				]
-			: [];
-	const content = reaction.type === 'unicode' ? reaction.emoji : `:${reaction.shortcode}:`;
+	const payload = createEmojiReactionPayload(reaction);
 
 	return publishEvent(
 		{
 			kind: Reaction,
 			tags: withClientTag(
-				[...createReactionReferenceTags(target, targetReadRelays), ...emojiTags],
+				[...createReactionReferenceTags(target, targetReadRelays), ...payload.tags],
 				includeClientTag
 			),
-			content,
+			content: payload.content,
 			created_at: now()
 		},
 		pubkey,

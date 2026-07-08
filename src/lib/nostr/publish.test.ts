@@ -249,6 +249,67 @@ describe('channel publishing', () => {
 		);
 	});
 
+	test('publishes a Unicode NIP-25 like reaction when configured', async () => {
+		const signer = createSigner();
+
+		await expect(
+			publishLikeReaction(
+				{ id: targetEventId, pubkey: targetPubkey, kind: ShortTextNote },
+				pubkey,
+				signer,
+				[targetRelay],
+				{ reaction: { type: 'unicode', emoji: '⭐' } }
+			)
+		).resolves.toMatchObject({ ok: true, event: { kind: Reaction } });
+		expect(signer.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				kind: Reaction,
+				tags: [
+					['e', targetEventId, targetRelay, targetPubkey],
+					['p', targetPubkey, targetRelay],
+					['k', String(ShortTextNote)]
+				],
+				content: '⭐'
+			})
+		);
+	});
+
+	test('publishes a custom NIP-25 like reaction with an emoji tag when configured', async () => {
+		const signer = createSigner();
+		const address = `30030:${pubkey}:nostter`;
+
+		await expect(
+			publishLikeReaction(
+				{ id: targetEventId, pubkey: targetPubkey, kind: ShortTextNote },
+				pubkey,
+				signer,
+				[targetRelay],
+				{
+					includeClientTag: true,
+					reaction: {
+						type: 'custom',
+						shortcode: 'blobcat',
+						url: 'https://emoji.example/blobcat.png',
+						address
+					}
+				}
+			)
+		).resolves.toMatchObject({ ok: true, event: { kind: Reaction } });
+		expect(signer.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				kind: Reaction,
+				tags: [
+					['e', targetEventId, targetRelay, targetPubkey],
+					['p', targetPubkey, targetRelay],
+					['k', String(ShortTextNote)],
+					['emoji', 'blobcat', 'https://emoji.example/blobcat.png', address],
+					[...nostterClientTag]
+				],
+				content: ':blobcat:'
+			})
+		);
+	});
+
 	test('publishes a NIP-18 repost without relay hints or embedded content', async () => {
 		const signer = createSigner();
 

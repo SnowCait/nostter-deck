@@ -8,6 +8,8 @@ export type EmojiReaction =
 	| { type: 'unicode'; emoji: string }
 	| { type: 'custom'; shortcode: string; url: string; address?: string };
 
+export type LikeReaction = { type: 'plus' } | EmojiReaction;
+
 export type CustomEmojiReactionCandidate = {
 	id: string;
 	pickerName: string;

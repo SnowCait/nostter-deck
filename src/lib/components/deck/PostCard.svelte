@@ -1,11 +1,15 @@
 <script lang="ts">
-	import { Heart, MessageCircle, Quote, Repeat2, ShieldCheck } from '@lucide/svelte';
+	import { MessageCircle, Quote, Repeat2, ShieldCheck } from '@lucide/svelte';
 	import * as Popover from '$lib/components/ui/popover';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Post, PostMessage } from '$lib/deck/types';
 	import type { SharePostResult } from '$lib/deck/post-share-controller.svelte';
 	import type { FontSizeTextClasses } from '$lib/font-size';
-	import type { CustomEmojiReactionCandidate, EmojiReaction } from '$lib/nostr/emoji-reactions';
+	import type {
+		CustomEmojiReactionCandidate,
+		EmojiReaction,
+		LikeReaction
+	} from '$lib/nostr/emoji-reactions';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { Profile } from '$lib/nostr/profiles';
 	import type { Locale } from '$lib/paraglide/runtime.js';
@@ -16,6 +20,7 @@
 	import MutedContentPlaceholder from './MutedContentPlaceholder.svelte';
 	import ContentWarningPlaceholder from './ContentWarningPlaceholder.svelte';
 	import EventJsonMenu from './EventJsonMenu.svelte';
+	import LikeReactionIcon from './LikeReactionIcon.svelte';
 	import PostCardBody from './PostCardBody.svelte';
 	import PostCardContextList from './PostCardContextList.svelte';
 
@@ -25,6 +30,7 @@
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
 		postActionVisibility: PostActionVisibility;
+		likeReaction: LikeReaction;
 		appLocale: Locale;
 		emojiReactionCandidates: CustomEmojiReactionCandidate[];
 		getProfile: (pubkey: string) => Profile | undefined;
@@ -62,6 +68,7 @@
 		textClass,
 		avatarShape,
 		postActionVisibility,
+		likeReaction,
 		appLocale,
 		emojiReactionCandidates,
 		getProfile,
@@ -373,10 +380,7 @@
 									aria-busy={isLikePostPublishing(post)}
 									onclick={likePost}
 								>
-									<Heart
-										class={['size-4', isLikePostLiked(post) ? 'fill-current' : '']}
-										aria-hidden="true"
-									/>
+									<LikeReactionIcon reaction={likeReaction} isActive={isLikePostLiked(post)} />
 								</button>
 								<EmojiReactionPicker
 									customEmojis={emojiReactionCandidates}

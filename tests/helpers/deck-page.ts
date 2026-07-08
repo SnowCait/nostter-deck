@@ -13,6 +13,7 @@ export const wideColumnWidth = 480;
 export const sidebarCenterTolerance = 1;
 export const uiStateStorageKey = 'nostter:ui-state';
 export const userSettingsStorageKey = 'nostter:user-settings';
+export const accountSettingsStorageKey = 'nostter:account-settings';
 export const columnConfigsStorageKey = 'nostter:column-configs';
 export const columnDecksStorageKey = 'nostter:column-decks';
 export const mutedUsersStorageKey = 'nostter:muted-users';

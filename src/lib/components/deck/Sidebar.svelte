@@ -14,8 +14,10 @@
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { AuthState } from '$lib/nostr/auth.svelte';
 	import type { AccountRecord } from '$lib/nostr/accounts';
+	import type { CustomEmojiReactionCandidate, LikeReaction } from '$lib/nostr/emoji-reactions';
 	import type { Profile } from '$lib/nostr/profiles';
 	import { readUiState, updateUiState } from '$lib/ui-state';
+	import type { Locale } from '$lib/paraglide/runtime.js';
 	import type { AvatarShape, FontSize, PostActionVisibility } from '$lib/user-settings';
 	import AccountMenu from './AccountMenu.svelte';
 	import DeckMenu from './DeckMenu.svelte';
@@ -46,10 +48,14 @@
 		fontSize: FontSize;
 		avatarShape: AvatarShape;
 		postActionVisibility: PostActionVisibility;
+		likeReaction: LikeReaction;
+		appLocale: Locale;
+		emojiReactionCandidates: CustomEmojiReactionCandidate[];
 		textClass: FontSizeTextClasses;
 		onFontSizeChange: (fontSize: FontSize) => void;
 		onAvatarShapeChange: (avatarShape: AvatarShape) => void;
 		onPostActionVisibilityChange: (visibility: PostActionVisibility) => void;
+		onLikeReactionChange: (reaction: LikeReaction) => void;
 		onSelectColumn: (columnId: string) => void;
 		onReorderColumn: (columnId: string, targetIndex: number) => void;
 		mutedPubkeys: string[];
@@ -86,10 +92,14 @@
 		fontSize,
 		avatarShape,
 		postActionVisibility,
+		likeReaction,
+		appLocale,
+		emojiReactionCandidates,
 		textClass,
 		onFontSizeChange,
 		onAvatarShapeChange,
 		onPostActionVisibilityChange,
+		onLikeReactionChange,
 		onSelectColumn,
 		onReorderColumn,
 		mutedPubkeys,
@@ -379,10 +389,15 @@
 	{fontSize}
 	{avatarShape}
 	{postActionVisibility}
+	{likeReaction}
+	{appLocale}
+	{emojiReactionCandidates}
 	{textClass}
+	{accountPubkey}
 	{onFontSizeChange}
 	{onAvatarShapeChange}
 	{onPostActionVisibilityChange}
+	{onLikeReactionChange}
 	{mutedPubkeys}
 	{getProfile}
 	{requestProfiles}

@@ -2,6 +2,7 @@
 	import {
 		ChevronDown,
 		CircleUserRound,
+		Heart,
 		Languages,
 		Settings,
 		SlidersHorizontal,
@@ -12,10 +13,16 @@
 	import { getProfileDisplayName, type Profile } from '$lib/nostr/profiles';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import * as Select from '$lib/components/ui/select';
+	import { resetLikeReaction, writeLikeReaction } from '$lib/account-settings';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import { m } from '$lib/paraglide/messages.js';
 	import { getLocale, locales, setLocale } from '$lib/paraglide/runtime.js';
 	import type { Locale } from '$lib/paraglide/runtime.js';
+	import type {
+		CustomEmojiReactionCandidate,
+		EmojiReaction,
+		LikeReaction
+	} from '$lib/nostr/emoji-reactions';
 	import {
 		applyThemePreference,
 		avatarShapePreferences,
@@ -31,6 +38,7 @@
 	} from '$lib/user-settings';
 	import ProfileAvatar from './ProfileAvatar.svelte';
 	import CustomEmojiText from './CustomEmojiText.svelte';
+	import EmojiReactionPicker from './EmojiReactionPicker.svelte';
 	import InputHelpButton from './InputHelpButton.svelte';
 
 	type Props = {
@@ -38,10 +46,15 @@
 		fontSize: FontSize;
 		avatarShape: AvatarShape;
 		postActionVisibility: PostActionVisibility;
+		likeReaction: LikeReaction;
+		appLocale: Locale;
+		emojiReactionCandidates: CustomEmojiReactionCandidate[];
 		textClass: FontSizeTextClasses;
+		accountPubkey: string | null;
 		onFontSizeChange: (fontSize: FontSize) => void;
 		onAvatarShapeChange: (avatarShape: AvatarShape) => void;
 		onPostActionVisibilityChange: (visibility: PostActionVisibility) => void;
+		onLikeReactionChange: (reaction: LikeReaction) => void;
 		mutedPubkeys: string[];
 		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
@@ -54,10 +67,15 @@
 		fontSize,
 		avatarShape,
 		postActionVisibility,
+		likeReaction,
+		appLocale,
+		emojiReactionCandidates,
 		textClass,
+		accountPubkey,
 		onFontSizeChange,
 		onAvatarShapeChange,
 		onPostActionVisibilityChange,
+		onLikeReactionChange,
 		mutedPubkeys,
 		getProfile,
 		requestProfiles,
@@ -122,6 +140,16 @@
 	const selectedPostActionVisibilityLabel = $derived(
 		postActionVisibilityOptions.find(({ value }) => value === postActionVisibility)?.label ?? ''
 	);
+	const accountProfile = $derived(accountPubkey ? getProfile(accountPubkey) : undefined);
+	const accountName = $derived(
+		accountPubkey ? getProfileDisplayName(accountProfile, accountPubkey) : ''
+	);
+	const accountNpub = $derived(accountPubkey ? npubEncode(accountPubkey) : '');
+	const shortenedAccountNpub = $derived(
+		accountNpub ? `${accountNpub.slice(0, 12)}...${accountNpub.slice(-8)}` : ''
+	);
+	const likeReactionLabel = $derived(getLikeReactionLabel(likeReaction));
+	const isDefaultLikeReaction = $derived(likeReaction.type === 'plus');
 
 	$effect(() => {
 		if (!isOpen || !isMutedUsersExpanded || mutedPubkeys.length === 0) {
@@ -185,6 +213,35 @@
 			...currentSettings,
 			includeClientTag
 		}));
+	}
+
+	function getLikeReactionLabel(reaction: LikeReaction) {
+		if (reaction.type === 'plus') {
+			return m.like_setting_default();
+		}
+		if (reaction.type === 'unicode') {
+			return reaction.emoji;
+		}
+		return `:${reaction.shortcode}:`;
+	}
+
+	function selectLikeReaction(reaction: EmojiReaction) {
+		if (!accountPubkey) {
+			return;
+		}
+
+		writeLikeReaction(accountPubkey, reaction);
+		onLikeReactionChange(reaction);
+	}
+
+	function resetAccountLikeReaction() {
+		if (!accountPubkey) {
+			return;
+		}
+
+		resetLikeReaction(accountPubkey);
+		const reaction = { type: 'plus' } satisfies LikeReaction;
+		onLikeReactionChange(reaction);
 	}
 
 	function getMutedUserName(pubkey: string) {
@@ -265,6 +322,78 @@
 				/>
 				<span>{m.attach_client_information()}</span>
 			</label>
+
+			<div class="mt-4">
+				<div class="mb-2 flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-300">
+					<Heart class="size-4 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden="true" />
+					<span class={textClass.label}>{m.like()}</span>
+				</div>
+				{#if accountPubkey}
+					<div
+						class="mb-2 flex min-w-0 items-center gap-2 rounded-md border border-slate-200 p-2 dark:border-slate-800"
+					>
+						<ProfileAvatar
+							shape={avatarShape}
+							sizeClass="size-8"
+							imageUrl={accountProfile?.picture}
+							fallbackText={accountName.slice(0, 1)}
+							fallbackClass="bg-sky-500 text-sm font-bold text-white"
+						/>
+						<div class="min-w-0">
+							<p class={['truncate font-semibold', textClass.account]}>
+								<CustomEmojiText
+									text={accountName}
+									customEmojis={accountProfile?.customEmojis ?? []}
+								/>
+							</p>
+							<p class={['truncate text-slate-500 dark:text-slate-400', textClass.meta]}>
+								{shortenedAccountNpub}
+							</p>
+						</div>
+					</div>
+				{:else}
+					<p class={['mb-2 text-slate-500 dark:text-slate-400', textClass.body]}>
+						{m.like_setting_signed_out()}
+					</p>
+				{/if}
+				<div class="flex min-w-0 items-center gap-2">
+					<div
+						class={[
+							'flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 dark:border-slate-700 dark:bg-slate-900',
+							textClass.control
+						]}
+						aria-label={m.like()}
+					>
+						{#if likeReaction.type === 'custom'}
+							<img
+								src={likeReaction.url}
+								alt={likeReactionLabel}
+								class="size-5 shrink-0 rounded-sm object-contain"
+							/>
+						{/if}
+						<span class="min-w-0 truncate">{likeReactionLabel}</span>
+					</div>
+					<EmojiReactionPicker
+						customEmojis={emojiReactionCandidates}
+						locale={appLocale}
+						disabled={!accountPubkey}
+						buttonClass="flex size-10 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 disabled:dark:hover:bg-slate-900"
+						label={m.like()}
+						onSelect={selectLikeReaction}
+					/>
+					<button
+						type="button"
+						class={[
+							'h-10 shrink-0 rounded-md px-3 font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent dark:text-slate-300 dark:hover:bg-slate-800 disabled:dark:hover:bg-transparent',
+							textClass.control
+						]}
+						disabled={!accountPubkey || isDefaultLikeReaction}
+						onclick={resetAccountLikeReaction}
+					>
+						{m.like_setting_reset()}
+					</button>
+				</div>
+			</div>
 		</section>
 
 		<section class="mt-5" aria-labelledby="settings-appearance-title">

@@ -13,6 +13,7 @@
 	import { emptyTimelineRuntime } from '$lib/deck/timeline-runtime';
 	import type { ColumnConfig } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
+	import type { LikeReaction } from '$lib/nostr/emoji-reactions';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import type { Profile } from '$lib/nostr/profiles';
 	import type { Locale } from '$lib/paraglide/runtime.js';
@@ -33,6 +34,7 @@
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
 		postActionVisibility: PostActionVisibility;
+		likeReaction: LikeReaction;
 		appLocale: Locale;
 		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
@@ -56,6 +58,7 @@
 		textClass,
 		avatarShape,
 		postActionVisibility,
+		likeReaction,
 		appLocale,
 		getProfile,
 		requestProfiles,
@@ -93,6 +96,7 @@
 		{textClass}
 		{avatarShape}
 		{postActionVisibility}
+		{likeReaction}
 		{appLocale}
 		emojiReactionCandidates={emojiReactionController.candidates}
 		{getProfile}
@@ -151,6 +155,7 @@
 			{textClass}
 			{avatarShape}
 			{postActionVisibility}
+			{likeReaction}
 			{appLocale}
 			emojiReactionCandidates={emojiReactionController.candidates}
 			{getProfile}
@@ -195,6 +200,7 @@
 			{textClass}
 			{avatarShape}
 			{postActionVisibility}
+			{likeReaction}
 			{appLocale}
 			emojiReactionCandidates={emojiReactionController.candidates}
 			{getProfile}

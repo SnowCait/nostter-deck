@@ -20,6 +20,7 @@
 	import { createTimelineController } from '$lib/deck/timeline-controller.svelte';
 	import { textClassByFontSize } from '$lib/font-size';
 	import { getProfile, getProfileDisplayName, requestProfiles } from '$lib/nostr/profiles';
+	import type { LikeReaction } from '$lib/nostr/emoji-reactions';
 	import {
 		clearDefaultRelays,
 		configureCachedNip65Relays,
@@ -39,6 +40,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
 	import { readUserSettings } from '$lib/user-settings';
+	import { readLikeReaction } from '$lib/account-settings';
 
 	const defaultProfileRelays = [...profileRelays];
 	const displaySettingsController = createDisplaySettingsController();
@@ -61,6 +63,7 @@
 	);
 	const appLocale = $derived(getLocale());
 	const textClass = $derived(textClassByFontSize[displaySettingsController.fontSize]);
+	let likeReaction: LikeReaction = $derived(readLikeReaction(accountPubkey));
 
 	let keyboardNavigation = $state<ReturnType<typeof createKeyboardNavigation> | null>(null);
 
@@ -93,7 +96,8 @@
 	const postActionController = createPostActionController({
 		getAccountPubkey: () => accountPubkey,
 		getSigner: getAuthSigner,
-		getIncludeClientTag: () => readUserSettings().includeClientTag
+		getIncludeClientTag: () => readUserSettings().includeClientTag,
+		getLikeReaction: () => readLikeReaction(accountPubkey)
 	});
 	const postShareController = createPostShareController();
 	const emojiReactionController = createEmojiReactionController({
@@ -232,10 +236,14 @@
 		fontSize={displaySettingsController.fontSize}
 		avatarShape={displaySettingsController.avatarShape}
 		postActionVisibility={displaySettingsController.postActionVisibility}
+		{likeReaction}
+		{appLocale}
+		emojiReactionCandidates={emojiReactionController.candidates}
 		{textClass}
 		onFontSizeChange={displaySettingsController.updateFontSize}
 		onAvatarShapeChange={displaySettingsController.updateAvatarShape}
 		onPostActionVisibilityChange={displaySettingsController.updatePostActionVisibility}
+		onLikeReactionChange={(reaction) => (likeReaction = reaction)}
 		onSelectColumn={focusColumn}
 		onReorderColumn={columnDeckController.reorderColumn}
 		mutedPubkeys={mutedUsersController.pubkeys}
@@ -273,6 +281,7 @@
 		{textClass}
 		avatarShape={displaySettingsController.avatarShape}
 		postActionVisibility={displaySettingsController.postActionVisibility}
+		{likeReaction}
 		{appLocale}
 		{getProfile}
 		{requestProfiles}

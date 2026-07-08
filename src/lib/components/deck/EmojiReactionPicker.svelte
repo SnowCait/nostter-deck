@@ -18,6 +18,7 @@
 		disabled?: boolean;
 		isPublishing?: boolean;
 		buttonClass: string | string[];
+		label?: string;
 		onSelect: (reaction: EmojiReaction) => void;
 	};
 
@@ -27,6 +28,7 @@
 		disabled = false,
 		isPublishing = false,
 		buttonClass,
+		label = m.react_with_emoji(),
 		onSelect
 	}: Props = $props();
 
@@ -159,8 +161,8 @@
 		type="button"
 		{disabled}
 		class={buttonClass}
-		title={m.react_with_emoji()}
-		aria-label={m.react_with_emoji()}
+		title={label}
+		aria-label={label}
 		aria-busy={isPublishing}
 	>
 		<SmilePlus class="size-4" aria-hidden="true" />

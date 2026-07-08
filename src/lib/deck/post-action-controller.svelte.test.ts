@@ -4,6 +4,7 @@ import type { EventSigner } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import { createPostActionController } from './post-action-controller.svelte';
 import type { Post } from './types';
+import type { LikeReaction } from '$lib/nostr/emoji-reactions';
 import { eventToPost } from '$lib/nostr/posts';
 
 const publishLikeReaction = vi.hoisted(() => vi.fn());
@@ -51,10 +52,12 @@ function createSigner(): EventSigner {
 function createHarness({
 	getAccountPubkey = () => pubkey,
 	getSigner = () => createSigner(),
+	getLikeReaction = () => ({ type: 'plus' }) satisfies LikeReaction,
 	getTargetReadRelays = vi.fn(async () => [targetRelay])
 }: {
 	getAccountPubkey?: () => string | null;
 	getSigner?: () => EventSigner | null;
+	getLikeReaction?: () => LikeReaction;
 	getTargetReadRelays?: (pubkey: string) => Promise<string[]>;
 } = {}) {
 	return {
@@ -63,6 +66,7 @@ function createHarness({
 			getAccountPubkey,
 			getSigner,
 			getIncludeClientTag: () => true,
+			getLikeReaction,
 			getTargetReadRelays
 		})
 	};
@@ -116,11 +120,33 @@ describe('post action controller', () => {
 			expect.anything(),
 			[targetRelay],
 			{
-				includeClientTag: true
+				includeClientTag: true,
+				reaction: { type: 'plus' }
 			}
 		);
 		expect(harness.controller.isLiked(post)).toBe(true);
 		expect(harness.controller.canLike(post)).toBe(false);
+	});
+
+	test('publishes a like with the configured account reaction', async () => {
+		const target = event('a'.repeat(64));
+		const post = eventToPost(target);
+		const reaction = { type: 'unicode', emoji: '⭐' } satisfies LikeReaction;
+		const harness = createHarness({ getLikeReaction: () => reaction });
+		publishLikeReaction.mockResolvedValueOnce(publishedReaction(target));
+
+		await expect(harness.controller.likePost(post)).resolves.toMatchObject({ ok: true });
+
+		expect(publishLikeReaction).toHaveBeenCalledWith(
+			target,
+			pubkey,
+			expect.anything(),
+			[targetRelay],
+			{
+				includeClientTag: true,
+				reaction
+			}
+		);
 	});
 
 	test('prevents duplicate like publishing while a like is in flight', async () => {
