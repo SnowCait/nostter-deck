@@ -151,7 +151,7 @@
 
 	<div class="min-h-0 flex-1 overflow-y-auto">
 		{#if profile?.banner}
-			<img class="h-28 w-full object-cover" src={profile.banner} alt="" />
+			<img class="h-28 w-full object-cover" src={profile.banner} alt="" decoding="async" />
 		{/if}
 		<div class="p-4">
 			<ProfileAvatar

@@ -26,6 +26,7 @@
 			title={token.text}
 			class="my-[-0.1em] inline-block h-[1.4em] w-auto object-contain align-[-0.3em]"
 			loading="lazy"
+			decoding="async"
 			onerror={() => handleImageError(token.url)}
 		/>
 	{:else}

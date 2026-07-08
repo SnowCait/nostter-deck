@@ -115,6 +115,7 @@
 					src={currentImage}
 					alt=""
 					class="max-h-full max-w-full object-contain"
+					decoding="async"
 					onerror={() => failedImages.add(currentImage)}
 				/>
 			{:else if currentImage}

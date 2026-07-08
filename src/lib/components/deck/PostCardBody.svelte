@@ -244,6 +244,7 @@
 								alt={token.text}
 								class="h-full w-full object-contain"
 								loading="lazy"
+								decoding="async"
 								onload={(event) => loadPreviewImage(event, media.url)}
 							/>
 						</button>
@@ -263,6 +264,7 @@
 											alt=""
 											class="h-36 w-full shrink-0 object-cover"
 											loading="lazy"
+											decoding="async"
 											onerror={() => handleLinkPreviewImageError(media.url)}
 										/>
 									{/if}
@@ -356,6 +358,7 @@
 						title={token.text}
 						class="my-[-0.1em] inline-block h-[1.4em] w-auto object-contain align-[-0.3em]"
 						loading="lazy"
+						decoding="async"
 						onerror={() => handleEmojiError(token.url)}
 					/>
 				{/if}

@@ -369,6 +369,7 @@
 								src={likeReaction.url}
 								alt={likeReactionLabel}
 								class="size-5 shrink-0 rounded-sm object-contain"
+								decoding="async"
 							/>
 						{/if}
 						<span class="min-w-0 truncate">{likeReactionLabel}</span>

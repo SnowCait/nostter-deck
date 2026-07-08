@@ -37,6 +37,7 @@
 		src={imageUrl}
 		alt=""
 		loading="lazy"
+		decoding="async"
 		onerror={handleImageError}
 	/>
 {:else}

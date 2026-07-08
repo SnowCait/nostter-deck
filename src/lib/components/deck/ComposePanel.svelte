@@ -302,6 +302,7 @@
 									src={media.previewUrl}
 									alt=""
 									aria-hidden="true"
+									decoding="async"
 								/>
 							{:else}
 								<Image class="size-5" aria-hidden="true" />
