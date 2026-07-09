@@ -1,23 +1,56 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { Send } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import { createPastedImageFileReader } from '$lib/deck/media-attachment-actions';
+	import { createMediaAttachmentController } from '$lib/deck/media-attachment-controller.svelte';
 	import type { ChannelTimelineColumnConfig } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { PublishPostResult } from '$lib/nostr/publish';
+	import MediaAttachmentControls from './MediaAttachmentControls.svelte';
 
 	type Props = {
 		channel: ChannelTimelineColumnConfig;
 		textClass: FontSizeTextClasses;
-		onPublish: (content: string) => Promise<PublishPostResult>;
+		onPublish: (
+			content: string,
+			media: ReturnType<typeof createMediaAttachmentController>
+		) => Promise<PublishPostResult>;
 	};
 
 	let { channel, textClass, onPublish }: Props = $props();
 	let content = $state('');
 	let isPublishing = $state(false);
 	let publishError = $state(false);
+	let hasFocusWithin = $state(false);
+	let isMediaPickerOpen = $state(false);
+	const media = createMediaAttachmentController();
+	const getPastedImageFiles = createPastedImageFileReader();
 
-	const canSubmit = $derived(!isPublishing && content.trim().length > 0);
-	const submitLabel = $derived(isPublishing ? m.post_sending() : m.action_post());
+	const isExpanded = $derived(
+		hasFocusWithin ||
+			isMediaPickerOpen ||
+			content.length > 0 ||
+			media.mediaAttachments.length > 0 ||
+			publishError
+	);
+	const canSubmit = $derived(
+		!isPublishing &&
+			!media.isUploadingMedia &&
+			!media.hasMediaError &&
+			(content.trim().length > 0 || media.hasPublishableMedia)
+	);
+	const submitLabel = $derived(
+		isPublishing
+			? media.isUploadingMedia
+				? m.media_uploading()
+				: m.post_sending()
+			: m.action_post()
+	);
+
+	onDestroy(() => {
+		media.clearMediaAttachments();
+	});
 
 	async function publish() {
 		if (!canSubmit) {
@@ -26,7 +59,7 @@
 
 		isPublishing = true;
 		publishError = false;
-		const result = await onPublish(content);
+		const result = await onPublish(content, media);
 		isPublishing = false;
 
 		if (!result.ok) {
@@ -35,6 +68,7 @@
 		}
 
 		content = '';
+		media.clearMediaAttachments();
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -45,6 +79,40 @@
 		event.preventDefault();
 		void publish();
 	}
+
+	function handlePaste(event: ClipboardEvent) {
+		if (isPublishing) {
+			return;
+		}
+
+		const files = getPastedImageFiles(event);
+		if (files.length === 0) {
+			return;
+		}
+
+		event.preventDefault();
+		media.addMediaFiles(files);
+	}
+
+	function handleFocusOut(event: FocusEvent) {
+		if (isMediaPickerOpen) {
+			return;
+		}
+		const currentTarget = event.currentTarget as HTMLElement;
+		const nextTarget = event.relatedTarget;
+		if (!(nextTarget instanceof Node) || !currentTarget.contains(nextTarget)) {
+			hasFocusWithin = false;
+		}
+	}
+
+	function handleMediaPickerOpen() {
+		hasFocusWithin = true;
+		isMediaPickerOpen = true;
+	}
+
+	function handleMediaPickerClose() {
+		isMediaPickerOpen = false;
+	}
 </script>
 
 <section
@@ -53,16 +121,18 @@
 >
 	<form
 		class="grid gap-2"
+		onfocusin={() => (hasFocusWithin = true)}
+		onfocusout={handleFocusOut}
 		onsubmit={(event) => {
 			event.preventDefault();
 			void publish();
 		}}
 	>
-		<div class="flex items-center gap-2">
+		<div class="flex items-start gap-2">
 			<label class="sr-only" for={`channel-compose-${channel.id}`}>{m.channel_post_text()}</label>
 			<textarea
 				id={`channel-compose-${channel.id}`}
-				rows="1"
+				rows={isExpanded ? 3 : 1}
 				class={[
 					'min-h-10 min-w-0 flex-1 resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:cursor-wait dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
 					textClass.control
@@ -73,6 +143,7 @@
 				data-channel-compose-input
 				bind:value={content}
 				onkeydown={handleKeydown}
+				onpaste={handlePaste}
 			></textarea>
 			<button
 				type="submit"
@@ -87,6 +158,16 @@
 				<Send class="size-4" aria-hidden="true" />
 			</button>
 		</div>
+		{#if isExpanded}
+			<MediaAttachmentControls
+				{media}
+				{textClass}
+				{isPublishing}
+				listTestId="channel-compose-media-list"
+				onMediaPickerOpen={handleMediaPickerOpen}
+				onMediaPickerClose={handleMediaPickerClose}
+			/>
+		{/if}
 		{#if publishError}
 			<p class={['text-rose-600 dark:text-rose-400', textClass.meta]} role="alert">
 				{m.post_failed()}

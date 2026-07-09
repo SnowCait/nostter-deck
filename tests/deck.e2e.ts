@@ -3363,6 +3363,22 @@ test.describe('nostter deck', () => {
 		expect(submitButtonBox.x + submitButtonBox.width).toBeLessThanOrEqual(
 			composerBox.x + composerBox.width + 2
 		);
+		await channelInput.focus();
+		const addMediaButton = composer.getByRole('button', { name: 'Add media' });
+		await expect(addMediaButton).toBeVisible();
+		await expect(composer.locator('input[type="file"]')).toHaveCount(1);
+		await composer.locator('input[type="file"]').evaluate((input) => {
+			input.addEventListener(
+				'click',
+				() => {
+					(input as HTMLInputElement).blur();
+				},
+				{ once: true }
+			);
+		});
+		await addMediaButton.click();
+		await expect(addMediaButton).toBeVisible();
+		await expect(composer.locator('input[type="file"]')).toHaveCount(1);
 		await columnOptionsButton(channelColumn).click();
 
 		await channelInput.fill('   ');
@@ -3414,6 +3430,167 @@ test.describe('nostter deck', () => {
 						);
 					},
 					{ channelId, channelRelay, message, clientTag: nostterClientTag }
+				)
+			)
+			.toBe(true);
+	});
+
+	test('uploads selected images to Blossom media when publishing a channel message', async ({
+		page
+	}) => {
+		const blossomUrl = `https://blossom.band/${'e'.repeat(64)}.webp`;
+		let uploadRequests = 0;
+		await page.route('https://blossom.band/media', async (route) => {
+			uploadRequests += 1;
+			const headers = route.request().headers();
+			expect(headers.authorization).toMatch(/^Nostr /);
+			expect(headers['content-type']).toBe('image/png');
+			expect(headers['x-sha-256']).toMatch(/^[0-9a-f]{64}$/);
+			await route.fulfill({
+				status: 201,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					url: blossomUrl,
+					sha256: 'e'.repeat(64),
+					size: 128,
+					type: 'image/webp',
+					uploaded: 100
+				})
+			});
+		});
+		await installFakeNostrRelay(page);
+		await openDeck(page, { isLoggedIn: true });
+
+		const channelId = '4'.repeat(64);
+		const channelRelay = 'wss://channel.example/';
+		await addPresetColumn(page, 'timeline_channel', {
+			channelTarget: neventEncode({
+				id: channelId,
+				kind: ChannelCreation,
+				relays: [channelRelay]
+			})
+		});
+
+		const composer = deckColumns(page).last().getByTestId('channel-composer');
+		const channelInput = composer.getByLabel('Channel message');
+		await channelInput.focus();
+		await composer.locator('input[type="file"]').setInputFiles({
+			name: 'channel-photo.png',
+			mimeType: 'image/png',
+			buffer: Buffer.from('fake channel image')
+		});
+		await expect(
+			composer.getByTestId('channel-compose-media-list').getByText('channel-photo.png')
+		).toBeVisible();
+		expect(uploadRequests).toBe(0);
+
+		await channelInput.fill('Channel with image.');
+		await composer.getByRole('button', { name: 'Post', exact: true }).click();
+
+		await expect(channelInput).toHaveValue('');
+		expect(uploadRequests).toBe(1);
+		await expect
+			.poll(() =>
+				page.evaluate(
+					({ channelId, channelRelay, blossomUrl, clientTag }) =>
+						(window.__nostterFakeRelayPublishedEvents ?? []).some(({ relay, event }) => {
+							const published = event as Record<string, unknown>;
+							return (
+								new URL(relay).href === channelRelay &&
+								published.kind === 42 &&
+								JSON.stringify(published.tags) ===
+									JSON.stringify([['e', channelId, '', 'root'], clientTag]) &&
+								published.content === `Channel with image.\n${blossomUrl}`
+							);
+						}),
+					{ channelId, channelRelay, blossomUrl, clientTag: nostterClientTag }
+				)
+			)
+			.toBe(true);
+	});
+
+	test('pastes images into the channel composer and uploads them when publishing', async ({
+		page
+	}) => {
+		const blossomUrl = `https://blossom.band/${'6'.repeat(64)}.webp`;
+		let uploadRequests = 0;
+		await page.route('https://blossom.band/media', async (route) => {
+			uploadRequests += 1;
+			const headers = route.request().headers();
+			expect(headers.authorization).toMatch(/^Nostr /);
+			expect(headers['content-type']).toBe('image/png');
+			expect(headers['x-sha-256']).toMatch(/^[0-9a-f]{64}$/);
+			await route.fulfill({
+				status: 201,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					url: blossomUrl,
+					sha256: '6'.repeat(64),
+					size: 128,
+					type: 'image/webp',
+					uploaded: 100
+				})
+			});
+		});
+		await installFakeNostrRelay(page);
+		await openDeck(page, { isLoggedIn: true });
+
+		const channelId = '4'.repeat(64);
+		const channelRelay = 'wss://channel.example/';
+		await addPresetColumn(page, 'timeline_channel', {
+			channelTarget: neventEncode({
+				id: channelId,
+				kind: ChannelCreation,
+				relays: [channelRelay]
+			})
+		});
+
+		const composer = deckColumns(page).last().getByTestId('channel-composer');
+		const channelInput = composer.getByLabel('Channel message');
+		await channelInput.focus();
+		const wasPasteCanceled = await channelInput.evaluate(
+			(element, bytes) => {
+				const clipboardData = new DataTransfer();
+				clipboardData.items.add(
+					new File([new Uint8Array(bytes)], '', {
+						type: 'image/png'
+					})
+				);
+				const event = new ClipboardEvent('paste', {
+					bubbles: true,
+					cancelable: true,
+					clipboardData
+				});
+				return !element.dispatchEvent(event);
+			},
+			Array.from(Buffer.from('pasted channel image'))
+		);
+		expect(wasPasteCanceled).toBe(true);
+		await expect(
+			composer.getByTestId('channel-compose-media-list').getByText('pasted-image-1.png')
+		).toBeVisible();
+		expect(uploadRequests).toBe(0);
+
+		await channelInput.fill('Channel with pasted image.');
+		await composer.getByRole('button', { name: 'Post', exact: true }).click();
+
+		await expect(channelInput).toHaveValue('');
+		expect(uploadRequests).toBe(1);
+		await expect
+			.poll(() =>
+				page.evaluate(
+					({ channelId, channelRelay, blossomUrl, clientTag }) =>
+						(window.__nostterFakeRelayPublishedEvents ?? []).some(({ relay, event }) => {
+							const published = event as Record<string, unknown>;
+							return (
+								new URL(relay).href === channelRelay &&
+								published.kind === 42 &&
+								JSON.stringify(published.tags) ===
+									JSON.stringify([['e', channelId, '', 'root'], clientTag]) &&
+								published.content === `Channel with pasted image.\n${blossomUrl}`
+							);
+						}),
+					{ channelId, channelRelay, blossomUrl, clientTag: nostterClientTag }
 				)
 			)
 			.toBe(true);

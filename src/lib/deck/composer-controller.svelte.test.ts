@@ -3,6 +3,8 @@ import { Reaction, ShortTextNote } from 'nostr-tools/kinds';
 import type { EventSigner } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import { createComposerController } from './composer-controller.svelte';
+import { createMediaAttachmentController } from './media-attachment-controller.svelte';
+import type { ChannelTimelineColumnConfig } from './types';
 import { eventToPost } from '$lib/nostr/posts';
 
 const publishChannelMessage = vi.hoisted(() => vi.fn());
@@ -20,6 +22,15 @@ vi.mock('$lib/nostr/publish', () => ({
 const pubkey = 'a'.repeat(64);
 const targetPubkey = 'b'.repeat(64);
 const targetRelay = 'wss://target.example/';
+const channel = {
+	id: 'channel-column',
+	type: 'timeline',
+	timelineKind: 'preset',
+	sourceKey: 'timeline_channel',
+	channelId: '4'.repeat(64),
+	relays: ['wss://channel.example/'],
+	width: 'standard'
+} satisfies ChannelTimelineColumnConfig;
 type UploadMedia = NonNullable<Parameters<typeof createComposerController>[0]['uploadMedia']>;
 
 function event(id: string, patch: Partial<Nostr.Event> = {}) {
@@ -296,6 +307,58 @@ describe('composer controller', () => {
 		);
 		expect(harness.controller.isOpen).toBe(false);
 		expect(harness.controller.mediaAttachments).toHaveLength(0);
+	});
+
+	test('uploads selected images and appends their URLs before publishing a channel message', async () => {
+		const uploadMedia = vi
+			.fn()
+			.mockResolvedValueOnce(
+				uploaded('https://blossom.band/channel.webp')
+			) as unknown as UploadMedia & ReturnType<typeof vi.fn>;
+		const harness = createHarness();
+		const channelMedia = createMediaAttachmentController({ uploadMedia });
+		publishChannelMessage.mockResolvedValueOnce({
+			ok: true,
+			event: event('f'.repeat(64), { pubkey, content: 'Published channel message' })
+		});
+
+		channelMedia.addMediaFiles([file('channel.png')]);
+		await harness.controller.publishChannel(channel, 'Channel body', channelMedia);
+
+		expect(uploadMedia).toHaveBeenCalledOnce();
+		expect(publishChannelMessage).toHaveBeenCalledWith(
+			'Channel body\nhttps://blossom.band/channel.webp',
+			channel.channelId,
+			pubkey,
+			expect.anything(),
+			channel.relays,
+			{ includeClientTag: true }
+		);
+	});
+
+	test('does not publish a channel message when Blossom upload fails', async () => {
+		const uploadMedia = vi.fn(async () => ({
+			ok: false as const,
+			reason: 'upload-failed' as const,
+			message: 'Upload failed'
+		})) as unknown as UploadMedia & ReturnType<typeof vi.fn>;
+		const harness = createHarness();
+		const channelMedia = createMediaAttachmentController({ uploadMedia });
+
+		channelMedia.addMediaFiles([file('channel.png')]);
+		const result = await harness.controller.publishChannel(
+			channel,
+			'Keep this channel draft',
+			channelMedia
+		);
+
+		expect(result).toEqual({ ok: false, reason: 'relay-failed' });
+		expect(publishChannelMessage).not.toHaveBeenCalled();
+		expect(channelMedia.mediaAttachments[0]).toMatchObject({
+			status: 'failed',
+			errorReason: 'upload-failed',
+			errorMessage: 'Upload failed'
+		});
 	});
 
 	test('does not publish when Blossom upload fails and keeps the draft', async () => {

@@ -4,11 +4,11 @@ import type { EventSigner } from 'rx-nostr';
 import { getPostQuoteTarget, getPostReplyTarget } from './post-actions';
 import type { ChannelTimelineColumnConfig, Post } from './types';
 import {
-	getBlossomImageValidationError,
-	maxBlossomImageCount,
-	uploadBlossomImage,
-	type BlossomUploadResult
-} from '$lib/nostr/blossom';
+	appendMediaUrls,
+	createMediaAttachmentController,
+	type MediaAttachmentController
+} from './media-attachment-controller.svelte';
+import { uploadBlossomImage } from '$lib/nostr/blossom';
 import { getNip65ReadRelaysForPubkey } from '$lib/nostr/nip65';
 import {
 	publishChannelMessage,
@@ -26,19 +26,6 @@ type ComposerControllerOptions = {
 	uploadMedia?: typeof uploadBlossomImage;
 };
 
-export type ComposerMediaAttachment = {
-	id: string;
-	file: File;
-	name: string;
-	size: number;
-	type: string;
-	previewUrl: string | null;
-	status: 'selected' | 'uploading' | 'uploaded' | 'failed';
-	errorReason?: 'unsupported-file' | 'file-too-large' | 'signing-failed' | 'upload-failed';
-	errorMessage?: string;
-	url?: string;
-};
-
 export function createComposerController({
 	getAccountPubkey,
 	getSigner,
@@ -54,18 +41,12 @@ export function createComposerController({
 	let quoteTargetPost = $state<Post | null>(null);
 	let isPublishing = $state(false);
 	let hasError = $state(false);
-	let mediaAttachments = $state<ComposerMediaAttachment[]>([]);
-	let mediaNotice = $state<string | null>(null);
-	let nextMediaId = 0;
-	const isUploadingMedia = $derived(mediaAttachments.some(({ status }) => status === 'uploading'));
-	const hasMediaError = $derived(mediaAttachments.some(({ status }) => status === 'failed'));
-	const hasContent = $derived(
-		content.length > 0 || mediaAttachments.some(({ status }) => status !== 'failed')
-	);
+	const media = createMediaAttachmentController({ uploadMedia });
+	const hasContent = $derived(content.length > 0 || media.hasPublishableMedia);
 	const canSubmit = $derived(
 		!isPublishing &&
-			!isUploadingMedia &&
-			!hasMediaError &&
+			!media.isUploadingMedia &&
+			!media.hasMediaError &&
 			((hasContent && (mode === 'post' || (mode === 'reply' && canReply(replyTargetPost)))) ||
 				(hasContent && mode === 'quote' && canQuote(quoteTargetPost)))
 	);
@@ -76,7 +57,7 @@ export function createComposerController({
 		}
 		if (mode !== 'post') {
 			content = '';
-			clearMediaAttachments();
+			media.clearMediaAttachments();
 		}
 		mode = 'post';
 		replyTargetPost = null;
@@ -94,7 +75,7 @@ export function createComposerController({
 		const nextTargetId = getPostReplyTarget(post)?.id ?? null;
 		if (mode !== 'reply' || currentTargetId !== nextTargetId) {
 			content = '';
-			clearMediaAttachments();
+			media.clearMediaAttachments();
 		}
 		mode = 'reply';
 		replyTargetPost = post;
@@ -113,7 +94,7 @@ export function createComposerController({
 		const nextTargetId = getPostQuoteTarget(post)?.id ?? null;
 		if (mode !== 'quote' || currentTargetId !== nextTargetId) {
 			content = '';
-			clearMediaAttachments();
+			media.clearMediaAttachments();
 		}
 		mode = 'quote';
 		replyTargetPost = null;
@@ -135,7 +116,7 @@ export function createComposerController({
 		mode = 'post';
 		replyTargetPost = null;
 		quoteTargetPost = null;
-		clearMediaAttachments();
+		media.clearMediaAttachments();
 	}
 
 	function canReply(post: Post | null) {
@@ -162,7 +143,7 @@ export function createComposerController({
 		const quoteTarget = quoteTargetPost ? getPostQuoteTarget(quoteTargetPost) : null;
 		const result = await (async () => {
 			try {
-				const mediaUploadResult = await uploadSelectedMedia(signer);
+				const mediaUploadResult = await media.uploadSelectedMedia(signer);
 				if (!mediaUploadResult.ok) {
 					return mediaUploadResult;
 				}
@@ -213,18 +194,34 @@ export function createComposerController({
 		mode = 'post';
 		replyTargetPost = null;
 		quoteTargetPost = null;
-		clearMediaAttachments();
+		media.clearMediaAttachments();
 	}
 
-	async function publishChannel(channel: ChannelTimelineColumnConfig, content: string) {
+	async function publishChannel(
+		channel: ChannelTimelineColumnConfig,
+		content: string,
+		channelMedia?: MediaAttachmentController
+	) {
 		const pubkey = getAccountPubkey();
 		const signer = getSigner();
 		if (!pubkey || !signer) {
 			return { ok: false as const, reason: 'signing-failed' as const };
 		}
-		return publishChannelMessage(content, channel.channelId, pubkey, signer, channel.relays, {
-			includeClientTag: getIncludeClientTag()
-		});
+		const mediaUploadResult = await channelMedia?.uploadSelectedMedia(signer);
+		if (mediaUploadResult && !mediaUploadResult.ok) {
+			return mediaUploadResult;
+		}
+		const publishContent = appendMediaUrls(content, mediaUploadResult?.urls ?? []);
+		return publishChannelMessage(
+			publishContent,
+			channel.channelId,
+			pubkey,
+			signer,
+			channel.relays,
+			{
+				includeClientTag: getIncludeClientTag()
+			}
+		);
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -239,120 +236,14 @@ export function createComposerController({
 		if (isPublishing) {
 			return;
 		}
-
-		mediaNotice = null;
-		const selectedFiles = Array.from(files);
-		const acceptedLimit = Math.max(0, maxBlossomImageCount - mediaAttachments.length);
-		const acceptedFiles = selectedFiles.slice(0, acceptedLimit);
-		const ignoredCount = selectedFiles.length - acceptedFiles.length;
-		if (ignoredCount > 0) {
-			mediaNotice = `media-count-exceeded:${ignoredCount}`;
-		}
-
-		const nextAttachments = acceptedFiles.map((file) => createMediaAttachment(file));
-		mediaAttachments = [...mediaAttachments, ...nextAttachments];
+		media.addMediaFiles(files);
 	}
 
 	function removeMediaAttachment(id: string) {
 		if (isPublishing) {
 			return;
 		}
-
-		const attachment = mediaAttachments.find((media) => media.id === id);
-		if (attachment?.previewUrl && typeof URL.revokeObjectURL === 'function') {
-			URL.revokeObjectURL(attachment.previewUrl);
-		}
-		mediaAttachments = mediaAttachments.filter((media) => media.id !== id);
-	}
-
-	function clearMediaAttachments() {
-		for (const attachment of mediaAttachments) {
-			if (attachment.previewUrl && typeof URL.revokeObjectURL === 'function') {
-				URL.revokeObjectURL(attachment.previewUrl);
-			}
-		}
-		mediaAttachments = [];
-		mediaNotice = null;
-	}
-
-	function createMediaAttachment(file: File): ComposerMediaAttachment {
-		const validationError = getBlossomImageValidationError(file);
-		return {
-			id: `media-${nextMediaId++}`,
-			file,
-			name: file.name,
-			size: file.size,
-			type: file.type,
-			previewUrl: createMediaPreviewUrl(file),
-			status: validationError ? 'failed' : 'selected',
-			errorReason: validationError ?? undefined
-		};
-	}
-
-	function createMediaPreviewUrl(file: File) {
-		if (typeof URL.createObjectURL !== 'function' || !file.type.startsWith('image/')) {
-			return null;
-		}
-		return URL.createObjectURL(file);
-	}
-
-	async function uploadSelectedMedia(
-		signer: EventSigner
-	): Promise<{ ok: true; urls: string[] } | { ok: false; reason: 'relay-failed' }> {
-		const urls: string[] = [];
-
-		for (const attachment of mediaAttachments) {
-			if (attachment.status === 'uploaded' && attachment.url) {
-				urls.push(attachment.url);
-				continue;
-			}
-
-			if (attachment.status === 'failed') {
-				return { ok: false, reason: 'relay-failed' };
-			}
-
-			updateMediaAttachment(attachment.id, { status: 'uploading' });
-			const result = await uploadMedia(attachment.file, signer);
-			if (!result.ok) {
-				updateMediaAttachment(attachment.id, uploadFailurePatch(result));
-				return { ok: false, reason: 'relay-failed' };
-			}
-
-			updateMediaAttachment(attachment.id, {
-				status: 'uploaded',
-				url: result.descriptor.url,
-				errorReason: undefined,
-				errorMessage: undefined
-			});
-			urls.push(result.descriptor.url);
-		}
-
-		return { ok: true, urls };
-	}
-
-	function updateMediaAttachment(
-		id: string,
-		patch: Partial<Pick<ComposerMediaAttachment, 'status' | 'url' | 'errorReason' | 'errorMessage'>>
-	) {
-		mediaAttachments = mediaAttachments.map((attachment) =>
-			attachment.id === id ? { ...attachment, ...patch } : attachment
-		);
-	}
-
-	function uploadFailurePatch(result: Exclude<BlossomUploadResult, { ok: true }>) {
-		return {
-			status: 'failed' as const,
-			errorReason: result.reason,
-			errorMessage: result.message
-		};
-	}
-
-	function appendMediaUrls(value: string, urls: string[]) {
-		if (urls.length === 0) {
-			return value;
-		}
-		const separator = value.length > 0 && !value.endsWith('\n') ? '\n' : '';
-		return `${value}${separator}${urls.join('\n')}`;
+		media.removeMediaAttachment(id);
 	}
 
 	return {
@@ -369,16 +260,16 @@ export function createComposerController({
 			return isPublishing;
 		},
 		get isUploadingMedia() {
-			return isUploadingMedia;
+			return media.isUploadingMedia;
 		},
 		get hasError() {
 			return hasError;
 		},
 		get mediaAttachments() {
-			return mediaAttachments;
+			return media.mediaAttachments;
 		},
 		get mediaNotice() {
-			return mediaNotice;
+			return media.mediaNotice;
 		},
 		get canSubmit() {
 			return canSubmit;

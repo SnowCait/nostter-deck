@@ -5,6 +5,7 @@
 	import { columnIconKeys, getDefaultColumnIconKey } from '$lib/deck/column-icons';
 	import { getColumnTitle } from '$lib/deck/column-title';
 	import { columnWidths } from '$lib/deck/column-configs';
+	import type { MediaAttachmentController } from '$lib/deck/media-attachment-controller.svelte';
 	import type {
 		ColumnConfig,
 		ColumnIconKey,
@@ -86,7 +87,8 @@
 		onChannelSave: (channel: ChannelPointer) => void;
 		onPublishChannelMessage: (
 			channel: ChannelTimelineColumnConfig,
-			content: string
+			content: string,
+			media?: MediaAttachmentController
 		) => Promise<PublishPostResult>;
 		onCustomTimelineSave: (filters: NostrFilter[], relays: RelaySelection) => void;
 		onLoadOlderTimeline: () => void;
@@ -443,7 +445,7 @@
 		<ChannelComposer
 			channel={column}
 			{textClass}
-			onPublish={(content) => onPublishChannelMessage(column, content)}
+			onPublish={(content, media) => onPublishChannelMessage(column, content, media)}
 		/>
 	{/if}
 
