@@ -1,5 +1,6 @@
 import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
 import type { LikeReaction } from '$lib/nostr/emoji-reactions';
+import { normalizePubkey } from '$lib/nostr/pubkeys';
 
 export type AccountSettings = {
 	likeReaction: LikeReaction;
@@ -12,10 +13,6 @@ const defaultLikeReaction: LikeReaction = { type: 'plus' };
 const defaultAccountSettings: AccountSettings = {
 	likeReaction: defaultLikeReaction
 };
-
-function isPubkey(value: string) {
-	return /^[0-9a-f]{64}$/i.test(value);
-}
 
 function isValidShortcode(value: string) {
 	return /^[A-Za-z0-9_+-]+$/.test(value);
@@ -81,8 +78,8 @@ function normalizeAccountSettingsStore(value: unknown): AccountSettingsStore {
 
 	const store: AccountSettingsStore = {};
 	for (const [pubkey, settings] of Object.entries(value)) {
-		const normalizedPubkey = pubkey.toLowerCase();
-		if (!isPubkey(normalizedPubkey)) {
+		const normalizedPubkey = normalizePubkey(pubkey);
+		if (!normalizedPubkey) {
 			continue;
 		}
 		store[normalizedPubkey] = normalizeAccountSettings(settings);
@@ -113,14 +110,20 @@ export function readAccountSettings(pubkey: string | null | undefined): AccountS
 		return getDefaultAccountSettings();
 	}
 
-	return readAccountSettingsStore()[pubkey.toLowerCase()] ?? getDefaultAccountSettings();
+	const normalizedPubkey = normalizePubkey(pubkey);
+	return normalizedPubkey
+		? (readAccountSettingsStore()[normalizedPubkey] ?? getDefaultAccountSettings())
+		: getDefaultAccountSettings();
 }
 
 export function updateAccountSettings(
 	pubkey: string,
 	updater: (currentSettings: AccountSettings) => AccountSettings
 ) {
-	const normalizedPubkey = pubkey.toLowerCase();
+	const normalizedPubkey = normalizePubkey(pubkey);
+	if (!normalizedPubkey) {
+		return;
+	}
 	const store = readAccountSettingsStore();
 	writeAccountSettingsStore({
 		...store,

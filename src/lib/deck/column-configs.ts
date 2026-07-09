@@ -1,5 +1,6 @@
 import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
 import { normalizeNostrFilters } from '$lib/nostr/filters';
+import { normalizePubkey } from '$lib/nostr/pubkeys';
 import { normalizeRelays, normalizeRelaySelection } from '$lib/nostr/relays';
 import { getDefaultColumnIconKey, isColumnIconKey } from './column-icons';
 import { columnSourceKeys } from './data';
@@ -59,7 +60,8 @@ export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 				const query = (candidate as { query?: unknown }).query;
 				const channelId = (candidate as { channelId?: unknown }).channelId;
 				if (candidate.sourceKey === 'timeline_follow') {
-					if (typeof pubkey !== 'string' || !/^[0-9a-f]{64}$/i.test(pubkey)) {
+					const normalizedPubkey = normalizePubkey(pubkey);
+					if (!normalizedPubkey) {
 						return [];
 					}
 					const normalizedRelays =
@@ -73,7 +75,7 @@ export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 						type: 'timeline',
 						timelineKind: 'preset',
 						sourceKey: candidate.sourceKey,
-						pubkey: pubkey.toLowerCase(),
+						pubkey: normalizedPubkey,
 						relays: normalizedRelays,
 						width: candidate.width
 					} satisfies ColumnConfig;

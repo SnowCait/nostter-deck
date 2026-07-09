@@ -1,5 +1,6 @@
 import { isAddressableKind, isReplaceableKind } from 'nostr-tools/kinds';
 import type { NostrFilter } from '$lib/deck/types';
+import { isPubkey, normalizePubkey } from './pubkeys';
 
 export type AuthorAddress = {
 	key: string;
@@ -10,10 +11,6 @@ export type AuthorAddress = {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return !!value && typeof value === 'object' && !Array.isArray(value);
-}
-
-function isPubkey(value: unknown): value is string {
-	return typeof value === 'string' && /^[0-9a-f]{64}$/i.test(value);
 }
 
 function isAuthorsArray(value: unknown): value is string[] {
@@ -39,11 +36,15 @@ export function parseAuthorAddress(value: unknown): AuthorAddress | null {
 	if (isReplaceable && match[3].length > 0) {
 		return null;
 	}
+	const pubkey = normalizePubkey(match[2]);
+	if (!pubkey) {
+		return null;
+	}
 
 	return {
-		key: `${kind}:${match[2].toLowerCase()}:${identifier}`,
+		key: `${kind}:${pubkey}:${identifier}`,
 		kind,
-		pubkey: match[2].toLowerCase(),
+		pubkey,
 		identifier
 	};
 }
@@ -54,7 +55,14 @@ function normalizeNostrFilter(filter: Record<string, unknown>): NostrFilter | nu
 	}
 
 	const authors = filter.authors;
-	if (isAuthorsArray(authors) || parseAuthorAddress(authors)) {
+	if (isAuthorsArray(authors)) {
+		return {
+			...filter,
+			authors: authors.flatMap((author) => normalizePubkey(author) ?? [])
+		};
+	}
+
+	if (parseAuthorAddress(authors)) {
 		return { ...filter };
 	}
 
@@ -90,9 +98,7 @@ export function getFilterAuthorAddress(filter: NostrFilter) {
 }
 
 export function expandAddressAuthors(filter: NostrFilter, authors: string[]): NostrFilter | null {
-	const uniqueAuthors = [
-		...new Set(authors.filter(isPubkey).map((author) => author.toLowerCase()))
-	];
+	const uniqueAuthors = [...new Set(authors.flatMap((author) => normalizePubkey(author) ?? []))];
 	if (uniqueAuthors.length === 0) {
 		return null;
 	}

@@ -2,6 +2,7 @@ import { createRxBackwardReq, type LazyFilter } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import { Emojisets, UserEmojiList } from 'nostr-tools/kinds';
 import { getNostrClient } from './client';
+import { normalizePubkey } from './pubkeys';
 import { combineRelays, defaultRelays, normalizeRelay } from './relays';
 
 export type EmojiReaction =
@@ -51,10 +52,6 @@ function isValidShortcode(value: string) {
 	return /^[A-Za-z0-9_+-]+$/.test(value);
 }
 
-function isPubkey(value: string) {
-	return /^[0-9a-f]{64}$/i.test(value);
-}
-
 function normalizeEmojiUrl(value: string) {
 	try {
 		const url = new URL(value);
@@ -102,14 +99,15 @@ export function parseEmojiSetCategory(
 export function parseEmojiSetReference(value: string, relay?: string): EmojiSetReference | null {
 	const [kind, pubkey, ...identifierParts] = value.split(':');
 	const identifier = identifierParts.join(':');
-	if (kind !== String(Emojisets) || !isPubkey(pubkey) || identifier.length === 0) {
+	const normalizedPubkey = normalizePubkey(pubkey);
+	if (kind !== String(Emojisets) || !normalizedPubkey || identifier.length === 0) {
 		return null;
 	}
 
 	const normalizedRelay = relay ? normalizeRelay(relay) : null;
 	return {
-		address: `${Emojisets}:${pubkey.toLowerCase()}:${identifier}`,
-		pubkey: pubkey.toLowerCase(),
+		address: `${Emojisets}:${normalizedPubkey}:${identifier}`,
+		pubkey: normalizedPubkey,
 		identifier,
 		...(normalizedRelay ? { relay: normalizedRelay } : {})
 	};

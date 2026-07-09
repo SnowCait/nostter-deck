@@ -23,13 +23,20 @@ import {
 } from './timeline-subscription-manager';
 import type { ColumnConfig } from './types';
 import { startCustomTimelineSubscription } from '$lib/nostr/timeline';
+import { resolveRelaySelection as resolveSelectionRelays } from '$lib/nostr/relays';
+import type { RelaySelection } from './types';
 
 type TimelineControllerOptions = {
 	getColumnConfigs: () => ColumnConfig[];
 	isReady: () => boolean;
+	resolveRelaySelection?: (selection: RelaySelection) => string[];
 };
 
-export function createTimelineController({ getColumnConfigs, isReady }: TimelineControllerOptions) {
+export function createTimelineController({
+	getColumnConfigs,
+	isReady,
+	resolveRelaySelection = resolveSelectionRelays
+}: TimelineControllerOptions) {
 	let runtimes = $state<Record<string, TimelineRuntime>>({});
 
 	const pagination = createTimelinePagination({
@@ -105,7 +112,7 @@ export function createTimelineController({ getColumnConfigs, isReady }: Timeline
 			}
 
 			const filters = $state.snapshot(request.filters);
-			const relays = $state.snapshot(request.relays);
+			const relays = { type: 'custom' as const, urls: resolveRelaySelection(request.relays) };
 			const signature = getTimelineSignature({ filters, relays });
 
 			return [

@@ -19,11 +19,12 @@ import {
 	combineRelays,
 	defaultRelays,
 	profileRelays,
-	resolveRelaySelection
+	resolveRelaySelection as resolveSelectionRelays
 } from '$lib/nostr/relays';
 import { buildThreadEvents, startThreadSubscription } from '$lib/nostr/thread';
 import { startCustomTimelineSubscription } from '$lib/nostr/timeline';
 import type * as Nostr from 'nostr-typedef';
+import type { RelaySelection } from './types';
 
 export type DetailColumn =
 	| { type: 'thread'; sourceColumnId: string; eventId: string }
@@ -39,6 +40,7 @@ type DetailColumnControllerOptions = {
 	focusColumn: (columnId: string, preferPost?: boolean) => void;
 	startThread?: typeof startThreadSubscription;
 	startProfileTimeline?: typeof startCustomTimelineSubscription;
+	resolveRelaySelection?: (selection: RelaySelection) => string[];
 	afterStateChange?: () => Promise<void>;
 };
 
@@ -50,6 +52,7 @@ export function createDetailColumnController({
 	focusColumn,
 	startThread = startThreadSubscription,
 	startProfileTimeline = startCustomTimelineSubscription,
+	resolveRelaySelection = resolveSelectionRelays,
 	afterStateChange = tick
 }: DetailColumnControllerOptions) {
 	const defaultProfileRelays = [...profileRelays];

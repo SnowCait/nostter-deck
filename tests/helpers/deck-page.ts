@@ -109,6 +109,10 @@ export async function addCustomTimelineColumn(
 		await page.getByLabel('REQ filters').fill(JSON.stringify(options.filters));
 	}
 	if (options.customRelays !== undefined) {
+		await page
+			.getByRole('dialog', { name: 'Add column' })
+			.getByText('Custom', { exact: true })
+			.click();
 		await page.getByLabel('Custom relays').fill(options.customRelays);
 	}
 

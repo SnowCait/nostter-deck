@@ -3,6 +3,7 @@ import type * as Nostr from 'nostr-typedef';
 import { RelayList } from 'nostr-tools/kinds';
 import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
 import { getNostrClient } from './client';
+import { normalizePubkey } from './pubkeys';
 import { defaultRelays, indexerRelays, normalizeRelay } from './relays';
 
 export type Nip65RelayTag = ['r', string] | ['r', string, 'read' | 'write'];
@@ -16,10 +17,6 @@ type Nip65Cache = Record<string, Nip65CacheEntry>;
 
 export const nip65CacheStorageKey = 'nostter:nip65-relays';
 const nip65RequestTimeoutMs = 5_000;
-
-function isPubkey(value: unknown): value is string {
-	return typeof value === 'string' && /^[0-9a-f]{64}$/i.test(value);
-}
 
 export function extractNip65RelayTags(tags: Nostr.Event['tags']): Nip65RelayTag[] {
 	const relayTags: Nip65RelayTag[] = [];
@@ -63,7 +60,8 @@ function normalizeNip65Cache(value: unknown): Nip65Cache {
 
 	const entries: Nip65Cache = {};
 	for (const [pubkey, entry] of Object.entries(value)) {
-		if (!isPubkey(pubkey) || !entry || typeof entry !== 'object') {
+		const normalizedPubkey = normalizePubkey(pubkey);
+		if (!normalizedPubkey || !entry || typeof entry !== 'object') {
 			continue;
 		}
 		const candidate = entry as Partial<Nip65CacheEntry>;
@@ -76,7 +74,7 @@ function normalizeNip65Cache(value: unknown): Nip65Cache {
 			continue;
 		}
 
-		entries[pubkey.toLowerCase()] = {
+		entries[normalizedPubkey] = {
 			updatedAt,
 			relayTags: extractNip65RelayTags(candidate.relayTags)
 		};
@@ -93,7 +91,8 @@ function writeNip65Cache(cache: Nip65Cache) {
 }
 
 export function getCachedNip65RelayTags(pubkey: string) {
-	return readNip65Cache()[pubkey.toLowerCase()]?.relayTags ?? [];
+	const normalizedPubkey = normalizePubkey(pubkey);
+	return normalizedPubkey ? (readNip65Cache()[normalizedPubkey]?.relayTags ?? []) : [];
 }
 
 export async function getNip65ReadRelaysForPubkey(pubkey: string) {
@@ -119,13 +118,18 @@ export function clearDefaultRelays() {
 }
 
 export async function refreshNip65Relays(pubkey: string) {
-	const relayTags = await requestNip65RelayTags(pubkey);
+	const normalizedPubkey = normalizePubkey(pubkey);
+	if (!normalizedPubkey) {
+		return null;
+	}
+
+	const relayTags = await requestNip65RelayTags(normalizedPubkey);
 	if (relayTags === null) {
 		return null;
 	}
 
 	const cache = readNip65Cache();
-	cache[pubkey.toLowerCase()] = { updatedAt: Date.now(), relayTags };
+	cache[normalizedPubkey] = { updatedAt: Date.now(), relayTags };
 	writeNip65Cache(cache);
 	return relayTags;
 }

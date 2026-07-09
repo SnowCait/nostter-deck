@@ -185,7 +185,7 @@ describe('column config storage', () => {
 				type: 'timeline',
 				timelineKind: 'custom',
 				filters: [{ kinds: [1], limit: 20 }],
-				relays: { type: 'default' },
+				relays: { type: 'nip65', pubkey: 'A'.repeat(64) },
 				width: 'narrow'
 			}
 		]);
@@ -196,7 +196,7 @@ describe('column config storage', () => {
 				type: 'timeline',
 				timelineKind: 'custom',
 				filters: [{ kinds: [1], limit: 20 }],
-				relays: { type: 'default' },
+				relays: { type: 'nip65', pubkey: 'a'.repeat(64) },
 				width: 'narrow'
 			}
 		]);

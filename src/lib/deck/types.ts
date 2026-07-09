@@ -72,6 +72,11 @@ export type MessageKey =
 	| 'custom_timeline_filters'
 	| 'custom_timeline_filters_help'
 	| 'custom_timeline_relays'
+	| 'custom_timeline_relay_mode_default'
+	| 'custom_timeline_relay_mode_account'
+	| 'custom_timeline_relay_mode_custom'
+	| 'custom_timeline_account_relays'
+	| 'custom_timeline_account_relays_empty'
 	| 'custom_timeline_custom_relays'
 	| 'custom_timeline_custom_relays_help'
 	| 'custom_timeline_not_implemented'
@@ -150,7 +155,10 @@ export type ColumnSourceKey = ColumnTitleKey;
 export type ColumnWidth = 'narrow' | 'standard' | 'wide';
 export type ColumnIconKey = 'users' | 'search' | 'radio' | 'globe' | 'messages';
 export type NostrFilter = Record<string, unknown>;
-export type RelaySelection = { type: 'default' } | { type: 'custom'; urls: string[] };
+export type RelaySelection =
+	| { type: 'default' }
+	| { type: 'custom'; urls: string[] }
+	| { type: 'nip65'; pubkey: string };
 
 export type PostMessage =
 	| { key: 'replying_to' }

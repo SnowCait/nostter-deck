@@ -87,14 +87,14 @@ describe('column config drafts', () => {
 				...baseDraft,
 				columnType: 'custom_timeline',
 				customTimelineFilters: [{ kinds: [1], limit: 20 }],
-				customTimelineRelays: { type: 'default' }
+				customTimelineRelays: { type: 'nip65', pubkey: 'a'.repeat(64) }
 			})
 		).toEqual({
 			id: 'column-1',
 			type: 'timeline',
 			timelineKind: 'custom',
 			filters: [{ kinds: [1], limit: 20 }],
-			relays: { type: 'default' },
+			relays: { type: 'nip65', pubkey: 'a'.repeat(64) },
 			width: 'standard'
 		});
 	});

@@ -1,4 +1,5 @@
 import type { RelaySelection } from '$lib/deck/types';
+import { normalizePubkey } from './pubkeys';
 
 export const defaultRelays = ['wss://relay.damus.io/', 'wss://nos.lol/'] as const;
 export const searchRelays = ['wss://nostr.wine/', 'wss://search.nos.today/'] as const;
@@ -91,11 +92,28 @@ export function normalizeRelaySelection(value: unknown): RelaySelection | null {
 		return urls ? { type: 'custom', urls } : null;
 	}
 
+	if (candidate.type === 'nip65') {
+		const pubkey = normalizePubkey(candidate.pubkey);
+		return pubkey ? { type: 'nip65', pubkey } : null;
+	}
+
 	return null;
 }
 
-export function resolveRelaySelection(selection: RelaySelection) {
-	return selection.type === 'default' ? [...defaultRelays] : selection.urls;
+export function resolveRelaySelection(
+	selection: RelaySelection,
+	getNip65ReadRelays?: (pubkey: string) => string[]
+) {
+	if (selection.type === 'default') {
+		return [...defaultRelays];
+	}
+
+	if (selection.type === 'custom') {
+		return selection.urls;
+	}
+
+	const nip65Relays = getNip65ReadRelays?.(selection.pubkey) ?? [];
+	return nip65Relays.length > 0 ? nip65Relays : [...defaultRelays];
 }
 
 export function parseCustomRelays(value: string): string[] | null {

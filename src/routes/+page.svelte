@@ -15,6 +15,7 @@
 	import { createEmojiReactionController } from '$lib/deck/emoji-reaction-controller.svelte';
 	import { createPostActionController } from '$lib/deck/post-action-controller.svelte';
 	import { createPostShareController } from '$lib/deck/post-share-controller.svelte';
+	import { createRelaySelectionController } from '$lib/deck/relay-selection-controller.svelte';
 	import { createKeyboardNavigation } from '$lib/deck/keyboard-navigation';
 	import { createUniqueColumnId } from '$lib/deck/column-actions';
 	import { createTimelineController } from '$lib/deck/timeline-controller.svelte';
@@ -100,12 +101,17 @@
 		getLikeReaction: () => readLikeReaction(accountPubkey)
 	});
 	const postShareController = createPostShareController();
+	const relaySelectionController = createRelaySelectionController({
+		getAccounts: () => accounts,
+		getColumnConfigs: () => columnDeckController.columns
+	});
 	const emojiReactionController = createEmojiReactionController({
 		getAccountPubkey: () => accountPubkey
 	});
 	const timelineController = createTimelineController({
 		getColumnConfigs: () => columnDeckController.columns,
-		isReady: () => isTimelineCacheReady
+		isReady: () => isTimelineCacheReady,
+		resolveRelaySelection: relaySelectionController.resolveRelaySelection
 	});
 	const deckLayoutController = createDeckLayoutController({
 		getColumns: () => columnDeckController.columns,
@@ -120,7 +126,8 @@
 		getProfile,
 		isMutedUser: mutedUsersController.isMutedUser,
 		requestProfiles,
-		focusColumn
+		focusColumn,
+		resolveRelaySelection: relaySelectionController.resolveRelaySelection
 	});
 	keyboardNavigation = createKeyboardNavigation({
 		getColumns: () => columnDeckController.columns,
@@ -286,6 +293,7 @@
 		{getProfile}
 		{requestProfiles}
 		profileRelays={defaultProfileRelays}
+		accountRelayOptions={relaySelectionController.accountRelayOptions}
 		isMutedUser={mutedUsersController.isMutedUser}
 		onMuteUser={mutedUsersController.muteUser}
 		onAddColumn={openAddColumnDialog}
@@ -295,6 +303,11 @@
 <AddColumnDialog
 	bind:isOpen={isColumnDialogOpen}
 	{textClass}
+	{accountPubkey}
+	accountRelayOptions={relaySelectionController.accountRelayOptions}
+	{getProfile}
+	{requestProfiles}
+	profileRelays={defaultProfileRelays}
 	createColumnId={() => createUniqueColumnId(columnDeckController.columns)}
 	onSave={(column) => void columnDeckController.saveColumn(column)}
 />

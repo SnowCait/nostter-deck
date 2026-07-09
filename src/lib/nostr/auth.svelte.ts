@@ -20,6 +20,7 @@ import {
 	type AccountStore,
 	type Nip46AccountRecord
 } from './accounts';
+import { normalizePubkey } from './pubkeys';
 import { defaultRelays } from './relays';
 
 export type AuthStatus = 'loggedOut' | 'loggingIn' | 'loggedIn' | 'unavailable' | 'error';
@@ -77,13 +78,6 @@ export function getAccountStore() {
 
 export function isNip07Available() {
 	return getNip07Provider() !== null;
-}
-
-function normalizePubkey(value: unknown): string | null {
-	if (typeof value !== 'string' || !/^[0-9a-f]{64}$/i.test(value)) {
-		return null;
-	}
-	return value.toLowerCase();
 }
 
 function refreshAccountStore() {

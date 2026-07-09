@@ -1,5 +1,6 @@
 import type { BunkerPointer } from 'nostr-tools/nip46';
 import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
+import { normalizePubkey } from './pubkeys';
 
 export type AccountMethod = 'nip07' | 'nip46';
 
@@ -29,13 +30,6 @@ export type AccountStore = {
 export const accountsStorageKey = 'nostter:accounts';
 
 const emptyStore: AccountStore = { activeAccountId: null, accounts: [] };
-
-function normalizePubkey(value: unknown): string | null {
-	if (typeof value !== 'string' || !/^[0-9a-f]{64}$/i.test(value)) {
-		return null;
-	}
-	return value.toLowerCase();
-}
 
 function normalizeBunker(value: unknown): BunkerPointer | null {
 	if (!value || typeof value !== 'object') {

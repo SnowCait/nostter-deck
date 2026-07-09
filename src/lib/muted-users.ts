@@ -1,7 +1,7 @@
 import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
+import { normalizePubkey } from '$lib/nostr/pubkeys';
 
 const mutedUsersStorageKey = 'nostter:muted-users';
-const pubkeyPattern = /^[0-9a-f]{64}$/i;
 
 export function normalizeMutedPubkeys(value: unknown): string[] {
 	if (!Array.isArray(value)) {
@@ -10,9 +10,10 @@ export function normalizeMutedPubkeys(value: unknown): string[] {
 
 	return [
 		...new Set(
-			value.flatMap((pubkey) =>
-				typeof pubkey === 'string' && pubkeyPattern.test(pubkey) ? [pubkey.toLowerCase()] : []
-			)
+			value.flatMap((pubkey) => {
+				const normalizedPubkey = normalizePubkey(pubkey);
+				return normalizedPubkey ? [normalizedPubkey] : [];
+			})
 		)
 	];
 }
@@ -30,7 +31,10 @@ export function addMutedPubkey(pubkeys: string[], pubkey: string) {
 }
 
 export function removeMutedPubkey(pubkeys: string[], pubkey: string) {
-	const normalizedPubkey = pubkey.toLowerCase();
+	const normalizedPubkey = normalizePubkey(pubkey);
+	if (!normalizedPubkey) {
+		return normalizeMutedPubkeys(pubkeys);
+	}
 	return normalizeMutedPubkeys(pubkeys).filter((candidate) => candidate !== normalizedPubkey);
 }
 

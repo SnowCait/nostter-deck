@@ -6,6 +6,7 @@
 	import { getColumnTitle } from '$lib/deck/column-title';
 	import { columnWidths } from '$lib/deck/column-configs';
 	import type { MediaAttachmentController } from '$lib/deck/media-attachment-controller.svelte';
+	import type { AccountRelayOption } from '$lib/deck/relay-selection-controller.svelte';
 	import type {
 		ColumnConfig,
 		ColumnIconKey,
@@ -56,6 +57,7 @@
 		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
+		accountRelayOptions: AccountRelayOption[];
 		isMutedUser: (pubkey: string) => boolean;
 		onMuteUser: (pubkey: string) => void;
 		canReplyPost: (post: Post) => boolean;
@@ -117,6 +119,7 @@
 		getProfile,
 		requestProfiles,
 		profileRelays,
+		accountRelayOptions,
 		isMutedUser,
 		onMuteUser,
 		canReplyPost,
@@ -319,7 +322,15 @@
 			{:else if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_channel'}
 				<ChannelColumnSettings {column} {textClass} onSave={onChannelSave} />
 			{:else if column.type === 'timeline' && column.timelineKind === 'custom'}
-				<CustomTimelineSettings {column} {textClass} onSave={onCustomTimelineSave} />
+				<CustomTimelineSettings
+					{column}
+					{textClass}
+					{accountRelayOptions}
+					{getProfile}
+					{requestProfiles}
+					{profileRelays}
+					onSave={onCustomTimelineSave}
+				/>
 			{/if}
 
 			<label

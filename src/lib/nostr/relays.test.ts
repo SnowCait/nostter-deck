@@ -3,9 +3,11 @@ import {
 	defaultRelays,
 	formatCustomRelays,
 	normalizeRelay,
+	normalizeRelaySelection,
 	normalizeRelays,
 	parseCustomRelays,
 	resolveRelayDraft,
+	resolveRelaySelection,
 	resolveRelays
 } from './relays';
 
@@ -86,6 +88,24 @@ describe('nostr relays', () => {
 			type: 'custom',
 			urls: ['wss://relay.damus.io/', 'wss://relay.example/']
 		});
+	});
+
+	test('normalizes account relay list selections', () => {
+		expect(normalizeRelaySelection({ type: 'nip65', pubkey: 'A'.repeat(64) })).toEqual({
+			type: 'nip65',
+			pubkey: 'a'.repeat(64)
+		});
+		expect(normalizeRelaySelection({ type: 'nip65', pubkey: 'bad' })).toBeNull();
+	});
+
+	test('resolves account relay list selections with default fallback', () => {
+		const pubkey = 'a'.repeat(64);
+		expect(
+			resolveRelaySelection({ type: 'nip65', pubkey }, (candidatePubkey) =>
+				candidatePubkey === pubkey ? ['wss://read.example/'] : []
+			)
+		).toEqual(['wss://read.example/']);
+		expect(resolveRelaySelection({ type: 'nip65', pubkey }, () => [])).toEqual([...defaultRelays]);
 	});
 
 	test('formats custom relays by excluding defaults', () => {

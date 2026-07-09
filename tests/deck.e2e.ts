@@ -741,6 +741,11 @@ test.describe('nostter deck', () => {
 		await expect(page.getByText(/kind:pubkey:identifier/)).toBeVisible();
 		await page.keyboard.press('Escape');
 		await expect(page.getByText(/kind:pubkey:identifier/)).toHaveCount(0);
+		await expect(page.getByRole('radio', { name: 'Default', exact: true })).toBeChecked();
+		await page
+			.getByRole('dialog', { name: 'Add column' })
+			.getByText('Custom', { exact: true })
+			.click();
 		await expect(page.getByLabel('wss://relay.damus.io/')).toBeChecked();
 		await expect(page.getByLabel('wss://nos.lol/')).toBeChecked();
 		await expect(customRelaysInput).toHaveValue('');
@@ -966,6 +971,8 @@ test.describe('nostter deck', () => {
 		await expect(page.getByText(/kind:pubkey:identifier/)).toBeVisible();
 		await page.keyboard.press('Escape');
 		await expect(page.getByText(/kind:pubkey:identifier/)).toHaveCount(0);
+		await expect(customColumn.getByRole('radio', { name: 'Default', exact: true })).toBeChecked();
+		await customColumn.getByText('Custom', { exact: true }).click();
 		await expect(customColumn.getByLabel('wss://relay.damus.io/')).toBeChecked();
 		await expect(customColumn.getByLabel('wss://nos.lol/')).toBeChecked();
 		await expect(editedCustomRelaysInput).toHaveValue('');
@@ -1046,9 +1053,9 @@ test.describe('nostter deck', () => {
 		await expect(columns.first().getByLabel('REQ filters')).toHaveValue(
 			JSON.stringify(savedFilters, null, 2)
 		);
-		await expect(columns.first().getByLabel('wss://relay.damus.io/')).toBeChecked();
-		await expect(columns.first().getByLabel('wss://nos.lol/')).toBeChecked();
-		await expect(columns.first().getByLabel('Custom relays')).toHaveValue('');
+		await expect(
+			columns.first().getByRole('radio', { name: 'Default', exact: true })
+		).toBeChecked();
 		await expect(
 			columns.first().getByText('Hello from a custom Nostr timeline').first()
 		).toBeVisible();
@@ -1168,6 +1175,10 @@ test.describe('nostter deck', () => {
 
 		await page.getByRole('button', { name: 'Add column' }).first().click();
 		await selectColumnType(page, 'custom_timeline');
+		await page
+			.getByRole('dialog', { name: 'Add column' })
+			.getByText('Custom', { exact: true })
+			.click();
 		await page.getByRole('button', { name: relayHelp }).click();
 		await expect(page.getByText(relayHelp)).toBeVisible();
 		await page.keyboard.press('Escape');
