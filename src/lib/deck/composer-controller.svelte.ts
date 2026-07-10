@@ -2,7 +2,7 @@ import { tick } from 'svelte';
 import { ShortTextNote } from 'nostr-tools/kinds';
 import type { EventSigner } from 'rx-nostr';
 import { getPostQuoteTarget, getPostReplyTarget } from './post-actions';
-import type { ChannelTimelineColumnConfig, Post } from './types';
+import type { ChannelTimelineColumnConfig, Post, RelaySelection } from './types';
 import {
 	appendMediaUrls,
 	createMediaAttachmentController,
@@ -16,6 +16,7 @@ import {
 	publishReply,
 	publishShortTextNote
 } from '$lib/nostr/publish';
+import { resolveRelaySelection as resolveSelectionRelays } from '$lib/nostr/relays';
 
 type ComposerControllerOptions = {
 	getAccountPubkey: () => string | null;
@@ -23,6 +24,7 @@ type ComposerControllerOptions = {
 	getIncludeClientTag: () => boolean;
 	focusTextarea: () => void;
 	getTargetReadRelays?: (pubkey: string) => Promise<string[]>;
+	resolveRelaySelection?: (selection: RelaySelection) => string[];
 	uploadMedia?: typeof uploadBlossomImage;
 };
 
@@ -32,6 +34,7 @@ export function createComposerController({
 	getIncludeClientTag,
 	focusTextarea,
 	getTargetReadRelays = getNip65ReadRelaysForPubkey,
+	resolveRelaySelection = resolveSelectionRelays,
 	uploadMedia = uploadBlossomImage
 }: ComposerControllerOptions) {
 	let isOpen = $state(false);
@@ -217,7 +220,7 @@ export function createComposerController({
 			channel.channelId,
 			pubkey,
 			signer,
-			channel.relays,
+			resolveRelaySelection(channel.relays),
 			{
 				includeClientTag: getIncludeClientTag()
 			}

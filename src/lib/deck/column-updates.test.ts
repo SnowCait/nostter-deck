@@ -48,14 +48,19 @@ describe('column updates', () => {
 						timelineKind: 'preset',
 						sourceKey: 'timeline_follow',
 						pubkey: 'a'.repeat(64),
-						relays: [],
+						relays: { type: 'default' },
 						width: 'standard'
 					}
 				],
 				'follow',
 				{ pubkey: 'b'.repeat(64), relays: ['wss://relay.example/'] }
 			)
-		).toMatchObject([{ pubkey: 'b'.repeat(64), relays: ['wss://relay.example/'] }]);
+		).toMatchObject([
+			{
+				pubkey: 'b'.repeat(64),
+				relays: { type: 'custom', urls: expect.arrayContaining(['wss://relay.example/']) }
+			}
+		]);
 
 		expect(saveSearchSettings([searchColumn], 'search', '  channel  ')).toEqual([
 			{ ...searchColumn, query: 'channel' }
@@ -69,14 +74,39 @@ describe('column updates', () => {
 						timelineKind: 'preset',
 						sourceKey: 'timeline_channel',
 						channelId: 'c'.repeat(64),
-						relays: [],
+						relays: { type: 'default' },
 						width: 'standard'
 					}
 				],
 				'channel',
 				{ channelId: 'd'.repeat(64), relays: ['wss://relay.example/'] }
 			)
-		).toMatchObject([{ channelId: 'd'.repeat(64), relays: ['wss://relay.example/'] }]);
+		).toMatchObject([
+			{
+				channelId: 'd'.repeat(64),
+				relays: { type: 'custom', urls: expect.arrayContaining(['wss://relay.example/']) }
+			}
+		]);
+		expect(
+			saveChannelSettings(
+				[
+					{
+						id: 'channel',
+						type: 'timeline',
+						timelineKind: 'preset',
+						sourceKey: 'timeline_channel',
+						channelId: 'c'.repeat(64),
+						relays: { type: 'default' },
+						width: 'standard'
+					}
+				],
+				'channel',
+				{ channelId: 'd'.repeat(64), relays: ['wss://relay.example/'] },
+				{ type: 'nip65', pubkey: 'a'.repeat(64) }
+			)
+		).toMatchObject([
+			{ channelId: 'd'.repeat(64), relays: { type: 'nip65', pubkey: 'a'.repeat(64) } }
+		]);
 	});
 
 	test('saves custom timeline settings', () => {

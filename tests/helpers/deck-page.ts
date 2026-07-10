@@ -75,9 +75,15 @@ export async function openDeck(page: Page, options: { isLoggedIn?: boolean } = {
 export async function addPresetColumn(
 	page: Page,
 	sourceKey: 'timeline_follow' | 'timeline_search' | 'timeline_channel',
-	options: { followTarget?: string; query?: string; channelTarget?: string } = {}
+	options: {
+		followTarget?: string;
+		query?: string;
+		channelTarget?: string;
+		customRelays?: string;
+	} = {}
 ) {
 	await page.getByRole('button', { name: 'Add column' }).first().click();
+	const dialog = page.getByRole('dialog', { name: 'Add column' });
 	await selectColumnType(page, sourceKey);
 	if (sourceKey === 'timeline_follow') {
 		await page.getByLabel('npub or nprofile').fill(options.followTarget ?? '');
@@ -88,7 +94,11 @@ export async function addPresetColumn(
 	if (sourceKey === 'timeline_channel') {
 		await page.getByLabel('Channel ID or nevent').fill(options.channelTarget ?? '');
 	}
-	await page.getByRole('button', { name: 'Save' }).click();
+	if (options.customRelays !== undefined && sourceKey !== 'timeline_search') {
+		await dialog.getByText('Custom', { exact: true }).click();
+		await dialog.getByLabel('Custom relays').fill(options.customRelays);
+	}
+	await dialog.getByRole('button', { name: 'Save' }).click();
 }
 
 export async function addWebsiteColumn(page: Page, url: string) {
@@ -421,7 +431,7 @@ export async function expectStoredSearchColumn(page: Page, query: string) {
 export async function expectStoredChannelColumn(
 	page: Page,
 	channelId: string,
-	relays: string[] = []
+	relays: unknown = defaultRelaySelection
 ) {
 	await expect
 		.poll(async () => {
@@ -450,7 +460,11 @@ export async function expectStoredChannelColumn(
 		});
 }
 
-export async function expectStoredFollowColumn(page: Page, pubkey: string, relays: string[] = []) {
+export async function expectStoredFollowColumn(
+	page: Page,
+	pubkey: string,
+	relays: unknown = defaultRelaySelection
+) {
 	await expect
 		.poll(async () => {
 			const column = (await readStoredColumns(page))?.find(

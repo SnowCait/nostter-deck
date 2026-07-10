@@ -282,6 +282,15 @@ export function createColumnDeckController({
 		openSettingsColumnId = null;
 	}
 
+	function saveFollowRelaySettings(
+		columnId: string,
+		profile: ProfilePointer,
+		relays: Parameters<typeof saveFollowSettingsConfig>[3]
+	) {
+		setColumns(saveFollowSettingsConfig(columns, columnId, profile, relays));
+		openSettingsColumnId = null;
+	}
+
 	function saveSearchSettings(columnId: string, query: string) {
 		setColumns(saveSearchSettingsConfig(columns, columnId, query));
 		openSettingsColumnId = null;
@@ -289,6 +298,15 @@ export function createColumnDeckController({
 
 	function saveChannelSettings(columnId: string, channel: ChannelPointer) {
 		setColumns(saveChannelSettingsConfig(columns, columnId, channel));
+		openSettingsColumnId = null;
+	}
+
+	function saveChannelRelaySettings(
+		columnId: string,
+		channel: ChannelPointer,
+		relays: Parameters<typeof saveChannelSettingsConfig>[3]
+	) {
+		setColumns(saveChannelSettingsConfig(columns, columnId, channel, relays));
 		openSettingsColumnId = null;
 	}
 
@@ -336,8 +354,10 @@ export function createColumnDeckController({
 		updateColumnIcon,
 		saveCustomTimelineSettings,
 		saveFollowSettings,
+		saveFollowRelaySettings,
 		saveSearchSettings,
 		saveChannelSettings,
+		saveChannelRelaySettings,
 		toggleColumnSettings
 	};
 }

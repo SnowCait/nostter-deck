@@ -11,7 +11,7 @@ import type {
 	SearchTimelineColumnConfig
 } from './types';
 import { eventToPost, reactionEventToPost, repostEventToPost } from '$lib/nostr/posts';
-import { combineRelays, defaultRelays, searchRelays } from '$lib/nostr/relays';
+import { searchRelays } from '$lib/nostr/relays';
 import { getTimelineKey } from './timeline-cache';
 import type { Profile } from '$lib/nostr/profiles';
 
@@ -85,7 +85,7 @@ export function getTimelineRequest(column: ColumnConfig): TimelineRequest | null
 					limit: presetTimelineInitialLimit
 				}
 			],
-			relays: { type: 'custom', urls: combineRelays([...defaultRelays], column.relays) }
+			relays: column.relays
 		};
 	}
 
@@ -98,7 +98,7 @@ export function getTimelineRequest(column: ColumnConfig): TimelineRequest | null
 					limit: presetTimelineInitialLimit
 				}
 			],
-			relays: { type: 'custom', urls: combineRelays([...defaultRelays], column.relays) }
+			relays: column.relays
 		};
 	}
 

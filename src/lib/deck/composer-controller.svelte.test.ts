@@ -28,7 +28,7 @@ const channel = {
 	timelineKind: 'preset',
 	sourceKey: 'timeline_channel',
 	channelId: '4'.repeat(64),
-	relays: ['wss://channel.example/'],
+	relays: { type: 'custom', urls: ['wss://channel.example/'] },
 	width: 'standard'
 } satisfies ChannelTimelineColumnConfig;
 type UploadMedia = NonNullable<Parameters<typeof createComposerController>[0]['uploadMedia']>;
@@ -331,7 +331,7 @@ describe('composer controller', () => {
 			channel.channelId,
 			pubkey,
 			expect.anything(),
-			channel.relays,
+			['wss://channel.example/'],
 			{ includeClientTag: true }
 		);
 	});

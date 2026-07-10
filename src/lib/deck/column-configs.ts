@@ -1,7 +1,12 @@
 import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
 import { normalizeNostrFilters } from '$lib/nostr/filters';
 import { normalizePubkey } from '$lib/nostr/pubkeys';
-import { normalizeRelays, normalizeRelaySelection } from '$lib/nostr/relays';
+import {
+	combineRelays,
+	defaultRelays,
+	normalizeRelays,
+	normalizeRelaySelection
+} from '$lib/nostr/relays';
 import { getDefaultColumnIconKey, isColumnIconKey } from './column-icons';
 import { columnSourceKeys } from './data';
 import type { ColumnConfig, ColumnDisplayConfig, ColumnSourceKey, ColumnWidth } from './types';
@@ -30,6 +35,22 @@ function normalizeColumnDisplayConfig(
 		...(title ? { title } : {}),
 		...(icon ? { icon } : {})
 	};
+}
+
+function normalizePresetRelaySelection(value: unknown) {
+	const relaySelection = normalizeRelaySelection(value);
+	if (relaySelection) {
+		return relaySelection;
+	}
+
+	if (!Array.isArray(value) || value.length === 0) {
+		return { type: 'default' as const };
+	}
+
+	const relays = normalizeRelays(value);
+	return relays
+		? { type: 'custom' as const, urls: combineRelays([...defaultRelays], relays) }
+		: null;
 }
 
 export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
@@ -64,8 +85,7 @@ export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 					if (!normalizedPubkey) {
 						return [];
 					}
-					const normalizedRelays =
-						Array.isArray(relays) && relays.length > 0 ? normalizeRelays(relays) : [];
+					const normalizedRelays = normalizePresetRelaySelection(relays);
 					if (!normalizedRelays) {
 						return [];
 					}
@@ -112,8 +132,7 @@ export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 					if (typeof channelId !== 'string' || !/^[0-9a-f]{64}$/i.test(channelId)) {
 						return [];
 					}
-					const normalizedRelays =
-						Array.isArray(relays) && relays.length > 0 ? normalizeRelays(relays) : [];
+					const normalizedRelays = normalizePresetRelaySelection(relays);
 					if (!normalizedRelays) {
 						return [];
 					}

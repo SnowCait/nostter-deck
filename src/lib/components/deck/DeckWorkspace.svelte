@@ -136,9 +136,11 @@
 		onTitleChange={(title) => columnDeckController.updateColumnTitle(column.id, title)}
 		onIconChange={(icon) => columnDeckController.updateColumnIcon(column.id, icon)}
 		onWidthChange={(width) => columnDeckController.updateColumnWidth(column.id, width)}
-		onFollowSave={(profile) => columnDeckController.saveFollowSettings(column.id, profile)}
+		onFollowSave={(profile, relays) =>
+			columnDeckController.saveFollowRelaySettings(column.id, profile, relays)}
 		onSearchSave={(query) => columnDeckController.saveSearchSettings(column.id, query)}
-		onChannelSave={(channel) => columnDeckController.saveChannelSettings(column.id, channel)}
+		onChannelSave={(channel, relays) =>
+			columnDeckController.saveChannelRelaySettings(column.id, channel, relays)}
 		onPublishChannelMessage={composer.publishChannel}
 		onCustomTimelineSave={(filters, relays) =>
 			columnDeckController.saveCustomTimelineSettings(column.id, filters, relays)}

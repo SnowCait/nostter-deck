@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
 	createRelaySelectionController,
-	getAccountRelayOptions
+	getAccountRelayOptions,
+	getNip65RelaySelectionPubkeys
 } from './relay-selection-controller.svelte';
 import type { AccountRecord } from '$lib/nostr/accounts';
 import { nip65CacheStorageKey } from '$lib/nostr/nip65';
@@ -87,5 +88,21 @@ describe('relay selection controller', () => {
 		expect(controller.resolveRelaySelection({ type: 'nip65', pubkey: pubkeyA })).toEqual([
 			'wss://fresh.example/'
 		]);
+	});
+
+	test('collects preset timeline account relay selections', () => {
+		expect(
+			getNip65RelaySelectionPubkeys([
+				{
+					id: 'follow',
+					type: 'timeline',
+					timelineKind: 'preset',
+					sourceKey: 'timeline_follow',
+					pubkey: pubkeyB,
+					relays: { type: 'nip65', pubkey: pubkeyA },
+					width: 'standard'
+				}
+			])
+		).toEqual([pubkeyA]);
 	});
 });

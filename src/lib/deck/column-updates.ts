@@ -7,6 +7,7 @@ import type {
 	RelaySelection
 } from './types';
 import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
+import { combineRelays, defaultRelays } from '$lib/nostr/relays';
 
 export function updateColumnWidth(
 	columns: ColumnConfig[],
@@ -73,14 +74,23 @@ export function saveCustomTimelineSettings(
 export function saveFollowSettings(
 	columns: ColumnConfig[],
 	columnId: string,
-	profile: ProfilePointer
+	profile: ProfilePointer,
+	relays?: RelaySelection
 ): ColumnConfig[] {
 	return columns.map((column) =>
 		column.id === columnId &&
 		column.type === 'timeline' &&
 		column.timelineKind === 'preset' &&
 		column.sourceKey === 'timeline_follow'
-			? { ...column, pubkey: profile.pubkey, relays: profile.relays }
+			? {
+					...column,
+					pubkey: profile.pubkey,
+					relays:
+						relays ??
+						(profile.relays.length > 0
+							? { type: 'custom', urls: combineRelays([...defaultRelays], profile.relays) }
+							: { type: 'default' })
+				}
 			: column
 	);
 }
@@ -108,14 +118,23 @@ export function saveSearchSettings(
 export function saveChannelSettings(
 	columns: ColumnConfig[],
 	columnId: string,
-	channel: ChannelPointer
+	channel: ChannelPointer,
+	relays?: RelaySelection
 ): ColumnConfig[] {
 	return columns.map((column) =>
 		column.id === columnId &&
 		column.type === 'timeline' &&
 		column.timelineKind === 'preset' &&
 		column.sourceKey === 'timeline_channel'
-			? { ...column, channelId: channel.channelId, relays: channel.relays }
+			? {
+					...column,
+					channelId: channel.channelId,
+					relays:
+						relays ??
+						(channel.relays.length > 0
+							? { type: 'custom', urls: combineRelays([...defaultRelays], channel.relays) }
+							: { type: 'default' })
+				}
 			: column
 	);
 }

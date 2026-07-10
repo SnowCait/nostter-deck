@@ -84,9 +84,9 @@
 		onTitleChange: (title: string) => void;
 		onIconChange: (icon: ColumnIconKey | null) => void;
 		onWidthChange: (width: ColumnWidth) => void;
-		onFollowSave: (profile: ProfilePointer) => void;
+		onFollowSave: (profile: ProfilePointer, relays: RelaySelection) => void;
 		onSearchSave: (query: string) => void;
-		onChannelSave: (channel: ChannelPointer) => void;
+		onChannelSave: (channel: ChannelPointer, relays: RelaySelection) => void;
 		onPublishChannelMessage: (
 			channel: ChannelTimelineColumnConfig,
 			content: string,
@@ -316,11 +316,27 @@
 			data-testid="column-settings-scroll"
 		>
 			{#if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_follow'}
-				<FollowColumnSettings {column} {textClass} onSave={onFollowSave} />
+				<FollowColumnSettings
+					{column}
+					{textClass}
+					{accountRelayOptions}
+					{getProfile}
+					{requestProfiles}
+					{profileRelays}
+					onSave={onFollowSave}
+				/>
 			{:else if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_search'}
 				<SearchColumnSettings {column} {textClass} onSave={onSearchSave} />
 			{:else if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_channel'}
-				<ChannelColumnSettings {column} {textClass} onSave={onChannelSave} />
+				<ChannelColumnSettings
+					{column}
+					{textClass}
+					{accountRelayOptions}
+					{getProfile}
+					{requestProfiles}
+					{profileRelays}
+					onSave={onChannelSave}
+				/>
 			{:else if column.type === 'timeline' && column.timelineKind === 'custom'}
 				<CustomTimelineSettings
 					{column}

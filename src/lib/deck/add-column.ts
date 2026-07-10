@@ -1,5 +1,6 @@
 import type { ColumnConfig, ColumnSourceKey, NostrFilter, RelaySelection } from './types';
 import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
+import { combineRelays, defaultRelays } from '$lib/nostr/relays';
 
 export type AddColumnType = ColumnSourceKey | 'custom_timeline' | 'website';
 
@@ -10,9 +11,16 @@ export type AddColumnDraft = {
 	followTarget: ProfilePointer | null;
 	searchQuery: string;
 	channelTarget: ChannelPointer | null;
+	presetTimelineRelays: RelaySelection | null;
 	customTimelineFilters: NostrFilter[] | null;
 	customTimelineRelays: RelaySelection | null;
 };
+
+function getPointerRelaySelection(relays: string[]): RelaySelection {
+	return relays.length > 0
+		? { type: 'custom', urls: combineRelays([...defaultRelays], relays) }
+		: { type: 'default' };
+}
 
 export function createColumnConfigFromDraft(draft: AddColumnDraft): ColumnConfig | null {
 	if (draft.columnType === 'website') {
@@ -47,7 +55,7 @@ export function createColumnConfigFromDraft(draft: AddColumnDraft): ColumnConfig
 					timelineKind: 'preset',
 					sourceKey: draft.columnType,
 					pubkey: draft.followTarget.pubkey,
-					relays: draft.followTarget.relays,
+					relays: draft.presetTimelineRelays ?? getPointerRelaySelection(draft.followTarget.relays),
 					width: 'standard'
 				}
 			: null;
@@ -75,7 +83,8 @@ export function createColumnConfigFromDraft(draft: AddColumnDraft): ColumnConfig
 					timelineKind: 'preset',
 					sourceKey: draft.columnType,
 					channelId: draft.channelTarget.channelId,
-					relays: draft.channelTarget.relays,
+					relays:
+						draft.presetTimelineRelays ?? getPointerRelaySelection(draft.channelTarget.relays),
 					width: 'standard'
 				}
 			: null;

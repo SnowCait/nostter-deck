@@ -1,39 +1,64 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages.js';
-	import type { ChannelTimelineColumnConfig } from '$lib/deck/types';
+	import type { ChannelTimelineColumnConfig, RelaySelection } from '$lib/deck/types';
+	import type { AccountRelayOption } from '$lib/deck/relay-selection-controller.svelte';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import { decodeChannelPointer, type ChannelPointer } from '$lib/nostr/nip19';
+	import type { Profile } from '$lib/nostr/profiles';
+	import RelaySelectionEditor from './RelaySelectionEditor.svelte';
 
 	type Props = {
 		column: ChannelTimelineColumnConfig;
 		textClass: FontSizeTextClasses;
-		onSave: (channel: ChannelPointer) => void;
+		accountRelayOptions: AccountRelayOption[];
+		getProfile: (pubkey: string) => Profile | undefined;
+		requestProfiles: (pubkeys: string[], relays: string[]) => void;
+		profileRelays: string[];
+		onSave: (channel: ChannelPointer, relays: RelaySelection) => void;
 	};
 
-	const { column, textClass, onSave }: Props = $props();
+	const {
+		column,
+		textClass,
+		accountRelayOptions,
+		getProfile,
+		requestProfiles,
+		profileRelays,
+		onSave
+	}: Props = $props();
 
 	let targetDraftColumnId = $state('');
 	let targetDraftSource = $state('');
 	let targetDraft = $state('');
+	let relayDraftSource = $state('');
+	let relayDraft = $state<RelaySelection | null>(null);
 
 	const parsedTargetDraft = $derived(decodeChannelPointer(targetDraft));
+	const canSave = $derived(parsedTargetDraft !== null && relayDraft !== null);
 
 	$effect(() => {
-		if (targetDraftColumnId === column.id && targetDraftSource === column.channelId) {
+		const nextRelayDraft = JSON.stringify(column.relays);
+		if (
+			targetDraftColumnId === column.id &&
+			targetDraftSource === column.channelId &&
+			relayDraftSource === nextRelayDraft
+		) {
 			return;
 		}
 
 		targetDraftColumnId = column.id;
 		targetDraftSource = column.channelId;
+		relayDraftSource = nextRelayDraft;
 		targetDraft = column.channelId;
+		relayDraft = column.relays;
 	});
 
 	function save() {
-		if (!parsedTargetDraft) {
+		if (!parsedTargetDraft || !relayDraft) {
 			return;
 		}
 
-		onSave(parsedTargetDraft);
+		onSave(parsedTargetDraft, relayDraft);
 	}
 </script>
 
@@ -51,13 +76,22 @@
 	]}
 	bind:value={targetDraft}
 />
+<RelaySelectionEditor
+	id={`channel-${column.id}`}
+	bind:value={relayDraft}
+	{textClass}
+	{accountRelayOptions}
+	{getProfile}
+	{requestProfiles}
+	{profileRelays}
+/>
 <button
 	type="button"
 	class={[
 		'mb-3 flex h-9 w-full items-center justify-center rounded-md bg-sky-500 px-3 font-semibold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:bg-sky-400 dark:text-slate-950 dark:hover:bg-sky-300 disabled:dark:bg-slate-800 disabled:dark:text-slate-500',
 		textClass.control
 	]}
-	disabled={!parsedTargetDraft}
+	disabled={!canSave}
 	onclick={save}
 >
 	{m.save()}

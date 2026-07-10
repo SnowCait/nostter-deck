@@ -8,6 +8,7 @@ const baseDraft: AddColumnDraft = {
 	followTarget: null,
 	searchQuery: '',
 	channelTarget: null,
+	presetTimelineRelays: null,
 	customTimelineFilters: null,
 	customTimelineRelays: null
 };
@@ -41,7 +42,10 @@ describe('column config drafts', () => {
 			timelineKind: 'preset',
 			sourceKey: 'timeline_follow',
 			pubkey: 'a'.repeat(64),
-			relays: ['wss://relay.example/'],
+			relays: {
+				type: 'custom',
+				urls: expect.arrayContaining(['wss://relay.example/'])
+			},
 			width: 'standard'
 		});
 	});
@@ -76,8 +80,25 @@ describe('column config drafts', () => {
 			timelineKind: 'preset',
 			sourceKey: 'timeline_channel',
 			channelId: 'b'.repeat(64),
-			relays: ['wss://relay.example/'],
+			relays: {
+				type: 'custom',
+				urls: expect.arrayContaining(['wss://relay.example/'])
+			},
 			width: 'standard'
+		});
+	});
+
+	test('uses explicit preset timeline relays over pointer hints', () => {
+		expect(
+			createColumnConfigFromDraft({
+				...baseDraft,
+				columnType: 'timeline_follow',
+				followTarget: { pubkey: 'a'.repeat(64), relays: ['wss://relay.example/'] },
+				presetTimelineRelays: { type: 'default' }
+			})
+		).toMatchObject({
+			sourceKey: 'timeline_follow',
+			relays: { type: 'default' }
 		});
 	});
 

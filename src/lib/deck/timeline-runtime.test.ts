@@ -264,7 +264,7 @@ describe('timeline runtime', () => {
 				timelineKind: 'preset',
 				sourceKey: 'timeline_channel',
 				channelId: '4'.repeat(64),
-				relays: ['wss://relay.example/'],
+				relays: { type: 'custom', urls: ['wss://relay.example/'] },
 				width: 'standard'
 			})
 		).toEqual({
@@ -284,7 +284,7 @@ describe('timeline runtime', () => {
 				timelineKind: 'preset',
 				sourceKey: 'timeline_follow',
 				pubkey: '5'.repeat(64),
-				relays: ['wss://relay.example/'],
+				relays: { type: 'custom', urls: ['wss://relay.example/'] },
 				width: 'standard'
 			})
 		).toEqual({

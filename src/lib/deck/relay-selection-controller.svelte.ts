@@ -38,23 +38,19 @@ export function getAccountRelayOptions(accounts: AccountRecord[]): AccountRelayO
 	return options;
 }
 
-function getNip65RelaySelectionPubkeys(columns: ColumnConfig[]) {
-	return [
-		...new Set(
-			columns.flatMap((column) => {
-				if (
-					column.type !== 'timeline' ||
-					column.timelineKind !== 'custom' ||
-					column.relays.type !== 'nip65'
-				) {
-					return [];
-				}
+export function getNip65RelaySelectionPubkeys(columns: ColumnConfig[]) {
+	const pubkeys: string[] = [];
+	for (const column of columns) {
+		if (column.type !== 'timeline' || !('relays' in column) || column.relays.type !== 'nip65') {
+			continue;
+		}
 
-				const pubkey = normalizePubkey(column.relays.pubkey);
-				return pubkey ? [pubkey] : [];
-			})
-		)
-	];
+		const pubkey = normalizePubkey(column.relays.pubkey);
+		if (pubkey && !pubkeys.includes(pubkey)) {
+			pubkeys.push(pubkey);
+		}
+	}
+	return pubkeys;
 }
 
 export function createRelaySelectionController({

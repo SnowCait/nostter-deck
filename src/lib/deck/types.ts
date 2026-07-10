@@ -198,7 +198,7 @@ export type FollowTimelineColumnConfig = {
 	timelineKind: 'preset';
 	sourceKey: 'timeline_follow';
 	pubkey: string;
-	relays: string[];
+	relays: RelaySelection;
 	width: ColumnWidth;
 } & ColumnDisplayConfig;
 
@@ -208,7 +208,7 @@ export type ChannelTimelineColumnConfig = {
 	timelineKind: 'preset';
 	sourceKey: 'timeline_channel';
 	channelId: string;
-	relays: string[];
+	relays: RelaySelection;
 	width: ColumnWidth;
 } & ColumnDisplayConfig;
 

@@ -118,7 +118,10 @@ describe('column config storage', () => {
 				timelineKind: 'preset',
 				sourceKey: 'timeline_channel',
 				channelId: 'a'.repeat(64),
-				relays: ['wss://relay.example/'],
+				relays: {
+					type: 'custom',
+					urls: expect.arrayContaining(['wss://relay.example/'])
+				},
 				width: 'standard',
 				title: 'Channel',
 				icon: 'radio'

@@ -542,7 +542,10 @@ test.describe('nostter deck', () => {
 		const followColumn = columns.first();
 		await expectColumnOrder(columns, [...columnNames, 'Follow']);
 		await expect(followColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
-		await expectStoredFollowColumn(page, contactListAuthorPubkey, [followRelayHint]);
+		await expectStoredFollowColumn(page, contactListAuthorPubkey, {
+			type: 'custom',
+			urls: expect.arrayContaining([...defaultRelays, followRelayHint])
+		});
 		await expect
 			.poll(async () =>
 				fakeRelayConnectionCounts(page, [...defaultRelays, followRelayHint, ...profileRelays])
@@ -578,12 +581,18 @@ test.describe('nostter deck', () => {
 		await editInput.fill(contactListNpub);
 		await followColumn.getByRole('button', { name: 'Save' }).click();
 		await expect(followColumn.getByLabel('npub or nprofile')).toHaveCount(0);
-		await expectStoredFollowColumn(page, contactListAuthorPubkey, []);
+		await expectStoredFollowColumn(page, contactListAuthorPubkey, {
+			type: 'custom',
+			urls: expect.arrayContaining([...defaultRelays, followRelayHint])
+		});
 
 		await page.reload();
 		await expectColumnOrder(columns, [...columnNames, 'Follow']);
 		await expect(followColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
-		await expectStoredFollowColumn(page, contactListAuthorPubkey, []);
+		await expectStoredFollowColumn(page, contactListAuthorPubkey, {
+			type: 'custom',
+			urls: expect.arrayContaining([...defaultRelays, followRelayHint])
+		});
 	});
 
 	test('adds, edits, and persists a search preset column', async ({ page }) => {
@@ -648,15 +657,25 @@ test.describe('nostter deck', () => {
 		await openDeck(page);
 		const columns = deckColumns(page);
 		const channelId = '4'.repeat(64);
+		const channelRelay = 'wss://channel-custom.example/';
 
-		await addPresetColumn(page, 'timeline_channel', { channelTarget: channelId });
+		await addPresetColumn(page, 'timeline_channel', {
+			channelTarget: channelId,
+			customRelays: channelRelay
+		});
 
 		await expectColumnOrder(columns, [...columnNames, 'Channel']);
-		await expectStoredChannelColumn(page, channelId);
+		await expectStoredChannelColumn(page, channelId, {
+			type: 'custom',
+			urls: expect.arrayContaining([...defaultRelays, channelRelay])
+		});
 
 		await page.reload();
 		await expectColumnOrder(columns, [...columnNames, 'Channel']);
-		await expectStoredChannelColumn(page, channelId);
+		await expectStoredChannelColumn(page, channelId, {
+			type: 'custom',
+			urls: expect.arrayContaining([...defaultRelays, channelRelay])
+		});
 	});
 
 	test('changes and persists column title and icon', async ({ page }) => {

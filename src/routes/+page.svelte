@@ -88,11 +88,16 @@
 		}
 	});
 
+	const relaySelectionController = createRelaySelectionController({
+		getAccounts: () => accounts,
+		getColumnConfigs: () => columnDeckController.columns
+	});
 	const composer = createComposerController({
 		getAccountPubkey: () => accountPubkey,
 		getSigner: getAuthSigner,
 		getIncludeClientTag: () => readUserSettings().includeClientTag,
-		focusTextarea: () => composeTextarea?.focus()
+		focusTextarea: () => composeTextarea?.focus(),
+		resolveRelaySelection: relaySelectionController.resolveRelaySelection
 	});
 	const postActionController = createPostActionController({
 		getAccountPubkey: () => accountPubkey,
@@ -101,10 +106,6 @@
 		getLikeReaction: () => readLikeReaction(accountPubkey)
 	});
 	const postShareController = createPostShareController();
-	const relaySelectionController = createRelaySelectionController({
-		getAccounts: () => accounts,
-		getColumnConfigs: () => columnDeckController.columns
-	});
 	const emojiReactionController = createEmojiReactionController({
 		getAccountPubkey: () => accountPubkey
 	});
@@ -303,7 +304,6 @@
 <AddColumnDialog
 	bind:isOpen={isColumnDialogOpen}
 	{textClass}
-	{accountPubkey}
 	accountRelayOptions={relaySelectionController.accountRelayOptions}
 	{getProfile}
 	{requestProfiles}
