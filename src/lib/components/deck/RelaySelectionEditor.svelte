@@ -84,14 +84,12 @@
 	});
 
 	$effect(() => {
-		if (accountRelayOptions.length === 0) {
+		const pubkeys = displayedAccountRelayOptions.map(({ pubkey }) => pubkey);
+		if (pubkeys.length === 0) {
 			return;
 		}
 
-		requestProfiles(
-			accountRelayOptions.map(({ pubkey }) => pubkey),
-			profileRelays
-		);
+		requestProfiles(pubkeys, profileRelays);
 	});
 
 	$effect(() => {

@@ -22,6 +22,10 @@ function getPointerRelaySelection(relays: string[]): RelaySelection {
 		: { type: 'default' };
 }
 
+function getFollowRelaySelection(profile: ProfilePointer): RelaySelection {
+	return { type: 'nip65', pubkey: profile.pubkey };
+}
+
 export function createColumnConfigFromDraft(draft: AddColumnDraft): ColumnConfig | null {
 	if (draft.columnType === 'website') {
 		return draft.websiteUrl
@@ -55,7 +59,7 @@ export function createColumnConfigFromDraft(draft: AddColumnDraft): ColumnConfig
 					timelineKind: 'preset',
 					sourceKey: draft.columnType,
 					pubkey: draft.followTarget.pubkey,
-					relays: draft.presetTimelineRelays ?? getPointerRelaySelection(draft.followTarget.relays),
+					relays: draft.presetTimelineRelays ?? getFollowRelaySelection(draft.followTarget),
 					width: 'standard'
 				}
 			: null;

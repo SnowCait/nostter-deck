@@ -54,6 +54,8 @@
 	let customTimelineFilters = $state('[{"kinds":[1],"limit":20}]');
 	let presetTimelineRelayDraft = $state<RelaySelection | null>({ type: 'default' });
 	let customTimelineRelayDraft = $state<RelaySelection | null>({ type: 'default' });
+	let presetRelayColumnType = $state<AddColumnType>(defaultColumnType);
+	let followRelayTargetPubkey = $state('');
 	let wasOpen = $state(false);
 
 	const normalizedWebsiteUrl = $derived(normalizeWebsiteUrl(websiteUrl));
@@ -87,6 +89,35 @@
 		wasOpen = isOpen;
 	});
 
+	$effect(() => {
+		if (presetRelayColumnType !== selectedColumnType) {
+			presetRelayColumnType = selectedColumnType;
+			presetTimelineRelayDraft = { type: 'default' };
+			followRelayTargetPubkey = '';
+		}
+	});
+
+	$effect(() => {
+		if (selectedColumnType !== 'timeline_follow' || !parsedFollowTarget) {
+			followRelayTargetPubkey = '';
+			return;
+		}
+
+		const nextPubkey = parsedFollowTarget.pubkey;
+		const shouldTrackFollowTarget =
+			!presetTimelineRelayDraft ||
+			presetTimelineRelayDraft.type === 'default' ||
+			(presetTimelineRelayDraft.type === 'nip65' &&
+				presetTimelineRelayDraft.pubkey === followRelayTargetPubkey);
+		if (
+			shouldTrackFollowTarget &&
+			(presetTimelineRelayDraft?.type !== 'nip65' || presetTimelineRelayDraft.pubkey !== nextPubkey)
+		) {
+			presetTimelineRelayDraft = { type: 'nip65', pubkey: nextPubkey };
+		}
+		followRelayTargetPubkey = nextPubkey;
+	});
+
 	function getColumnDraft(id: string) {
 		return {
 			id,
@@ -110,6 +141,8 @@
 		customTimelineFilters = '[{"kinds":[1],"limit":20}]';
 		presetTimelineRelayDraft = { type: 'default' };
 		customTimelineRelayDraft = { type: 'default' };
+		presetRelayColumnType = defaultColumnType;
+		followRelayTargetPubkey = '';
 	}
 
 	function resolvePresetTimelineRelays() {
@@ -117,8 +150,8 @@
 			return presetTimelineRelayDraft;
 		}
 
-		if (selectedColumnType === 'timeline_follow' && (parsedFollowTarget?.relays.length ?? 0) > 0) {
-			return null;
+		if (selectedColumnType === 'timeline_follow' && parsedFollowTarget) {
+			return { type: 'nip65' as const, pubkey: parsedFollowTarget.pubkey };
 		}
 
 		if (

@@ -9,6 +9,10 @@ import type {
 import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
 import { combineRelays, defaultRelays } from '$lib/nostr/relays';
 
+function getFollowRelaySelection(profile: ProfilePointer): RelaySelection {
+	return { type: 'nip65', pubkey: profile.pubkey };
+}
+
 export function updateColumnWidth(
 	columns: ColumnConfig[],
 	columnId: string,
@@ -85,11 +89,7 @@ export function saveFollowSettings(
 			? {
 					...column,
 					pubkey: profile.pubkey,
-					relays:
-						relays ??
-						(profile.relays.length > 0
-							? { type: 'custom', urls: combineRelays([...defaultRelays], profile.relays) }
-							: { type: 'default' })
+					relays: relays ?? getFollowRelaySelection(profile)
 				}
 			: column
 	);

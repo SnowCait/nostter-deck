@@ -543,19 +543,14 @@ test.describe('nostter deck', () => {
 		await expectColumnOrder(columns, [...columnNames, 'Follow']);
 		await expect(followColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expectStoredFollowColumn(page, contactListAuthorPubkey, {
-			type: 'custom',
-			urls: expect.arrayContaining([...defaultRelays, followRelayHint])
+			type: 'nip65',
+			pubkey: contactListAuthorPubkey
 		});
 		await expect
-			.poll(async () =>
-				fakeRelayConnectionCounts(page, [...defaultRelays, followRelayHint, ...profileRelays])
-			)
+			.poll(async () => fakeRelayConnectionCounts(page, [...defaultRelays, ...profileRelays]))
 			.toEqual(
 				Object.fromEntries(
-					[...new Set([...defaultRelays, followRelayHint, ...profileRelays])].map((relay) => [
-						relay,
-						1
-					])
+					[...new Set([...defaultRelays, ...profileRelays])].map((relay) => [relay, 1])
 				)
 			);
 		await expect
@@ -565,7 +560,7 @@ test.describe('nostter deck', () => {
 					`3:${contactListAuthorPubkey}:`
 				)
 			)
-			.toBe([...new Set([...defaultRelays, followRelayHint, ...profileRelays])].length);
+			.toBe([...new Set([...defaultRelays, ...profileRelays])].length);
 		await expect
 			.poll(async () =>
 				page.evaluate(
@@ -582,16 +577,16 @@ test.describe('nostter deck', () => {
 		await followColumn.getByRole('button', { name: 'Save' }).click();
 		await expect(followColumn.getByLabel('npub or nprofile')).toHaveCount(0);
 		await expectStoredFollowColumn(page, contactListAuthorPubkey, {
-			type: 'custom',
-			urls: expect.arrayContaining([...defaultRelays, followRelayHint])
+			type: 'nip65',
+			pubkey: contactListAuthorPubkey
 		});
 
 		await page.reload();
 		await expectColumnOrder(columns, [...columnNames, 'Follow']);
 		await expect(followColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expectStoredFollowColumn(page, contactListAuthorPubkey, {
-			type: 'custom',
-			urls: expect.arrayContaining([...defaultRelays, followRelayHint])
+			type: 'nip65',
+			pubkey: contactListAuthorPubkey
 		});
 	});
 

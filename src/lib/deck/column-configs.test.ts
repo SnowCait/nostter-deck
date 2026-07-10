@@ -93,6 +93,53 @@ describe('column config storage', () => {
 		]);
 	});
 
+	test('normalizes persisted follow columns to target NIP-65 relays', () => {
+		storageValues.set(
+			columnConfigsStorageKey,
+			JSON.stringify([
+				{
+					id: 'follow-empty',
+					type: 'timeline',
+					timelineKind: 'preset',
+					sourceKey: 'timeline_follow',
+					pubkey: 'A'.repeat(64),
+					relays: [],
+					width: 'standard'
+				},
+				{
+					id: 'follow-default',
+					type: 'timeline',
+					timelineKind: 'preset',
+					sourceKey: 'timeline_follow',
+					pubkey: 'B'.repeat(64),
+					relays: { type: 'default' },
+					width: 'standard'
+				}
+			])
+		);
+
+		expect(readColumnConfigs()).toEqual([
+			{
+				id: 'follow-empty',
+				type: 'timeline',
+				timelineKind: 'preset',
+				sourceKey: 'timeline_follow',
+				pubkey: 'a'.repeat(64),
+				relays: { type: 'nip65', pubkey: 'a'.repeat(64) },
+				width: 'standard'
+			},
+			{
+				id: 'follow-default',
+				type: 'timeline',
+				timelineKind: 'preset',
+				sourceKey: 'timeline_follow',
+				pubkey: 'b'.repeat(64),
+				relays: { type: 'nip65', pubkey: 'b'.repeat(64) },
+				width: 'standard'
+			}
+		]);
+	});
+
 	test('normalizes persisted channel columns', () => {
 		storageValues.set(
 			columnConfigsStorageKey,

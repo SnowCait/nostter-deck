@@ -53,6 +53,22 @@ function normalizePresetRelaySelection(value: unknown) {
 		: null;
 }
 
+function normalizeFollowRelaySelection(value: unknown, pubkey: string) {
+	const relaySelection = normalizeRelaySelection(value);
+	if (relaySelection) {
+		return relaySelection.type === 'default' ? { type: 'nip65' as const, pubkey } : relaySelection;
+	}
+
+	if (!Array.isArray(value) || value.length === 0) {
+		return { type: 'nip65' as const, pubkey };
+	}
+
+	const relays = normalizeRelays(value);
+	return relays
+		? { type: 'custom' as const, urls: combineRelays([...defaultRelays], relays) }
+		: null;
+}
+
 export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 	if (!Array.isArray(value) || value.length === 0) {
 		return [];
@@ -85,7 +101,7 @@ export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 					if (!normalizedPubkey) {
 						return [];
 					}
-					const normalizedRelays = normalizePresetRelaySelection(relays);
+					const normalizedRelays = normalizeFollowRelaySelection(relays, normalizedPubkey);
 					if (!normalizedRelays) {
 						return [];
 					}

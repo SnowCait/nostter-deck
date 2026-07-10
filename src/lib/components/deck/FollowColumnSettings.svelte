@@ -32,6 +32,7 @@
 	let targetDraft = $state('');
 	let relayDraftSource = $state('');
 	let relayDraft = $state<RelaySelection | null>(null);
+	let followRelayTargetPubkey = $state('');
 
 	const parsedTargetDraft = $derived(decodeProfilePointer(targetDraft));
 	const canSave = $derived(parsedTargetDraft !== null && relayDraft !== null);
@@ -51,6 +52,26 @@
 		relayDraftSource = nextRelayDraft;
 		targetDraft = encodeNpub(column.pubkey);
 		relayDraft = column.relays;
+		followRelayTargetPubkey = column.pubkey;
+	});
+
+	$effect(() => {
+		if (!parsedTargetDraft) {
+			return;
+		}
+
+		const nextPubkey = parsedTargetDraft.pubkey;
+		const shouldTrackFollowTarget =
+			!relayDraft ||
+			relayDraft.type === 'default' ||
+			(relayDraft.type === 'nip65' && relayDraft.pubkey === followRelayTargetPubkey);
+		if (
+			shouldTrackFollowTarget &&
+			(relayDraft?.type !== 'nip65' || relayDraft.pubkey !== nextPubkey)
+		) {
+			relayDraft = { type: 'nip65', pubkey: nextPubkey };
+		}
+		followRelayTargetPubkey = nextPubkey;
 	});
 
 	function save() {

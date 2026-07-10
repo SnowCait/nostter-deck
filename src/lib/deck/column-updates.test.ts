@@ -58,7 +58,7 @@ describe('column updates', () => {
 		).toMatchObject([
 			{
 				pubkey: 'b'.repeat(64),
-				relays: { type: 'custom', urls: expect.arrayContaining(['wss://relay.example/']) }
+				relays: { type: 'nip65', pubkey: 'b'.repeat(64) }
 			}
 		]);
 
