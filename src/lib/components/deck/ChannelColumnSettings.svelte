@@ -34,7 +34,7 @@
 	let relayDraft = $state<RelaySelection | null>(null);
 
 	const parsedTargetDraft = $derived(decodeChannelPointer(targetDraft));
-	const canSave = $derived(parsedTargetDraft !== null && relayDraft !== null);
+	const canSave = $derived(decodeChannelPointer(targetDraft) !== null && relayDraft !== null);
 
 	$effect(() => {
 		const nextRelayDraft = JSON.stringify(column.relays);

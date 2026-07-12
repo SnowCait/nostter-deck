@@ -35,7 +35,7 @@
 	let followRelayTargetPubkey = $state('');
 
 	const parsedTargetDraft = $derived(decodeProfilePointer(targetDraft));
-	const canSave = $derived(parsedTargetDraft !== null && relayDraft !== null);
+	const canSave = $derived(decodeProfilePointer(targetDraft) !== null && relayDraft !== null);
 
 	$effect(() => {
 		const nextRelayDraft = JSON.stringify(column.relays);

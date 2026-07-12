@@ -172,9 +172,7 @@
 	const columnWidthOptions = $derived(
 		columnWidths.map((value) => ({ value, label: columnWidthLabels[value]() }))
 	);
-	const selectedColumnWidthLabel = $derived(
-		columnWidthOptions.find(({ value }) => value === column.width)?.label ?? ''
-	);
+	const selectedColumnWidthLabel = $derived(columnWidthLabels[column.width]());
 	const columnIconLabels = {
 		users: () => m.column_icon_users(),
 		search: () => m.column_icon_search(),
@@ -183,7 +181,9 @@
 		globe: () => m.column_icon_globe()
 	} satisfies Record<ColumnIconKey, () => string>;
 	const defaultIconKey = $derived(getDefaultColumnIconKey(column));
-	const customIconKeys = $derived(columnIconKeys.filter((iconKey) => iconKey !== defaultIconKey));
+	const customIconKeys = $derived(
+		columnIconKeys.filter((iconKey) => iconKey !== getDefaultColumnIconKey(column))
+	);
 
 	const columnIconClass = 'size-4 shrink-0 text-slate-500 dark:text-slate-400';
 	const iconOptionClass =

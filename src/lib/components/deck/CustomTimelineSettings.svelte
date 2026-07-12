@@ -35,7 +35,7 @@
 	let relayDraft = $state<RelaySelection | null>(null);
 
 	const parsedFilterDraft = $derived(parseNostrFilters(filterDraft));
-	const canSave = $derived(parsedFilterDraft !== null && relayDraft !== null);
+	const canSave = $derived(parseNostrFilters(filterDraft) !== null && relayDraft !== null);
 
 	$effect(() => {
 		const nextFilterDraft = JSON.stringify(column.filters, null, 2);

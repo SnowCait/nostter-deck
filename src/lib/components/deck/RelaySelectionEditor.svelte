@@ -8,7 +8,7 @@
 		defaultRelays,
 		formatCustomRelays,
 		getSelectedDefaultRelays,
-		resolveRelayDraft
+		resolveRelays
 	} from '$lib/nostr/relays';
 	import { getProfileDisplayName, type Profile } from '$lib/nostr/profiles';
 	import InputHelpButton from './InputHelpButton.svelte';
@@ -40,10 +40,6 @@
 	let selectedAccountRelayPubkey = $state('');
 	let selectedDefaultRelays = $state<string[]>([...defaultRelays]);
 	let customRelayDraft = $state('');
-
-	const selectedDefaultRelaySet = $derived(new Set(selectedDefaultRelays));
-	const displayedAccountRelayOptions = $derived(getDisplayedAccountRelayOptions());
-	const resolvedRelayDraft = $derived(resolveRelayDraftForMode());
 
 	$effect(() => {
 		const nextRelayDraftSource = JSON.stringify(value);
@@ -84,7 +80,7 @@
 	});
 
 	$effect(() => {
-		const pubkeys = displayedAccountRelayOptions.map(({ pubkey }) => pubkey);
+		const pubkeys = getDisplayedAccountRelayOptions().map(({ pubkey }) => pubkey);
 		if (pubkeys.length === 0) {
 			return;
 		}
@@ -93,7 +89,7 @@
 	});
 
 	$effect(() => {
-		const nextValue = resolvedRelayDraft;
+		const nextValue = resolveRelayDraftForMode();
 		const nextValueSource = JSON.stringify(nextValue);
 		if (relayDraftSource === nextValueSource) {
 			return;
@@ -125,7 +121,8 @@
 				: null;
 		}
 
-		return resolveRelayDraft(selectedDefaultRelays, customRelayDraft);
+		const relays = resolveRelays(selectedDefaultRelays, customRelayDraft);
+		return relays ? { type: 'custom' as const, urls: relays } : null;
 	}
 
 	function getAccountRelayName(pubkey: string) {
@@ -137,9 +134,16 @@
 	}
 
 	function toggleDefaultRelay(relay: string, isSelected: boolean) {
-		selectedDefaultRelays = isSelected
-			? [...selectedDefaultRelaySet, relay]
-			: selectedDefaultRelays.filter((selectedRelay) => selectedRelay !== relay);
+		if (isSelected) {
+			selectedDefaultRelays = selectedDefaultRelays.includes(relay)
+				? selectedDefaultRelays
+				: [...selectedDefaultRelays, relay];
+			return;
+		}
+
+		selectedDefaultRelays = selectedDefaultRelays.filter(
+			(selectedRelay) => selectedRelay !== relay
+		);
 	}
 </script>
 
@@ -212,7 +216,7 @@
 		{m.custom_timeline_account_relays()}
 	</p>
 	<div class="mb-3 grid gap-2">
-		{#each displayedAccountRelayOptions as option (option.pubkey)}
+		{#each getDisplayedAccountRelayOptions() as option (option.pubkey)}
 			<label
 				class={[
 					'flex min-w-0 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
@@ -251,7 +255,7 @@
 				<input
 					class="size-4 shrink-0 accent-sky-500"
 					type="checkbox"
-					checked={selectedDefaultRelaySet.has(relay)}
+					checked={selectedDefaultRelays.includes(relay)}
 					onchange={(event) =>
 						toggleDefaultRelay(relay, (event.currentTarget as HTMLInputElement).checked)}
 				/>

@@ -11,7 +11,6 @@ import {
 	columnNames,
 	columnOptionsButton,
 	deckColumns,
-	defaultRelaySelection,
 	expectAvatarShapeNotStoredInUiState,
 	expectColumnOrder,
 	expectColumnMaxWidth,
@@ -673,6 +672,53 @@ test.describe('nostter deck', () => {
 		});
 	});
 
+	test('changes default preset relays to account and custom relays', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page, { isLoggedIn: true });
+		const columns = deckColumns(page);
+		const channelId = '4'.repeat(64);
+		const customRelay = 'wss://relay-settings.example/';
+
+		await addPresetColumn(page, 'timeline_channel', { channelTarget: channelId });
+
+		const channelColumn = columns.first();
+		await expectColumnOrder(columns, ['Channel']);
+		await expectStoredChannelColumn(page, channelId);
+
+		await columnOptionsButton(channelColumn).click();
+		await channelColumn.getByText('Account', { exact: true }).click();
+		await channelColumn.getByRole('button', { name: 'Save' }).click();
+		await expectStoredChannelColumn(page, channelId, {
+			type: 'nip65',
+			pubkey: textEventPubkey
+		});
+		await expectColumnOrder(columns, ['Channel']);
+
+		await columnOptionsButton(channelColumn).click();
+		await channelColumn.getByText('Default', { exact: true }).click();
+		await channelColumn.getByRole('button', { name: 'Save' }).click();
+		await expectStoredChannelColumn(page, channelId);
+
+		await columnOptionsButton(channelColumn).click();
+		await channelColumn.getByText('Custom', { exact: true }).click();
+		await expect(channelColumn.getByLabel('Custom relays')).toBeVisible();
+		await channelColumn.getByRole('button', { name: 'Save' }).click();
+		await expectStoredChannelColumn(page, channelId, {
+			type: 'custom',
+			urls: expect.arrayContaining([...defaultRelays])
+		});
+
+		await columnOptionsButton(channelColumn).click();
+		await expect(channelColumn.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
+		await channelColumn.getByLabel('Custom relays').fill(customRelay);
+		await channelColumn.getByRole('button', { name: 'Save' }).click();
+		await expectStoredChannelColumn(page, channelId, {
+			type: 'custom',
+			urls: expect.arrayContaining([...defaultRelays, customRelay])
+		});
+		await expectColumnOrder(columns, ['Channel']);
+	});
+
 	test('changes and persists column title and icon', async ({ page }) => {
 		await installFakeNostrRelay(page);
 		await openDeck(page);
@@ -715,6 +761,43 @@ test.describe('nostter deck', () => {
 			.click();
 		await expect(sidebarButtonIcon(page, 'Search')).toHaveClass(/lucide-search/);
 		await expectStoredFirstColumnDisplay(page, {});
+	});
+
+	test('changes a default custom timeline column to custom relays from settings', async ({
+		page
+	}) => {
+		const pageErrors: string[] = [];
+		page.on('pageerror', (error) => pageErrors.push(error.message));
+		await installFakeNostrRelay(page);
+		await openDeck(page);
+		const columns = deckColumns(page);
+		const customRelay = 'wss://relay-settings.example/';
+
+		await addCustomTimelineColumn(page);
+
+		const customColumn = columns.first();
+		await expectColumnOrder(columns, ['Custom timeline']);
+		await expectStoredCustomTimelineColumn(page);
+
+		await columnOptionsButton(customColumn).click();
+		await expect(customColumn.getByRole('radio', { name: 'Default', exact: true })).toBeChecked();
+		await customColumn.getByText('Custom', { exact: true }).click();
+		await expect(customColumn.getByLabel('Custom relays')).toBeVisible();
+		await customColumn.getByLabel('Custom relays').fill(customRelay);
+		await customColumn.getByRole('button', { name: 'Save' }).click();
+
+		await expect(customColumn.getByLabel('REQ filters')).toBeHidden();
+		await expectColumnOrder(columns, ['Custom timeline']);
+		await expectStoredCustomTimelineColumn(page, undefined, {
+			type: 'custom',
+			urls: expect.arrayContaining([...defaultRelays, customRelay])
+		});
+		await expect(pageErrors).toEqual([]);
+
+		await columnOptionsButton(customColumn).click();
+		await expect(customColumn.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
+		await expect(customColumn.getByLabel('Custom relays')).toHaveValue(customRelay);
+		await expect(pageErrors).toEqual([]);
 	});
 
 	test('adds and persists a custom timeline column', async ({ page }) => {
@@ -944,7 +1027,10 @@ test.describe('nostter deck', () => {
 		await expect(postArticle.getByRole('button', { name: 'Repost' })).toHaveCount(0);
 		await expect(postArticle.getByRole('button', { name: 'Like' })).toHaveCount(0);
 		await expect(postArticle.getByRole('button', { name: 'Share' })).toHaveCount(0);
-		await expectStoredCustomTimelineColumn(page);
+		await expectStoredCustomTimelineColumn(page, undefined, {
+			type: 'custom',
+			urls: defaultRelays
+		});
 		await expectStoredColumnIdsAreOpaque(page);
 		await expect
 			.poll(async () => fakeRelayConnectionCounts(page, expectedProfileRelayUrls))
@@ -985,8 +1071,7 @@ test.describe('nostter deck', () => {
 		await expect(page.getByText(/kind:pubkey:identifier/)).toBeVisible();
 		await page.keyboard.press('Escape');
 		await expect(page.getByText(/kind:pubkey:identifier/)).toHaveCount(0);
-		await expect(customColumn.getByRole('radio', { name: 'Default', exact: true })).toBeChecked();
-		await customColumn.getByText('Custom', { exact: true }).click();
+		await expect(customColumn.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
 		await expect(customColumn.getByLabel('wss://relay.damus.io/')).toBeChecked();
 		await expect(customColumn.getByLabel('wss://nos.lol/')).toBeChecked();
 		await expect(editedCustomRelaysInput).toHaveValue('');
@@ -1059,7 +1144,10 @@ test.describe('nostter deck', () => {
 		await expect(filterSaveButton).toBeEnabled();
 		await filterSaveButton.click();
 		await expect(editedFiltersInput).toBeHidden();
-		await expectStoredCustomTimelineColumn(page, savedFilters, defaultRelaySelection);
+		await expectStoredCustomTimelineColumn(page, savedFilters, {
+			type: 'custom',
+			urls: expect.arrayContaining([...defaultRelays])
+		});
 
 		await page.reload();
 		await expectColumnOrder(columns, [...columnNames, 'Custom timeline']);
@@ -1067,9 +1155,8 @@ test.describe('nostter deck', () => {
 		await expect(columns.first().getByLabel('REQ filters')).toHaveValue(
 			JSON.stringify(savedFilters, null, 2)
 		);
-		await expect(
-			columns.first().getByRole('radio', { name: 'Default', exact: true })
-		).toBeChecked();
+		await expect(columns.first().getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
+		await expect(columns.first().getByLabel('Custom relays')).toHaveValue('');
 		await expect(
 			columns.first().getByText('Hello from a custom Nostr timeline').first()
 		).toBeVisible();
