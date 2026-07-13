@@ -13,9 +13,10 @@ import {
 } from './publish';
 
 const send = vi.hoisted(() => vi.fn());
+const getDefaultRelays = vi.hoisted(() => vi.fn());
 
 vi.mock('./client', () => ({
-	getNostrClient: () => ({ send })
+	getNostrClient: () => ({ getDefaultRelays, send })
 }));
 
 const pubkey = 'a'.repeat(64);
@@ -23,6 +24,7 @@ const targetPubkey = 'c'.repeat(64);
 const targetEventId = 'd'.repeat(64);
 const channelId = 'b'.repeat(64);
 const channelRelay = 'wss://channel.example/';
+const defaultWriteRelay = 'wss://default.example/';
 const targetRelay = 'wss://target.example/';
 const nostterClientTag = [
 	'client',
@@ -47,6 +49,10 @@ describe('channel publishing', () => {
 	beforeEach(() => {
 		send.mockReset();
 		send.mockReturnValue(of({ ok: true }));
+		getDefaultRelays.mockReset();
+		getDefaultRelays.mockReturnValue({
+			[defaultWriteRelay]: { url: defaultWriteRelay.slice(0, -1), read: true, write: true }
+		});
 	});
 
 	afterEach(() => {
@@ -71,7 +77,23 @@ describe('channel publishing', () => {
 		expect(send).toHaveBeenCalledWith(expect.objectContaining({ kind: ChannelMessage, pubkey }), {
 			completeOn: 'all-ok',
 			errorOnTimeout: true,
-			on: { defaultWriteRelays: true, relays: [channelRelay] },
+			on: { relays: [defaultWriteRelay, channelRelay] },
+			signer: expect.objectContaining({
+				getPublicKey: expect.any(Function),
+				signEvent: expect.any(Function)
+			})
+		});
+	});
+
+	test('deduplicates normalized default write and explicit relay URLs', async () => {
+		await publishChannelMessage('Hello channel', channelId, pubkey, createSigner(), [
+			defaultWriteRelay
+		]);
+
+		expect(send).toHaveBeenCalledWith(expect.objectContaining({ kind: ChannelMessage, pubkey }), {
+			completeOn: 'all-ok',
+			errorOnTimeout: true,
+			on: { relays: [defaultWriteRelay] },
 			signer: expect.objectContaining({
 				getPublicKey: expect.any(Function),
 				signEvent: expect.any(Function)
@@ -146,7 +168,7 @@ describe('channel publishing', () => {
 		expect(send).toHaveBeenCalledWith(expect.objectContaining({ kind: ShortTextNote, pubkey }), {
 			completeOn: 'all-ok',
 			errorOnTimeout: true,
-			on: { defaultWriteRelays: true, relays: [targetRelay] },
+			on: { relays: [defaultWriteRelay, targetRelay] },
 			signer: expect.objectContaining({
 				getPublicKey: expect.any(Function),
 				signEvent: expect.any(Function)
@@ -181,7 +203,7 @@ describe('channel publishing', () => {
 		expect(send).toHaveBeenCalledWith(expect.objectContaining({ kind: ShortTextNote, pubkey }), {
 			completeOn: 'all-ok',
 			errorOnTimeout: true,
-			on: { defaultWriteRelays: true, relays: [targetRelay] },
+			on: { relays: [defaultWriteRelay, targetRelay] },
 			signer: expect.objectContaining({
 				getPublicKey: expect.any(Function),
 				signEvent: expect.any(Function)
@@ -216,7 +238,7 @@ describe('channel publishing', () => {
 		expect(send).toHaveBeenCalledWith(expect.objectContaining({ kind: Reaction, pubkey }), {
 			completeOn: 'all-ok',
 			errorOnTimeout: true,
-			on: { defaultWriteRelays: true, relays: [targetRelay] },
+			on: { relays: [defaultWriteRelay, targetRelay] },
 			signer: expect.objectContaining({
 				getPublicKey: expect.any(Function),
 				signEvent: expect.any(Function)

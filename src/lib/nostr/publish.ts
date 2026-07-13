@@ -5,6 +5,7 @@ import type * as Nostr from 'nostr-typedef';
 import { buildNip10ReplyTags, buildNip18QuoteRepost } from '$lib/deck/post-actions';
 import { getNostrClient } from './client';
 import type { EmojiReaction, LikeReaction } from './emoji-reactions';
+import { normalizeRelay } from './relays';
 
 export type PublishPostResult =
 	| { ok: true; event: Nostr.Event }
@@ -86,13 +87,32 @@ async function publishEvent(
 	};
 
 	try {
+		const client = getNostrClient();
+		const publishRelays = relays
+			? [
+					...new Set(
+						[
+							...Object.values(client.getDefaultRelays({ filter: 'write-all' })).map(
+								({ url }) => url
+							),
+							...relays
+						].flatMap((relay) => {
+							const normalized = normalizeRelay(relay);
+							return normalized ? [normalized] : [];
+						})
+					)
+				]
+			: undefined;
+		if (publishRelays?.length === 0) {
+			return { ok: false, reason: 'relay-failed' };
+		}
 		const accepted = await firstValueFrom(
-			getNostrClient()
+			client
 				.send(signedEvent, {
 					signer: signedEventSigner,
 					completeOn: 'all-ok',
 					errorOnTimeout: true,
-					...(relays ? { on: { defaultWriteRelays: true, relays } } : {})
+					...(publishRelays ? { on: { relays: publishRelays } } : {})
 				})
 				.pipe(
 					filter((packet) => packet.ok),

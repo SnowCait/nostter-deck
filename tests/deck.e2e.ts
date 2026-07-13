@@ -439,7 +439,9 @@ test.describe('nostter deck', () => {
 
 		await addColumnPlaceholder.getByRole('button', { name: 'Add column' }).click();
 		await expect(addColumnDialog).toBeVisible();
-		const columnTypeRadios = addColumnDialog.getByRole('radio');
+		const columnTypeRadios = addColumnDialog
+			.getByRole('radiogroup', { name: 'Column type' })
+			.getByRole('radio');
 		await expect(columnTypeRadios).toHaveCount(5);
 		for (const name of ['Follow', 'Search', 'Channel', 'Custom timeline', 'Website']) {
 			await expect(addColumnDialog.getByRole('radio', { name })).toBeVisible();
@@ -2057,8 +2059,13 @@ test.describe('nostter deck', () => {
 			.locator('xpath=ancestor::article');
 		const replyButton = replyArticle.getByRole('button', { name: 'Reply' });
 		await expect(replyButton).toBeVisible();
-		await expect(replyButton).toBeDisabled();
+		await expect(replyButton).toBeEnabled();
+		await replyButton.focus();
+		await replyButton.press('Enter');
+		await expect(page.getByRole('region', { name: 'Reply' })).toBeVisible();
 		await expect(page.getByTestId('thread-column')).toHaveCount(0);
+		await page.keyboard.press('Escape');
+		await expect(page.getByRole('region', { name: 'Reply' })).toHaveCount(0);
 
 		const threadButton = replyArticle.getByRole('button', { name: 'Open thread' });
 		await threadButton.focus();
@@ -3295,6 +3302,9 @@ test.describe('nostter deck', () => {
 			.filter({ hasText: 'Hello from a custom Nostr timeline' })
 			.first();
 		await expect(postArticle).toBeVisible();
+		await expect(
+			postArticle.getByRole('button', { name: "Open Alice Relay's profile" }).first()
+		).toBeVisible();
 
 		await postArticle.hover();
 		const replyButton = postArticle.getByRole('button', { name: 'Reply' });

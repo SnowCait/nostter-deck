@@ -663,7 +663,12 @@ export async function installFakeNostrRelay(
 						}, 5);
 					}
 
-					for (const quotedEvent of [quotedTextEvent, quotedChannelEvent, quotedSensitiveEvent]) {
+					for (const quotedEvent of [
+						sensitiveEvent,
+						quotedTextEvent,
+						quotedChannelEvent,
+						quotedSensitiveEvent
+					]) {
 						if (!requestedEventIds.includes(quotedEvent.id)) {
 							continue;
 						}

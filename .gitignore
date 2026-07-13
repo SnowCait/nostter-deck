@@ -12,4 +12,5 @@ vite.config.ts.timestamp-*
 src/lib/paraglide
 project.inlang/cache/
 # Playwright
+playwright-report
 test-results
