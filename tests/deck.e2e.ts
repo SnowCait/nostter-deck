@@ -3404,6 +3404,9 @@ test.describe('nostter deck', () => {
 			.locator('article')
 			.filter({ hasText: 'Quoted short text note' });
 		await expect(postArticle).toBeVisible();
+		await expect(
+			postArticle.getByRole('button', { name: "Open Alice Relay's profile" }).first()
+		).toBeVisible();
 
 		await postArticle.hover();
 		await postArticle.getByRole('button', { name: 'Repost' }).click();
