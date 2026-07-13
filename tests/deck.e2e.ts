@@ -3158,6 +3158,66 @@ test.describe('nostter deck', () => {
 			.toBe(true);
 	});
 
+	test('completes, restores, and publishes a profile mention from the main composer', async ({
+		page
+	}) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page, { isLoggedIn: true });
+
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+		let composer = page.getByRole('region', { name: 'Post' });
+		let textarea = composer.getByLabel('Post text');
+		await textarea.fill('Hello @Ali');
+		const suggestions = composer.getByRole('listbox', { name: 'Mention suggestions' });
+		await expect(suggestions.getByRole('option', { name: /Alice Relay/ })).toBeVisible();
+		await textarea.dispatchEvent('compositionstart', { data: 'Ali' });
+		await textarea.dispatchEvent('keydown', { key: 'Enter', code: 'Enter', isComposing: true });
+		await expect(textarea).toHaveValue('Hello @Ali');
+		await textarea.dispatchEvent('compositionend', { data: 'Ali' });
+		await expect(suggestions).toBeVisible();
+
+		await textarea.press('Escape');
+		await expect(suggestions).toBeHidden();
+		await expect(composer).toBeVisible();
+		await textarea.press('c');
+		await textarea.press('Backspace');
+		await expect(suggestions).toBeVisible();
+		await textarea.press('ArrowDown');
+		await textarea.press('Enter');
+		await expect(textarea).toHaveValue('Hello @Alice Relay ');
+
+		await composer.getByRole('button', { name: 'Close' }).click();
+		await expect(composer).toBeHidden();
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+		composer = page.getByRole('region', { name: 'Post' });
+		textarea = composer.getByLabel('Post text');
+		await expect(textarea).toHaveValue('Hello @Alice Relay ');
+		await textarea.press('ControlOrMeta+Enter');
+		await expect(composer).toBeHidden();
+
+		await expect
+			.poll(() =>
+				page.evaluate(
+					({ clientTag, canonicalMention, mentionedPubkey }) =>
+						(window.__nostterFakeRelayPublishedEvents ?? []).some(({ event }) => {
+							const published = event as Record<string, unknown>;
+							return (
+								published.kind === 1 &&
+								JSON.stringify(published.tags) ===
+									JSON.stringify([['p', mentionedPubkey], clientTag]) &&
+								published.content === `Hello ${canonicalMention} `
+							);
+						}),
+					{
+						clientTag: nostterClientTag,
+						canonicalMention: `nostr:${accountNpub}`,
+						mentionedPubkey: textEventPubkey
+					}
+				)
+			)
+			.toBe(true);
+	});
+
 	test('uploads selected images to Blossom media when publishing a post', async ({ page }) => {
 		const blossomUrl = `https://blossom.band/${'c'.repeat(64)}.webp`;
 		let uploadRequests = 0;
@@ -3555,6 +3615,58 @@ test.describe('nostter deck', () => {
 						);
 					},
 					{ channelId, channelRelay, message, clientTag: nostterClientTag }
+				)
+			)
+			.toBe(true);
+	});
+
+	test('completes and publishes a profile mention from a channel composer', async ({ page }) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page, { isLoggedIn: true });
+
+		const channelId = '4'.repeat(64);
+		const channelRelay = 'wss://channel.example/';
+		await addPresetColumn(page, 'timeline_channel', {
+			channelTarget: neventEncode({
+				id: channelId,
+				kind: ChannelCreation,
+				relays: [channelRelay]
+			})
+		});
+
+		const composer = deckColumns(page).last().getByTestId('channel-composer');
+		const textarea = composer.getByLabel('Channel message');
+		await textarea.fill('Channel @Ali');
+		const option = composer.getByRole('option', { name: /Alice Relay/ });
+		await expect(option).toBeVisible();
+		await option.click();
+		await expect(textarea).toHaveValue('Channel @Alice Relay ');
+		await textarea.press('ControlOrMeta+Enter');
+		await expect(textarea).toHaveValue('');
+
+		await expect
+			.poll(() =>
+				page.evaluate(
+					({ channelId, clientTag, canonicalMention, mentionedPubkey }) =>
+						(window.__nostterFakeRelayPublishedEvents ?? []).some(({ event }) => {
+							const published = event as Record<string, unknown>;
+							return (
+								published.kind === 42 &&
+								JSON.stringify(published.tags) ===
+									JSON.stringify([
+										['e', channelId, '', 'root'],
+										['p', mentionedPubkey],
+										clientTag
+									]) &&
+								published.content === `Channel ${canonicalMention} `
+							);
+						}),
+					{
+						channelId,
+						clientTag: nostterClientTag,
+						canonicalMention: `nostr:${accountNpub}`,
+						mentionedPubkey: textEventPubkey
+					}
 				)
 			)
 			.toBe(true);

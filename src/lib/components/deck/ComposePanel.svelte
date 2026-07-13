@@ -2,11 +2,13 @@
 	import { CalendarClock, MessageCircle, Quote, Send, Smile, UserRound, X } from '@lucide/svelte';
 	import type { createComposerController } from '$lib/deck/composer-controller.svelte';
 	import { createPastedImageFileReader } from '$lib/deck/media-attachment-actions';
+	import type { MentionCandidate } from '$lib/deck/mention-actions';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { Profile } from '$lib/nostr/profiles';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { AvatarShape } from '$lib/user-settings';
 	import MediaAttachmentControls from './MediaAttachmentControls.svelte';
+	import MentionTextarea from './MentionTextarea.svelte';
 	import ProfileAvatar from './ProfileAvatar.svelte';
 
 	type Props = {
@@ -15,6 +17,7 @@
 		accountProfile: Profile | undefined;
 		avatarShape: AvatarShape;
 		textClass: FontSizeTextClasses;
+		mentionCandidates: MentionCandidate[];
 		textarea?: HTMLTextAreaElement;
 	};
 
@@ -24,6 +27,7 @@
 		accountProfile,
 		avatarShape,
 		textClass,
+		mentionCandidates,
 		textarea = $bindable()
 	}: Props = $props();
 
@@ -129,12 +133,16 @@
 					? m.quote_text()
 					: m.post_text()}
 		</label>
-		<textarea
+		<MentionTextarea
 			id="compose-text"
-			class={[
+			rootClass="flex min-h-[220px] flex-1 flex-col"
+			textareaClass={[
 				'min-h-[220px] flex-1 resize-none rounded-md border border-slate-200 bg-white p-3 text-slate-950 transition outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:border-sky-400 dark:focus:ring-sky-950',
 				textClass.textarea
 			]}
+			value={composer.content}
+			candidates={mentionCandidates}
+			onValueChange={(value) => (composer.content = value)}
 			placeholder={composer.isReplyMode
 				? m.reply_placeholder()
 				: composer.isQuoteMode
@@ -142,11 +150,10 @@
 					: m.compose_placeholder()}
 			disabled={composer.isPublishing}
 			aria-keyshortcuts="Control+Enter Meta+Enter"
-			bind:this={textarea}
-			bind:value={composer.content}
+			bind:textarea
 			onkeydown={composer.handleKeydown}
 			onpaste={handlePaste}
-		></textarea>
+		/>
 
 		<MediaAttachmentControls
 			media={composer}

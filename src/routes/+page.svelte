@@ -12,6 +12,7 @@
 	import { resetSessionTimelineCache } from '$lib/deck/timeline-cache';
 	import { createDetailColumnController } from '$lib/deck/detail-column-controller.svelte';
 	import { createComposerController } from '$lib/deck/composer-controller.svelte';
+	import { createMentionCandidateController } from '$lib/deck/mention-candidate-controller.svelte';
 	import { createEmojiReactionController } from '$lib/deck/emoji-reaction-controller.svelte';
 	import { createPostActionController } from '$lib/deck/post-action-controller.svelte';
 	import { createPostShareController } from '$lib/deck/post-share-controller.svelte';
@@ -92,6 +93,7 @@
 		getAccounts: () => accounts,
 		getColumnConfigs: () => columnDeckController.columns
 	});
+	const mentionCandidateController = createMentionCandidateController();
 	const composer = createComposerController({
 		getAccountPubkey: () => accountPubkey,
 		getSigner: getAuthSigner,
@@ -153,6 +155,7 @@
 	});
 
 	$effect(() => {
+		void mentionCandidateController.setAccount(accountPubkey);
 		if (!accountPubkey) {
 			composer.close();
 			clearDefaultRelays();
@@ -171,6 +174,7 @@
 	onDestroy(() => {
 		timelineController.stop();
 		detailController.stop();
+		mentionCandidateController.stop();
 	});
 
 	function openAddColumnDialog() {
@@ -271,6 +275,7 @@
 			{accountProfile}
 			avatarShape={displaySettingsController.avatarShape}
 			{textClass}
+			mentionCandidates={mentionCandidateController.candidates}
 			bind:textarea={composeTextarea}
 		/>
 	{/if}
@@ -295,6 +300,7 @@
 		{requestProfiles}
 		profileRelays={defaultProfileRelays}
 		accountRelayOptions={relaySelectionController.accountRelayOptions}
+		mentionCandidates={mentionCandidateController.candidates}
 		isMutedUser={mutedUsersController.isMutedUser}
 		onMuteUser={mutedUsersController.muteUser}
 		onAddColumn={openAddColumnDialog}

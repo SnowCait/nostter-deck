@@ -71,6 +71,7 @@
 	"post_text": "投稿本文",
 	"reply_text": "返信本文",
 	"quote_text": "引用本文",
+	"mention_suggestions": "メンション候補",
 	"reply_placeholder": "返信を入力",
 	"quote_placeholder": "コメントを入力",
 	"replying_to_author": "{name}に返信",

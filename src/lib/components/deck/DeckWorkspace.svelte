@@ -9,6 +9,7 @@
 	import type { createEmojiReactionController } from '$lib/deck/emoji-reaction-controller.svelte';
 	import type { createPostActionController } from '$lib/deck/post-action-controller.svelte';
 	import type { createPostShareController } from '$lib/deck/post-share-controller.svelte';
+	import type { MentionCandidate } from '$lib/deck/mention-actions';
 	import type { AccountRelayOption } from '$lib/deck/relay-selection-controller.svelte';
 	import type { createTimelineController } from '$lib/deck/timeline-controller.svelte';
 	import { emptyTimelineRuntime } from '$lib/deck/timeline-runtime';
@@ -41,6 +42,7 @@
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
 		profileRelays: string[];
 		accountRelayOptions: AccountRelayOption[];
+		mentionCandidates: MentionCandidate[];
 		isMutedUser: (pubkey: string) => boolean;
 		onMuteUser: (pubkey: string) => void;
 		onAddColumn: () => void;
@@ -66,6 +68,7 @@
 		requestProfiles,
 		profileRelays,
 		accountRelayOptions,
+		mentionCandidates,
 		isMutedUser,
 		onMuteUser,
 		onAddColumn
@@ -106,6 +109,7 @@
 		{requestProfiles}
 		{profileRelays}
 		{accountRelayOptions}
+		{mentionCandidates}
 		{isMutedUser}
 		{onMuteUser}
 		canReplyPost={composer.canReply}

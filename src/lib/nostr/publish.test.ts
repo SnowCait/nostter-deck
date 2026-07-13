@@ -1,4 +1,5 @@
 import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
+import { nprofileEncode, npubEncode } from 'nostr-tools/nip19';
 import type { EventSigner } from 'rx-nostr';
 import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -26,6 +27,7 @@ const channelId = 'b'.repeat(64);
 const channelRelay = 'wss://channel.example/';
 const defaultWriteRelay = 'wss://default.example/';
 const targetRelay = 'wss://target.example/';
+const mentionedPubkey = 'e'.repeat(64);
 const nostterClientTag = [
 	'client',
 	'nostter deck',
@@ -133,6 +135,30 @@ describe('channel publishing', () => {
 		);
 	});
 
+	test('adds deduplicated mention p tags before client information to main and channel posts', async () => {
+		const mentionContent = `Hello nostr:${npubEncode(mentionedPubkey)} nostr:${nprofileEncode({ pubkey: mentionedPubkey, relays: ['wss://profile.example/'] })}`;
+		const mainSigner = createSigner();
+		const channelSigner = createSigner();
+
+		await publishShortTextNote(mentionContent, pubkey, mainSigner, { includeClientTag: true });
+		await publishChannelMessage(mentionContent, channelId, pubkey, channelSigner, [channelRelay], {
+			includeClientTag: true
+		});
+
+		expect(mainSigner.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tags: [['p', mentionedPubkey], [...nostterClientTag]],
+				content: mentionContent
+			})
+		);
+		expect(channelSigner.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tags: [['e', channelId, '', 'root'], ['p', mentionedPubkey], [...nostterClientTag]],
+				content: mentionContent
+			})
+		);
+	});
+
 	test('publishes a NIP-10 reply to default write and target read relays', async () => {
 		const signer = createSigner();
 
@@ -176,6 +202,39 @@ describe('channel publishing', () => {
 		});
 	});
 
+	test('keeps an existing reply p tag and adds only new content mentions', async () => {
+		const signer = createSigner();
+		const content = `Hello nostr:${npubEncode(targetPubkey)} nostr:${npubEncode(mentionedPubkey)}`;
+
+		await publishReply(
+			content,
+			{
+				id: targetEventId,
+				pubkey: targetPubkey,
+				created_at: 100,
+				kind: ShortTextNote,
+				tags: [],
+				content: 'Target',
+				sig: '0'.repeat(128)
+			},
+			pubkey,
+			signer,
+			[targetRelay],
+			{ includeClientTag: true }
+		);
+
+		expect(signer.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tags: [
+					['e', targetEventId, targetRelay, 'root', targetPubkey],
+					['p', targetPubkey, targetRelay],
+					['p', mentionedPubkey],
+					[...nostterClientTag]
+				]
+			})
+		);
+	});
+
 	test('publishes a NIP-18 quote repost with a q tag and NIP-21 reference', async () => {
 		const signer = createSigner();
 		const target = {
@@ -209,6 +268,32 @@ describe('channel publishing', () => {
 				signEvent: expect.any(Function)
 			})
 		});
+	});
+
+	test('adds content mention p tags to quote reposts without tagging the nevent reference', async () => {
+		const signer = createSigner();
+		const target = {
+			id: targetEventId,
+			pubkey: targetPubkey,
+			created_at: 100,
+			kind: ShortTextNote,
+			tags: [],
+			content: 'Target',
+			sig: '0'.repeat(128)
+		};
+
+		await publishQuoteRepost(`Hello nostr:${npubEncode(mentionedPubkey)}`, target, pubkey, signer, [
+			targetRelay
+		]);
+
+		expect(signer.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tags: [
+					['q', targetEventId, targetRelay, targetPubkey],
+					['p', mentionedPubkey]
+				]
+			})
+		);
 	});
 
 	test('publishes a NIP-25 like reaction to default write and target read relays', async () => {

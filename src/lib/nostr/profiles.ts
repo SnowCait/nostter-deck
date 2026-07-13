@@ -10,6 +10,11 @@ export type Profile = Nostr.Content.Metadata & {
 	customEmojis: CustomEmoji[];
 };
 
+export type ProfileCacheEntry = {
+	pubkey: string;
+	profile: Profile;
+};
+
 type ProfileNameSource = Pick<Nostr.Content.Metadata, 'display_name' | 'name'>;
 
 const profilesByPubkey = new SvelteMap<string, Profile>();
@@ -115,6 +120,10 @@ export function requestProfiles(pubkeys: string[], relays: string[]) {
 
 export function getProfile(pubkey: string) {
 	return profilesByPubkey.get(pubkey);
+}
+
+export function listCachedProfiles(): ProfileCacheEntry[] {
+	return [...profilesByPubkey].map(([pubkey, profile]) => ({ pubkey, profile }));
 }
 
 export function getProfileDisplayName(profile: ProfileNameSource | undefined, pubkey: string) {

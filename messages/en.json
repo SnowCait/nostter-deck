@@ -71,6 +71,7 @@
 	"post_text": "Post text",
 	"reply_text": "Reply text",
 	"quote_text": "Quote text",
+	"mention_suggestions": "Mention suggestions",
 	"reply_placeholder": "Write your reply",
 	"quote_placeholder": "Add a comment",
 	"replying_to_author": "Replying to {name}",

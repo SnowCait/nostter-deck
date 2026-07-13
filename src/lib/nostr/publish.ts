@@ -3,6 +3,7 @@ import { now, type EventSigner } from 'rx-nostr';
 import { catchError, defaultIfEmpty, filter, firstValueFrom, map, of, take } from 'rxjs';
 import type * as Nostr from 'nostr-typedef';
 import { buildNip10ReplyTags, buildNip18QuoteRepost } from '$lib/deck/post-actions';
+import { addContentMentionTags } from '$lib/deck/mention-actions';
 import { getNostrClient } from './client';
 import type { EmojiReaction, LikeReaction } from './emoji-reactions';
 import { normalizeRelay } from './relays';
@@ -140,7 +141,7 @@ export function publishShortTextNote(
 	return publishEvent(
 		{
 			kind: ShortTextNote,
-			tags: withClientTag([], includeClientTag),
+			tags: withClientTag(addContentMentionTags([], content), includeClientTag),
 			content,
 			created_at: now()
 		},
@@ -160,7 +161,10 @@ export function publishChannelMessage(
 	return publishEvent(
 		{
 			kind: ChannelMessage,
-			tags: withClientTag([['e', channelId, '', 'root']], includeClientTag),
+			tags: withClientTag(
+				addContentMentionTags([['e', channelId, '', 'root']], content),
+				includeClientTag
+			),
 			content,
 			created_at: now()
 		},
@@ -181,7 +185,10 @@ export function publishReply(
 	return publishEvent(
 		{
 			kind: ShortTextNote,
-			tags: withClientTag(buildNip10ReplyTags(target, targetReadRelays), includeClientTag),
+			tags: withClientTag(
+				addContentMentionTags(buildNip10ReplyTags(target, targetReadRelays), content),
+				includeClientTag
+			),
 			content,
 			created_at: now()
 		},
@@ -204,7 +211,7 @@ export function publishQuoteRepost(
 	return publishEvent(
 		{
 			kind: ShortTextNote,
-			tags: withClientTag(quote.tags, includeClientTag),
+			tags: withClientTag(addContentMentionTags(quote.tags, quote.content), includeClientTag),
 			content: quote.content,
 			created_at: now()
 		},
