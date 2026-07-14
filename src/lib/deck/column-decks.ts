@@ -1,5 +1,5 @@
-import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
-import { normalizeColumnConfigs, readColumnConfigs } from './column-configs';
+import { persistedState } from 'svelte-persisted-state';
+import { normalizeColumnConfigs } from './column-configs';
 import type { ColumnConfig } from './types';
 
 export type ColumnDeck = {
@@ -16,6 +16,19 @@ export type ColumnDeckStore = {
 export const columnDecksStorageKey = 'nostter:column-decks';
 export const defaultColumnDeckId = 'default';
 export const defaultColumnDeckName = 'Default';
+
+export function createDefaultColumnDeckStore(): ColumnDeckStore {
+	return {
+		activeDeckId: defaultColumnDeckId,
+		decks: [
+			{
+				id: defaultColumnDeckId,
+				name: defaultColumnDeckName,
+				columns: []
+			}
+		]
+	};
+}
 
 function normalizeDeckName(value: unknown) {
 	return typeof value === 'string' ? value.trim() : '';
@@ -57,7 +70,7 @@ function normalizeColumnDecks(value: unknown): ColumnDeck[] {
 	return decks;
 }
 
-function normalizeColumnDeckStore(value: unknown): ColumnDeckStore | null {
+export function normalizeColumnDeckStore(value: unknown): ColumnDeckStore | null {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) {
 		return null;
 	}
@@ -73,6 +86,15 @@ function normalizeColumnDeckStore(value: unknown): ColumnDeckStore | null {
 	return { activeDeckId, decks };
 }
 
+const columnDeckStoreState = persistedState<ColumnDeckStore>(
+	columnDecksStorageKey,
+	createDefaultColumnDeckStore(),
+	{
+		beforeRead: (value) => normalizeColumnDeckStore(value) ?? createDefaultColumnDeckStore(),
+		beforeWrite: (value) => normalizeColumnDeckStore(value) ?? createDefaultColumnDeckStore()
+	}
+);
+
 export function createColumnDeck(
 	id: string,
 	name: string,
@@ -86,27 +108,7 @@ export function createColumnDeck(
 }
 
 export function readColumnDeckStore(): ColumnDeckStore {
-	const stored = readJsonStorage<ColumnDeckStore | null>(
-		columnDecksStorageKey,
-		null,
-		normalizeColumnDeckStore
-	);
-	if (stored) {
-		return stored;
-	}
-
-	const migrated: ColumnDeckStore = {
-		activeDeckId: defaultColumnDeckId,
-		decks: [
-			{
-				id: defaultColumnDeckId,
-				name: defaultColumnDeckName,
-				columns: readColumnConfigs()
-			}
-		]
-	};
-	writeColumnDeckStore(migrated);
-	return migrated;
+	return columnDeckStoreState.current;
 }
 
 export function writeColumnDeckStore(store: ColumnDeckStore) {
@@ -114,11 +116,7 @@ export function writeColumnDeckStore(store: ColumnDeckStore) {
 	if (!normalized) {
 		return;
 	}
-	writeJsonStorage(
-		columnDecksStorageKey,
-		normalized,
-		(value) => normalizeColumnDeckStore(value) ?? normalized
-	);
+	columnDeckStoreState.current = normalized;
 }
 
 export function hasColumnDeckName(decks: ColumnDeck[], name: string, exceptId?: string) {

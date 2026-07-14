@@ -1,4 +1,3 @@
-import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
 import { normalizeNostrFilters } from '$lib/nostr/filters';
 import { normalizePubkey } from '$lib/nostr/pubkeys';
 import {
@@ -13,8 +12,6 @@ import type { ColumnConfig, ColumnDisplayConfig, ColumnSourceKey, ColumnWidth } 
 import { normalizeWebsiteUrl } from './website-url';
 
 export const columnWidths = ['wide', 'standard', 'narrow'] as const;
-
-const columnConfigsStorageKey = 'nostter:column-configs';
 
 function isColumnSourceKey(value: unknown): value is ColumnSourceKey {
 	return typeof value === 'string' && columnSourceKeys.includes(value as ColumnSourceKey);
@@ -234,13 +231,3 @@ export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 
 	return columns;
 }
-
-export function readColumnConfigs(): ColumnConfig[] {
-	return readJsonStorage(columnConfigsStorageKey, [], normalizeColumnConfigs);
-}
-
-export function writeColumnConfigs(nextColumnConfigs: ColumnConfig[]) {
-	writeJsonStorage(columnConfigsStorageKey, nextColumnConfigs, normalizeColumnConfigs);
-}
-
-export { columnConfigsStorageKey };

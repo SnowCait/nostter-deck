@@ -1,22 +1,17 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import {
 	addMutedPubkey,
-	mutedUsersStorageKey,
+	normalizeMutedPubkeys,
 	readMutedPubkeys,
 	removeMutedPubkey,
 	writeMutedPubkeys
 } from './muted-users';
 
-const storage = new Map<string, string>();
 const alice = 'A'.repeat(64);
 const bob = 'b'.repeat(64);
 
 beforeEach(() => {
-	storage.clear();
-	vi.stubGlobal('localStorage', {
-		getItem: (key: string) => storage.get(key) ?? null,
-		setItem: (key: string, value: string) => storage.set(key, value)
-	});
+	writeMutedPubkeys([]);
 });
 
 describe('muted users', () => {
@@ -24,16 +19,10 @@ describe('muted users', () => {
 		writeMutedPubkeys([alice, alice.toLowerCase(), 'invalid', bob]);
 
 		expect(readMutedPubkeys()).toEqual([alice.toLowerCase(), bob]);
-		expect(JSON.parse(storage.get(mutedUsersStorageKey) ?? 'null')).toEqual([
-			alice.toLowerCase(),
-			bob
-		]);
 	});
 
-	test('drops invalid persisted values', () => {
-		storage.set(mutedUsersStorageKey, JSON.stringify([alice, 42, 'invalid']));
-
-		expect(readMutedPubkeys()).toEqual([alice.toLowerCase()]);
+	test('drops invalid values', () => {
+		expect(normalizeMutedPubkeys([alice, 42, 'invalid'])).toEqual([alice.toLowerCase()]);
 	});
 
 	test('adds and removes a muted pubkey', () => {

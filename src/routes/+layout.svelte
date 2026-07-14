@@ -9,9 +9,12 @@
 
 	onMount(() => {
 		document.documentElement.lang = getLocale();
-		applyThemePreference();
 
 		return watchSystemThemePreference();
+	});
+
+	$effect(() => {
+		applyThemePreference();
 	});
 </script>
 

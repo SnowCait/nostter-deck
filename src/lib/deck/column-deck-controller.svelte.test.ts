@@ -1,8 +1,11 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { columnDecksStorageKey, type ColumnDeck, type ColumnDeckStore } from './column-decks';
+import { describe, expect, test, vi } from 'vitest';
+import {
+	readColumnDeckStore,
+	type ColumnDeck,
+	type ColumnDeckStore,
+	writeColumnDeckStore
+} from './column-decks';
 import { createColumnDeckController } from './column-deck-controller.svelte';
-
-const storage = new Map<string, string>();
 
 const firstColumn = {
 	id: 'first',
@@ -19,15 +22,6 @@ const secondColumn = {
 	width: 'standard'
 } as const;
 
-function installLocalStorage(store: ColumnDeckStore) {
-	storage.clear();
-	storage.set(columnDecksStorageKey, JSON.stringify(store));
-	vi.stubGlobal('localStorage', {
-		getItem: vi.fn((key: string) => storage.get(key) ?? null),
-		setItem: vi.fn((key: string, value: string) => storage.set(key, value))
-	});
-}
-
 function createStore(decks: ColumnDeck[], activeDeckId = decks[0].id): ColumnDeckStore {
 	return { activeDeckId, decks };
 }
@@ -39,7 +33,7 @@ function createHarness({
 	store?: ColumnDeckStore;
 	createIds?: string[];
 } = {}) {
-	installLocalStorage(store);
+	writeColumnDeckStore(store);
 	const beforeActivateDeck = vi.fn(async () => {});
 	const resetFocusMemory = vi.fn();
 	const resetSelectedColumn = vi.fn();
@@ -65,15 +59,7 @@ function createHarness({
 	};
 }
 
-afterEach(() => {
-	vi.unstubAllGlobals();
-});
-
 describe('column deck controller', () => {
-	beforeEach(() => {
-		storage.clear();
-	});
-
 	test('selects a deck and resets transient deck state', async () => {
 		const personalColumn = { ...secondColumn, id: 'personal-site' };
 		const harness = createHarness({
@@ -141,8 +127,6 @@ describe('column deck controller', () => {
 			'third'
 		]);
 		expect(harness.focusColumn).toHaveBeenCalledWith('third');
-		expect(JSON.parse(storage.get(columnDecksStorageKey) ?? 'null').decks[0].columns).toHaveLength(
-			3
-		);
+		expect(readColumnDeckStore().decks[0].columns).toHaveLength(3);
 	});
 });

@@ -6,25 +6,21 @@ import {
 } from '$lib/muted-users';
 
 export function createMutedUsersController() {
-	let pubkeys = $state(readMutedPubkeys());
-
 	function isMutedUser(pubkey: string) {
-		return pubkeys.includes(pubkey);
+		return readMutedPubkeys().includes(pubkey);
 	}
 
 	function muteUser(pubkey: string) {
-		pubkeys = addMutedPubkey(pubkeys, pubkey);
-		writeMutedPubkeys(pubkeys);
+		writeMutedPubkeys(addMutedPubkey(readMutedPubkeys(), pubkey));
 	}
 
 	function unmuteUser(pubkey: string) {
-		pubkeys = removeMutedPubkey(pubkeys, pubkey);
-		writeMutedPubkeys(pubkeys);
+		writeMutedPubkeys(removeMutedPubkey(readMutedPubkeys(), pubkey));
 	}
 
 	return {
 		get pubkeys() {
-			return pubkeys;
+			return readMutedPubkeys();
 		},
 		isMutedUser,
 		muteUser,

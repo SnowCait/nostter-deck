@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { getAccountId, accountsStorageKey } from './accounts';
+import { getAccountId, writeAccounts } from './accounts';
 import {
 	cancelPendingAuthentication,
 	getAccountStore,
@@ -62,6 +62,7 @@ describe('multi-account authentication', () => {
 
 	beforeEach(() => {
 		storageValues = installLocalStorage();
+		writeAccounts({ activeAccountId: null, accounts: [] });
 		resetAuthStateForTesting();
 		bunkerMocks.fromBunker.mockReset();
 		bunkerMocks.fromURI.mockReset();
@@ -90,7 +91,6 @@ describe('multi-account authentication', () => {
 				})
 			]
 		});
-		expect(JSON.parse(storageValues.get(accountsStorageKey) ?? '')).toEqual(getAccountStore());
 	});
 
 	test('adds and activates the extension current key when a stored NIP-07 key no longer matches', async () => {
@@ -109,20 +109,17 @@ describe('multi-account authentication', () => {
 	});
 
 	test('restores the selected NIP-07 account only when the extension exposes that key', async () => {
-		storageValues.set(
-			accountsStorageKey,
-			JSON.stringify({
-				activeAccountId: getAccountId('nip07', pubkeyA),
-				accounts: [
-					{
-						id: getAccountId('nip07', pubkeyA),
-						method: 'nip07',
-						pubkey: pubkeyA,
-						createdAt: 1
-					}
-				]
-			})
-		);
+		writeAccounts({
+			activeAccountId: getAccountId('nip07', pubkeyA),
+			accounts: [
+				{
+					id: getAccountId('nip07', pubkeyA),
+					method: 'nip07',
+					pubkey: pubkeyA,
+					createdAt: 1
+				}
+			]
+		});
 		installNip07(pubkeyA);
 
 		await expect(initializeAuth()).resolves.toBe(true);
@@ -131,22 +128,19 @@ describe('multi-account authentication', () => {
 
 	test('restores the selected NIP-46 account from its saved connection data', async () => {
 		const clientSecretKey = 'c'.repeat(64);
-		storageValues.set(
-			accountsStorageKey,
-			JSON.stringify({
-				activeAccountId: getAccountId('nip46', pubkeyB),
-				accounts: [
-					{
-						id: getAccountId('nip46', pubkeyB),
-						method: 'nip46',
-						pubkey: pubkeyB,
-						createdAt: 1,
-						bunker: bunkerMocks.signer.bp,
-						clientSecretKey
-					}
-				]
-			})
-		);
+		writeAccounts({
+			activeAccountId: getAccountId('nip46', pubkeyB),
+			accounts: [
+				{
+					id: getAccountId('nip46', pubkeyB),
+					method: 'nip46',
+					pubkey: pubkeyB,
+					createdAt: 1,
+					bunker: bunkerMocks.signer.bp,
+					clientSecretKey
+				}
+			]
+		});
 		bunkerMocks.fromBunker.mockReturnValue(bunkerMocks.signer);
 		bunkerMocks.signer.connect.mockResolvedValue(undefined);
 		bunkerMocks.signer.getPublicKey.mockResolvedValue(pubkeyB);

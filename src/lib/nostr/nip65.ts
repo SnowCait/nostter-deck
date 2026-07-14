@@ -1,7 +1,8 @@
 import { createRxBackwardReq, type LazyFilter } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import { RelayList } from 'nostr-tools/kinds';
-import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
+import { untrack } from 'svelte';
+import { persistedState } from 'svelte-persisted-state';
 import { getNostrClient } from './client';
 import { normalizePubkey } from './pubkeys';
 import { defaultRelays, indexerRelays, normalizeRelay } from './relays';
@@ -17,6 +18,16 @@ type Nip65Cache = Record<string, Nip65CacheEntry>;
 
 export const nip65CacheStorageKey = 'nostter:nip65-relays';
 const nip65RequestTimeoutMs = 5_000;
+
+const nip65CacheState = persistedState<Nip65Cache>(
+	nip65CacheStorageKey,
+	{},
+	{
+		syncTabs: false,
+		beforeRead: normalizeNip65Cache,
+		beforeWrite: normalizeNip65Cache
+	}
+);
 
 export function extractNip65RelayTags(tags: Nostr.Event['tags']): Nip65RelayTag[] {
 	const relayTags: Nip65RelayTag[] = [];
@@ -53,7 +64,7 @@ export function getNip65ReadRelays(relayTags: Nip65RelayTag[]) {
 	];
 }
 
-function normalizeNip65Cache(value: unknown): Nip65Cache {
+export function normalizeNip65Cache(value: unknown): Nip65Cache {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) {
 		return {};
 	}
@@ -83,11 +94,11 @@ function normalizeNip65Cache(value: unknown): Nip65Cache {
 }
 
 function readNip65Cache() {
-	return readJsonStorage<Nip65Cache>(nip65CacheStorageKey, {}, normalizeNip65Cache);
+	return untrack(() => nip65CacheState.current);
 }
 
 function writeNip65Cache(cache: Nip65Cache) {
-	writeJsonStorage(nip65CacheStorageKey, cache, normalizeNip65Cache);
+	nip65CacheState.current = normalizeNip65Cache(cache);
 }
 
 export function getCachedNip65RelayTags(pubkey: string) {
@@ -128,9 +139,10 @@ export async function refreshNip65Relays(pubkey: string) {
 		return null;
 	}
 
-	const cache = readNip65Cache();
-	cache[normalizedPubkey] = { updatedAt: Date.now(), relayTags };
-	writeNip65Cache(cache);
+	writeNip65Cache({
+		...readNip65Cache(),
+		[normalizedPubkey]: { updatedAt: Date.now(), relayTags }
+	});
 	return relayTags;
 }
 

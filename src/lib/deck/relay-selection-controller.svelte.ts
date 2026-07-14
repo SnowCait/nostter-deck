@@ -16,6 +16,7 @@ export type AccountRelayOption = {
 type RelaySelectionControllerOptions = {
 	getAccounts: () => AccountRecord[];
 	getColumnConfigs: () => ColumnConfig[];
+	getCachedRelayTags?: (pubkey: string) => Nip65RelayTag[];
 	refreshRelayTags?: (pubkey: string) => Promise<Nip65RelayTag[] | null>;
 };
 
@@ -56,6 +57,7 @@ export function getNip65RelaySelectionPubkeys(columns: ColumnConfig[]) {
 export function createRelaySelectionController({
 	getAccounts,
 	getColumnConfigs,
+	getCachedRelayTags = getCachedNip65RelayTags,
 	refreshRelayTags = refreshNip65Relays
 }: RelaySelectionControllerOptions) {
 	let nip65ReadRelaysByPubkey = $state<Record<string, string[]>>({});
@@ -76,7 +78,7 @@ export function createRelaySelectionController({
 	}
 
 	function getCachedReadRelays(pubkey: string) {
-		return getNip65ReadRelays(getCachedNip65RelayTags(pubkey));
+		return getNip65ReadRelays(getCachedRelayTags(pubkey));
 	}
 
 	function getNip65ReadRelayUrls(pubkey: string) {

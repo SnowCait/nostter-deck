@@ -1,40 +1,23 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import {
-	accountsStorageKey,
 	getAccountId,
-	readAccounts,
+	normalizeAccountStore,
 	removeAccount,
-	upsertAccount
+	upsertAccount,
+	writeAccounts
 } from './accounts';
 
 const pubkeyA = 'a'.repeat(64);
 const pubkeyB = 'b'.repeat(64);
 
-function installLocalStorage() {
-	const values = new Map<string, string>();
-	vi.stubGlobal('localStorage', {
-		getItem: vi.fn((key: string) => values.get(key) ?? null),
-		setItem: vi.fn((key: string, value: string) => values.set(key, value)),
-		removeItem: vi.fn((key: string) => values.delete(key))
-	});
-	return values;
-}
-
 describe('account store', () => {
-	let storageValues: Map<string, string>;
-
 	beforeEach(() => {
-		storageValues = installLocalStorage();
-	});
-
-	afterEach(() => {
-		vi.unstubAllGlobals();
+		writeAccounts({ activeAccountId: null, accounts: [] });
 	});
 
 	test('normalizes NIP-46 connection records and ignores malformed records', () => {
-		storageValues.set(
-			accountsStorageKey,
-			JSON.stringify({
+		expect(
+			normalizeAccountStore({
 				activeAccountId: 'unexpected-id',
 				accounts: [
 					{
@@ -52,9 +35,7 @@ describe('account store', () => {
 					{ method: 'nip07', pubkey: 'invalid', createdAt: 2 }
 				]
 			})
-		);
-
-		expect(readAccounts()).toEqual({
+		).toEqual({
 			activeAccountId: getAccountId('nip46', pubkeyA),
 			accounts: [
 				{

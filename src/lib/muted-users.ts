@@ -1,7 +1,12 @@
-import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
+import { persistedState } from 'svelte-persisted-state';
 import { normalizePubkey } from '$lib/nostr/pubkeys';
 
 const mutedUsersStorageKey = 'nostter:muted-users';
+
+const mutedPubkeysState = persistedState<string[]>(mutedUsersStorageKey, [], {
+	beforeRead: normalizeMutedPubkeys,
+	beforeWrite: normalizeMutedPubkeys
+});
 
 export function normalizeMutedPubkeys(value: unknown): string[] {
 	if (!Array.isArray(value)) {
@@ -19,11 +24,11 @@ export function normalizeMutedPubkeys(value: unknown): string[] {
 }
 
 export function readMutedPubkeys() {
-	return readJsonStorage(mutedUsersStorageKey, [], normalizeMutedPubkeys);
+	return mutedPubkeysState.current;
 }
 
 export function writeMutedPubkeys(pubkeys: string[]) {
-	writeJsonStorage(mutedUsersStorageKey, pubkeys, normalizeMutedPubkeys);
+	mutedPubkeysState.current = normalizeMutedPubkeys(pubkeys);
 }
 
 export function addMutedPubkey(pubkeys: string[], pubkey: string) {

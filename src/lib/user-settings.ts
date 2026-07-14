@@ -1,4 +1,4 @@
-import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
+import { persistedState } from 'svelte-persisted-state';
 
 export const themePreferences = ['system', 'light', 'dark'] as const;
 export const fontSizePreferences = ['large', 'medium', 'small'] as const;
@@ -28,6 +28,15 @@ const defaultUserSettings: UserSettings = {
 	postActionVisibility: 'onInteraction'
 };
 
+const userSettingsState = persistedState<UserSettings>(
+	userSettingsStorageKey,
+	{ ...defaultUserSettings },
+	{
+		beforeRead: normalizeUserSettings,
+		beforeWrite: normalizeUserSettings
+	}
+);
+
 function isThemePreference(value: unknown): value is ThemePreference {
 	return typeof value === 'string' && themePreferences.includes(value as ThemePreference);
 }
@@ -47,7 +56,7 @@ function isPostActionVisibility(value: unknown): value is PostActionVisibility {
 	);
 }
 
-function normalizeUserSettings(value: unknown): UserSettings {
+export function normalizeUserSettings(value: unknown): UserSettings {
 	if (!value || typeof value !== 'object') {
 		return { ...defaultUserSettings };
 	}
@@ -84,11 +93,11 @@ function shouldUseDarkTheme(theme: ThemePreference) {
 }
 
 export function readUserSettings(): UserSettings {
-	return readJsonStorage(userSettingsStorageKey, { ...defaultUserSettings }, normalizeUserSettings);
+	return userSettingsState.current;
 }
 
 export function writeUserSettings(nextSettings: UserSettings) {
-	writeJsonStorage(userSettingsStorageKey, nextSettings, normalizeUserSettings);
+	userSettingsState.current = normalizeUserSettings(nextSettings);
 }
 
 export function updateUserSettings(updater: (currentSettings: UserSettings) => UserSettings) {

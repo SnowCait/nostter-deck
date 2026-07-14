@@ -38,7 +38,8 @@
 		"nostr-tools": "^2.23.5",
 		"qrcode": "^1.5.4",
 		"rx-nostr": "^3.7.4",
-		"rxjs": "^7.8.2"
+		"rxjs": "^7.8.2",
+		"svelte-persisted-state": "^1.4.1"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.2",

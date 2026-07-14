@@ -1,37 +1,19 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import {
-	accountSettingsStorageKey,
+	normalizeAccountSettingsStore,
 	readAccountSettings,
 	readLikeReaction,
 	resetLikeReaction,
+	writeAccountSettingsStore,
 	writeLikeReaction
 } from './account-settings';
 
 const pubkey = 'a'.repeat(64);
 const otherPubkey = 'b'.repeat(64);
 
-function installLocalStorage() {
-	const values = new Map<string, string>();
-
-	vi.stubGlobal('localStorage', {
-		getItem: vi.fn((key: string) => values.get(key) ?? null),
-		setItem: vi.fn((key: string, value: string) => {
-			values.set(key, value);
-		})
-	});
-
-	return values;
-}
-
 describe('account settings storage', () => {
-	let storageValues: Map<string, string>;
-
 	beforeEach(() => {
-		storageValues = installLocalStorage();
-	});
-
-	afterEach(() => {
-		vi.unstubAllGlobals();
+		writeAccountSettingsStore({});
 	});
 
 	test('uses plus as the default like for unknown accounts and signed-out state', () => {
@@ -60,22 +42,18 @@ describe('account settings storage', () => {
 	});
 
 	test('normalizes invalid persisted settings', () => {
-		storageValues.set(
-			accountSettingsStorageKey,
-			JSON.stringify({
-				[pubkey.toUpperCase()]: { likeReaction: { type: 'unicode', emoji: '🐾' } },
-				[otherPubkey]: {
-					likeReaction: { type: 'custom', shortcode: 'bad space', url: 'http://x' }
-				},
-				notapubkey: { likeReaction: { type: 'unicode', emoji: '⭐' } }
-			})
-		);
+		const normalized = normalizeAccountSettingsStore({
+			[pubkey.toUpperCase()]: { likeReaction: { type: 'unicode', emoji: '🐾' } },
+			[otherPubkey]: {
+				likeReaction: { type: 'custom', shortcode: 'bad space', url: 'http://x' }
+			},
+			notapubkey: { likeReaction: { type: 'unicode', emoji: '⭐' } }
+		});
+		writeAccountSettingsStore(normalized);
 
 		expect(readLikeReaction(pubkey)).toEqual({ type: 'unicode', emoji: '🐾' });
 		expect(readLikeReaction(otherPubkey)).toEqual({ type: 'plus' });
-		expect(JSON.parse(storageValues.get(accountSettingsStorageKey) ?? '{}')).toHaveProperty(
-			pubkey.toUpperCase()
-		);
+		expect(normalized).toHaveProperty(pubkey);
 	});
 
 	test('resets like settings to plus', () => {

@@ -1,4 +1,4 @@
-import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
+import { persistedState } from 'svelte-persisted-state';
 
 export const deckLayoutModes = ['auto', 'deck', 'single'] as const;
 export type DeckLayoutMode = (typeof deckLayoutModes)[number];
@@ -15,11 +15,20 @@ const defaultUiState: UiState = {
 	deckLayoutMode: 'auto'
 };
 
+const uiState = persistedState<UiState>(
+	uiStateStorageKey,
+	{ ...defaultUiState },
+	{
+		beforeRead: normalizeUiState,
+		beforeWrite: normalizeUiState
+	}
+);
+
 function isDeckLayoutMode(value: unknown): value is DeckLayoutMode {
 	return typeof value === 'string' && deckLayoutModes.includes(value as DeckLayoutMode);
 }
 
-function normalizeUiState(value: unknown): UiState {
+export function normalizeUiState(value: unknown): UiState {
 	if (!value || typeof value !== 'object') {
 		return { ...defaultUiState };
 	}
@@ -37,11 +46,11 @@ function normalizeUiState(value: unknown): UiState {
 }
 
 export function readUiState(): UiState {
-	return readJsonStorage(uiStateStorageKey, { ...defaultUiState }, normalizeUiState);
+	return uiState.current;
 }
 
 export function writeUiState(nextState: UiState) {
-	writeJsonStorage(uiStateStorageKey, nextState, normalizeUiState);
+	uiState.current = normalizeUiState(nextState);
 }
 
 export function updateUiState(updater: (currentState: UiState) => UiState) {

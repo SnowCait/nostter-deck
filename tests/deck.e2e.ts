@@ -148,6 +148,49 @@ async function expectSidebarAndColumnGroupCentered(page: Page, column: Locator) 
 }
 
 test.describe('nostter deck', () => {
+	test('syncs decks and user interface settings across tabs', async ({ page }) => {
+		await openDeck(page);
+		const otherPage = await page.context().newPage();
+		await openDeck(otherPage);
+
+		await addWebsiteColumn(page, 'example.com');
+		await expect(deckColumns(otherPage)).toHaveCount(1);
+		await expect(sidebarButton(otherPage, 'example.com')).toBeVisible();
+
+		await page.getByRole('button', { name: 'Collapse sidebar' }).click();
+		await expectSidebarWidth(otherPage, sidebarCollapsedWidth);
+
+		await page.getByRole('button', { name: 'Settings' }).click();
+		await selectDropdownOption(page, page.getByLabel('Theme'), 'Dark');
+		await selectDropdownOption(page, page.getByLabel('Font size'), 'Larger');
+
+		await expect(otherPage.locator('html')).toHaveClass(/dark/);
+		await otherPage.getByRole('button', { name: 'Settings' }).click();
+		await expect(otherPage.getByLabel('Theme')).toHaveText('Dark');
+		await expect(otherPage.getByLabel('Font size')).toHaveText('Larger');
+
+		await otherPage.close();
+	});
+
+	test('removes the active account and signer across tabs', async ({ page }) => {
+		await openDeck(page, { isLoggedIn: true });
+		const otherPage = await page.context().newPage();
+		await openDeck(otherPage, { isLoggedIn: true });
+		await expect(sidebar(otherPage).getByRole('button', { name: 'Post' })).toBeVisible();
+
+		await sidebar(page).getByRole('button', { name: 'Accounts' }).click();
+		await page.getByTestId('account-menu').getByRole('button', { name: 'Remove npub' }).click();
+		await page
+			.getByRole('dialog', { name: 'Remove account?' })
+			.getByRole('button', { name: 'Remove account' })
+			.click();
+
+		await expect(sidebar(otherPage).getByRole('button', { name: 'Post' })).toHaveCount(0);
+		await expect(sidebar(otherPage).getByRole('button', { name: 'Log in' })).toBeEnabled();
+
+		await otherPage.close();
+	});
+
 	test('renders NIP-30 emoji from each event and rejects HTTP emoji URLs', async ({ page }) => {
 		await installFakeNostrRelay(page);
 		for (const url of [postEmojiUrl, profileEmojiUrl, channelEmojiUrl]) {

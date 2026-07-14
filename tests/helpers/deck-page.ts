@@ -14,7 +14,6 @@ export const sidebarCenterTolerance = 1;
 export const uiStateStorageKey = 'nostter:ui-state';
 export const userSettingsStorageKey = 'nostter:user-settings';
 export const accountSettingsStorageKey = 'nostter:account-settings';
-export const columnConfigsStorageKey = 'nostter:column-configs';
 export const columnDecksStorageKey = 'nostter:column-decks';
 export const mutedUsersStorageKey = 'nostter:muted-users';
 export const defaultRelaySelection = { type: 'default' };
@@ -147,26 +146,18 @@ export function deckColumns(page: Page) {
 }
 
 export async function readStoredColumns(page: Page) {
-	return page.evaluate(
-		({ columnConfigsKey, columnDecksKey }) => {
-			const legacyValue = window.localStorage.getItem(columnConfigsKey);
-			if (legacyValue) {
-				return JSON.parse(legacyValue);
-			}
+	return page.evaluate((columnDecksKey) => {
+		const deckStoreValue = window.localStorage.getItem(columnDecksKey);
+		if (!deckStoreValue) {
+			return null;
+		}
 
-			const deckStoreValue = window.localStorage.getItem(columnDecksKey);
-			if (!deckStoreValue) {
-				return null;
-			}
-
-			const deckStore = JSON.parse(deckStoreValue);
-			const decks = Array.isArray(deckStore.decks) ? deckStore.decks : [];
-			const activeDeck =
-				decks.find((deck: { id?: string }) => deck.id === deckStore.activeDeckId) ?? decks[0];
-			return Array.isArray(activeDeck?.columns) ? activeDeck.columns : null;
-		},
-		{ columnConfigsKey: columnConfigsStorageKey, columnDecksKey: columnDecksStorageKey }
-	);
+		const deckStore = JSON.parse(deckStoreValue);
+		const decks = Array.isArray(deckStore.decks) ? deckStore.decks : [];
+		const activeDeck =
+			decks.find((deck: { id?: string }) => deck.id === deckStore.activeDeckId) ?? decks[0];
+		return Array.isArray(activeDeck?.columns) ? activeDeck.columns : null;
+	}, columnDecksStorageKey);
 }
 
 export function columnOptionsButton(column: Locator) {

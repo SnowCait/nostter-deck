@@ -22,7 +22,6 @@
 	import { createTimelineController } from '$lib/deck/timeline-controller.svelte';
 	import { textClassByFontSize } from '$lib/font-size';
 	import { getProfile, getProfileDisplayName, requestProfiles } from '$lib/nostr/profiles';
-	import type { LikeReaction } from '$lib/nostr/emoji-reactions';
 	import {
 		clearDefaultRelays,
 		configureCachedNip65Relays,
@@ -35,6 +34,7 @@
 		getNip46AuthChallengeObservedAt,
 		getAuthState,
 		getAuthSigner,
+		connectAccountStorage,
 		initializeAuth,
 		loginWithNip07,
 		removeAccount as removeAuthAccount,
@@ -42,7 +42,6 @@
 	} from '$lib/nostr/auth.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { getLocale } from '$lib/paraglide/runtime.js';
-	import { readUserSettings } from '$lib/user-settings';
 	import { readLikeReaction } from '$lib/account-settings';
 
 	const defaultProfileRelays = [...profileRelays];
@@ -66,7 +65,7 @@
 	);
 	const appLocale = $derived(getLocale());
 	const textClass = $derived(textClassByFontSize[displaySettingsController.fontSize]);
-	let likeReaction: LikeReaction = $derived(readLikeReaction(accountPubkey));
+	const likeReaction = $derived(readLikeReaction(accountPubkey));
 
 	let keyboardNavigation = $state<ReturnType<typeof createKeyboardNavigation> | null>(null);
 
@@ -98,7 +97,7 @@
 	const composer = createComposerController({
 		getAccountPubkey: () => accountPubkey,
 		getSigner: getAuthSigner,
-		getIncludeClientTag: () => readUserSettings().includeClientTag,
+		getIncludeClientTag: () => displaySettingsController.includeClientTag,
 		focusTextarea: () => composeTextarea?.focus(),
 		resolveRelaySelection: relaySelectionController.resolveRelaySelection,
 		getAccountDiagnosticContext: () => {
@@ -113,7 +112,7 @@
 	const postActionController = createPostActionController({
 		getAccountPubkey: () => accountPubkey,
 		getSigner: getAuthSigner,
-		getIncludeClientTag: () => readUserSettings().includeClientTag,
+		getIncludeClientTag: () => displaySettingsController.includeClientTag,
 		getLikeReaction: () => readLikeReaction(accountPubkey)
 	});
 	const postShareController = createPostShareController();
@@ -156,11 +155,17 @@
 
 	onMount(() => {
 		const disconnectViewport = deckLayoutController.connectViewport();
+		const disconnectColumnStorage = columnDeckController.connectStorage();
+		const disconnectAccountStorage = connectAccountStorage();
 		void resetSessionTimelineCache().then(() => {
 			isTimelineCacheReady = true;
 		});
 		void initializeAuth();
-		return disconnectViewport;
+		return () => {
+			disconnectViewport();
+			disconnectColumnStorage();
+			disconnectAccountStorage();
+		};
 	});
 
 	$effect(() => {
@@ -254,17 +259,20 @@
 		onDuplicateDeck={columnDeckController.duplicateDeck}
 		onDeleteDeck={columnDeckController.deleteDeck}
 		onCompose={toggleComposePanel}
+		themePreference={displaySettingsController.theme}
 		fontSize={displaySettingsController.fontSize}
 		avatarShape={displaySettingsController.avatarShape}
 		postActionVisibility={displaySettingsController.postActionVisibility}
+		includeClientTag={displaySettingsController.includeClientTag}
 		{likeReaction}
 		{appLocale}
 		emojiReactionCandidates={emojiReactionController.candidates}
 		{textClass}
+		onThemeChange={displaySettingsController.updateTheme}
 		onFontSizeChange={displaySettingsController.updateFontSize}
 		onAvatarShapeChange={displaySettingsController.updateAvatarShape}
 		onPostActionVisibilityChange={displaySettingsController.updatePostActionVisibility}
-		onLikeReactionChange={(reaction) => (likeReaction = reaction)}
+		onIncludeClientTagChange={displaySettingsController.updateIncludeClientTag}
 		onSelectColumn={focusColumn}
 		onReorderColumn={columnDeckController.reorderColumn}
 		mutedPubkeys={mutedUsersController.pubkeys}
@@ -274,6 +282,8 @@
 		onUnmuteUser={mutedUsersController.unmuteUser}
 		isSingleColumnLayout={deckLayoutController.isSingleColumn}
 		isCompactViewport={deckLayoutController.isCompactViewport}
+		isCollapsed={deckLayoutController.sidebarCollapsed}
+		onToggleSidebar={deckLayoutController.toggleSidebar}
 		onToggleLayoutMode={deckLayoutController.toggleLayoutMode}
 	/>
 

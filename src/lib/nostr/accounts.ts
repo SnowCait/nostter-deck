@@ -1,5 +1,5 @@
 import type { BunkerPointer } from 'nostr-tools/nip46';
-import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
+import { persistedState } from 'svelte-persisted-state';
 import { normalizePubkey } from './pubkeys';
 
 export type AccountMethod = 'nip07' | 'nip46';
@@ -30,6 +30,15 @@ export type AccountStore = {
 export const accountsStorageKey = 'nostter:accounts';
 
 const emptyStore: AccountStore = { activeAccountId: null, accounts: [] };
+
+const accountsState = persistedState<AccountStore>(
+	accountsStorageKey,
+	{ ...emptyStore },
+	{
+		beforeRead: normalizeAccountStore,
+		beforeWrite: normalizeAccountStore
+	}
+);
 
 function normalizeBunker(value: unknown): BunkerPointer | null {
 	if (!value || typeof value !== 'object') {
@@ -91,7 +100,7 @@ function normalizeAccount(value: unknown): AccountRecord | null {
 	};
 }
 
-function normalizeStore(value: unknown): AccountStore {
+export function normalizeAccountStore(value: unknown): AccountStore {
 	if (!value || typeof value !== 'object') {
 		return { ...emptyStore };
 	}
@@ -119,11 +128,11 @@ export function getAccountId(method: AccountMethod, pubkey: string) {
 }
 
 export function readAccounts() {
-	return readJsonStorage(accountsStorageKey, { ...emptyStore }, normalizeStore);
+	return accountsState.current;
 }
 
 export function writeAccounts(store: AccountStore) {
-	writeJsonStorage(accountsStorageKey, store, normalizeStore);
+	accountsState.current = normalizeAccountStore(store);
 }
 
 export function upsertAccount(account: AccountRecord) {

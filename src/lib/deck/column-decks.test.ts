@@ -1,74 +1,35 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { columnConfigsStorageKey } from './column-configs';
+import { beforeEach, describe, expect, test } from 'vitest';
 import {
-	columnDecksStorageKey,
+	createDefaultColumnDeckStore,
 	duplicateColumnDeck,
 	hasColumnDeckName,
+	normalizeColumnDeckStore,
 	readColumnDeckStore,
-	type ColumnDeck
+	type ColumnDeck,
+	writeColumnDeckStore
 } from './column-decks';
 
-function installLocalStorage() {
-	const values = new Map<string, string>();
-	vi.stubGlobal('localStorage', {
-		getItem: vi.fn((key: string) => values.get(key) ?? null),
-		setItem: vi.fn((key: string, value: string) => values.set(key, value))
-	});
-	return values;
-}
-
 describe('column deck storage', () => {
-	let storageValues: Map<string, string>;
-
 	beforeEach(() => {
-		storageValues = installLocalStorage();
+		writeColumnDeckStore(createDefaultColumnDeckStore());
 	});
 
-	afterEach(() => {
-		vi.unstubAllGlobals();
-	});
-
-	test('migrates legacy columns into the default deck', () => {
-		storageValues.set(
-			columnConfigsStorageKey,
-			JSON.stringify([
-				{
-					id: 'search',
-					type: 'timeline',
-					timelineKind: 'preset',
-					sourceKey: 'timeline_search',
-					query: 'nostter',
-					width: 'standard'
-				}
-			])
-		);
-
+	test('creates an empty default deck without persisted decks', () => {
 		expect(readColumnDeckStore()).toEqual({
 			activeDeckId: 'default',
 			decks: [
 				{
 					id: 'default',
 					name: 'Default',
-					columns: [
-						{
-							id: 'search',
-							type: 'timeline',
-							timelineKind: 'preset',
-							sourceKey: 'timeline_search',
-							query: 'nostter',
-							width: 'standard'
-						}
-					]
+					columns: []
 				}
 			]
 		});
-		expect(storageValues.get(columnDecksStorageKey)).toContain('"activeDeckId":"default"');
 	});
 
 	test('normalizes persisted decks and falls back to the first deck', () => {
-		storageValues.set(
-			columnDecksStorageKey,
-			JSON.stringify({
+		expect(
+			normalizeColumnDeckStore({
 				activeDeckId: 'missing',
 				decks: [
 					{
@@ -83,9 +44,7 @@ describe('column deck storage', () => {
 					}
 				]
 			})
-		);
-
-		expect(readColumnDeckStore()).toEqual({
+		).toEqual({
 			activeDeckId: 'work',
 			decks: [
 				{

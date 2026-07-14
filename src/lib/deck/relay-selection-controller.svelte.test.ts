@@ -1,36 +1,16 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import {
 	createRelaySelectionController,
 	getAccountRelayOptions,
 	getNip65RelaySelectionPubkeys
 } from './relay-selection-controller.svelte';
 import type { AccountRecord } from '$lib/nostr/accounts';
-import { nip65CacheStorageKey } from '$lib/nostr/nip65';
 import { defaultRelays } from '$lib/nostr/relays';
 
 const pubkeyA = 'a'.repeat(64);
 const pubkeyB = 'b'.repeat(64);
 
-function installLocalStorage() {
-	const values = new Map<string, string>();
-	vi.stubGlobal('localStorage', {
-		getItem: vi.fn((key: string) => values.get(key) ?? null),
-		setItem: vi.fn((key: string, value: string) => values.set(key, value))
-	});
-	return values;
-}
-
 describe('relay selection controller', () => {
-	let storageValues: Map<string, string>;
-
-	beforeEach(() => {
-		storageValues = installLocalStorage();
-	});
-
-	afterEach(() => {
-		vi.unstubAllGlobals();
-	});
-
 	test('deduplicates saved account relay options by pubkey', () => {
 		const accounts: AccountRecord[] = [
 			{ id: `nip07:${pubkeyA}`, method: 'nip07', pubkey: pubkeyA, createdAt: 1 },
@@ -49,21 +29,13 @@ describe('relay selection controller', () => {
 	});
 
 	test('resolves account relay lists from persistent cache', () => {
-		storageValues.set(
-			nip65CacheStorageKey,
-			JSON.stringify({
-				[pubkeyA]: {
-					updatedAt: Date.now(),
-					relayTags: [
-						['r', 'wss://write.example/', 'write'],
-						['r', 'wss://read.example/', 'read']
-					]
-				}
-			})
-		);
 		const controller = createRelaySelectionController({
 			getAccounts: () => [],
-			getColumnConfigs: () => []
+			getColumnConfigs: () => [],
+			getCachedRelayTags: () => [
+				['r', 'wss://write.example/', 'write'],
+				['r', 'wss://read.example/', 'read']
+			]
 		});
 
 		expect(controller.resolveRelaySelection({ type: 'nip65', pubkey: pubkeyA })).toEqual([

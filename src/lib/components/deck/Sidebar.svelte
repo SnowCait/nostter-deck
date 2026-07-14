@@ -16,9 +16,13 @@
 	import type { AccountRecord } from '$lib/nostr/accounts';
 	import type { CustomEmojiReactionCandidate, LikeReaction } from '$lib/nostr/emoji-reactions';
 	import type { Profile } from '$lib/nostr/profiles';
-	import { readUiState, updateUiState } from '$lib/ui-state';
 	import type { Locale } from '$lib/paraglide/runtime.js';
-	import type { AvatarShape, FontSize, PostActionVisibility } from '$lib/user-settings';
+	import type {
+		AvatarShape,
+		FontSize,
+		PostActionVisibility,
+		ThemePreference
+	} from '$lib/user-settings';
 	import AccountMenu from './AccountMenu.svelte';
 	import DeckMenu from './DeckMenu.svelte';
 	import SidebarColumnList from './SidebarColumnList.svelte';
@@ -45,17 +49,20 @@
 		onDuplicateDeck: (deckId: string, name: string) => Promise<void>;
 		onDeleteDeck: (deckId: string) => Promise<void>;
 		onCompose: () => void;
+		themePreference: ThemePreference;
 		fontSize: FontSize;
 		avatarShape: AvatarShape;
 		postActionVisibility: PostActionVisibility;
+		includeClientTag: boolean;
 		likeReaction: LikeReaction;
 		appLocale: Locale;
 		emojiReactionCandidates: CustomEmojiReactionCandidate[];
 		textClass: FontSizeTextClasses;
+		onThemeChange: (theme: ThemePreference) => void;
 		onFontSizeChange: (fontSize: FontSize) => void;
 		onAvatarShapeChange: (avatarShape: AvatarShape) => void;
 		onPostActionVisibilityChange: (visibility: PostActionVisibility) => void;
-		onLikeReactionChange: (reaction: LikeReaction) => void;
+		onIncludeClientTagChange: (includeClientTag: boolean) => void;
 		onSelectColumn: (columnId: string) => void;
 		onReorderColumn: (columnId: string, targetIndex: number) => void;
 		mutedPubkeys: string[];
@@ -65,6 +72,8 @@
 		onUnmuteUser: (pubkey: string) => void;
 		isSingleColumnLayout: boolean;
 		isCompactViewport: boolean;
+		isCollapsed: boolean;
+		onToggleSidebar: () => void;
 		onToggleLayoutMode: () => void;
 	};
 
@@ -89,17 +98,20 @@
 		onDuplicateDeck,
 		onDeleteDeck,
 		onCompose,
+		themePreference,
 		fontSize,
 		avatarShape,
 		postActionVisibility,
+		includeClientTag,
 		likeReaction,
 		appLocale,
 		emojiReactionCandidates,
 		textClass,
+		onThemeChange,
 		onFontSizeChange,
 		onAvatarShapeChange,
 		onPostActionVisibilityChange,
-		onLikeReactionChange,
+		onIncludeClientTagChange,
 		onSelectColumn,
 		onReorderColumn,
 		mutedPubkeys,
@@ -109,9 +121,10 @@
 		onUnmuteUser,
 		isSingleColumnLayout,
 		isCompactViewport,
+		isCollapsed,
+		onToggleSidebar,
 		onToggleLayoutMode
 	}: Props = $props();
-	let isCollapsed = $state(readUiState().sidebarCollapsed);
 	let isMobileExpanded = $state(false);
 	let isSettingsDialogOpen = $state(false);
 	const isVisuallyCollapsed = $derived(isCompactViewport ? !isMobileExpanded : isCollapsed);
@@ -142,12 +155,7 @@
 			return;
 		}
 
-		const nextIsCollapsed = !isCollapsed;
-		isCollapsed = nextIsCollapsed;
-		updateUiState((currentState) => ({
-			...currentState,
-			sidebarCollapsed: nextIsCollapsed
-		}));
+		onToggleSidebar();
 	}
 
 	function closeMobileSidebar() {
@@ -386,18 +394,21 @@
 
 <SettingsDialog
 	bind:isOpen={isSettingsDialogOpen}
+	{themePreference}
 	{fontSize}
 	{avatarShape}
 	{postActionVisibility}
+	{includeClientTag}
 	{likeReaction}
 	{appLocale}
 	{emojiReactionCandidates}
 	{textClass}
 	{accountPubkey}
+	{onThemeChange}
 	{onFontSizeChange}
 	{onAvatarShapeChange}
 	{onPostActionVisibilityChange}
-	{onLikeReactionChange}
+	{onIncludeClientTagChange}
 	{mutedPubkeys}
 	{getProfile}
 	{requestProfiles}

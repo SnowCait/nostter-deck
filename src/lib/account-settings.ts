@@ -1,4 +1,4 @@
-import { readJsonStorage, writeJsonStorage } from '$lib/local-storage';
+import { persistedState } from 'svelte-persisted-state';
 import type { LikeReaction } from '$lib/nostr/emoji-reactions';
 import { normalizePubkey } from '$lib/nostr/pubkeys';
 
@@ -13,6 +13,15 @@ const defaultLikeReaction: LikeReaction = { type: 'plus' };
 const defaultAccountSettings: AccountSettings = {
 	likeReaction: defaultLikeReaction
 };
+
+const accountSettingsState = persistedState<AccountSettingsStore>(
+	accountSettingsStorageKey,
+	{},
+	{
+		beforeRead: normalizeAccountSettingsStore,
+		beforeWrite: normalizeAccountSettingsStore
+	}
+);
 
 function isValidShortcode(value: string) {
 	return /^[A-Za-z0-9_+-]+$/.test(value);
@@ -71,7 +80,7 @@ function normalizeAccountSettings(value: unknown): AccountSettings {
 	};
 }
 
-function normalizeAccountSettingsStore(value: unknown): AccountSettingsStore {
+export function normalizeAccountSettingsStore(value: unknown): AccountSettingsStore {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) {
 		return {};
 	}
@@ -98,11 +107,11 @@ export function getDefaultAccountSettings(): AccountSettings {
 }
 
 export function readAccountSettingsStore(): AccountSettingsStore {
-	return readJsonStorage(accountSettingsStorageKey, {}, normalizeAccountSettingsStore);
+	return accountSettingsState.current;
 }
 
 export function writeAccountSettingsStore(store: AccountSettingsStore) {
-	writeJsonStorage(accountSettingsStorageKey, store, normalizeAccountSettingsStore);
+	accountSettingsState.current = normalizeAccountSettingsStore(store);
 }
 
 export function readAccountSettings(pubkey: string | null | undefined): AccountSettings {

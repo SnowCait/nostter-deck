@@ -152,6 +152,14 @@ function writeAndSetAccountStore(store: AccountStore) {
 	return store;
 }
 
+function sameAccountStore(left: AccountStore, right: AccountStore) {
+	return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function cloneAccountStore(store: AccountStore): AccountStore {
+	return structuredClone($state.snapshot(store));
+}
+
 function loggedOutStatus() {
 	return getNip07Provider() ? 'loggedOut' : 'unavailable';
 }
@@ -224,20 +232,27 @@ async function getExtensionPubkey(
 	}
 }
 
-function activateNip07Account(signer: WindowNostr, pubkey: string) {
+function activateNip07Account(signer: WindowNostr, pubkey: string, { persistAccount = true } = {}) {
 	const record: AccountRecord = {
 		id: getAccountId('nip07', pubkey),
 		method: 'nip07',
 		pubkey,
 		createdAt: Date.now()
 	};
-	writeAndSetAccountStore(upsertAccount(record));
-	activeSigner = toEventSigner(signer);
+	if (persistAccount) {
+		writeAndSetAccountStore(upsertAccount(record));
+	}
+	replaceActiveSigner(toEventSigner(signer));
 	state = { status: 'loggedIn', pubkey };
 	return true;
 }
 
-async function activateNip07() {
+async function activateNip07(
+	{ expectedPubkey, persistAccount = true } = {} as {
+		expectedPubkey?: string;
+		persistAccount?: boolean;
+	}
+) {
 	const provider = getNip07Provider();
 	if (!provider) {
 		setLoggedOutState(loggedOutStatus());
@@ -249,11 +264,11 @@ async function activateNip07() {
 	if (!isCurrentAttempt(attempt)) {
 		return false;
 	}
-	if (!pubkey) {
+	if (!pubkey || (expectedPubkey && pubkey !== expectedPubkey)) {
 		setLoggedOutState('error');
 		return false;
 	}
-	return activateNip07Account(provider, pubkey);
+	return activateNip07Account(provider, pubkey, { persistAccount });
 }
 
 function createNip46Account(
@@ -275,7 +290,7 @@ async function activateNip46(
 	bunker: BunkerPointer,
 	clientSecretKey: Uint8Array,
 	expectedPubkey?: string,
-	{ preserveActiveSession = false } = {}
+	{ preserveActiveSession = false, persistAccount = true } = {}
 ) {
 	const { attempt } = beginAuthentication({ preserveActiveSession });
 	let signer: BunkerSigner | null = null;
@@ -295,7 +310,11 @@ async function activateNip46(
 		}
 
 		finishAuthenticationAttempt(attempt);
-		writeAndSetAccountStore(upsertAccount(createNip46Account(pubkey, signer.bp, clientSecretKey)));
+		if (persistAccount) {
+			writeAndSetAccountStore(
+				upsertAccount(createNip46Account(pubkey, signer.bp, clientSecretKey))
+			);
+		}
 		replaceActiveSigner(toEventSigner(signer), signer);
 		state = { status: 'loggedIn', pubkey };
 		return true;
@@ -322,6 +341,48 @@ export async function initializeAuth() {
 		return false;
 	}
 	return selectAccount(store.activeAccountId);
+}
+
+async function applyExternalAccountStore(nextStore: AccountStore) {
+	const previousActiveAccountId = accountStore.activeAccountId;
+	writeAndSetAccountStore(nextStore);
+
+	if (nextStore.activeAccountId === previousActiveAccountId) {
+		if (!nextStore.activeAccountId) {
+			authAttempt += 1;
+			setLoggedOutState();
+		}
+		return;
+	}
+
+	const account = nextStore.accounts.find(({ id }) => id === nextStore.activeAccountId);
+	if (!account) {
+		authAttempt += 1;
+		setLoggedOutState();
+		return;
+	}
+
+	if (account.method === 'nip07') {
+		await activateNip07({ expectedPubkey: account.pubkey, persistAccount: false });
+		return;
+	}
+	await activateNip46(account.bunker, hexToBytes(account.clientSecretKey), account.pubkey, {
+		persistAccount: false
+	});
+}
+
+export function connectAccountStorage() {
+	const dispose = $effect.root(() => {
+		$effect(() => {
+			const nextStore = readAccounts();
+			if (sameAccountStore(accountStore, nextStore)) {
+				return;
+			}
+			void applyExternalAccountStore(cloneAccountStore(nextStore));
+		});
+	});
+
+	return dispose;
 }
 
 export async function selectAccount(accountId: string) {

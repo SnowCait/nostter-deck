@@ -1,40 +1,57 @@
 import {
 	readUserSettings,
+	updateUserSettings,
 	type AvatarShape,
 	type FontSize,
-	type PostActionVisibility
+	type PostActionVisibility,
+	type ThemePreference
 } from '$lib/user-settings';
 
 export function createDisplaySettingsController() {
-	const initialSettings = readUserSettings();
-	let fontSize = $state<FontSize>(initialSettings.fontSize);
-	let avatarShape = $state<AvatarShape>(initialSettings.avatarShape);
-	let postActionVisibility = $state<PostActionVisibility>(initialSettings.postActionVisibility);
+	function updateSetting(update: Parameters<typeof updateUserSettings>[0]) {
+		updateUserSettings(update);
+	}
+
+	function updateTheme(nextTheme: ThemePreference) {
+		updateSetting((settings) => ({ ...settings, theme: nextTheme }));
+	}
 
 	function updateFontSize(nextFontSize: FontSize) {
-		fontSize = nextFontSize;
+		updateSetting((settings) => ({ ...settings, fontSize: nextFontSize }));
 	}
 
 	function updateAvatarShape(nextAvatarShape: AvatarShape) {
-		avatarShape = nextAvatarShape;
+		updateSetting((settings) => ({ ...settings, avatarShape: nextAvatarShape }));
 	}
 
 	function updatePostActionVisibility(nextVisibility: PostActionVisibility) {
-		postActionVisibility = nextVisibility;
+		updateSetting((settings) => ({ ...settings, postActionVisibility: nextVisibility }));
+	}
+
+	function updateIncludeClientTag(includeClientTag: boolean) {
+		updateSetting((settings) => ({ ...settings, includeClientTag }));
 	}
 
 	return {
+		get theme() {
+			return readUserSettings().theme;
+		},
 		get fontSize() {
-			return fontSize;
+			return readUserSettings().fontSize;
 		},
 		get avatarShape() {
-			return avatarShape;
+			return readUserSettings().avatarShape;
 		},
 		get postActionVisibility() {
-			return postActionVisibility;
+			return readUserSettings().postActionVisibility;
 		},
+		get includeClientTag() {
+			return readUserSettings().includeClientTag;
+		},
+		updateTheme,
 		updateFontSize,
 		updateAvatarShape,
-		updatePostActionVisibility
+		updatePostActionVisibility,
+		updateIncludeClientTag
 	};
 }

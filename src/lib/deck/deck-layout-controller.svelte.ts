@@ -11,16 +11,16 @@ export function createDeckLayoutController({
 	getColumns,
 	initialColumnId
 }: DeckLayoutControllerOptions) {
-	let mode = $state<DeckLayoutMode>(readUiState().deckLayoutMode);
 	let isCompactViewport = $state(false);
 	let selectedColumnId = $state(initialColumnId);
 
+	const mode = $derived(readUiState().deckLayoutMode);
+	const sidebarCollapsed = $derived(readUiState().sidebarCollapsed);
 	const effectiveMode = $derived(getEffectiveDeckLayoutMode(mode, isCompactViewport));
 	const isSingleColumn = $derived(effectiveMode === 'single');
 	const visibleColumnId = $derived(resolveSingleColumnId(getColumns(), selectedColumnId));
 
 	function persistMode(nextMode: DeckLayoutMode) {
-		mode = nextMode;
 		updateUiState((currentState) => ({
 			...currentState,
 			deckLayoutMode: nextMode
@@ -52,6 +52,13 @@ export function createDeckLayoutController({
 		persistMode(isSingleColumn ? 'deck' : 'single');
 	}
 
+	function toggleSidebar() {
+		updateUiState((currentState) => ({
+			...currentState,
+			sidebarCollapsed: !currentState.sidebarCollapsed
+		}));
+	}
+
 	function resetSelectedColumn(columnId: string) {
 		selectedColumnId = columnId;
 	}
@@ -69,9 +76,13 @@ export function createDeckLayoutController({
 		get visibleColumnId() {
 			return visibleColumnId;
 		},
+		get sidebarCollapsed() {
+			return sidebarCollapsed;
+		},
 		connectViewport,
 		showColumn,
 		toggleLayoutMode,
+		toggleSidebar,
 		resetSelectedColumn
 	};
 }

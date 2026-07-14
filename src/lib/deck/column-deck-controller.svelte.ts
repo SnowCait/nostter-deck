@@ -56,6 +56,14 @@ export function createColumnDeckController({
 		return { ...column };
 	}
 
+	function cloneStore(value: ColumnDeckStore): ColumnDeckStore {
+		return structuredClone($state.snapshot(value));
+	}
+
+	function sameStore(left: ColumnDeckStore, right: ColumnDeckStore) {
+		return JSON.stringify(left) === JSON.stringify(right);
+	}
+
 	function writeStore(nextStore: ColumnDeckStore) {
 		store = nextStore;
 		writeColumnDeckStore(nextStore);
@@ -123,6 +131,81 @@ export function createColumnDeckController({
 		if (activeColumnId) {
 			focusColumn(activeColumnId);
 		}
+	}
+
+	async function applyExternalStore(nextStore: ColumnDeckStore, revision: number) {
+		const nextDeck = nextStore.decks.find((deck) => deck.id === nextStore.activeDeckId);
+		if (!nextDeck) {
+			return;
+		}
+
+		if (nextStore.activeDeckId !== store.activeDeckId) {
+			await beforeActivateDeck();
+			if (revision !== externalStoreRevision || !sameStore(readColumnDeckStore(), nextStore)) {
+				return;
+			}
+
+			openSettingsColumnId = null;
+			resetFocusMemory();
+			store = nextStore;
+			columns = nextDeck.columns.map(cloneColumn);
+			activeColumnId = nextDeck.columns[0]?.id ?? '';
+			resetSelectedColumn(activeColumnId);
+			await afterStateChange();
+			if (activeColumnId && store.activeDeckId === nextStore.activeDeckId) {
+				focusColumn(activeColumnId);
+			}
+			return;
+		}
+
+		const nextColumns = nextDeck.columns.map(cloneColumn);
+		const removedColumnIds = columns
+			.filter(({ id }) => !nextColumns.some((column) => column.id === id))
+			.map(({ id }) => id);
+		const columnsChanged = JSON.stringify(columns) !== JSON.stringify(nextColumns);
+		const previousActiveColumnId = activeColumnId;
+
+		store = nextStore;
+		if (!columnsChanged) {
+			return;
+		}
+
+		columns = nextColumns;
+		for (const columnId of removedColumnIds) {
+			onColumnDeleted(columnId);
+		}
+		if (openSettingsColumnId && !nextColumns.some(({ id }) => id === openSettingsColumnId)) {
+			openSettingsColumnId = null;
+		}
+		if (!nextColumns.some(({ id }) => id === activeColumnId)) {
+			activeColumnId = nextColumns[0]?.id ?? '';
+			resetSelectedColumn(activeColumnId);
+		}
+
+		await afterStateChange();
+		if (activeColumnId && activeColumnId !== previousActiveColumnId) {
+			focusColumn(activeColumnId);
+		}
+	}
+
+	let externalStoreRevision = 0;
+
+	function connectStorage() {
+		const dispose = $effect.root(() => {
+			$effect(() => {
+				const nextStore = readColumnDeckStore();
+				const revision = ++externalStoreRevision;
+				if (sameStore(store, nextStore)) {
+					return;
+				}
+				void applyExternalStore(cloneStore(nextStore), revision);
+			});
+		});
+
+		return () => {
+			externalStoreRevision += 1;
+			dispose();
+		};
 	}
 
 	async function selectDeck(deckId: string) {
@@ -338,6 +421,7 @@ export function createColumnDeckController({
 			openSettingsColumnId = columnId;
 		},
 		setColumns,
+		connectStorage,
 		getColumnIndex,
 		selectDeck,
 		createDeck,

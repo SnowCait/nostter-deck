@@ -24,13 +24,10 @@
 		LikeReaction
 	} from '$lib/nostr/emoji-reactions';
 	import {
-		applyThemePreference,
 		avatarShapePreferences,
 		fontSizePreferences,
-		readUserSettings,
 		postActionVisibilityPreferences,
 		themePreferences,
-		updateUserSettings,
 		type AvatarShape,
 		type FontSize,
 		type PostActionVisibility,
@@ -43,18 +40,21 @@
 
 	type Props = {
 		isOpen: boolean;
+		themePreference: ThemePreference;
 		fontSize: FontSize;
 		avatarShape: AvatarShape;
 		postActionVisibility: PostActionVisibility;
+		includeClientTag: boolean;
 		likeReaction: LikeReaction;
 		appLocale: Locale;
 		emojiReactionCandidates: CustomEmojiReactionCandidate[];
 		textClass: FontSizeTextClasses;
 		accountPubkey: string | null;
 		onFontSizeChange: (fontSize: FontSize) => void;
+		onThemeChange: (theme: ThemePreference) => void;
 		onAvatarShapeChange: (avatarShape: AvatarShape) => void;
 		onPostActionVisibilityChange: (visibility: PostActionVisibility) => void;
-		onLikeReactionChange: (reaction: LikeReaction) => void;
+		onIncludeClientTagChange: (includeClientTag: boolean) => void;
 		mutedPubkeys: string[];
 		getProfile: (pubkey: string) => Profile | undefined;
 		requestProfiles: (pubkeys: string[], relays: string[]) => void;
@@ -64,18 +64,21 @@
 
 	let {
 		isOpen = $bindable(),
+		themePreference,
 		fontSize,
 		avatarShape,
 		postActionVisibility,
+		includeClientTag,
 		likeReaction,
 		appLocale,
 		emojiReactionCandidates,
 		textClass,
 		accountPubkey,
 		onFontSizeChange,
+		onThemeChange,
 		onAvatarShapeChange,
 		onPostActionVisibilityChange,
-		onLikeReactionChange,
+		onIncludeClientTagChange,
 		mutedPubkeys,
 		getProfile,
 		requestProfiles,
@@ -83,8 +86,6 @@
 		onUnmuteUser
 	}: Props = $props();
 	let currentLocale = $state<Locale>(getLocale());
-	let themePreference = $state(readUserSettings().theme);
-	let includeClientTag = $state(readUserSettings().includeClientTag);
 	let isMutedUsersExpanded = $state(false);
 
 	const localeLabels: Record<Locale, string> = {
@@ -172,47 +173,26 @@
 
 	function selectTheme(value: string) {
 		const selectedTheme = value as ThemePreference;
-		themePreference = selectedTheme;
-		updateUserSettings((currentSettings) => ({
-			...currentSettings,
-			theme: selectedTheme
-		}));
-		applyThemePreference(selectedTheme);
+		onThemeChange(selectedTheme);
 	}
 
 	function selectFontSize(value: string) {
 		const selectedFontSize = value as FontSize;
-		updateUserSettings((currentSettings) => ({
-			...currentSettings,
-			fontSize: selectedFontSize
-		}));
 		onFontSizeChange(selectedFontSize);
 	}
 
 	function selectAvatarShape(value: string) {
 		const selectedAvatarShape = value as AvatarShape;
-		updateUserSettings((currentSettings) => ({
-			...currentSettings,
-			avatarShape: selectedAvatarShape
-		}));
 		onAvatarShapeChange(selectedAvatarShape);
 	}
 
 	function selectPostActionVisibility(value: string) {
 		const selectedVisibility = value as PostActionVisibility;
-		updateUserSettings((currentSettings) => ({
-			...currentSettings,
-			postActionVisibility: selectedVisibility
-		}));
 		onPostActionVisibilityChange(selectedVisibility);
 	}
 
 	function toggleIncludeClientTag(event: Event) {
-		includeClientTag = (event.currentTarget as HTMLInputElement).checked;
-		updateUserSettings((currentSettings) => ({
-			...currentSettings,
-			includeClientTag
-		}));
+		onIncludeClientTagChange((event.currentTarget as HTMLInputElement).checked);
 	}
 
 	function getLikeReactionLabel(reaction: LikeReaction) {
@@ -231,7 +211,6 @@
 		}
 
 		writeLikeReaction(accountPubkey, reaction);
-		onLikeReactionChange(reaction);
 	}
 
 	function resetAccountLikeReaction() {
@@ -240,8 +219,6 @@
 		}
 
 		resetLikeReaction(accountPubkey);
-		const reaction = { type: 'plus' } satisfies LikeReaction;
-		onLikeReactionChange(reaction);
 	}
 
 	function getMutedUserName(pubkey: string) {

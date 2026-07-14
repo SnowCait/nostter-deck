@@ -1,71 +1,29 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { columnConfigsStorageKey, readColumnConfigs, writeColumnConfigs } from './column-configs';
+import { describe, expect, test } from 'vitest';
+import { normalizeColumnConfigs } from './column-configs';
 
-function installLocalStorage() {
-	const values = new Map<string, string>();
-
-	vi.stubGlobal('localStorage', {
-		getItem: vi.fn((key: string) => values.get(key) ?? null),
-		setItem: vi.fn((key: string, value: string) => {
-			values.set(key, value);
-		})
-	});
-
-	return values;
-}
-
-describe('column config storage', () => {
-	let storageValues: Map<string, string>;
-
-	beforeEach(() => {
-		storageValues = installLocalStorage();
-	});
-
-	afterEach(() => {
-		vi.unstubAllGlobals();
-	});
-
-	test('drops old-format persisted columns', () => {
-		storageValues.set(
-			columnConfigsStorageKey,
-			JSON.stringify([{ id: 'old-format', sourceKey: 'timeline_home', width: 'standard' }])
-		);
-
-		expect(readColumnConfigs()).toEqual([]);
-	});
-
-	test('drops invalid persisted column icons', () => {
-		storageValues.set(
-			columnConfigsStorageKey,
-			JSON.stringify([
+describe('column config normalization', () => {
+	test('drops old-format and invalid columns', () => {
+		expect(
+			normalizeColumnConfigs([
+				{ id: 'old-format', sourceKey: 'timeline_home', width: 'standard' },
+				{ id: '', type: 'website', url: 'example.com', width: 'standard' },
+				{ id: 'bad-width', type: 'website', url: 'example.com', width: 'huge' },
+				{ id: 'bad-url', type: 'website', url: 'http://example.com', width: 'standard' },
 				{
-					id: 'search',
+					id: 'bad-search',
 					type: 'timeline',
 					timelineKind: 'preset',
 					sourceKey: 'timeline_search',
-					query: 'nostter',
-					width: 'standard',
-					icon: 'invalid'
+					query: '   ',
+					width: 'standard'
 				}
 			])
-		);
-
-		expect(readColumnConfigs()).toEqual([
-			{
-				id: 'search',
-				type: 'timeline',
-				timelineKind: 'preset',
-				sourceKey: 'timeline_search',
-				query: 'nostter',
-				width: 'standard'
-			}
-		]);
+		).toEqual([]);
 	});
 
-	test('normalizes persisted search columns', () => {
-		storageValues.set(
-			columnConfigsStorageKey,
-			JSON.stringify([
+	test('normalizes display settings and persisted search columns', () => {
+		expect(
+			normalizeColumnConfigs([
 				{
 					id: 'search',
 					type: 'timeline',
@@ -75,11 +33,18 @@ describe('column config storage', () => {
 					width: 'standard',
 					title: ' My search ',
 					icon: 'radio'
+				},
+				{
+					id: 'invalid-icon',
+					type: 'timeline',
+					timelineKind: 'preset',
+					sourceKey: 'timeline_search',
+					query: 'nostter',
+					width: 'standard',
+					icon: 'invalid'
 				}
 			])
-		);
-
-		expect(readColumnConfigs()).toEqual([
+		).toEqual([
 			{
 				id: 'search',
 				type: 'timeline',
@@ -89,14 +54,21 @@ describe('column config storage', () => {
 				width: 'standard',
 				title: 'My search',
 				icon: 'radio'
+			},
+			{
+				id: 'invalid-icon',
+				type: 'timeline',
+				timelineKind: 'preset',
+				sourceKey: 'timeline_search',
+				query: 'nostter',
+				width: 'standard'
 			}
 		]);
 	});
 
-	test('normalizes persisted follow columns to target NIP-65 relays', () => {
-		storageValues.set(
-			columnConfigsStorageKey,
-			JSON.stringify([
+	test('normalizes follow columns to target NIP-65 relays', () => {
+		expect(
+			normalizeColumnConfigs([
 				{
 					id: 'follow-empty',
 					type: 'timeline',
@@ -116,9 +88,7 @@ describe('column config storage', () => {
 					width: 'standard'
 				}
 			])
-		);
-
-		expect(readColumnConfigs()).toEqual([
+		).toEqual([
 			{
 				id: 'follow-empty',
 				type: 'timeline',
@@ -140,10 +110,9 @@ describe('column config storage', () => {
 		]);
 	});
 
-	test('normalizes persisted channel columns', () => {
-		storageValues.set(
-			columnConfigsStorageKey,
-			JSON.stringify([
+	test('normalizes channel, website, and custom columns', () => {
+		expect(
+			normalizeColumnConfigs([
 				{
 					id: 'channel',
 					type: 'timeline',
@@ -151,14 +120,19 @@ describe('column config storage', () => {
 					sourceKey: 'timeline_channel',
 					channelId: 'A'.repeat(64),
 					relays: ['wss://relay.example'],
-					width: 'standard',
-					title: ' Channel ',
-					icon: 'radio'
+					width: 'standard'
+				},
+				{ id: 'website', type: 'website', url: 'example.com', width: 'wide' },
+				{
+					id: 'custom',
+					type: 'timeline',
+					timelineKind: 'custom',
+					filters: [{ kinds: [1], limit: 20 }],
+					relays: { type: 'nip65', pubkey: 'A'.repeat(64) },
+					width: 'narrow'
 				}
 			])
-		);
-
-		expect(readColumnConfigs()).toEqual([
+		).toEqual([
 			{
 				id: 'channel',
 				type: 'timeline',
@@ -169,78 +143,9 @@ describe('column config storage', () => {
 					type: 'custom',
 					urls: expect.arrayContaining(['wss://relay.example/'])
 				},
-				width: 'standard',
-				title: 'Channel',
-				icon: 'radio'
-			}
-		]);
-	});
-
-	test('normalizes persisted website columns', () => {
-		storageValues.set(
-			columnConfigsStorageKey,
-			JSON.stringify([
-				{
-					id: 'website',
-					type: 'website',
-					url: 'example.com',
-					width: 'wide'
-				}
-			])
-		);
-
-		expect(readColumnConfigs()).toEqual([
-			{
-				id: 'website',
-				type: 'website',
-				url: 'https://example.com/',
-				width: 'wide'
-			}
-		]);
-	});
-
-	test('drops invalid column configs', () => {
-		storageValues.set(
-			columnConfigsStorageKey,
-			JSON.stringify([
-				{ id: '', type: 'website', url: 'example.com', width: 'standard' },
-				{ id: 'bad-width', type: 'website', url: 'example.com', width: 'huge' },
-				{ id: 'bad-url', type: 'website', url: 'http://example.com', width: 'standard' },
-				{
-					id: 'bad-search',
-					type: 'timeline',
-					timelineKind: 'preset',
-					sourceKey: 'timeline_search',
-					query: '   ',
-					width: 'standard'
-				},
-				{
-					id: 'bad-channel',
-					type: 'timeline',
-					timelineKind: 'preset',
-					sourceKey: 'timeline_channel',
-					channelId: 'bad',
-					width: 'standard'
-				}
-			])
-		);
-
-		expect(readColumnConfigs()).toEqual([]);
-	});
-
-	test('round-trips valid column configs', () => {
-		writeColumnConfigs([
-			{
-				id: 'custom',
-				type: 'timeline',
-				timelineKind: 'custom',
-				filters: [{ kinds: [1], limit: 20 }],
-				relays: { type: 'nip65', pubkey: 'A'.repeat(64) },
-				width: 'narrow'
-			}
-		]);
-
-		expect(readColumnConfigs()).toEqual([
+				width: 'standard'
+			},
+			{ id: 'website', type: 'website', url: 'https://example.com/', width: 'wide' },
 			{
 				id: 'custom',
 				type: 'timeline',
