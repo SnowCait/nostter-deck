@@ -1,24 +1,21 @@
-import { beforeEach, describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import {
 	normalizeAccountSettingsStore,
 	readAccountSettings,
 	readLikeReaction,
 	resetLikeReaction,
-	writeAccountSettingsStore,
 	writeLikeReaction
 } from './account-settings';
 
 const pubkey = 'a'.repeat(64);
 const otherPubkey = 'b'.repeat(64);
+const resetPubkey = 'c'.repeat(64);
+const unknownPubkey = 'd'.repeat(64);
 
 describe('account settings storage', () => {
-	beforeEach(() => {
-		writeAccountSettingsStore({});
-	});
-
 	test('uses plus as the default like for unknown accounts and signed-out state', () => {
 		expect(readLikeReaction(null)).toEqual({ type: 'plus' });
-		expect(readAccountSettings(pubkey)).toEqual({
+		expect(readAccountSettings(unknownPubkey)).toEqual({
 			likeReaction: { type: 'plus' }
 		});
 	});
@@ -49,17 +46,17 @@ describe('account settings storage', () => {
 			},
 			notapubkey: { likeReaction: { type: 'unicode', emoji: '⭐' } }
 		});
-		writeAccountSettingsStore(normalized);
 
-		expect(readLikeReaction(pubkey)).toEqual({ type: 'unicode', emoji: '🐾' });
-		expect(readLikeReaction(otherPubkey)).toEqual({ type: 'plus' });
-		expect(normalized).toHaveProperty(pubkey);
+		expect(normalized).toEqual({
+			[pubkey]: { likeReaction: { type: 'unicode', emoji: '🐾' } },
+			[otherPubkey]: { likeReaction: { type: 'plus' } }
+		});
 	});
 
 	test('resets like settings to plus', () => {
-		writeLikeReaction(pubkey, { type: 'unicode', emoji: '⭐' });
-		resetLikeReaction(pubkey);
+		writeLikeReaction(resetPubkey, { type: 'unicode', emoji: '⭐' });
+		resetLikeReaction(resetPubkey);
 
-		expect(readLikeReaction(pubkey)).toEqual({ type: 'plus' });
+		expect(readLikeReaction(resetPubkey)).toEqual({ type: 'plus' });
 	});
 });

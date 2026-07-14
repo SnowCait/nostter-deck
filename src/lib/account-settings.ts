@@ -18,8 +18,7 @@ const accountSettingsState = persistedState<AccountSettingsStore>(
 	accountSettingsStorageKey,
 	{},
 	{
-		beforeRead: normalizeAccountSettingsStore,
-		beforeWrite: normalizeAccountSettingsStore
+		beforeRead: normalizeAccountSettingsStore
 	}
 );
 
@@ -106,14 +105,6 @@ export function getDefaultAccountSettings(): AccountSettings {
 	};
 }
 
-export function readAccountSettingsStore(): AccountSettingsStore {
-	return accountSettingsState.current;
-}
-
-export function writeAccountSettingsStore(store: AccountSettingsStore) {
-	accountSettingsState.current = normalizeAccountSettingsStore(store);
-}
-
 export function readAccountSettings(pubkey: string | null | undefined): AccountSettings {
 	if (!pubkey) {
 		return getDefaultAccountSettings();
@@ -121,7 +112,7 @@ export function readAccountSettings(pubkey: string | null | undefined): AccountS
 
 	const normalizedPubkey = normalizePubkey(pubkey);
 	return normalizedPubkey
-		? (readAccountSettingsStore()[normalizedPubkey] ?? getDefaultAccountSettings())
+		? (accountSettingsState.current[normalizedPubkey] ?? getDefaultAccountSettings())
 		: getDefaultAccountSettings();
 }
 
@@ -133,8 +124,8 @@ export function updateAccountSettings(
 	if (!normalizedPubkey) {
 		return;
 	}
-	const store = readAccountSettingsStore();
-	writeAccountSettingsStore({
+	const store = accountSettingsState.current;
+	accountSettingsState.current = normalizeAccountSettingsStore({
 		...store,
 		[normalizedPubkey]: updater(store[normalizedPubkey] ?? getDefaultAccountSettings())
 	});
