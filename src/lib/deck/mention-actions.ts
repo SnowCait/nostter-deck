@@ -205,6 +205,31 @@ export function reconcileMentionRanges(
 	});
 }
 
+export function applyTextInsertion(
+	text: string,
+	mentions: MentionRange[],
+	selectionStart: number,
+	selectionEnd: number,
+	insertion: string
+) {
+	const normalizedStart = normalizeSelectionOffset(selectionStart, text.length);
+	const normalizedEnd = normalizeSelectionOffset(selectionEnd, text.length);
+	const start = Math.min(normalizedStart, normalizedEnd);
+	const end = Math.max(normalizedStart, normalizedEnd);
+	const nextText = `${text.slice(0, start)}${insertion}${text.slice(end)}`;
+	const caret = start + insertion.length;
+
+	return {
+		text: nextText,
+		mentions: reconcileMentionRanges(text, nextText, mentions),
+		caret
+	};
+}
+
+function normalizeSelectionOffset(value: number, textLength: number) {
+	return Number.isFinite(value) ? Math.min(Math.max(Math.trunc(value), 0), textLength) : textLength;
+}
+
 export function applyMentionSelection(
 	text: string,
 	mentions: MentionRange[],

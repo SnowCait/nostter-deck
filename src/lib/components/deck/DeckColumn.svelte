@@ -21,6 +21,7 @@
 	import type { SharePostResult } from '$lib/deck/post-share-controller.svelte';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type {
+		CustomEmojiDefinition,
 		CustomEmojiReactionCandidate,
 		EmojiReaction,
 		LikeReaction
@@ -92,7 +93,8 @@
 		onPublishChannelMessage: (
 			channel: ChannelTimelineColumnConfig,
 			content: string,
-			media?: MediaAttachmentController
+			media?: MediaAttachmentController,
+			customEmojis?: CustomEmojiDefinition[]
 		) => Promise<PublishPostResult>;
 		onCustomTimelineSave: (filters: NostrFilter[], relays: RelaySelection) => void;
 		onLoadOlderTimeline: () => void;
@@ -476,7 +478,10 @@
 			channel={column}
 			{textClass}
 			{mentionCandidates}
-			onPublish={(content, media) => onPublishChannelMessage(column, content, media)}
+			{appLocale}
+			{emojiReactionCandidates}
+			onPublish={(content, media, customEmojis) =>
+				onPublishChannelMessage(column, content, media, customEmojis)}
 		/>
 	{/if}
 

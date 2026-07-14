@@ -5,7 +5,7 @@ import type * as Nostr from 'nostr-typedef';
 import { buildNip10ReplyTags, buildNip18QuoteRepost } from '$lib/deck/post-actions';
 import { addContentMentionTags } from '$lib/deck/mention-actions';
 import { getNostrClient } from './client';
-import type { EmojiReaction, LikeReaction } from './emoji-reactions';
+import type { CustomEmojiDefinition, EmojiReaction, LikeReaction } from './emoji-reactions';
 import { normalizeRelay } from './relays';
 
 import type { PublishDiagnostic } from './publish-diagnostics';
@@ -34,6 +34,7 @@ export type PublishPostResult =
 export type PublishOptions = {
 	includeClientTag?: boolean;
 	signingTimeoutMs?: number;
+	customEmojis?: CustomEmojiDefinition[];
 };
 
 export type PublishLikeReactionOptions = PublishOptions & {
@@ -64,6 +65,50 @@ class SigningTimeoutError extends Error {
 
 function withClientTag(tags: string[][], includeClientTag: boolean) {
 	return includeClientTag ? [...tags, [...nostterClientTag]] : tags;
+}
+
+function addContentCustomEmojiTags(
+	tags: string[][],
+	content: string,
+	customEmojis: CustomEmojiDefinition[]
+) {
+	const taggedShortcodes = new Set(
+		tags.flatMap((tag) => (tag[0] === 'emoji' && tag[1] ? [tag[1]] : []))
+	);
+	const nextTags = [...tags];
+	for (const emoji of customEmojis) {
+		if (
+			taggedShortcodes.has(emoji.shortcode) ||
+			!isValidCustomEmojiDefinition(emoji) ||
+			!content.includes(`:${emoji.shortcode}:`)
+		) {
+			continue;
+		}
+
+		taggedShortcodes.add(emoji.shortcode);
+		nextTags.push(
+			emoji.address
+				? ['emoji', emoji.shortcode, emoji.url, emoji.address]
+				: ['emoji', emoji.shortcode, emoji.url]
+		);
+	}
+	return nextTags;
+}
+
+function addContentTags(tags: string[][], content: string, customEmojis: CustomEmojiDefinition[]) {
+	return addContentCustomEmojiTags(addContentMentionTags(tags, content), content, customEmojis);
+}
+
+function isValidCustomEmojiDefinition(emoji: CustomEmojiDefinition) {
+	if (!/^[A-Za-z0-9_-]+$/.test(emoji.shortcode)) {
+		return false;
+	}
+
+	try {
+		return new URL(emoji.url).protocol === 'https:';
+	} catch {
+		return false;
+	}
 }
 
 function createReactionReferenceTags(target: PublishReactionTarget, targetReadRelays: string[]) {
@@ -237,12 +282,12 @@ export function publishShortTextNote(
 	content: string,
 	pubkey: string,
 	signer: EventSigner,
-	{ includeClientTag = false, signingTimeoutMs }: PublishOptions = {}
+	{ includeClientTag = false, signingTimeoutMs, customEmojis = [] }: PublishOptions = {}
 ) {
 	return publishEvent(
 		{
 			kind: ShortTextNote,
-			tags: withClientTag(addContentMentionTags([], content), includeClientTag),
+			tags: withClientTag(addContentTags([], content, customEmojis), includeClientTag),
 			content,
 			created_at: now()
 		},
@@ -259,13 +304,13 @@ export function publishChannelMessage(
 	pubkey: string,
 	signer: EventSigner,
 	channelRelays: string[],
-	{ includeClientTag = false, signingTimeoutMs }: PublishOptions = {}
+	{ includeClientTag = false, signingTimeoutMs, customEmojis = [] }: PublishOptions = {}
 ) {
 	return publishEvent(
 		{
 			kind: ChannelMessage,
 			tags: withClientTag(
-				addContentMentionTags([['e', channelId, '', 'root']], content),
+				addContentTags([['e', channelId, '', 'root']], content, customEmojis),
 				includeClientTag
 			),
 			content,
@@ -284,13 +329,13 @@ export function publishReply(
 	pubkey: string,
 	signer: EventSigner,
 	targetReadRelays: string[],
-	{ includeClientTag = false, signingTimeoutMs }: PublishOptions = {}
+	{ includeClientTag = false, signingTimeoutMs, customEmojis = [] }: PublishOptions = {}
 ) {
 	return publishEvent(
 		{
 			kind: ShortTextNote,
 			tags: withClientTag(
-				addContentMentionTags(buildNip10ReplyTags(target, targetReadRelays), content),
+				addContentTags(buildNip10ReplyTags(target, targetReadRelays), content, customEmojis),
 				includeClientTag
 			),
 			content,
@@ -309,14 +354,17 @@ export function publishQuoteRepost(
 	pubkey: string,
 	signer: EventSigner,
 	targetReadRelays: string[],
-	{ includeClientTag = false, signingTimeoutMs }: PublishOptions = {}
+	{ includeClientTag = false, signingTimeoutMs, customEmojis = [] }: PublishOptions = {}
 ) {
 	const quote = buildNip18QuoteRepost(content, target, targetReadRelays);
 
 	return publishEvent(
 		{
 			kind: ShortTextNote,
-			tags: withClientTag(addContentMentionTags(quote.tags, quote.content), includeClientTag),
+			tags: withClientTag(
+				addContentTags(quote.tags, quote.content, customEmojis),
+				includeClientTag
+			),
 			content: quote.content,
 			created_at: now()
 		},

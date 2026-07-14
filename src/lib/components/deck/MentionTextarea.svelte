@@ -2,6 +2,7 @@
 	import { tick, untrack } from 'svelte';
 	import type { ClassValue, HTMLTextareaAttributes } from 'svelte/elements';
 	import {
+		applyTextInsertion,
 		applyMentionSelection,
 		getActiveMentionQuery,
 		hydrateCanonicalMentions,
@@ -87,6 +88,25 @@
 			? `${id}-mention-option-${matchingCandidates[activeIndex].pubkey}`
 			: undefined
 	);
+
+	export async function insertText(insertion: string) {
+		const result = applyTextInsertion(
+			displayText,
+			mentions,
+			selectionStart,
+			selectionEnd,
+			insertion
+		);
+		displayText = result.text;
+		mentions = result.mentions;
+		selectionStart = result.caret;
+		selectionEnd = result.caret;
+		dismissedQueryKey = null;
+		emitCanonicalValue();
+		await tick();
+		textarea?.focus();
+		textarea?.setSelectionRange(result.caret, result.caret);
+	}
 
 	$effect(() => {
 		if (value === lastCanonicalValue) {

@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import {
 	addContentMentionTags,
 	applyMentionSelection,
+	applyTextInsertion,
 	createMentionCandidates,
 	extractMentionPubkeys,
 	getActiveMentionQuery,
@@ -142,6 +143,37 @@ describe('mention editing', () => {
 		);
 		expect(shifted).toEqual([{ start: 10, end: 16, pubkey: alice }]);
 		expect(reconcileMentionRanges(selected.text, 'Hello @Alce ', selected.mentions)).toEqual([]);
+	});
+
+	test('inserts and replaces text while preserving unaffected mentions', () => {
+		const mentions = [{ start: 6, end: 12, pubkey: alice }];
+		const beforeMention = applyTextInsertion('Hello @Alice world', mentions, 6, 6, '😀 ');
+
+		expect(beforeMention).toEqual({
+			text: 'Hello 😀 @Alice world',
+			mentions: [{ start: 9, end: 15, pubkey: alice }],
+			caret: 9
+		});
+		expect(serializeMentionText(beforeMention.text, beforeMention.mentions)).toBe(
+			`Hello 😀 nostr:${npubEncode(alice)} world`
+		);
+
+		const replacement = applyTextInsertion('Hello @Alice world', mentions, 13, 18, '🌍');
+		expect(replacement).toEqual({
+			text: 'Hello @Alice 🌍',
+			mentions,
+			caret: 15
+		});
+	});
+
+	test('releases a mention when inserted text replaces part of it', () => {
+		expect(
+			applyTextInsertion('Hello @Alice world', [{ start: 6, end: 12, pubkey: alice }], 8, 12, '😀')
+		).toEqual({
+			text: 'Hello @A😀 world',
+			mentions: [],
+			caret: 10
+		});
 	});
 
 	test('hydrates known npub and nprofile references while leaving unknown profiles intact', () => {

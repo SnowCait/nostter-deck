@@ -3,11 +3,22 @@
 	import { Send } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { createPastedImageFileReader } from '$lib/deck/media-attachment-actions';
+	import {
+		applyComposerEmojiSelection,
+		type ComposerCustomEmoji
+	} from '$lib/deck/composer-emoji-actions';
 	import { createMediaAttachmentController } from '$lib/deck/media-attachment-controller.svelte';
 	import type { MentionCandidate } from '$lib/deck/mention-actions';
 	import type { ChannelTimelineColumnConfig } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
+	import type {
+		CustomEmojiDefinition,
+		CustomEmojiReactionCandidate,
+		EmojiReaction
+	} from '$lib/nostr/emoji-reactions';
 	import type { PublishPostResult } from '$lib/nostr/publish';
+	import type { Locale } from '$lib/paraglide/runtime.js';
+	import EmojiReactionPicker from './EmojiReactionPicker.svelte';
 	import MediaAttachmentControls from './MediaAttachmentControls.svelte';
 	import MentionTextarea from './MentionTextarea.svelte';
 	import PublishFailureNotice from './PublishFailureNotice.svelte';
@@ -16,24 +27,38 @@
 		channel: ChannelTimelineColumnConfig;
 		textClass: FontSizeTextClasses;
 		mentionCandidates: MentionCandidate[];
+		emojiReactionCandidates: CustomEmojiReactionCandidate[];
+		appLocale: Locale;
 		onPublish: (
 			content: string,
-			media: ReturnType<typeof createMediaAttachmentController>
+			media: ReturnType<typeof createMediaAttachmentController>,
+			customEmojis: CustomEmojiDefinition[]
 		) => Promise<PublishPostResult>;
 	};
 
-	let { channel, textClass, mentionCandidates, onPublish }: Props = $props();
+	let {
+		channel,
+		textClass,
+		mentionCandidates,
+		emojiReactionCandidates,
+		appLocale,
+		onPublish
+	}: Props = $props();
 	let content = $state('');
 	let isPublishing = $state(false);
 	let publishFailure = $state<Extract<PublishPostResult, { ok: false }> | null>(null);
 	let hasFocusWithin = $state(false);
 	let isMediaPickerOpen = $state(false);
+	let isEmojiPickerOpen = $state(false);
+	let selectedCustomEmojis: ComposerCustomEmoji[] = [];
+	let textareaEditor = $state<{ insertText: (text: string) => Promise<void> }>();
 	const media = createMediaAttachmentController();
 	const getPastedImageFiles = createPastedImageFileReader();
 
 	const isExpanded = $derived(
 		hasFocusWithin ||
 			isMediaPickerOpen ||
+			isEmojiPickerOpen ||
 			content.length > 0 ||
 			media.mediaAttachments.length > 0 ||
 			publishFailure
@@ -65,7 +90,7 @@
 		publishFailure = null;
 		let result: PublishPostResult;
 		try {
-			result = await onPublish(content, media);
+			result = await onPublish(content, media, selectedCustomEmojis);
 		} finally {
 			isPublishing = false;
 		}
@@ -76,6 +101,7 @@
 		}
 
 		content = '';
+		selectedCustomEmojis = [];
 		media.clearMediaAttachments();
 	}
 
@@ -103,7 +129,7 @@
 	}
 
 	function handleFocusOut(event: FocusEvent) {
-		if (isMediaPickerOpen) {
+		if (isMediaPickerOpen || isEmojiPickerOpen) {
 			return;
 		}
 		const currentTarget = event.currentTarget as HTMLElement;
@@ -120,6 +146,19 @@
 
 	function handleMediaPickerClose() {
 		isMediaPickerOpen = false;
+	}
+
+	function handleEmojiPickerOpenChange(open: boolean) {
+		isEmojiPickerOpen = open;
+		if (open) {
+			hasFocusWithin = true;
+		}
+	}
+
+	function selectEmoji(reaction: EmojiReaction) {
+		const selection = applyComposerEmojiSelection(selectedCustomEmojis, reaction);
+		selectedCustomEmojis = selection.customEmojis;
+		void textareaEditor?.insertText(selection.insertion);
 	}
 </script>
 
@@ -139,6 +178,7 @@
 		<div class="flex items-start gap-2">
 			<label class="sr-only" for={`channel-compose-${channel.id}`}>{m.channel_post_text()}</label>
 			<MentionTextarea
+				bind:this={textareaEditor}
 				id={`channel-compose-${channel.id}`}
 				rows={isExpanded ? 3 : 1}
 				rootClass="min-w-0 flex-1"
@@ -177,7 +217,18 @@
 				listTestId="channel-compose-media-list"
 				onMediaPickerOpen={handleMediaPickerOpen}
 				onMediaPickerClose={handleMediaPickerClose}
-			/>
+			>
+				<EmojiReactionPicker
+					customEmojis={emojiReactionCandidates}
+					locale={appLocale}
+					disabled={isPublishing}
+					{isPublishing}
+					buttonClass="flex size-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 disabled:cursor-not-allowed disabled:text-slate-400 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-50 disabled:dark:text-slate-600"
+					label={m.add_emoji()}
+					onSelect={selectEmoji}
+					onOpenChange={handleEmojiPickerOpenChange}
+				/>
+			</MediaAttachmentControls>
 		{/if}
 		{#if publishFailure}
 			<PublishFailureNotice failure={publishFailure} {textClass} />

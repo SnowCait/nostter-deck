@@ -3,6 +3,7 @@ import { ChannelMessage, ShortTextNote } from 'nostr-tools/kinds';
 import type { EventSigner } from 'rx-nostr';
 import { getPostQuoteTarget, getPostReplyTarget } from './post-actions';
 import type { ChannelTimelineColumnConfig, Post, RelaySelection } from './types';
+import { applyComposerEmojiSelection, type ComposerCustomEmoji } from './composer-emoji-actions';
 import {
 	appendMediaUrls,
 	createMediaAttachmentController,
@@ -15,11 +16,13 @@ import {
 	publishQuoteRepost,
 	publishReply,
 	publishShortTextNote,
+	type PublishOptions,
 	type PublishPostResult,
 	type PublishStage
 } from '$lib/nostr/publish';
 import { createPublishDiagnostic, type PublishOperation } from '$lib/nostr/publish-diagnostics';
 import type { AccountMethod } from '$lib/nostr/accounts';
+import type { CustomEmojiDefinition, EmojiReaction } from '$lib/nostr/emoji-reactions';
 import { resolveRelaySelection as resolveSelectionRelays } from '$lib/nostr/relays';
 
 type ComposerControllerOptions = {
@@ -59,6 +62,7 @@ export function createComposerController({
 	let isPublishing = $state(false);
 	let hasError = $state(false);
 	let publishFailure = $state<Extract<PublishPostResult, { ok: false }> | null>(null);
+	let customEmojis: ComposerCustomEmoji[] = [];
 	const media = createMediaAttachmentController({ uploadMedia });
 	const hasContent = $derived(content.length > 0 || media.hasPublishableMedia);
 	const canSubmit = $derived(
@@ -75,6 +79,7 @@ export function createComposerController({
 		}
 		if (mode !== 'post') {
 			content = '';
+			customEmojis = [];
 			media.clearMediaAttachments();
 		}
 		mode = 'post';
@@ -94,6 +99,7 @@ export function createComposerController({
 		const nextTargetId = getPostReplyTarget(post)?.id ?? null;
 		if (mode !== 'reply' || currentTargetId !== nextTargetId) {
 			content = '';
+			customEmojis = [];
 			media.clearMediaAttachments();
 		}
 		mode = 'reply';
@@ -114,6 +120,7 @@ export function createComposerController({
 		const nextTargetId = getPostQuoteTarget(post)?.id ?? null;
 		if (mode !== 'quote' || currentTargetId !== nextTargetId) {
 			content = '';
+			customEmojis = [];
 			media.clearMediaAttachments();
 		}
 		mode = 'quote';
@@ -135,6 +142,7 @@ export function createComposerController({
 	function reset() {
 		close();
 		content = '';
+		customEmojis = [];
 		mode = 'post';
 		replyTargetPost = null;
 		quoteTargetPost = null;
@@ -182,9 +190,7 @@ export function createComposerController({
 						pubkey,
 						signer,
 						await getTargetReadRelays(replyTarget.pubkey),
-						{
-							includeClientTag: getIncludeClientTag()
-						}
+						getPublishOptions(customEmojis)
 					);
 				}
 
@@ -195,15 +201,16 @@ export function createComposerController({
 						pubkey,
 						signer,
 						await getTargetReadRelays(quoteTarget.pubkey),
-						{
-							includeClientTag: getIncludeClientTag()
-						}
+						getPublishOptions(customEmojis)
 					);
 				}
 
-				return await publishShortTextNote(publishContent, pubkey, signer, {
-					includeClientTag: getIncludeClientTag()
-				});
+				return await publishShortTextNote(
+					publishContent,
+					pubkey,
+					signer,
+					getPublishOptions(customEmojis)
+				);
 			} catch (internalError) {
 				return {
 					ok: false,
@@ -223,6 +230,7 @@ export function createComposerController({
 		}
 
 		content = '';
+		customEmojis = [];
 		isOpen = false;
 		mode = 'post';
 		replyTargetPost = null;
@@ -233,7 +241,8 @@ export function createComposerController({
 	async function publishChannel(
 		channel: ChannelTimelineColumnConfig,
 		content: string,
-		channelMedia?: MediaAttachmentController
+		channelMedia?: MediaAttachmentController,
+		channelCustomEmojis: CustomEmojiDefinition[] = []
 	) {
 		const pubkey = getAccountPubkey();
 		const signer = getSigner();
@@ -265,9 +274,7 @@ export function createComposerController({
 				pubkey,
 				signer,
 				resolveRelaySelection(channel.relays),
-				{
-					includeClientTag: getIncludeClientTag()
-				}
+				getPublishOptions(channelCustomEmojis)
 			);
 			return result.ok
 				? result
@@ -322,6 +329,27 @@ export function createComposerController({
 
 	function operationForMode(value: typeof mode): PublishOperation {
 		return value === 'reply' ? 'reply' : value === 'quote' ? 'quote' : 'post';
+	}
+
+	function getPublishOptions(emojis: CustomEmojiDefinition[]): PublishOptions {
+		return {
+			includeClientTag: getIncludeClientTag(),
+			...(emojis.length > 0
+				? {
+						customEmojis: emojis.map(({ shortcode, url, address }) => ({
+							shortcode,
+							url,
+							...(address ? { address } : {})
+						}))
+					}
+				: {})
+		};
+	}
+
+	function selectEmoji(reaction: EmojiReaction) {
+		const selection = applyComposerEmojiSelection(customEmojis, reaction);
+		customEmojis = selection.customEmojis;
+		return selection.insertion;
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -400,6 +428,7 @@ export function createComposerController({
 		publish,
 		publishChannel,
 		removeMediaAttachment,
-		reset
+		reset,
+		selectEmoji
 	};
 }

@@ -242,6 +242,93 @@ describe('channel publishing', () => {
 		);
 	});
 
+	test('adds selected custom emoji tags to every content event template', async () => {
+		const address = `30030:${pubkey}:party`;
+		const customEmojis = [
+			{
+				shortcode: 'party',
+				url: 'https://emoji.example/party.png',
+				address
+			}
+		];
+		const content = 'Hello :party:';
+		const target = {
+			id: targetEventId,
+			pubkey: targetPubkey,
+			created_at: 100,
+			kind: ShortTextNote,
+			tags: [],
+			content: 'Target',
+			sig: '0'.repeat(128)
+		};
+		const mainSigner = createSigner();
+		const channelSigner = createSigner();
+		const replySigner = createSigner();
+		const quoteSigner = createSigner();
+
+		await publishShortTextNote(content, pubkey, mainSigner, { customEmojis });
+		await publishChannelMessage(content, channelId, pubkey, channelSigner, [channelRelay], {
+			customEmojis
+		});
+		await publishReply(content, target, pubkey, replySigner, [targetRelay], { customEmojis });
+		await publishQuoteRepost(content, target, pubkey, quoteSigner, [targetRelay], {
+			customEmojis
+		});
+
+		const emojiTag = ['emoji', 'party', 'https://emoji.example/party.png', address];
+		expect(mainSigner.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({ tags: [emojiTag], content })
+		);
+		expect(channelSigner.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({ tags: [['e', channelId, '', 'root'], emojiTag], content })
+		);
+		expect(replySigner.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tags: [
+					['e', targetEventId, targetRelay, 'root', targetPubkey],
+					['p', targetPubkey, targetRelay],
+					emojiTag
+				],
+				content
+			})
+		);
+		expect(quoteSigner.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tags: [['q', targetEventId, targetRelay, targetPubkey], emojiTag],
+				content: expect.stringMatching(/^Hello :party:\n\nnostr:nevent/)
+			})
+		);
+	});
+
+	test('publishes only valid deduplicated custom emoji tags still referenced by content', async () => {
+		const signer = createSigner();
+		const content = `Hello nostr:${npubEncode(mentionedPubkey)} :party: :party_2: :party:`;
+
+		await publishShortTextNote(content, pubkey, signer, {
+			includeClientTag: true,
+			customEmojis: [
+				{ shortcode: 'party', url: 'https://emoji.example/party.png' },
+				{ shortcode: 'party', url: 'https://emoji.example/duplicate.png' },
+				{ shortcode: 'party_2', url: 'https://emoji.example/party-2.png' },
+				{ shortcode: 'unused', url: 'https://emoji.example/unused.png' },
+				{ shortcode: 'invalid+', url: 'https://emoji.example/invalid.png' },
+				{ shortcode: 'insecure', url: 'http://emoji.example/insecure.png' }
+			]
+		});
+
+		expect(signer.signEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tags: [
+					['p', mentionedPubkey],
+					['emoji', 'party', 'https://emoji.example/party.png'],
+					['emoji', 'party_2', 'https://emoji.example/party-2.png'],
+					[...nostterClientTag]
+				],
+				content
+			})
+		);
+	});
+
 	test('publishes a NIP-10 reply to default write and target read relays', async () => {
 		const signer = createSigner();
 

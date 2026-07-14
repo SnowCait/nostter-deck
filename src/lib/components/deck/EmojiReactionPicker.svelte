@@ -20,6 +20,7 @@
 		buttonClass: string | string[];
 		label?: string;
 		onSelect: (reaction: EmojiReaction) => void;
+		onOpenChange?: (open: boolean) => void;
 	};
 
 	const {
@@ -29,7 +30,8 @@
 		isPublishing = false,
 		buttonClass,
 		label = m.react_with_emoji(),
-		onSelect
+		onSelect,
+		onOpenChange
 	}: Props = $props();
 
 	let isOpen = $state(false);
@@ -156,7 +158,7 @@
 	}
 </script>
 
-<Popover.Root bind:open={isOpen}>
+<Popover.Root bind:open={isOpen} {onOpenChange}>
 	<Popover.Trigger
 		type="button"
 		{disabled}

@@ -1,13 +1,16 @@
 <script lang="ts">
-	import { CalendarClock, MessageCircle, Quote, Send, Smile, UserRound, X } from '@lucide/svelte';
+	import { CalendarClock, MessageCircle, Quote, Send, UserRound, X } from '@lucide/svelte';
 	import type { createComposerController } from '$lib/deck/composer-controller.svelte';
 	import { createPastedImageFileReader } from '$lib/deck/media-attachment-actions';
 	import type { MentionCandidate } from '$lib/deck/mention-actions';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { Profile } from '$lib/nostr/profiles';
+	import type { CustomEmojiReactionCandidate, EmojiReaction } from '$lib/nostr/emoji-reactions';
 	import { m } from '$lib/paraglide/messages.js';
+	import type { Locale } from '$lib/paraglide/runtime.js';
 	import type { AvatarShape } from '$lib/user-settings';
 	import MediaAttachmentControls from './MediaAttachmentControls.svelte';
+	import EmojiReactionPicker from './EmojiReactionPicker.svelte';
 	import MentionTextarea from './MentionTextarea.svelte';
 	import ProfileAvatar from './ProfileAvatar.svelte';
 	import PublishFailureNotice from './PublishFailureNotice.svelte';
@@ -19,6 +22,8 @@
 		avatarShape: AvatarShape;
 		textClass: FontSizeTextClasses;
 		mentionCandidates: MentionCandidate[];
+		emojiReactionCandidates: CustomEmojiReactionCandidate[];
+		appLocale: Locale;
 		textarea?: HTMLTextAreaElement;
 	};
 
@@ -29,10 +34,17 @@
 		avatarShape,
 		textClass,
 		mentionCandidates,
+		emojiReactionCandidates,
+		appLocale,
 		textarea = $bindable()
 	}: Props = $props();
 
 	const getPastedImageFiles = createPastedImageFileReader();
+	let textareaEditor = $state<{ insertText: (text: string) => Promise<void> }>();
+
+	function selectEmoji(reaction: EmojiReaction) {
+		void textareaEditor?.insertText(composer.selectEmoji(reaction));
+	}
 
 	function handlePaste(event: ClipboardEvent) {
 		if (composer.isPublishing) {
@@ -135,6 +147,7 @@
 					: m.post_text()}
 		</label>
 		<MentionTextarea
+			bind:this={textareaEditor}
 			id="compose-text"
 			rootClass="flex min-h-[220px] flex-1 flex-col"
 			textareaClass={[
@@ -168,15 +181,15 @@
 			thumbnailClass="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
 			removeButtonClass="flex size-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-200 hover:text-slate-950 disabled:cursor-not-allowed disabled:text-slate-400 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-50 disabled:dark:text-slate-600"
 		>
-			<button
-				type="button"
-				class="flex size-9 cursor-not-allowed items-center justify-center rounded-md text-slate-400 dark:text-slate-600"
-				title={m.coming_soon()}
-				aria-label={m.add_emoji()}
-				disabled
-			>
-				<Smile class="size-4" aria-hidden="true" />
-			</button>
+			<EmojiReactionPicker
+				customEmojis={emojiReactionCandidates}
+				locale={appLocale}
+				disabled={composer.isPublishing}
+				isPublishing={composer.isPublishing}
+				buttonClass="flex size-9 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 disabled:cursor-not-allowed disabled:text-slate-400 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-50 disabled:dark:text-slate-600"
+				label={m.add_emoji()}
+				onSelect={selectEmoji}
+			/>
 			<button
 				type="button"
 				class="flex size-9 cursor-not-allowed items-center justify-center rounded-md text-slate-400 dark:text-slate-600"

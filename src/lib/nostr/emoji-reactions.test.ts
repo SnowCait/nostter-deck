@@ -40,6 +40,20 @@ describe('emoji reaction candidates', () => {
 		]);
 	});
 
+	test('rejects shortcodes outside the NIP-30 character set', () => {
+		expect(
+			normalizeCustomEmojiReactionCandidates([
+				{ shortcode: 'valid-name_2', url: 'https://emoji.example/valid.png' },
+				{ shortcode: 'invalid+', url: 'https://emoji.example/invalid.png' }
+			])
+		).toEqual([
+			expect.objectContaining({
+				primaryShortcode: 'valid-name_2',
+				url: 'https://emoji.example/valid.png'
+			})
+		]);
+	});
+
 	test('keeps colliding shortcodes when URLs differ', () => {
 		const candidates = normalizeCustomEmojiReactionCandidates([
 			{ shortcode: 'party', url: 'https://emoji.example/party.png' },

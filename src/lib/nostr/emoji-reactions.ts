@@ -5,9 +5,15 @@ import { getNostrClient } from './client';
 import { normalizePubkey } from './pubkeys';
 import { combineRelays, defaultRelays, normalizeRelay } from './relays';
 
-export type EmojiReaction =
-	| { type: 'unicode'; emoji: string }
-	| { type: 'custom'; shortcode: string; url: string; address?: string };
+export type CustomEmojiDefinition = {
+	shortcode: string;
+	url: string;
+	address?: string;
+};
+
+export type CustomEmojiReaction = { type: 'custom' } & CustomEmojiDefinition;
+
+export type EmojiReaction = { type: 'unicode'; emoji: string } | CustomEmojiReaction;
 
 export type LikeReaction = { type: 'plus' } | EmojiReaction;
 
@@ -49,7 +55,7 @@ type EmojiCandidateSource = {
 const emojiReactionRequestTimeoutMs = 5_000;
 
 function isValidShortcode(value: string) {
-	return /^[A-Za-z0-9_+-]+$/.test(value);
+	return /^[A-Za-z0-9_-]+$/.test(value);
 }
 
 function normalizeEmojiUrl(value: string) {

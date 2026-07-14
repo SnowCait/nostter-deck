@@ -84,6 +84,9 @@ const pathPreviewUrl = 'https://example.com/path?from=nostter';
 const postEmojiUrl = 'https://example.com/emoji/post.png';
 const profileEmojiUrl = 'https://example.com/emoji/profile.png';
 const channelEmojiUrl = 'https://example.com/emoji/channel.png';
+const composerEmojiUrl = 'https://example.com/emoji/composer-party.png';
+const composerEmojiSecondUrl = 'https://example.com/emoji/composer-party-second.png';
+const composerEmojiSetAddress = `30030:${textEventPubkey}:party-second`;
 const nostterClientTag = [
 	'client',
 	'nostter deck',
@@ -97,6 +100,27 @@ async function pressKeyboardShortcuts(page: Page) {
 	await page.keyboard.down('Shift');
 	await page.keyboard.press('Slash');
 	await page.keyboard.up('Shift');
+}
+
+async function waitForComposerCustomEmojis(picker: Locator) {
+	await expect
+		.poll(() =>
+			picker.evaluate(
+				(element) => (element as HTMLElement & { customEmoji?: unknown[] }).customEmoji?.length ?? 0
+			)
+		)
+		.toBe(2);
+}
+
+async function dispatchPickerEmoji(
+	picker: Locator,
+	detail: { unicode?: string; emoji: { name?: string } }
+) {
+	await picker.evaluate(
+		(element, emojiDetail) =>
+			element.dispatchEvent(new CustomEvent('emoji-click', { detail: emojiDetail })),
+		detail
+	);
 }
 
 async function horizontalCenter(locator: Locator) {
@@ -3023,6 +3047,74 @@ test.describe('nostter deck', () => {
 		await expect(composer).toBeHidden();
 	});
 
+	test('inserts and publishes Unicode and colliding custom emoji from the compose panel', async ({
+		page
+	}) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page, { isLoggedIn: true });
+
+		await sidebar(page).getByRole('button', { name: 'Post' }).click();
+		const composer = page.getByRole('region', { name: 'Post' });
+		const textarea = composer.getByLabel('Post text');
+		const addEmoji = composer.getByRole('button', { name: 'Add emoji' });
+		const picker = page.locator('[data-slot="popover-content"] emoji-picker');
+
+		await textarea.fill('Hello world');
+		await textarea.evaluate((element) => (element as HTMLTextAreaElement).setSelectionRange(6, 11));
+		await addEmoji.click();
+		await expect(picker).toBeVisible();
+		await dispatchPickerEmoji(picker, { unicode: '😀', emoji: {} });
+		await expect(textarea).toHaveValue('Hello 😀');
+		await expect(textarea).toBeFocused();
+		expect(
+			await textarea.evaluate((element) => (element as HTMLTextAreaElement).selectionStart)
+		).toBe(8);
+
+		await textarea.press('End');
+		await textarea.press('Space');
+		await addEmoji.click();
+		await expect(picker).toBeVisible();
+		await waitForComposerCustomEmojis(picker);
+		await dispatchPickerEmoji(picker, { emoji: { name: 'party' } });
+		await expect(textarea).toHaveValue('Hello 😀 :party:');
+		await textarea.press('Space');
+
+		await addEmoji.click();
+		await expect(picker).toBeVisible();
+		await waitForComposerCustomEmojis(picker);
+		await dispatchPickerEmoji(picker, { emoji: { name: 'party_2' } });
+		await expect(textarea).toHaveValue('Hello 😀 :party: :party_2:');
+		await composer.getByRole('button', { name: 'Post', exact: true }).click();
+		await expect(composer).toBeHidden();
+
+		await expect
+			.poll(() =>
+				page.evaluate(
+					({ firstUrl, secondUrl, address, clientTag }) =>
+						(window.__nostterFakeRelayPublishedEvents ?? []).some(({ event }) => {
+							const published = event as Record<string, unknown>;
+							return (
+								published.kind === 1 &&
+								published.content === 'Hello 😀 :party: :party_2:' &&
+								JSON.stringify(published.tags) ===
+									JSON.stringify([
+										['emoji', 'party', firstUrl],
+										['emoji', 'party_2', secondUrl, address],
+										clientTag
+									])
+							);
+						}),
+					{
+						firstUrl: composerEmojiUrl,
+						secondUrl: composerEmojiSecondUrl,
+						address: composerEmojiSetAddress,
+						clientTag: nostterClientTag
+					}
+				)
+			)
+			.toBe(true);
+	});
+
 	test('matches the composer header height to deck columns', async ({ page }) => {
 		await openDeck(page, { isLoggedIn: true });
 		await addCustomTimelineColumn(page);
@@ -3615,6 +3707,60 @@ test.describe('nostter deck', () => {
 						);
 					},
 					{ channelId, channelRelay, message, clientTag: nostterClientTag }
+				)
+			)
+			.toBe(true);
+	});
+
+	test('keeps the channel composer expanded and publishes selected custom emoji', async ({
+		page
+	}) => {
+		await installFakeNostrRelay(page);
+		await openDeck(page, { isLoggedIn: true });
+
+		const channelId = '4'.repeat(64);
+		await addPresetColumn(page, 'timeline_channel', { channelTarget: channelId });
+		const composer = deckColumns(page).last().getByTestId('channel-composer');
+		const textarea = composer.getByLabel('Channel message');
+		await textarea.focus();
+
+		await composer.getByRole('button', { name: 'Add emoji' }).click();
+		const picker = page.locator('[data-slot="popover-content"] emoji-picker');
+		await expect(picker).toBeVisible();
+		await waitForComposerCustomEmojis(picker);
+		await picker.locator('input[type="search"]').focus();
+		await expect(composer.getByRole('button', { name: 'Add media' })).toBeVisible();
+		await expect(picker).toBeVisible();
+
+		await dispatchPickerEmoji(picker, { emoji: { name: 'party_2' } });
+		await expect(textarea).toHaveValue(':party:');
+		await expect(textarea).toBeFocused();
+		await composer.getByRole('button', { name: 'Post', exact: true }).click();
+		await expect(textarea).toHaveValue('');
+
+		await expect
+			.poll(() =>
+				page.evaluate(
+					({ channelId, emojiUrl, address, clientTag }) =>
+						(window.__nostterFakeRelayPublishedEvents ?? []).some(({ event }) => {
+							const published = event as Record<string, unknown>;
+							return (
+								published.kind === 42 &&
+								published.content === ':party:' &&
+								JSON.stringify(published.tags) ===
+									JSON.stringify([
+										['e', channelId, '', 'root'],
+										['emoji', 'party', emojiUrl, address],
+										clientTag
+									])
+							);
+						}),
+					{
+						channelId,
+						emojiUrl: composerEmojiSecondUrl,
+						address: composerEmojiSetAddress,
+						clientTag: nostterClientTag
+					}
 				)
 			)
 			.toBe(true);

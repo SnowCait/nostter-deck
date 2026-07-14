@@ -1,5 +1,12 @@
 import type { Page } from '@playwright/test';
-import { Reaction, RelayList, Repost, ShortTextNote } from 'nostr-tools/kinds';
+import {
+	Emojisets,
+	Reaction,
+	RelayList,
+	Repost,
+	ShortTextNote,
+	UserEmojiList
+} from 'nostr-tools/kinds';
 
 declare global {
 	interface Window {
@@ -30,10 +37,12 @@ export async function installFakeNostrRelay(
 			failNip11,
 			rejectPublish,
 			authMode,
+			emojiSetKind,
 			reactionKind,
 			relayListKind,
 			repostKind,
-			shortTextNoteKind
+			shortTextNoteKind,
+			userEmojiListKind
 		}) => {
 			const relayConnections: Record<string, number> = {};
 			const relayProfileRequests: Record<string, number> = {};
@@ -91,6 +100,8 @@ export async function installFakeNostrRelay(
 			const postEmojiUrl = 'https://example.com/emoji/post.png';
 			const profileEmojiUrl = 'https://example.com/emoji/profile.png';
 			const channelEmojiUrl = 'https://example.com/emoji/channel.png';
+			const composerEmojiUrl = 'https://example.com/emoji/composer-party.png';
+			const composerEmojiSecondUrl = 'https://example.com/emoji/composer-party-second.png';
 			const textEvent = {
 				id: 'event-custom-timeline-1',
 				pubkey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -354,6 +365,32 @@ export async function installFakeNostrRelay(
 				content: '',
 				sig: '0'.repeat(128)
 			};
+			const userEmojiListEvent = {
+				id: '7'.repeat(64),
+				pubkey: textEvent.pubkey,
+				created_at: textEvent.created_at,
+				kind: userEmojiListKind,
+				tags: [
+					['title', 'My emojis'],
+					['emoji', 'party', composerEmojiUrl],
+					['a', `${emojiSetKind}:${textEvent.pubkey}:party-second`]
+				],
+				content: '',
+				sig: '0'.repeat(128)
+			};
+			const emojiSetEvent = {
+				id: '6'.repeat(64),
+				pubkey: textEvent.pubkey,
+				created_at: textEvent.created_at,
+				kind: emojiSetKind,
+				tags: [
+					['d', 'party-second'],
+					['title', 'Party second'],
+					['emoji', 'party', composerEmojiSecondUrl]
+				],
+				content: '',
+				sig: '0'.repeat(128)
+			};
 			const bulkCreatedAt = Math.floor(Date.now() / 1000) - 60;
 			const bulkEvents = Array.from({ length: 250 }, (_, index) => ({
 				id: index.toString(16).padStart(64, '0'),
@@ -547,6 +584,17 @@ export async function installFakeNostrRelay(
 						(filter) =>
 							filter.kinds?.includes(relayListKind) && filter.authors?.includes(textEvent.pubkey)
 					);
+					const requestsUserEmojiList = filters.some(
+						(filter) =>
+							filter.kinds?.includes(userEmojiListKind) &&
+							filter.authors?.includes(textEvent.pubkey)
+					);
+					const requestsEmojiSet = filters.some(
+						(filter) =>
+							filter.kinds?.includes(emojiSetKind) &&
+							filter.authors?.includes(textEvent.pubkey) &&
+							filter['#d']?.includes('party-second')
+					);
 					for (const filter of filters) {
 						if (!filter.kinds?.includes(0) || !filter.authors) {
 							continue;
@@ -715,6 +763,20 @@ export async function installFakeNostrRelay(
 						}, 5);
 					}
 
+					if (requestsUserEmojiList) {
+						setTimeout(() => {
+							this.emitMessage(['EVENT', subId, userEmojiListEvent]);
+							this.emitMessage(['EOSE', subId]);
+						}, 5);
+					}
+
+					if (requestsEmojiSet) {
+						setTimeout(() => {
+							this.emitMessage(['EVENT', subId, emojiSetEvent]);
+							this.emitMessage(['EOSE', subId]);
+						}, 5);
+					}
+
 					if (requestsContactList) {
 						const address = `${contactListEvent.kind}:${contactListEvent.pubkey}:`;
 						relayAddressRequests[address] = (relayAddressRequests[address] ?? 0) + 1;
@@ -797,10 +859,12 @@ export async function installFakeNostrRelay(
 			failNip11: options.failNip11 === true,
 			rejectPublish: options.rejectPublish === true,
 			authMode: options.authMode,
+			emojiSetKind: Emojisets,
 			reactionKind: Reaction,
 			relayListKind: RelayList,
 			repostKind: Repost,
-			shortTextNoteKind: ShortTextNote
+			shortTextNoteKind: ShortTextNote,
+			userEmojiListKind: UserEmojiList
 		}
 	);
 }

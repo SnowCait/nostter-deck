@@ -368,6 +368,80 @@ describe('composer controller', () => {
 		expect(harness.controller.mediaAttachments).toHaveLength(0);
 	});
 
+	test('keeps custom emoji assignments after failure and clears them after success', async () => {
+		const harness = createHarness();
+		const firstInsertion = harness.controller.selectEmoji({
+			type: 'custom',
+			shortcode: 'party',
+			url: 'https://emoji.example/first.png'
+		});
+		const secondInsertion = harness.controller.selectEmoji({
+			type: 'custom',
+			shortcode: 'party',
+			url: 'https://emoji.example/second.png',
+			address: `30030:${pubkey}:second`
+		});
+		publishShortTextNote
+			.mockResolvedValueOnce({
+				ok: false,
+				reason: 'relay-failed',
+				stage: 'publishing',
+				targetRelayCount: 1
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				event: event('f'.repeat(64), { pubkey, content: 'Published post' })
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				event: event('e'.repeat(64), { pubkey, content: 'Plain post' })
+			});
+
+		await harness.controller.open();
+		harness.controller.content = `${firstInsertion} ${secondInsertion}`;
+		await harness.controller.publish();
+		await harness.controller.publish();
+
+		const emojiOptions = {
+			includeClientTag: true,
+			customEmojis: [
+				{ shortcode: 'party', url: 'https://emoji.example/first.png' },
+				{
+					shortcode: 'party_2',
+					url: 'https://emoji.example/second.png',
+					address: `30030:${pubkey}:second`
+				}
+			]
+		};
+		expect(firstInsertion).toBe(':party:');
+		expect(secondInsertion).toBe(':party_2:');
+		expect(publishShortTextNote).toHaveBeenNthCalledWith(
+			1,
+			':party: :party_2:',
+			pubkey,
+			expect.anything(),
+			emojiOptions
+		);
+		expect(publishShortTextNote).toHaveBeenNthCalledWith(
+			2,
+			':party: :party_2:',
+			pubkey,
+			expect.anything(),
+			emojiOptions
+		);
+
+		await harness.controller.open();
+		harness.controller.content = 'Plain post';
+		await harness.controller.publish();
+		expect(publishShortTextNote).toHaveBeenNthCalledWith(
+			3,
+			'Plain post',
+			pubkey,
+			expect.anything(),
+			{ includeClientTag: true }
+		);
+	});
+
 	test('uploads selected images and appends their URLs before publishing a channel message', async () => {
 		const uploadMedia = vi
 			.fn()
@@ -392,6 +466,40 @@ describe('composer controller', () => {
 			expect.anything(),
 			['wss://channel.example/'],
 			{ includeClientTag: true }
+		);
+	});
+
+	test('passes selected custom emoji to channel publishing', async () => {
+		const harness = createHarness();
+		publishChannelMessage.mockResolvedValueOnce({
+			ok: true,
+			event: event('f'.repeat(64), { pubkey, content: ':party:' })
+		});
+
+		await harness.controller.publishChannel(channel, ':party:', undefined, [
+			{
+				shortcode: 'party',
+				url: 'https://emoji.example/party.png',
+				address: `30030:${pubkey}:party`
+			}
+		]);
+
+		expect(publishChannelMessage).toHaveBeenCalledWith(
+			':party:',
+			channel.channelId,
+			pubkey,
+			expect.anything(),
+			['wss://channel.example/'],
+			{
+				includeClientTag: true,
+				customEmojis: [
+					{
+						shortcode: 'party',
+						url: 'https://emoji.example/party.png',
+						address: `30030:${pubkey}:party`
+					}
+				]
+			}
 		);
 	});
 

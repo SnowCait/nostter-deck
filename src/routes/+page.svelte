@@ -285,6 +285,8 @@
 			avatarShape={displaySettingsController.avatarShape}
 			{textClass}
 			mentionCandidates={mentionCandidateController.candidates}
+			{appLocale}
+			emojiReactionCandidates={emojiReactionController.candidates}
 			bind:textarea={composeTextarea}
 		/>
 	{/if}
