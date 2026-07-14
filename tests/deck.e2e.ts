@@ -3857,12 +3857,21 @@ test.describe('nostter deck', () => {
 		await composer.getByRole('button', { name: 'Post', exact: true }).click();
 
 		await expect(channelInput).toHaveValue('Keep this channel draft.');
-		await expect(composer.getByRole('alert')).toHaveText(
-			'Could not publish your post. Please try again.'
-		);
+		await expect(composer.getByRole('alert')).toHaveText('The relays rejected your post.');
 	});
 
 	test('keeps the draft visible when every relay rejects a post', async ({ page }) => {
+		await page.addInitScript(() => {
+			const target = window as Window & { __nostterCopiedDiagnostics?: string };
+			Object.defineProperty(navigator, 'clipboard', {
+				configurable: true,
+				value: {
+					writeText: async (value: string) => {
+						target.__nostterCopiedDiagnostics = value;
+					}
+				}
+			});
+		});
 		await installFakeNostrRelay(page, { rejectPublish: true });
 		await openDeck(page, { isLoggedIn: true });
 
@@ -3873,9 +3882,31 @@ test.describe('nostter deck', () => {
 
 		await expect(composer).toBeVisible();
 		await expect(composer.getByLabel('Post text')).toHaveValue('Keep this draft.');
-		await expect(composer.getByRole('alert')).toHaveText(
-			'Could not publish your post. Please try again.'
+		await expect(composer.getByRole('alert')).toHaveText('The relays rejected your post.');
+		await composer.getByRole('button', { name: 'Copy diagnostics' }).click();
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						(window as Window & { __nostterCopiedDiagnostics?: string })
+							.__nostterCopiedDiagnostics ?? ''
+				)
+			)
+			.toContain('"failureReason": "relay-rejected"');
+		const copied = await page.evaluate(
+			() =>
+				(window as Window & { __nostterCopiedDiagnostics?: string }).__nostterCopiedDiagnostics ??
+				''
 		);
+		expect(JSON.parse(copied)).toMatchObject({
+			operationType: 'post',
+			eventKind: 1,
+			accountMethod: 'nip07',
+			failingStage: 'publishing',
+			failureReason: 'relay-rejected',
+			applicationVersion: '0.1.0'
+		});
+		expect(copied).not.toContain('Keep this draft.');
 	});
 
 	test('creates, switches, duplicates, renames, and deletes named column decks', async ({

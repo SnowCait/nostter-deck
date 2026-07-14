@@ -3,11 +3,16 @@ import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { defineConfig } from 'vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { visualizer } from 'rollup-plugin-visualizer';
+import { createRequire } from 'node:module';
 
 const host = process.env.TAURI_DEV_HOST;
+const { version } = createRequire(import.meta.url)('./package.json');
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
+	define: {
+		__APP_VERSION__: JSON.stringify(version)
+	},
 	plugins: [
 		tailwindcss(),
 		sveltekit(),

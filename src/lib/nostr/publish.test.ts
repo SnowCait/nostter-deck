@@ -1,7 +1,7 @@
 import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import { nprofileEncode, npubEncode } from 'nostr-tools/nip19';
 import type { EventSigner } from 'rx-nostr';
-import { of } from 'rxjs';
+import { of, throwError, TimeoutError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
 	publishChannelMessage,
@@ -58,7 +58,90 @@ describe('channel publishing', () => {
 	});
 
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.clearAllMocks();
+	});
+
+	test('returns the original signing rejection without publishing', async () => {
+		const signingError = new Error('signer unavailable');
+		const signer = createSigner();
+		vi.mocked(signer.signEvent).mockRejectedValueOnce(signingError);
+
+		await expect(publishShortTextNote('Keep draft', pubkey, signer)).resolves.toEqual({
+			ok: false,
+			reason: 'signing-failed',
+			stage: 'signing',
+			targetRelayCount: 1,
+			internalError: signingError
+		});
+		expect(send).not.toHaveBeenCalled();
+	});
+
+	test('times out a signing request that never settles', async () => {
+		vi.useFakeTimers();
+		const signer = createSigner();
+		vi.mocked(signer.signEvent).mockReturnValueOnce(new Promise(() => undefined));
+
+		const resultPromise = publishShortTextNote('Keep draft', pubkey, signer, {
+			signingTimeoutMs: 50
+		});
+		await vi.advanceTimersByTimeAsync(50);
+
+		await expect(resultPromise).resolves.toMatchObject({
+			ok: false,
+			reason: 'signing-timeout',
+			stage: 'signing',
+			targetRelayCount: 1,
+			internalError: { name: 'SigningTimeoutError' }
+		});
+		expect(send).not.toHaveBeenCalled();
+	});
+
+	test('rejects an event signed by a different account', async () => {
+		const signer = createSigner();
+		vi.mocked(signer.signEvent).mockResolvedValueOnce({
+			kind: ShortTextNote,
+			tags: [],
+			content: 'Keep draft',
+			created_at: 1,
+			id: 'f'.repeat(64),
+			pubkey: targetPubkey,
+			sig: '0'.repeat(128)
+		});
+
+		await expect(publishShortTextNote('Keep draft', pubkey, signer)).resolves.toEqual({
+			ok: false,
+			reason: 'account-mismatch',
+			stage: 'signing',
+			targetRelayCount: 1
+		});
+		expect(send).not.toHaveBeenCalled();
+	});
+
+	test('distinguishes relay rejection, timeout, and publishing failure', async () => {
+		send
+			.mockReturnValueOnce(of({ ok: false, done: true }))
+			.mockReturnValueOnce(throwError(() => new TimeoutError()))
+			.mockReturnValueOnce(throwError(() => new Error('socket closed')));
+
+		await expect(publishShortTextNote('Rejected', pubkey, createSigner())).resolves.toMatchObject({
+			ok: false,
+			reason: 'relay-rejected',
+			stage: 'publishing',
+			targetRelayCount: 1
+		});
+		await expect(publishShortTextNote('Timed out', pubkey, createSigner())).resolves.toMatchObject({
+			ok: false,
+			reason: 'relay-timeout',
+			stage: 'publishing',
+			targetRelayCount: 1
+		});
+		await expect(publishShortTextNote('Failed', pubkey, createSigner())).resolves.toMatchObject({
+			ok: false,
+			reason: 'relay-failed',
+			stage: 'publishing',
+			targetRelayCount: 1
+		});
 	});
 
 	test('publishes a NIP-28 channel root message to default write and channel relays', async () => {

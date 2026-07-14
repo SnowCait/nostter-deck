@@ -10,6 +10,7 @@
 	import type { PublishPostResult } from '$lib/nostr/publish';
 	import MediaAttachmentControls from './MediaAttachmentControls.svelte';
 	import MentionTextarea from './MentionTextarea.svelte';
+	import PublishFailureNotice from './PublishFailureNotice.svelte';
 
 	type Props = {
 		channel: ChannelTimelineColumnConfig;
@@ -24,7 +25,7 @@
 	let { channel, textClass, mentionCandidates, onPublish }: Props = $props();
 	let content = $state('');
 	let isPublishing = $state(false);
-	let publishError = $state(false);
+	let publishFailure = $state<Extract<PublishPostResult, { ok: false }> | null>(null);
 	let hasFocusWithin = $state(false);
 	let isMediaPickerOpen = $state(false);
 	const media = createMediaAttachmentController();
@@ -35,7 +36,7 @@
 			isMediaPickerOpen ||
 			content.length > 0 ||
 			media.mediaAttachments.length > 0 ||
-			publishError
+			publishFailure
 	);
 	const canSubmit = $derived(
 		!isPublishing &&
@@ -61,12 +62,16 @@
 		}
 
 		isPublishing = true;
-		publishError = false;
-		const result = await onPublish(content, media);
-		isPublishing = false;
+		publishFailure = null;
+		let result: PublishPostResult;
+		try {
+			result = await onPublish(content, media);
+		} finally {
+			isPublishing = false;
+		}
 
 		if (!result.ok) {
-			publishError = true;
+			publishFailure = result;
 			return;
 		}
 
@@ -174,10 +179,8 @@
 				onMediaPickerClose={handleMediaPickerClose}
 			/>
 		{/if}
-		{#if publishError}
-			<p class={['text-rose-600 dark:text-rose-400', textClass.meta]} role="alert">
-				{m.post_failed()}
-			</p>
+		{#if publishFailure}
+			<PublishFailureNotice failure={publishFailure} {textClass} />
 		{/if}
 	</form>
 </section>

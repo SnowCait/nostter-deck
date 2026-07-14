@@ -5,6 +5,9 @@ import {
 	type BunkerPointer
 } from 'nostr-tools/nip46';
 import type { WindowNostr } from 'nostr-tools/nip07';
+import { SimplePool } from 'nostr-tools/pool';
+import type { SubscribeManyParams } from 'nostr-tools/abstract-pool';
+import type { Event, Filter } from 'nostr-tools';
 import { generateSecretKey, getPublicKey } from 'nostr-tools/pure';
 import type { Signer } from 'nostr-tools/signer';
 import { bytesToHex, hexToBytes } from 'nostr-tools/utils';
@@ -36,8 +39,52 @@ let state = $state<AuthState>({ status: 'loggedOut', pubkey: null });
 let accountStore = $state<AccountStore>(readAccounts());
 let activeSigner: EventSigner | null = null;
 let activeBunkerSigner: BunkerSigner | null = null;
+let nip46AuthChallengeObservedAt: number | null = null;
 let authAttempt = 0;
 let cancellableAuthAttempt: number | null = null;
+
+class Nip46DiagnosticPool extends SimplePool {
+	override subscribe(relays: string[], filter: Filter, params: SubscribeManyParams) {
+		return super.subscribe(relays, filter, {
+			...params,
+			oninvalidevent: (event: unknown) => {
+				logNip46ResponseFailure('event-validation');
+				params.oninvalidevent?.(event);
+			},
+			onevent: (event: Event) => {
+				try {
+					const result = params.onevent?.(event);
+					void Promise.resolve(result).catch((error: unknown) => {
+						logNip46ResponseFailure(classifyNip46ResponseError(error), error);
+					});
+				} catch (error) {
+					logNip46ResponseFailure(classifyNip46ResponseError(error), error);
+				}
+			}
+		});
+	}
+}
+
+function createNip46DiagnosticPool() {
+	return new Nip46DiagnosticPool();
+}
+
+function classifyNip46ResponseError(error: unknown) {
+	if (error instanceof SyntaxError) {
+		return 'json-parsing';
+	}
+	const message = error instanceof Error ? error.message : '';
+	return /decrypt|padding|MAC|payload|base64|encryption/i.test(message)
+		? 'nip44-decryption'
+		: 'response-processing';
+}
+
+function logNip46ResponseFailure(category: string, error?: unknown) {
+	console.error('NIP-46 response processing failed', {
+		category,
+		errorName: error instanceof Error ? error.name : typeof error
+	});
+}
 
 function toEventSigner(signer: Signer): EventSigner {
 	return {
@@ -74,6 +121,21 @@ export function getAuthState() {
 
 export function getAccountStore() {
 	return accountStore;
+}
+
+export function getNip46AuthChallengeObservedAt() {
+	return nip46AuthChallengeObservedAt;
+}
+
+function handleNip46AuthChallenge(url: string) {
+	nip46AuthChallengeObservedAt = Date.now();
+	let hostname: string | null = null;
+	try {
+		hostname = new URL(url).hostname;
+	} catch {
+		// Keep malformed or sensitive Auth Challenge values out of diagnostics and logs.
+	}
+	console.warn('NIP-46 Auth Challenge observed', { hostname });
 }
 
 export function isNip07Available() {
@@ -218,7 +280,10 @@ async function activateNip46(
 	const { attempt } = beginAuthentication({ preserveActiveSession });
 	let signer: BunkerSigner | null = null;
 	try {
-		signer = BunkerSigner.fromBunker(clientSecretKey, bunker);
+		signer = BunkerSigner.fromBunker(clientSecretKey, bunker, {
+			pool: createNip46DiagnosticPool(),
+			onauth: handleNip46AuthChallenge
+		});
 		await signer.connect();
 		const pubkey = normalizePubkey(await signer.getPublicKey());
 		if (!pubkey || (expectedPubkey && pubkey !== expectedPubkey)) {
@@ -299,7 +364,10 @@ export async function loginWithNip46ConnectionUri(uri: string, clientSecretKey: 
 	const { attempt } = beginAuthentication({ preserveActiveSession });
 	let signer: BunkerSigner | null = null;
 	try {
-		signer = await BunkerSigner.fromURI(clientSecretKey, uri);
+		signer = await BunkerSigner.fromURI(clientSecretKey, uri, {
+			pool: createNip46DiagnosticPool(),
+			onauth: handleNip46AuthChallenge
+		});
 		const pubkey = normalizePubkey(await signer.getPublicKey());
 		if (!pubkey) {
 			throw new Error('Invalid signer');
@@ -364,4 +432,5 @@ export function resetAuthStateForTesting() {
 	disconnectActiveSigner();
 	accountStore = readAccounts();
 	state = { status: 'loggedOut', pubkey: null };
+	nip46AuthChallengeObservedAt = null;
 }

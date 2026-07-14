@@ -4,6 +4,7 @@ import {
 	cancelPendingAuthentication,
 	getAccountStore,
 	getAuthState,
+	getNip46AuthChallengeObservedAt,
 	initializeAuth,
 	legacyAuthStorageKey,
 	loginWithNip46ConnectionUri,
@@ -163,6 +164,17 @@ describe('multi-account authentication', () => {
 		await expect(initializeAuth()).resolves.toBe(true);
 		expect(bunkerMocks.fromBunker).toHaveBeenCalledTimes(1);
 		expect(getAuthState()).toEqual({ status: 'loggedIn', pubkey: pubkeyB });
+
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		const options = bunkerMocks.fromBunker.mock.calls[0][2] as {
+			onauth: (url: string) => void;
+		};
+		options.onauth('https://auth.example/approve?secret=do-not-log');
+		expect(getNip46AuthChallengeObservedAt()).toEqual(expect.any(Number));
+		expect(warn).toHaveBeenCalledWith('NIP-46 Auth Challenge observed', {
+			hostname: 'auth.example'
+		});
+		expect(JSON.stringify(warn.mock.calls)).not.toContain('do-not-log');
 	});
 
 	test('keeps the active account while a Nostr Connect login is pending', async () => {

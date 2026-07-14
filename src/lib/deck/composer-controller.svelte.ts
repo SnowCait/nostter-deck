@@ -1,5 +1,5 @@
 import { tick } from 'svelte';
-import { ShortTextNote } from 'nostr-tools/kinds';
+import { ChannelMessage, ShortTextNote } from 'nostr-tools/kinds';
 import type { EventSigner } from 'rx-nostr';
 import { getPostQuoteTarget, getPostReplyTarget } from './post-actions';
 import type { ChannelTimelineColumnConfig, Post, RelaySelection } from './types';
@@ -14,8 +14,12 @@ import {
 	publishChannelMessage,
 	publishQuoteRepost,
 	publishReply,
-	publishShortTextNote
+	publishShortTextNote,
+	type PublishPostResult,
+	type PublishStage
 } from '$lib/nostr/publish';
+import { createPublishDiagnostic, type PublishOperation } from '$lib/nostr/publish-diagnostics';
+import type { AccountMethod } from '$lib/nostr/accounts';
 import { resolveRelaySelection as resolveSelectionRelays } from '$lib/nostr/relays';
 
 type ComposerControllerOptions = {
@@ -26,6 +30,11 @@ type ComposerControllerOptions = {
 	getTargetReadRelays?: (pubkey: string) => Promise<string[]>;
 	resolveRelaySelection?: (selection: RelaySelection) => string[];
 	uploadMedia?: typeof uploadBlossomImage;
+	getAccountDiagnosticContext?: () => {
+		method: AccountMethod;
+		nip46RelayUrls: string[];
+		nip46AuthChallengeObservedAt: number | null;
+	};
 };
 
 export function createComposerController({
@@ -35,7 +44,12 @@ export function createComposerController({
 	focusTextarea,
 	getTargetReadRelays = getNip65ReadRelaysForPubkey,
 	resolveRelaySelection = resolveSelectionRelays,
-	uploadMedia = uploadBlossomImage
+	uploadMedia = uploadBlossomImage,
+	getAccountDiagnosticContext = () => ({
+		method: 'nip07',
+		nip46RelayUrls: [],
+		nip46AuthChallengeObservedAt: null
+	})
 }: ComposerControllerOptions) {
 	let isOpen = $state(false);
 	let content = $state('');
@@ -44,6 +58,7 @@ export function createComposerController({
 	let quoteTargetPost = $state<Post | null>(null);
 	let isPublishing = $state(false);
 	let hasError = $state(false);
+	let publishFailure = $state<Extract<PublishPostResult, { ok: false }> | null>(null);
 	const media = createMediaAttachmentController({ uploadMedia });
 	const hasContent = $derived(content.length > 0 || media.hasPublishableMedia);
 	const canSubmit = $derived(
@@ -66,6 +81,7 @@ export function createComposerController({
 		replyTargetPost = null;
 		quoteTargetPost = null;
 		isOpen = true;
+		publishFailure = null;
 		await tick();
 		focusTextarea();
 	}
@@ -85,6 +101,7 @@ export function createComposerController({
 		quoteTargetPost = null;
 		isOpen = true;
 		hasError = false;
+		publishFailure = null;
 		await tick();
 		focusTextarea();
 	}
@@ -104,6 +121,7 @@ export function createComposerController({
 		quoteTargetPost = post;
 		isOpen = true;
 		hasError = false;
+		publishFailure = null;
 		await tick();
 		focusTextarea();
 	}
@@ -111,6 +129,7 @@ export function createComposerController({
 	function close() {
 		isOpen = false;
 		hasError = false;
+		publishFailure = null;
 	}
 
 	function reset() {
@@ -142,15 +161,19 @@ export function createComposerController({
 
 		isPublishing = true;
 		hasError = false;
+		publishFailure = null;
+		const startedAt = Date.now();
 		const replyTarget = replyTargetPost ? getPostReplyTarget(replyTargetPost) : null;
 		const quoteTarget = quoteTargetPost ? getPostQuoteTarget(quoteTargetPost) : null;
-		const result = await (async () => {
+		let currentStage: PublishStage = 'uploading-media';
+		const result = await (async (): Promise<PublishPostResult> => {
 			try {
 				const mediaUploadResult = await media.uploadSelectedMedia(signer);
 				if (!mediaUploadResult.ok) {
 					return mediaUploadResult;
 				}
 				const publishContent = appendMediaUrls(content, mediaUploadResult.urls);
+				currentStage = 'publishing';
 
 				if (mode === 'reply' && replyTarget) {
 					return await publishReply(
@@ -181,13 +204,20 @@ export function createComposerController({
 				return await publishShortTextNote(publishContent, pubkey, signer, {
 					includeClientTag: getIncludeClientTag()
 				});
-			} catch {
-				return { ok: false as const, reason: 'relay-failed' as const };
+			} catch (internalError) {
+				return {
+					ok: false,
+					reason: currentStage === 'uploading-media' ? 'media-upload-failed' : 'relay-failed',
+					stage: currentStage,
+					targetRelayCount: 0,
+					internalError
+				};
 			} finally {
 				isPublishing = false;
 			}
 		})();
 		if (!result.ok) {
+			publishFailure = withDiagnostic(result, operationForMode(mode), ShortTextNote, startedAt);
 			hasError = true;
 			return;
 		}
@@ -207,24 +237,91 @@ export function createComposerController({
 	) {
 		const pubkey = getAccountPubkey();
 		const signer = getSigner();
+		const startedAt = Date.now();
 		if (!pubkey || !signer) {
-			return { ok: false as const, reason: 'signing-failed' as const };
+			return withDiagnostic(
+				{
+					ok: false,
+					reason: 'signing-failed',
+					stage: 'signing',
+					targetRelayCount: 0
+				},
+				'channel-message',
+				ChannelMessage,
+				startedAt
+			);
 		}
-		const mediaUploadResult = await channelMedia?.uploadSelectedMedia(signer);
-		if (mediaUploadResult && !mediaUploadResult.ok) {
-			return mediaUploadResult;
-		}
-		const publishContent = appendMediaUrls(content, mediaUploadResult?.urls ?? []);
-		return publishChannelMessage(
-			publishContent,
-			channel.channelId,
-			pubkey,
-			signer,
-			resolveRelaySelection(channel.relays),
-			{
-				includeClientTag: getIncludeClientTag()
+		let currentStage: PublishStage = 'uploading-media';
+		try {
+			const mediaUploadResult = await channelMedia?.uploadSelectedMedia(signer);
+			if (mediaUploadResult && !mediaUploadResult.ok) {
+				return withDiagnostic(mediaUploadResult, 'channel-message', ChannelMessage, startedAt);
 			}
-		);
+			const publishContent = appendMediaUrls(content, mediaUploadResult?.urls ?? []);
+			currentStage = 'publishing';
+			const result = await publishChannelMessage(
+				publishContent,
+				channel.channelId,
+				pubkey,
+				signer,
+				resolveRelaySelection(channel.relays),
+				{
+					includeClientTag: getIncludeClientTag()
+				}
+			);
+			return result.ok
+				? result
+				: withDiagnostic(result, 'channel-message', ChannelMessage, startedAt);
+		} catch (internalError) {
+			return withDiagnostic(
+				{
+					ok: false,
+					reason: currentStage === 'uploading-media' ? 'media-upload-failed' : 'relay-failed',
+					stage: currentStage,
+					targetRelayCount: 0,
+					internalError
+				},
+				'channel-message',
+				ChannelMessage,
+				startedAt
+			);
+		}
+	}
+
+	function withDiagnostic(
+		failure: Extract<PublishPostResult, { ok: false }>,
+		operationType: PublishOperation,
+		eventKind: number,
+		startedAt: number
+	): Extract<PublishPostResult, { ok: false }> {
+		const context = getAccountDiagnosticContext();
+		const diagnostic = createPublishDiagnostic({
+			operationType,
+			eventKind,
+			accountMethod: context.method,
+			failingStage: failure.stage,
+			failureReason: failure.reason,
+			elapsedMs: Date.now() - startedAt,
+			targetRelayCount: failure.targetRelayCount,
+			nip46RelayUrls: context.method === 'nip46' ? context.nip46RelayUrls : [],
+			authChallengeObserved:
+				context.method === 'nip46'
+					? context.nip46AuthChallengeObservedAt !== null &&
+						context.nip46AuthChallengeObservedAt >= startedAt
+					: null
+		});
+		console.error(`[publish:${diagnostic.diagnosticId}]`, {
+			diagnostic,
+			internalErrorName:
+				failure.internalError instanceof Error
+					? failure.internalError.name
+					: typeof failure.internalError
+		});
+		return { ...failure, diagnostic };
+	}
+
+	function operationForMode(value: typeof mode): PublishOperation {
+		return value === 'reply' ? 'reply' : value === 'quote' ? 'quote' : 'post';
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -267,6 +364,9 @@ export function createComposerController({
 		},
 		get hasError() {
 			return hasError;
+		},
+		get publishFailure() {
+			return publishFailure;
 		},
 		get mediaAttachments() {
 			return media.mediaAttachments;

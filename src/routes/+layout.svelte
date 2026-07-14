@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { getLocale } from '$lib/paraglide/runtime.js';
+	import '$lib/polyfills/promise-with-resolvers';
 	import { applyThemePreference, watchSystemThemePreference } from '$lib/user-settings';
 	import './layout.css';
 

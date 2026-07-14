@@ -79,11 +79,15 @@ function createHarness({
 	getSigner = () => createSigner(),
 	uploadMedia = vi.fn(async (media: File) =>
 		uploaded(`https://blossom.band/${media.name}.webp`)
-	) as unknown as UploadMedia
+	) as unknown as UploadMedia,
+	getAccountDiagnosticContext
 }: {
 	getAccountPubkey?: () => string | null;
 	getSigner?: () => EventSigner | null;
 	uploadMedia?: UploadMedia;
+	getAccountDiagnosticContext?: Parameters<
+		typeof createComposerController
+	>[0]['getAccountDiagnosticContext'];
 } = {}) {
 	const focusTextarea = vi.fn();
 	const getTargetReadRelays = vi.fn(async () => [targetRelay]);
@@ -93,7 +97,8 @@ function createHarness({
 		getIncludeClientTag: () => true,
 		focusTextarea,
 		getTargetReadRelays,
-		uploadMedia
+		uploadMedia,
+		getAccountDiagnosticContext
 	});
 
 	return { controller, focusTextarea, getTargetReadRelays, uploadMedia };
@@ -163,7 +168,12 @@ describe('composer controller', () => {
 	test('keeps the reply draft visible when publishing fails', async () => {
 		const target = event('4'.repeat(64));
 		const harness = createHarness();
-		publishReply.mockResolvedValueOnce({ ok: false, reason: 'relay-failed' });
+		publishReply.mockResolvedValueOnce({
+			ok: false,
+			reason: 'relay-failed',
+			stage: 'publishing',
+			targetRelayCount: 1
+		});
 
 		await harness.controller.openReply(eventToPost(target));
 		harness.controller.content = 'Keep this reply';
@@ -173,6 +183,50 @@ describe('composer controller', () => {
 		expect(harness.controller.isReplyMode).toBe(true);
 		expect(harness.controller.content).toBe('Keep this reply');
 		expect(harness.controller.hasError).toBe(true);
+	});
+
+	test('restores the UI, keeps the draft, and records sanitized NIP-46 timeout diagnostics', async () => {
+		const authChallengeObservedAt = Date.now() + 1_000;
+		const harness = createHarness({
+			getAccountDiagnosticContext: () => ({
+				method: 'nip46',
+				nip46RelayUrls: ['wss://signer.example/private?secret=hidden'],
+				nip46AuthChallengeObservedAt: authChallengeObservedAt
+			})
+		});
+		publishShortTextNote.mockResolvedValueOnce({
+			ok: false,
+			reason: 'signing-timeout',
+			stage: 'signing',
+			targetRelayCount: 3,
+			internalError: new Error('sensitive internal details')
+		});
+
+		await harness.controller.open();
+		harness.controller.content = 'Keep this private draft';
+		await harness.controller.publish();
+
+		expect(harness.controller.isPublishing).toBe(false);
+		expect(harness.controller.isOpen).toBe(true);
+		expect(harness.controller.content).toBe('Keep this private draft');
+		expect(harness.controller.publishFailure).toMatchObject({
+			reason: 'signing-timeout',
+			stage: 'signing',
+			diagnostic: {
+				operationType: 'post',
+				eventKind: ShortTextNote,
+				accountMethod: 'nip46',
+				failingStage: 'signing',
+				failureReason: 'signing-timeout',
+				targetRelayCount: 3,
+				nip46RelayHostnames: ['signer.example'],
+				authChallengeObserved: true
+			}
+		});
+		expect(JSON.stringify(harness.controller.publishFailure?.diagnostic)).not.toContain(
+			'Keep this private draft'
+		);
+		expect(JSON.stringify(harness.controller.publishFailure?.diagnostic)).not.toContain('hidden');
 	});
 
 	test('does not open reply mode for unsupported or unauthenticated targets', async () => {
@@ -241,7 +295,12 @@ describe('composer controller', () => {
 	test('keeps the quote draft visible when publishing fails', async () => {
 		const target = event('a'.repeat(64));
 		const harness = createHarness();
-		publishQuoteRepost.mockResolvedValueOnce({ ok: false, reason: 'relay-failed' });
+		publishQuoteRepost.mockResolvedValueOnce({
+			ok: false,
+			reason: 'relay-failed',
+			stage: 'publishing',
+			targetRelayCount: 1
+		});
 
 		await harness.controller.openQuote(eventToPost(target));
 		harness.controller.content = 'Keep this quote';
@@ -352,7 +411,17 @@ describe('composer controller', () => {
 			channelMedia
 		);
 
-		expect(result).toEqual({ ok: false, reason: 'relay-failed' });
+		expect(result).toMatchObject({
+			ok: false,
+			reason: 'media-upload-failed',
+			stage: 'uploading-media',
+			diagnostic: {
+				operationType: 'channel-message',
+				eventKind: 42,
+				failingStage: 'uploading-media',
+				failureReason: 'media-upload-failed'
+			}
+		});
 		expect(publishChannelMessage).not.toHaveBeenCalled();
 		expect(channelMedia.mediaAttachments[0]).toMatchObject({
 			status: 'failed',

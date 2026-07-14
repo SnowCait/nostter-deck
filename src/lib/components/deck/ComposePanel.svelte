@@ -10,6 +10,7 @@
 	import MediaAttachmentControls from './MediaAttachmentControls.svelte';
 	import MentionTextarea from './MentionTextarea.svelte';
 	import ProfileAvatar from './ProfileAvatar.svelte';
+	import PublishFailureNotice from './PublishFailureNotice.svelte';
 
 	type Props = {
 		composer: ReturnType<typeof createComposerController>;
@@ -187,10 +188,10 @@
 			</button>
 		</MediaAttachmentControls>
 
-		{#if composer.hasError}
-			<p class={['mt-3 text-rose-600 dark:text-rose-400', textClass.control]} role="alert">
-				{m.post_failed()}
-			</p>
+		{#if composer.publishFailure}
+			<div class="mt-3">
+				<PublishFailureNotice failure={composer.publishFailure} {textClass} />
+			</div>
 		{/if}
 
 		<div class="mt-4 flex justify-end">

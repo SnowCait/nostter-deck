@@ -86,9 +86,16 @@ export function createMediaAttachmentController({
 		return URL.createObjectURL(file);
 	}
 
-	async function uploadSelectedMedia(
-		signer: EventSigner
-	): Promise<{ ok: true; urls: string[] } | { ok: false; reason: 'relay-failed' }> {
+	async function uploadSelectedMedia(signer: EventSigner): Promise<
+		| { ok: true; urls: string[] }
+		| {
+				ok: false;
+				reason: 'media-upload-failed';
+				stage: 'uploading-media';
+				targetRelayCount: 0;
+				internalError?: unknown;
+		  }
+	> {
 		const urls: string[] = [];
 
 		for (const attachment of mediaAttachments) {
@@ -98,14 +105,25 @@ export function createMediaAttachmentController({
 			}
 
 			if (attachment.status === 'failed') {
-				return { ok: false, reason: 'relay-failed' };
+				return {
+					ok: false,
+					reason: 'media-upload-failed',
+					stage: 'uploading-media',
+					targetRelayCount: 0
+				};
 			}
 
 			updateMediaAttachment(attachment.id, { status: 'uploading' });
 			const result = await uploadMedia(attachment.file, signer);
 			if (!result.ok) {
 				updateMediaAttachment(attachment.id, uploadFailurePatch(result));
-				return { ok: false, reason: 'relay-failed' };
+				return {
+					ok: false,
+					reason: 'media-upload-failed',
+					stage: 'uploading-media',
+					targetRelayCount: 0,
+					internalError: new Error(result.message)
+				};
 			}
 
 			updateMediaAttachment(attachment.id, {

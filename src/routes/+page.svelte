@@ -32,6 +32,7 @@
 	import { profileRelays } from '$lib/nostr/relays';
 	import {
 		getAccountStore,
+		getNip46AuthChallengeObservedAt,
 		getAuthState,
 		getAuthSigner,
 		initializeAuth,
@@ -99,7 +100,15 @@
 		getSigner: getAuthSigner,
 		getIncludeClientTag: () => readUserSettings().includeClientTag,
 		focusTextarea: () => composeTextarea?.focus(),
-		resolveRelaySelection: relaySelectionController.resolveRelaySelection
+		resolveRelaySelection: relaySelectionController.resolveRelaySelection,
+		getAccountDiagnosticContext: () => {
+			const activeAccount = accounts.find(({ id }) => id === activeAccountId);
+			return {
+				method: activeAccount?.method ?? 'nip07',
+				nip46RelayUrls: activeAccount?.method === 'nip46' ? activeAccount.bunker.relays : [],
+				nip46AuthChallengeObservedAt: getNip46AuthChallengeObservedAt()
+			};
+		}
 	});
 	const postActionController = createPostActionController({
 		getAccountPubkey: () => accountPubkey,
