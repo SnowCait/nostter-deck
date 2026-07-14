@@ -35,8 +35,7 @@ const accountsState = persistedState<AccountStore>(
 	accountsStorageKey,
 	{ ...emptyStore },
 	{
-		beforeRead: normalizeAccountStore,
-		beforeWrite: normalizeAccountStore
+		beforeRead: normalizeAccountStore
 	}
 );
 

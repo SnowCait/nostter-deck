@@ -90,8 +90,7 @@ const columnDeckStoreState = persistedState<ColumnDeckStore>(
 	columnDecksStorageKey,
 	createDefaultColumnDeckStore(),
 	{
-		beforeRead: (value) => normalizeColumnDeckStore(value) ?? createDefaultColumnDeckStore(),
-		beforeWrite: (value) => normalizeColumnDeckStore(value) ?? createDefaultColumnDeckStore()
+		beforeRead: (value) => normalizeColumnDeckStore(value) ?? createDefaultColumnDeckStore()
 	}
 );
 

@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, test } from 'vitest';
-import { normalizeUserSettings, readUserSettings, writeUserSettings } from './user-settings';
+import { normalizeUserSettings, readUserSettings, updateUserSettings } from './user-settings';
 
 describe('user settings storage', () => {
 	beforeEach(() => {
-		writeUserSettings({
+		updateUserSettings(() => ({
 			theme: 'system',
 			fontSize: 'medium',
 			avatarShape: 'circle',
 			includeClientTag: true,
 			postActionVisibility: 'onInteraction'
-		});
+		}));
 	});
 
 	test('falls back when persisted settings are invalid', () => {
@@ -25,13 +25,13 @@ describe('user settings storage', () => {
 	});
 
 	test('preserves valid persisted settings', () => {
-		writeUserSettings({
+		updateUserSettings(() => ({
 			theme: 'dark',
 			fontSize: 'large',
 			avatarShape: 'square',
 			includeClientTag: false,
 			postActionVisibility: 'always'
-		});
+		}));
 
 		expect(readUserSettings()).toEqual({
 			theme: 'dark',

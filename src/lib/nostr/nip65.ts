@@ -24,8 +24,7 @@ const nip65CacheState = persistedState<Nip65Cache>(
 	{},
 	{
 		syncTabs: false,
-		beforeRead: normalizeNip65Cache,
-		beforeWrite: normalizeNip65Cache
+		beforeRead: normalizeNip65Cache
 	}
 );
 
@@ -97,10 +96,6 @@ function readNip65Cache() {
 	return untrack(() => nip65CacheState.current);
 }
 
-function writeNip65Cache(cache: Nip65Cache) {
-	nip65CacheState.current = normalizeNip65Cache(cache);
-}
-
 export function getCachedNip65RelayTags(pubkey: string) {
 	const normalizedPubkey = normalizePubkey(pubkey);
 	return normalizedPubkey ? (readNip65Cache()[normalizedPubkey]?.relayTags ?? []) : [];
@@ -139,7 +134,7 @@ export async function refreshNip65Relays(pubkey: string) {
 		return null;
 	}
 
-	writeNip65Cache({
+	nip65CacheState.current = normalizeNip65Cache({
 		...readNip65Cache(),
 		[normalizedPubkey]: { updatedAt: Date.now(), relayTags }
 	});

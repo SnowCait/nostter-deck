@@ -32,8 +32,7 @@ const userSettingsState = persistedState<UserSettings>(
 	userSettingsStorageKey,
 	{ ...defaultUserSettings },
 	{
-		beforeRead: normalizeUserSettings,
-		beforeWrite: normalizeUserSettings
+		beforeRead: normalizeUserSettings
 	}
 );
 
@@ -96,12 +95,8 @@ export function readUserSettings(): UserSettings {
 	return userSettingsState.current;
 }
 
-export function writeUserSettings(nextSettings: UserSettings) {
-	userSettingsState.current = normalizeUserSettings(nextSettings);
-}
-
 export function updateUserSettings(updater: (currentSettings: UserSettings) => UserSettings) {
-	writeUserSettings(updater(readUserSettings()));
+	userSettingsState.current = normalizeUserSettings(updater(userSettingsState.current));
 }
 
 export function applyThemePreference(theme: ThemePreference = readUserSettings().theme) {

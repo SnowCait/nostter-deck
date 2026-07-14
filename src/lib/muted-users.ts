@@ -4,8 +4,7 @@ import { normalizePubkey } from '$lib/nostr/pubkeys';
 const mutedUsersStorageKey = 'nostter:muted-users';
 
 const mutedPubkeysState = persistedState<string[]>(mutedUsersStorageKey, [], {
-	beforeRead: normalizeMutedPubkeys,
-	beforeWrite: normalizeMutedPubkeys
+	beforeRead: normalizeMutedPubkeys
 });
 
 export function normalizeMutedPubkeys(value: unknown): string[] {

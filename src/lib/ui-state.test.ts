@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, test } from 'vitest';
-import { normalizeUiState, readUiState, writeUiState } from './ui-state';
+import { normalizeUiState, readUiState, updateUiState } from './ui-state';
 
 describe('ui state storage', () => {
 	beforeEach(() => {
-		writeUiState({ sidebarCollapsed: false, deckLayoutMode: 'auto' });
+		updateUiState(() => ({ sidebarCollapsed: false, deckLayoutMode: 'auto' }));
 	});
 
 	test('falls back when persisted state is invalid', () => {
@@ -25,7 +25,7 @@ describe('ui state storage', () => {
 	});
 
 	test('round-trips valid ui state', () => {
-		writeUiState({ sidebarCollapsed: true, deckLayoutMode: 'single' });
+		updateUiState(() => ({ sidebarCollapsed: true, deckLayoutMode: 'single' }));
 
 		expect(readUiState()).toEqual({ sidebarCollapsed: true, deckLayoutMode: 'single' });
 	});

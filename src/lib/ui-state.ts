@@ -19,8 +19,7 @@ const uiState = persistedState<UiState>(
 	uiStateStorageKey,
 	{ ...defaultUiState },
 	{
-		beforeRead: normalizeUiState,
-		beforeWrite: normalizeUiState
+		beforeRead: normalizeUiState
 	}
 );
 
@@ -49,12 +48,8 @@ export function readUiState(): UiState {
 	return uiState.current;
 }
 
-export function writeUiState(nextState: UiState) {
-	uiState.current = normalizeUiState(nextState);
-}
-
 export function updateUiState(updater: (currentState: UiState) => UiState) {
-	writeUiState(updater(readUiState()));
+	uiState.current = normalizeUiState(updater(uiState.current));
 }
 
 export { uiStateStorageKey };
