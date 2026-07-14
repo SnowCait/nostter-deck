@@ -283,12 +283,12 @@ function acquireMetadataFetchSlot() {
 		return Promise.resolve();
 	}
 
-	return new Promise<void>((resolve) => {
-		metadataFetchQueue.push(() => {
-			activeMetadataFetches += 1;
-			resolve();
-		});
+	const { promise, resolve } = Promise.withResolvers<void>();
+	metadataFetchQueue.push(() => {
+		activeMetadataFetches += 1;
+		resolve();
 	});
+	return promise;
 }
 
 function releaseMetadataFetchSlot() {

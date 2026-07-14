@@ -2,14 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { clearUrlPreviewImage, getUrlMediaMetadata, requestUrlMediaMetadata } from './url-media';
 
 function deferredResponse() {
-	let resolve!: (response: Response) => void;
-	let reject!: (error: unknown) => void;
-	const promise = new Promise<Response>((promiseResolve, promiseReject) => {
-		resolve = promiseResolve;
-		reject = promiseReject;
-	});
-
-	return { promise, resolve, reject };
+	return Promise.withResolvers<Response>();
 }
 
 describe('url media metadata', () => {

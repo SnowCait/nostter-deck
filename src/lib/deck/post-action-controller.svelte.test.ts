@@ -153,12 +153,9 @@ describe('post action controller', () => {
 		const target = event('2'.repeat(64));
 		const post = eventToPost(target);
 		const harness = createHarness();
-		let resolvePublish!: (value: ReturnType<typeof publishedReaction>) => void;
-		publishLikeReaction.mockReturnValueOnce(
-			new Promise((resolve) => {
-				resolvePublish = resolve;
-			})
-		);
+		const { promise: publishResult, resolve: resolvePublish } =
+			Promise.withResolvers<ReturnType<typeof publishedReaction>>();
+		publishLikeReaction.mockReturnValueOnce(publishResult);
 
 		const firstResult = harness.controller.likePost(post);
 		expect(harness.controller.isLiking(post)).toBe(true);
@@ -228,12 +225,9 @@ describe('post action controller', () => {
 		const target = event('6'.repeat(64));
 		const post = eventToPost(target);
 		const harness = createHarness();
-		let resolvePublish!: (value: ReturnType<typeof publishedRepost>) => void;
-		publishRepost.mockReturnValueOnce(
-			new Promise((resolve) => {
-				resolvePublish = resolve;
-			})
-		);
+		const { promise: publishResult, resolve: resolvePublish } =
+			Promise.withResolvers<ReturnType<typeof publishedRepost>>();
+		publishRepost.mockReturnValueOnce(publishResult);
 
 		const firstResult = harness.controller.repostPost(post);
 		expect(harness.controller.isReposting(post)).toBe(true);
@@ -283,12 +277,9 @@ describe('post action controller', () => {
 		const post = eventToPost(target);
 		const harness = createHarness();
 		const reaction = { type: 'unicode', emoji: '🔥' } as const;
-		let resolvePublish!: (value: ReturnType<typeof publishedReaction>) => void;
-		publishEmojiReaction.mockReturnValueOnce(
-			new Promise((resolve) => {
-				resolvePublish = resolve;
-			})
-		);
+		const { promise: publishResult, resolve: resolvePublish } =
+			Promise.withResolvers<ReturnType<typeof publishedReaction>>();
+		publishEmojiReaction.mockReturnValueOnce(publishResult);
 
 		const firstResult = harness.controller.reactWithEmoji(post, reaction);
 		expect(harness.controller.isReactingWithEmoji(post)).toBe(true);

@@ -57,16 +57,6 @@ function installNip07(pubkey: string) {
 	});
 }
 
-function createDeferred<T>() {
-	let resolve!: (value: T) => void;
-	let reject!: (reason?: unknown) => void;
-	const promise = new Promise<T>((promiseResolve, promiseReject) => {
-		resolve = promiseResolve;
-		reject = promiseReject;
-	});
-	return { promise, resolve, reject };
-}
-
 describe('multi-account authentication', () => {
 	let storageValues: Map<string, string>;
 
@@ -180,7 +170,7 @@ describe('multi-account authentication', () => {
 	test('keeps the active account while a Nostr Connect login is pending', async () => {
 		installNip07(pubkeyA);
 		await loginWithNip07();
-		const pendingSigner = createDeferred<typeof bunkerMocks.signer>();
+		const pendingSigner = Promise.withResolvers<typeof bunkerMocks.signer>();
 		bunkerMocks.fromURI.mockReturnValueOnce(pendingSigner.promise);
 		bunkerMocks.signer.getPublicKey.mockResolvedValueOnce(pubkeyB);
 
@@ -198,7 +188,7 @@ describe('multi-account authentication', () => {
 	test('does not switch accounts when a pending Nostr Connect login is canceled', async () => {
 		installNip07(pubkeyA);
 		await loginWithNip07();
-		const pendingSigner = createDeferred<typeof bunkerMocks.signer>();
+		const pendingSigner = Promise.withResolvers<typeof bunkerMocks.signer>();
 		bunkerMocks.fromURI.mockReturnValueOnce(pendingSigner.promise);
 		bunkerMocks.signer.getPublicKey.mockResolvedValueOnce(pubkeyB);
 

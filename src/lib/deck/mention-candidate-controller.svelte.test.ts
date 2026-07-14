@@ -84,8 +84,7 @@ describe('mention candidate controller', () => {
 	});
 
 	test('discards an old account result after switching accounts', async () => {
-		let resolveFirst: ((pubkeys: string[]) => void) | undefined;
-		const firstResult = new Promise<string[]>((resolve) => (resolveFirst = resolve));
+		const { promise: firstResult, resolve: resolveFirst } = Promise.withResolvers<string[]>();
 		const loadFollowPubkeys = vi
 			.fn()
 			.mockImplementationOnce(() => firstResult)
@@ -102,7 +101,7 @@ describe('mention candidate controller', () => {
 		const firstAccountLoad = controller.setAccount(accountA);
 		await Promise.resolve();
 		await controller.setAccount(accountB);
-		resolveFirst?.([followedA]);
+		resolveFirst([followedA]);
 		await firstAccountLoad;
 
 		expect(controller.candidates).toEqual([
