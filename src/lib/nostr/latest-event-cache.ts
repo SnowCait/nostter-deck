@@ -2,8 +2,6 @@ import Dexie, { type Table } from 'dexie';
 import type * as Nostr from 'nostr-typedef';
 import { isNewerLatestEvent, reduceLatestEvents, type LatestEventKey } from './latest-event-order';
 
-export type { LatestEventKey } from './latest-event-order';
-
 export type CachedLatestEvent = {
 	pubkey: string;
 	kind: number;
