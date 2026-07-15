@@ -62,6 +62,7 @@
 		"eslint": "^10.3.0",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.14.0",
+		"fake-indexeddb": "^6.2.5",
 		"globals": "^17.3.0",
 		"nostr-typedef": "^0.13.0",
 		"prettier": "^3.8.1",
