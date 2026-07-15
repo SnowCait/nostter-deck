@@ -122,12 +122,17 @@ export function expandPersistentCacheTargets(
 	}
 
 	const pubkeys = new Set(sortAndDedupePubkeys(seed.directPubkeys));
-	const unresolvedPTagExpansionSourceKeys: LatestEventKey[] = [];
+	const unresolvedPTagExpansionSourceKeys = new Map<string, LatestEventKey>();
+	const resolvedPTagExpansionSourceKeys = new Set<string>();
 
 	for (const [index, expectedKey] of seed.pTagExpansionSourceKeys.entries()) {
 		const event = sourceEvents[index];
+		const serializedKey = JSON.stringify(expectedKey);
+
 		if (!event) {
-			unresolvedPTagExpansionSourceKeys.push(expectedKey);
+			if (!resolvedPTagExpansionSourceKeys.has(serializedKey)) {
+				unresolvedPTagExpansionSourceKeys.set(serializedKey, expectedKey);
+			}
 			continue;
 		}
 
@@ -135,6 +140,9 @@ export function expandPersistentCacheTargets(
 		if (!latestEventKeysEqual(actualKey, expectedKey)) {
 			throw new Error(`Source event at index ${index} does not match its expansion source key`);
 		}
+
+		resolvedPTagExpansionSourceKeys.add(serializedKey);
+		unresolvedPTagExpansionSourceKeys.delete(serializedKey);
 
 		for (const pubkey of extractPTagPubkeys(event)) {
 			pubkeys.add(pubkey);
@@ -145,7 +153,7 @@ export function expandPersistentCacheTargets(
 		pubkeys: [...pubkeys].sort(compareStrings),
 		pTagExpansionSourceKeys: sortAndDedupeLatestEventKeys(seed.pTagExpansionSourceKeys),
 		unresolvedPTagExpansionSourceKeys: sortAndDedupeLatestEventKeys(
-			unresolvedPTagExpansionSourceKeys
+			unresolvedPTagExpansionSourceKeys.values()
 		)
 	};
 }
