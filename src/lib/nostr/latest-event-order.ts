@@ -13,6 +13,10 @@ export type LatestEventCandidate = {
 };
 
 export function isSupportedLatestEventKind(kind: number) {
+	if (!Number.isInteger(kind) || kind < 0 || kind > 65535) {
+		return false;
+	}
+
 	return isReplaceableKind(kind) || isAddressableKind(kind);
 }
 

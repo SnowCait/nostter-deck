@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'vitest';
 import type * as Nostr from 'nostr-typedef';
-import { getLatestEventKey, isNewerLatestEvent, reduceLatestEvents } from './latest-event-order';
+import {
+	getLatestEventKey,
+	isNewerLatestEvent,
+	isSupportedLatestEventKind,
+	reduceLatestEvents
+} from './latest-event-order';
 
 function event(patch: Partial<Nostr.Event> = {}): Nostr.Event {
 	return {
@@ -62,10 +67,17 @@ describe('latest event identity', () => {
 		);
 	});
 
-	test.each([1, 20000, 40000])('rejects unsupported kind %i', (kind) => {
-		expect(() => getLatestEventKey(event({ kind }))).toThrow(
-			`Unsupported latest event kind: ${kind}`
-		);
+	test.each([1, 20000, 40000, 10000.5, 30000.5, -1, 65536])(
+		'rejects unsupported kind %s',
+		(kind) => {
+			expect(() => getLatestEventKey(event({ kind }))).toThrow(
+				`Unsupported latest event kind: ${kind}`
+			);
+		}
+	);
+
+	test.each([0, 3, 10000, 19999, 30000, 39999])('accepts supported kind %s', (kind) => {
+		expect(isSupportedLatestEventKind(kind)).toBe(true);
 	});
 });
 
