@@ -319,4 +319,19 @@ describe('persistent cache target expansion', () => {
 		expect(plan.pTagExpansionSourceKeys).toEqual([duplicateKey]);
 		expect(plan.unresolvedPTagExpansionSourceKeys).toEqual([duplicateKey]);
 	});
+
+	test('treats a duplicated source as resolved when any matching entry has an event', () => {
+		const duplicateKey: LatestEventKey = [pubkeyA, 3, ''];
+		const plan = expandPersistentCacheTargets(
+			{
+				directPubkeys: [pubkeyA],
+				pTagExpansionSourceKeys: [duplicateKey, [...duplicateKey] as LatestEventKey]
+			},
+			[undefined, event(pubkeyA, 3, [['p', pubkeyB]])]
+		);
+
+		expect(plan.pubkeys).toEqual([pubkeyA, pubkeyB]);
+		expect(plan.pTagExpansionSourceKeys).toEqual([duplicateKey]);
+		expect(plan.unresolvedPTagExpansionSourceKeys).toEqual([]);
+	});
 });
