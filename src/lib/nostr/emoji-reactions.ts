@@ -291,12 +291,15 @@ export async function loadUserEmojiReactionCandidates(
 	return normalizeCustomEmojiReactionCandidates([...directCandidates, ...emojiSetCandidates]);
 }
 
-function requestLatestEvent(filter: LazyFilter, relays: string[]): Promise<Nostr.Event | null> {
+function requestLatestEvent(
+	filter: LazyFilter,
+	relays: string[]
+): Promise<Nostr.Event | undefined> {
 	return new Promise((resolve) => {
 		const request = createRxBackwardReq();
 		let latestEvent: Nostr.Event | undefined;
 		let finished = false;
-		const finish = (value: Nostr.Event | null) => {
+		const finish = (value: Nostr.Event | undefined) => {
 			if (finished) {
 				return;
 			}
@@ -313,9 +316,9 @@ function requestLatestEvent(filter: LazyFilter, relays: string[]): Promise<Nostr
 						latestEvent = event;
 					}
 				},
-				complete: () => finish(latestEvent ?? null)
+				complete: () => finish(latestEvent)
 			});
-		const timeoutId = setTimeout(() => finish(null), emojiReactionRequestTimeoutMs);
+		const timeoutId = setTimeout(() => finish(undefined), emojiReactionRequestTimeoutMs);
 
 		request.emit(filter, { relays });
 		request.over();

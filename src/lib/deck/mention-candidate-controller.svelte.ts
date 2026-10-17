@@ -42,7 +42,7 @@ export function extractFollowPubkeys(tags: Nostr.Event['tags']) {
 }
 
 export function selectLatestFollowList(events: Nostr.Event[]) {
-	const latest = events.reduce<Nostr.Event | undefined>((latest, event) => {
+	return events.reduce<Nostr.Event | undefined>((latest, event) => {
 		if (event.kind !== Contacts) {
 			return latest;
 		}
@@ -51,7 +51,6 @@ export function selectLatestFollowList(events: Nostr.Event[]) {
 		}
 		return latest;
 	}, undefined);
-	return latest ?? null;
 }
 
 export function requestLatestFollowPubkeys(
