@@ -41,7 +41,9 @@ function prepareRequest() {
 }
 
 function send(packets: Subject<{ event: Nostr.Event }>, events: Nostr.Event[]) {
-	for (const event of events) packets.next({ event });
+	for (const event of events) {
+		packets.next({ event });
+	}
 }
 
 // Include every arrival order so both timestamp directions and both tie directions are exercised.
@@ -234,7 +236,9 @@ describe('replaceable event requests', () => {
 		expect(getCachedNip65RelayTags(pubkey)).toEqual([]);
 		await expect(emojiResult).resolves.toEqual([]);
 		await expect(followResult).resolves.toEqual([otherPubkey]);
-		for (const request of [nip65, emoji, follows]) expect(request.packets.observed).toBe(false);
+		for (const request of [nip65, emoji, follows]) {
+			expect(request.packets.observed).toBe(false);
+		}
 		expect(vi.getTimerCount()).toBe(0);
 	});
 });
