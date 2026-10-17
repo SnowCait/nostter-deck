@@ -3,6 +3,7 @@ import { createRxBackwardReq, type LazyFilter } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import type { Unsubscribable } from 'rxjs';
 import { getNostrClient } from '$lib/nostr/client';
+import { isNewerLatestEvent } from '$lib/nostr/latest-event-order';
 import { getNip65ReadRelaysForPubkey } from '$lib/nostr/nip65';
 import { normalizePubkey } from '$lib/nostr/pubkeys';
 import { defaultRelays, profileRelays } from '$lib/nostr/relays';
@@ -45,11 +46,7 @@ export function selectLatestFollowList(events: Nostr.Event[]) {
 		if (event.kind !== Contacts) {
 			return latest;
 		}
-		if (
-			!latest ||
-			event.created_at > latest.created_at ||
-			(event.created_at === latest.created_at && event.id < latest.id)
-		) {
+		if (!latest || isNewerLatestEvent(event, latest)) {
 			return event;
 		}
 		return latest;

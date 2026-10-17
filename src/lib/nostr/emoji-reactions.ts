@@ -2,6 +2,7 @@ import { createRxBackwardReq, type LazyFilter } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import { Emojisets, UserEmojiList } from 'nostr-tools/kinds';
 import { getNostrClient } from './client';
+import { isNewerLatestEvent } from './latest-event-order';
 import { normalizePubkey } from './pubkeys';
 import { combineRelays, defaultRelays, normalizeRelay } from './relays';
 
@@ -308,11 +309,7 @@ function requestLatestEvent(filter: LazyFilter, relays: string[]): Promise<Nostr
 			.use(request)
 			.subscribe({
 				next: ({ event }) => {
-					if (
-						!latestEvent ||
-						event.created_at > latestEvent.created_at ||
-						(event.created_at === latestEvent.created_at && event.id > latestEvent.id)
-					) {
+					if (!latestEvent || isNewerLatestEvent(event, latestEvent)) {
 						latestEvent = event;
 					}
 				},
