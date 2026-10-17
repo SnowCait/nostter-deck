@@ -61,6 +61,30 @@ describe('persistent latest event writes', () => {
 		await expect(getCachedLatestEvent(getLatestEventKey(initial))).resolves.toEqual(newer);
 	});
 
+	test.each([false, true])(
+		'preserves tie winners and independent keys with reverse order: %s',
+		async (reverse) => {
+			const independent = [
+				event({ kind: 0 }),
+				event({ kind: 3 }),
+				event({ pubkey: 'c'.repeat(64), kind: 30030, tags: [['d', 'cats']] }),
+				event({ kind: 30030, tags: [['d', 'dogs']] })
+			];
+			await putCachedLatestEvents(independent);
+			const older = event({ id: '0'.repeat(64), kind: 30030, tags: [['d', 'cats']] });
+			const losingTie = { ...older, id: '3'.repeat(64), created_at: 200 };
+			const winner = { ...losingTie, id: '2'.repeat(64) };
+			const versions = [older, losingTie, winner];
+			for (const candidate of reverse ? versions.toReversed() : versions) {
+				await putCachedLatestEvent(candidate);
+			}
+			await expect(putCachedLatestEvent(winner)).resolves.toBe('ignored');
+			await expect(
+				getCachedLatestEvents([...independent, winner].map(getLatestEventKey))
+			).resolves.toEqual([...independent, winner]);
+		}
+	);
+
 	test('stores the original signed event while normalizing derived key fields', async () => {
 		const uppercase = event({ pubkey: 'ABCDEF'.repeat(10) + 'ABCD' });
 

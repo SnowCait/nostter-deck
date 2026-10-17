@@ -1,3 +1,4 @@
+import { shouldReplaceCurrentEvent } from '@nostter/nostr-protocol';
 import { createRxBackwardReq, type LazyFilter } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import { RelayList } from 'nostr-tools/kinds';
@@ -144,7 +145,7 @@ export async function refreshNip65Relays(pubkey: string) {
 function requestNip65RelayTags(pubkey: string): Promise<Nip65RelayTag[] | null> {
 	return new Promise((resolve) => {
 		const request = createRxBackwardReq();
-		let latestEvent: Nostr.Event | null = null;
+		let latestEvent: Nostr.Event | undefined;
 		let finished = false;
 		const finish = (value: Nip65RelayTag[] | null) => {
 			if (finished) {
@@ -162,11 +163,7 @@ function requestNip65RelayTags(pubkey: string): Promise<Nip65RelayTag[] | null> 
 					if (event.kind !== RelayList || event.pubkey.toLowerCase() !== pubkey.toLowerCase()) {
 						return;
 					}
-					if (
-						!latestEvent ||
-						event.created_at > latestEvent.created_at ||
-						(event.created_at === latestEvent.created_at && event.id > latestEvent.id)
-					) {
+					if (shouldReplaceCurrentEvent(event, latestEvent)) {
 						latestEvent = event;
 					}
 				},

@@ -1,3 +1,4 @@
+import { shouldReplaceCurrentEvent } from '@nostter/nostr-protocol';
 import { Contacts } from 'nostr-tools/kinds';
 import { createRxBackwardReq, type LazyFilter } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
@@ -41,19 +42,15 @@ export function extractFollowPubkeys(tags: Nostr.Event['tags']) {
 }
 
 export function selectLatestFollowList(events: Nostr.Event[]) {
-	return events.reduce<Nostr.Event | null>((latest, event) => {
+	return events.reduce<Nostr.Event | undefined>((latest, event) => {
 		if (event.kind !== Contacts) {
 			return latest;
 		}
-		if (
-			!latest ||
-			event.created_at > latest.created_at ||
-			(event.created_at === latest.created_at && event.id < latest.id)
-		) {
+		if (shouldReplaceCurrentEvent(event, latest)) {
 			return event;
 		}
 		return latest;
-	}, null);
+	}, undefined);
 }
 
 export function requestLatestFollowPubkeys(

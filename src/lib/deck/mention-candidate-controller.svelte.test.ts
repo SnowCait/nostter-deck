@@ -39,6 +39,13 @@ describe('mention candidate controller', () => {
 		expect(latest?.id).toBe('1'.repeat(64));
 	});
 
+	test('returns undefined when no follow list is selected', () => {
+		expect(selectLatestFollowList([])).toBeUndefined();
+		expect(
+			selectLatestFollowList([event('1'.repeat(64), { kind: ShortTextNote })])
+		).toBeUndefined();
+	});
+
 	test('normalizes and deduplicates valid p tags', () => {
 		expect(
 			extractFollowPubkeys([

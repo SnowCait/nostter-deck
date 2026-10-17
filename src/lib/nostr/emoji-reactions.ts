@@ -1,3 +1,4 @@
+import { shouldReplaceCurrentEvent } from '@nostter/nostr-protocol';
 import { createRxBackwardReq, type LazyFilter } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import { Emojisets, UserEmojiList } from 'nostr-tools/kinds';
@@ -290,12 +291,15 @@ export async function loadUserEmojiReactionCandidates(
 	return normalizeCustomEmojiReactionCandidates([...directCandidates, ...emojiSetCandidates]);
 }
 
-function requestLatestEvent(filter: LazyFilter, relays: string[]): Promise<Nostr.Event | null> {
+function requestLatestEvent(
+	filter: LazyFilter,
+	relays: string[]
+): Promise<Nostr.Event | undefined> {
 	return new Promise((resolve) => {
 		const request = createRxBackwardReq();
-		let latestEvent: Nostr.Event | null = null;
+		let latestEvent: Nostr.Event | undefined;
 		let finished = false;
-		const finish = (value: Nostr.Event | null) => {
+		const finish = (value: Nostr.Event | undefined) => {
 			if (finished) {
 				return;
 			}
@@ -308,17 +312,13 @@ function requestLatestEvent(filter: LazyFilter, relays: string[]): Promise<Nostr
 			.use(request)
 			.subscribe({
 				next: ({ event }) => {
-					if (
-						!latestEvent ||
-						event.created_at > latestEvent.created_at ||
-						(event.created_at === latestEvent.created_at && event.id > latestEvent.id)
-					) {
+					if (shouldReplaceCurrentEvent(event, latestEvent)) {
 						latestEvent = event;
 					}
 				},
 				complete: () => finish(latestEvent)
 			});
-		const timeoutId = setTimeout(() => finish(null), emojiReactionRequestTimeoutMs);
+		const timeoutId = setTimeout(() => finish(undefined), emojiReactionRequestTimeoutMs);
 
 		request.emit(filter, { relays });
 		request.over();

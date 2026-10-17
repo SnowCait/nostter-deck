@@ -26,6 +26,7 @@
 		"test": "npm run test:unit && npm run test:e2e"
 	},
 	"dependencies": {
+		"@nostter/nostr-protocol": "0.1.0",
 		"@rx-nostr/crypto": "^3.1.6",
 		"@scure/base": "^2.2.0",
 		"@tauri-apps/api": "^2",
