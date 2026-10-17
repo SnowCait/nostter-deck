@@ -2,7 +2,6 @@ import { describe, expect, test } from 'vitest';
 import type * as Nostr from 'nostr-typedef';
 import {
 	getLatestEventKey,
-	isNewerLatestEvent,
 	isSupportedLatestEventKind,
 	reduceLatestEvents
 } from './latest-event-order';
@@ -81,48 +80,19 @@ describe('latest event identity', () => {
 	});
 });
 
-describe('NIP-01 latest event ordering', () => {
-	test('prefers a newer timestamp', () => {
-		expect(
-			isNewerLatestEvent(
-				event({ id: 'a'.repeat(64), created_at: 101 }),
-				event({ id: 'b'.repeat(64), created_at: 100 })
-			)
-		).toBe(true);
-	});
-
-	test('rejects an older timestamp', () => {
-		expect(
-			isNewerLatestEvent(
-				event({ id: 'a'.repeat(64), created_at: 99 }),
-				event({ id: 'b'.repeat(64), created_at: 100 })
-			)
-		).toBe(false);
-	});
-
-	test('prefers the lexicographically smaller ID at equal timestamps', () => {
-		expect(isNewerLatestEvent(event({ id: 'a'.repeat(64) }), event({ id: 'b'.repeat(64) }))).toBe(
-			true
-		);
-		expect(isNewerLatestEvent(event({ id: 'c'.repeat(64) }), event({ id: 'b'.repeat(64) }))).toBe(
-			false
-		);
-	});
-
-	test('rejects duplicate event IDs', () => {
-		expect(isNewerLatestEvent(event(), event())).toBe(false);
-	});
-});
-
 describe('latest event batch reduction', () => {
-	test('retains one winner for multiple versions of the same key', () => {
+	test.each([false, true])('retains one winner with reversed arrival order: %s', (reverse) => {
 		const older = event({ id: '1'.repeat(64), created_at: 100 });
 		const losingTie = event({ id: '3'.repeat(64), created_at: 200 });
 		const winner = event({ id: '2'.repeat(64), created_at: 200 });
 
-		expect(
-			reduceLatestEvents([older, losingTie, winner]).map((candidate) => candidate.event)
-		).toEqual([winner]);
+		const versions = [older, losingTie, winner];
+		const ordered = reverse ? versions.toReversed() : versions;
+		const duplicate = { ...winner, content: 'duplicate must not replace the winner' };
+
+		expect(reduceLatestEvents([...ordered, duplicate]).map((candidate) => candidate.event)).toEqual(
+			[winner]
+		);
 	});
 
 	test('retains different kinds, pubkeys, and identifiers independently', () => {

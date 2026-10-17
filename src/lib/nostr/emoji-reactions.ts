@@ -1,3 +1,4 @@
+import { shouldReplaceCurrentEvent } from '@nostter/nostr-protocol';
 import { createRxBackwardReq, type LazyFilter } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import { Emojisets, UserEmojiList } from 'nostr-tools/kinds';
@@ -293,7 +294,7 @@ export async function loadUserEmojiReactionCandidates(
 function requestLatestEvent(filter: LazyFilter, relays: string[]): Promise<Nostr.Event | null> {
 	return new Promise((resolve) => {
 		const request = createRxBackwardReq();
-		let latestEvent: Nostr.Event | null = null;
+		let latestEvent: Nostr.Event | undefined;
 		let finished = false;
 		const finish = (value: Nostr.Event | null) => {
 			if (finished) {
@@ -308,15 +309,11 @@ function requestLatestEvent(filter: LazyFilter, relays: string[]): Promise<Nostr
 			.use(request)
 			.subscribe({
 				next: ({ event }) => {
-					if (
-						!latestEvent ||
-						event.created_at > latestEvent.created_at ||
-						(event.created_at === latestEvent.created_at && event.id > latestEvent.id)
-					) {
+					if (shouldReplaceCurrentEvent(event, latestEvent)) {
 						latestEvent = event;
 					}
 				},
-				complete: () => finish(latestEvent)
+				complete: () => finish(latestEvent ?? null)
 			});
 		const timeoutId = setTimeout(() => finish(null), emojiReactionRequestTimeoutMs);
 

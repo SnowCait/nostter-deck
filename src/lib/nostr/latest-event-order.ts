@@ -1,3 +1,4 @@
+import { shouldReplaceCurrentEvent } from '@nostter/nostr-protocol';
 import { isAddressableKind, isReplaceableKind } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
 import { normalizePubkey } from './pubkeys';
@@ -62,18 +63,6 @@ export function toLatestEventCandidate(event: Nostr.Event): LatestEventCandidate
 	};
 }
 
-export function isNewerLatestEvent(incoming: Nostr.Event, current: Nostr.Event) {
-	if (incoming.id === current.id) {
-		return false;
-	}
-
-	if (incoming.created_at !== current.created_at) {
-		return incoming.created_at > current.created_at;
-	}
-
-	return incoming.id < current.id;
-}
-
 export function reduceLatestEvents(events: Nostr.Event[]): LatestEventCandidate[] {
 	const winners = new Map<string, LatestEventCandidate>();
 
@@ -82,7 +71,7 @@ export function reduceLatestEvents(events: Nostr.Event[]): LatestEventCandidate[
 		const serializedKey = JSON.stringify(candidate.key);
 		const current = winners.get(serializedKey);
 
-		if (!current || isNewerLatestEvent(candidate.event, current.event)) {
+		if (shouldReplaceCurrentEvent(candidate.event, current?.event)) {
 			winners.set(serializedKey, candidate);
 		}
 	}

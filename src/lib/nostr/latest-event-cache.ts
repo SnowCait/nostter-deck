@@ -1,6 +1,7 @@
+import { shouldReplaceCurrentEvent } from '@nostter/nostr-protocol';
 import Dexie, { type Table } from 'dexie';
 import type * as Nostr from 'nostr-typedef';
-import { isNewerLatestEvent, reduceLatestEvents, type LatestEventKey } from './latest-event-order';
+import { reduceLatestEvents, type LatestEventKey } from './latest-event-order';
 
 export type CachedLatestEvent = {
 	pubkey: string;
@@ -66,7 +67,7 @@ export async function putCachedLatestEvents(
 
 		for (const [index, candidate] of candidates.entries()) {
 			const current = existingRecords[index];
-			if (current && !isNewerLatestEvent(candidate.event, current.event)) {
+			if (!shouldReplaceCurrentEvent(candidate.event, current?.event)) {
 				result.ignored += 1;
 				continue;
 			}
