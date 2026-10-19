@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
 	extractNip65RelayTags,
 	getNip65ReadRelays,
+	getNip65WriteRelays,
 	hasNip65WriteRelay,
 	normalizeNip65Cache
 } from './nip65';
@@ -53,5 +54,17 @@ describe('NIP-65 relay lists', () => {
 				relayTags: [['r', 'wss://relay.example', 'write']]
 			}
 		});
+	});
+
+	test('selects normalized, unique write relays and excludes read-only relays', () => {
+		expect(
+			getNip65WriteRelays([
+				['r', 'wss://WRITE.example', 'write'],
+				['r', 'wss://write.example/', 'write'],
+				['r', 'wss://read.example', 'read'],
+				['r', 'wss://both.example'],
+				['r', 'https://invalid.example', 'write']
+			])
+		).toEqual(['wss://write.example/', 'wss://both.example/']);
 	});
 });
