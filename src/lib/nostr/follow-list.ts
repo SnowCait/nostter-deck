@@ -23,7 +23,7 @@ export async function getLatestFollowList(
 }
 
 function requestFollowList(pubkey: string): Promise<Nostr.Event<typeof Contacts> | undefined> {
-	return new Promise((resolve) => {
+	return new Promise((resolve, reject) => {
 		const client = getNostrClient();
 		const request = createRxBackwardReq();
 		let latest: Nostr.Event<typeof Contacts> | undefined;
@@ -34,7 +34,7 @@ function requestFollowList(pubkey: string): Promise<Nostr.Event<typeof Contacts>
 				}
 			},
 			complete: () => resolve(latest),
-			error: () => resolve(latest)
+			error: reject
 		});
 		request.emit({ authors: [pubkey], kinds: [Contacts], limit: 1 });
 		request.over();

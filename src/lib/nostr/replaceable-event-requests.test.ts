@@ -11,7 +11,7 @@ import {
 	type IWebSocket,
 	type RxNostr
 } from 'rx-nostr';
-import { finalize, Subject } from 'rxjs';
+import { finalize, Subject, throwError } from 'rxjs';
 import { afterAll, afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { requestLatestFollowPubkeys } from '../deck/mention-candidate-controller.svelte';
 import { loadUserEmojiReactionCandidates } from './emoji-reactions';
@@ -647,6 +647,12 @@ describe('cached follow list requests with rx-nostr', () => {
 		).resolves.toEqual(cached);
 		expect(write).not.toHaveBeenCalled();
 		expectCleanedUp(sockets);
+	});
+
+	test('propagates Observable errors from the follow list request', async () => {
+		const error = new Error('Request processing failed');
+		vi.spyOn(client, 'use').mockReturnValue(throwError(() => error));
+		await expect(getLatestFollowList(followPubkey)).rejects.toBe(error);
 	});
 
 	test('propagates cache read failures before sending a REQ', async () => {
