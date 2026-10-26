@@ -19,8 +19,7 @@ export async function getLatestFollowList(
 		await putCachedLatestEvent(network);
 	}
 	// Another request may have saved a newer event while this one was fetching.
-	const latestCached = await getCachedLatestEvent([pubkey, Contacts, '']);
-	return latestCached ?? network;
+	return getCachedLatestEvent([pubkey, Contacts, '']);
 }
 
 function requestFollowList(pubkey: string): Promise<Nostr.Event<typeof Contacts> | undefined> {
