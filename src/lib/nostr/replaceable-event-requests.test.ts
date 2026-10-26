@@ -555,6 +555,69 @@ describe('cached follow list requests with rx-nostr', () => {
 		}
 	);
 
+	test.each(['newer-event', 'older-event', 'no-event'] as const)(
+		'returns the cache updated by a concurrent request when receiving %s',
+		async (response) => {
+			const v1 = signedFollowEvent({ created_at: 100 });
+			const v2 = signedFollowEvent({ created_at: 200 });
+			const v3 = signedFollowEvent({ created_at: 300 });
+			await latestEventCache.putCachedLatestEvent(v1);
+			const write = vi.spyOn(latestEventCache, 'putCachedLatestEvent');
+			const { result: resultA, sockets } = await start();
+			const requestA = sockets[0].req[1];
+			const sentB = Promise.withResolvers<string>();
+			const queriedByB = new Set<FollowListRelaySocket>();
+
+			// Wait for B to send its own REQ to both relays before allowing A to finish.
+			// Both calls have then read v1 and are waiting for their network responses.
+			for (const socket of sockets) {
+				const send = socket.send.bind(socket);
+				vi.spyOn(socket, 'send').mockImplementation((data) => {
+					send(data);
+					const message = JSON.parse(data) as Nostr.ToRelayMessage.Any;
+					if (message[0] === 'REQ' && message[1] !== requestA) {
+						queriedByB.add(socket);
+						if (queriedByB.size === sockets.length) {
+							sentB.resolve(message[1]);
+						}
+					}
+				});
+			}
+			const resultB = getLatestFollowList(followPubkey);
+			const requestB = await sentB.promise;
+			sockets[0].receive(['EVENT', requestA, v3]);
+			for (const socket of sockets) {
+				socket.receive(['EOSE', requestA]);
+			}
+			await expect(resultA).resolves.toEqual({ status: 'found', event: v3 });
+			await expect(write.mock.results[0].value).resolves.toBe('updated');
+
+			if (response !== 'no-event') {
+				sockets[0].receive(['EVENT', requestB, response === 'newer-event' ? v2 : v1]);
+			}
+			for (const socket of sockets) {
+				socket.receive(['EOSE', requestB]);
+			}
+			await expect(resultB).resolves.toEqual({ status: 'found', event: v3 });
+			if (response === 'newer-event') {
+				expect(write).toHaveBeenNthCalledWith(2, v2);
+				await expect(write.mock.results[1].value).resolves.toBe('ignored');
+			} else {
+				expect(write).toHaveBeenCalledOnce();
+			}
+			await expect(
+				latestEventCache.getCachedLatestEvent([followPubkey, Contacts, ''])
+			).resolves.toEqual(v3);
+			expect(monitorFinished).toHaveBeenCalledTimes(2);
+			expect(outgoingFinished).toHaveBeenCalledTimes(2);
+			for (const socket of sockets) {
+				expect(socket.sent).toContainEqual(['CLOSE', requestA]);
+				expect(socket.sent).toContainEqual(['CLOSE', requestB]);
+			}
+			expect(vi.getTimerCount()).toBe(0);
+		}
+	);
+
 	test.each([false, true])(
 		'selects across relays in reverse arrival order: %s',
 		async (reverse) => {
@@ -682,6 +745,20 @@ describe('cached follow list requests with rx-nostr', () => {
 			socket.eose();
 		}
 		await rejected;
+		expectCleanedUp(sockets);
+	});
+
+	test('propagates final cache read failures after cleaning up the request', async () => {
+		const error = new Error('IndexedDB reread failed');
+		const read = vi.spyOn(latestEventCache, 'getCachedLatestEvent');
+		const { result, sockets } = await start();
+		read.mockRejectedValueOnce(error);
+		const rejected = expect(result).rejects.toBe(error);
+		for (const socket of sockets) {
+			socket.eose();
+		}
+		await rejected;
+		expect(read).toHaveBeenCalledTimes(2);
 		expectCleanedUp(sockets);
 	});
 

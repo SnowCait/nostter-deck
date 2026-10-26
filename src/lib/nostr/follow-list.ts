@@ -49,10 +49,14 @@ export async function getLatestFollowList(pubkey: string): Promise<FollowListRes
 	if (network.status === 'found' && shouldReplaceCurrentEvent(network.event, cached)) {
 		// use() supplies verified events; raw message monitoring is only used for EOSE.
 		await putCachedLatestEvent(network.event);
-		return network;
 	}
-	if (cached) {
-		return { status: 'found', event: cached };
+	// Another request may have saved a newer event while this one was fetching.
+	const latestCachedEvent = await getCachedLatestEvent([normalizedPubkey, Contacts, '']);
+	if (
+		latestCachedEvent?.kind === Contacts &&
+		normalizePubkey(latestCachedEvent.pubkey) === normalizedPubkey
+	) {
+		return { status: 'found', event: latestCachedEvent as Nostr.Event<typeof Contacts> };
 	}
 	return network;
 }
