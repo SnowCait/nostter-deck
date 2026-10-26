@@ -16,7 +16,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, test, vi } from 'vit
 import { requestLatestFollowPubkeys } from '../deck/mention-candidate-controller.svelte';
 import { loadUserEmojiReactionCandidates } from './emoji-reactions';
 import { getNostrClient } from './client';
-import { getLatestFollowList } from './follow-list';
+import { getLatestFollowList } from '../features/follow-list/application/follow-list';
 import * as latestEventCache from './latest-event-cache';
 import * as nip65 from './nip65';
 import { getCachedNip65RelayTags, refreshNip65Relays } from './nip65';
