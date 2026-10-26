@@ -6,12 +6,8 @@ import { getPostLikeTarget, getPostRepostTarget } from './post-actions';
 import type { EmojiReaction, LikeReaction } from '$lib/nostr/emoji-reactions';
 import { getDefaultLikeReaction } from '$lib/account-settings';
 import { getNip65ReadRelaysForPubkey } from '$lib/nostr/nip65';
-import {
-	publishEmojiReaction,
-	publishLikeReaction,
-	publishRepost,
-	type PublishPostResult
-} from '$lib/nostr/publish';
+import { publishEmojiReaction, publishLikeReaction, publishRepost } from '$lib/nostr/publish';
+import type { PublishPostResult } from '$lib/nostr/relay/publish-event';
 
 type PostActionControllerOptions = {
 	getAccountPubkey: () => string | null;

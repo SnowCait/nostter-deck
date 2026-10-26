@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Check, Clipboard } from '@lucide/svelte';
 	import type { FontSizeTextClasses } from '$lib/font-size';
-	import type { PublishPostResult } from '$lib/nostr/publish';
+	import type { PublishPostResult } from '$lib/nostr/relay/publish-event';
 	import { formatPublishDiagnostic } from '$lib/nostr/publish-diagnostics';
 	import { m } from '$lib/paraglide/messages.js';
 

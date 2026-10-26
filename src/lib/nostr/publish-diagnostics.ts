@@ -1,5 +1,5 @@
 import type { AccountMethod } from './accounts';
-import type { PublishFailureReason, PublishStage } from './publish';
+import type { PublishFailureReason, PublishStage } from './relay/publish-types';
 
 export type PublishOperation = 'post' | 'reply' | 'quote' | 'channel-message';
 

@@ -26,7 +26,7 @@
 		EmojiReaction,
 		LikeReaction
 	} from '$lib/nostr/emoji-reactions';
-	import type { PublishPostResult } from '$lib/nostr/publish';
+	import type { PublishPostResult } from '$lib/nostr/relay/publish-event';
 	import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
 	import type { AvatarShape, PostActionVisibility } from '$lib/user-settings';
 	import type { Profile } from '$lib/nostr/profiles';
