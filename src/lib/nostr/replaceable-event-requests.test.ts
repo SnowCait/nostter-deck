@@ -370,8 +370,6 @@ describe('cached follow list requests with rx-nostr', () => {
 		client = createRxNostr({
 			websocketCtor: FollowListRelaySocket,
 			verifier,
-			// Keep the API's author/kind guards under test as well as signature verification.
-			skipValidateFilterMatching: true,
 			skipFetchNip11: true,
 			disconnectTimeout: 0,
 			eoseTimeout,

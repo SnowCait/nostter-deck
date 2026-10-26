@@ -29,11 +29,7 @@ function requestFollowList(pubkey: string): Promise<Nostr.Event<typeof Contacts>
 		let latest: Nostr.Event<typeof Contacts> | undefined;
 		client.use(request, { on: { defaultWriteRelays: true } }).subscribe({
 			next: ({ event }) => {
-				if (
-					event.kind === Contacts &&
-					event.pubkey === pubkey &&
-					shouldReplaceCurrentEvent(event, latest)
-				) {
+				if (shouldReplaceCurrentEvent(event, latest)) {
 					latest = event as Nostr.Event<typeof Contacts>;
 				}
 			},
