@@ -15,23 +15,15 @@ const followListRequestTimeoutMs = 5_000;
 export async function getLatestFollowList(
 	pubkey: string
 ): Promise<Nostr.Event<typeof Contacts> | undefined> {
-	const cachedEvent = await getCachedLatestEvent([pubkey, Contacts, '']);
-	const cached =
-		cachedEvent?.kind === Contacts && cachedEvent.pubkey === pubkey
-			? (cachedEvent as Nostr.Event<typeof Contacts>)
-			: undefined;
+	const cached = await getCachedLatestEvent([pubkey, Contacts, '']);
 	const network = await requestFollowList(pubkey);
 
 	if (network && shouldReplaceCurrentEvent(network, cached)) {
-		// use() supplies verified events.
 		await putCachedLatestEvent(network);
 	}
 	// Another request may have saved a newer event while this one was fetching.
-	const latestCachedEvent = await getCachedLatestEvent([pubkey, Contacts, '']);
-	if (latestCachedEvent?.kind === Contacts && latestCachedEvent.pubkey === pubkey) {
-		return latestCachedEvent as Nostr.Event<typeof Contacts>;
-	}
-	return network;
+	const latestCached = await getCachedLatestEvent([pubkey, Contacts, '']);
+	return (latestCached ?? network) as Nostr.Event<typeof Contacts> | undefined;
 }
 
 function requestFollowList(pubkey: string): Promise<Nostr.Event<typeof Contacts> | undefined> {
