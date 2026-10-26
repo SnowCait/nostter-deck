@@ -16,7 +16,7 @@
 		CustomEmojiReactionCandidate,
 		EmojiReaction
 	} from '$lib/nostr/emoji-reactions';
-	import type { PublishPostResult } from '$lib/nostr/publish';
+	import type { PublishPostResult } from '$lib/nostr/relay/publish-event';
 	import type { Locale } from '$lib/paraglide/runtime.js';
 	import EmojiReactionPicker from './EmojiReactionPicker.svelte';
 	import MediaAttachmentControls from './MediaAttachmentControls.svelte';

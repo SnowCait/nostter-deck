@@ -16,10 +16,10 @@ import {
 	publishQuoteRepost,
 	publishReply,
 	publishShortTextNote,
-	type PublishOptions,
-	type PublishPostResult,
-	type PublishStage
+	type PublishOptions
 } from '$lib/nostr/publish';
+import type { PublishPostResult } from '$lib/nostr/relay/publish-event';
+import type { PublishStage } from '$lib/nostr/relay/publish-types';
 import { createPublishDiagnostic, type PublishOperation } from '$lib/nostr/publish-diagnostics';
 import type { AccountMethod } from '$lib/nostr/accounts';
 import type { CustomEmojiDefinition, EmojiReaction } from '$lib/nostr/emoji-reactions';
