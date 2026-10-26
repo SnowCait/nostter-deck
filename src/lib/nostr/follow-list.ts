@@ -5,41 +5,30 @@ import { createRxBackwardReq } from 'rx-nostr';
 import { Subscription } from 'rxjs';
 import { getNostrClient } from './client';
 import { getCachedLatestEvent, putCachedLatestEvent } from './latest-event-cache';
-import { normalizePubkey } from './pubkeys';
 
 const followListRequestTimeoutMs = 5_000;
 
 /**
- * Selects the best available kind 3 event from the persistent cache and configured write relays.
- * Undefined means no event was found during this request, not that none exists.
- * Cache read and write failures reject.
- * The kind 3 request has a five-second network deadline.
+ * Uses the active account's write relays.
+ * Undefined does not guarantee that no follow list exists.
  */
 export async function getLatestFollowList(
 	pubkey: string
 ): Promise<Nostr.Event<typeof Contacts> | undefined> {
-	const normalizedPubkey = normalizePubkey(pubkey);
-	if (!normalizedPubkey) {
-		throw new Error('Invalid follow list pubkey');
-	}
-
-	const cachedEvent = await getCachedLatestEvent([normalizedPubkey, Contacts, '']);
+	const cachedEvent = await getCachedLatestEvent([pubkey, Contacts, '']);
 	const cached =
-		cachedEvent?.kind === Contacts && normalizePubkey(cachedEvent.pubkey) === normalizedPubkey
+		cachedEvent?.kind === Contacts && cachedEvent.pubkey === pubkey
 			? (cachedEvent as Nostr.Event<typeof Contacts>)
 			: undefined;
-	const network = await requestFollowList(normalizedPubkey);
+	const network = await requestFollowList(pubkey);
 
 	if (network && shouldReplaceCurrentEvent(network, cached)) {
 		// use() supplies verified events.
 		await putCachedLatestEvent(network);
 	}
 	// Another request may have saved a newer event while this one was fetching.
-	const latestCachedEvent = await getCachedLatestEvent([normalizedPubkey, Contacts, '']);
-	if (
-		latestCachedEvent?.kind === Contacts &&
-		normalizePubkey(latestCachedEvent.pubkey) === normalizedPubkey
-	) {
+	const latestCachedEvent = await getCachedLatestEvent([pubkey, Contacts, '']);
+	if (latestCachedEvent?.kind === Contacts && latestCachedEvent.pubkey === pubkey) {
 		return latestCachedEvent as Nostr.Event<typeof Contacts>;
 	}
 	return network;

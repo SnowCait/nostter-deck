@@ -423,7 +423,7 @@ describe('cached follow list requests with rx-nostr', () => {
 			['r', 'wss://app-read.example', 'read'],
 			['r', 'wss://app-both.example']
 		]);
-		const { result, sockets } = await start(followPubkey.toUpperCase());
+		const { result, sockets } = await start(followPubkey);
 		const queried = sockets.filter((socket) => socket.sent.some((message) => message[0] === 'REQ'));
 		expect(queried.map((socket) => normalizeRelay(socket.url)).sort()).toEqual([
 			'wss://app-both.example/',
@@ -689,12 +689,5 @@ describe('cached follow list requests with rx-nostr', () => {
 		await rejected;
 		expect(read).toHaveBeenCalledTimes(2);
 		expectCleanedUp(sockets);
-	});
-
-	test('rejects invalid pubkeys without reading cache or sending a REQ', async () => {
-		const read = vi.spyOn(latestEventCache, 'getCachedLatestEvent');
-		await expect(getLatestFollowList('invalid')).rejects.toThrow('Invalid follow list pubkey');
-		expect(read).not.toHaveBeenCalled();
-		expect(FollowListRelaySocket.sockets).toHaveLength(0);
 	});
 });
