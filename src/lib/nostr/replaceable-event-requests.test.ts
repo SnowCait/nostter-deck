@@ -366,7 +366,7 @@ describe('cached follow list requests with rx-nostr', () => {
 		configureClient();
 	});
 
-	function configureClient(eoseTimeout = 30_000) {
+	function configureClient(eoseTimeout = 1_000) {
 		client = createRxNostr({
 			websocketCtor: FollowListRelaySocket,
 			verifier,
@@ -393,7 +393,7 @@ describe('cached follow list requests with rx-nostr', () => {
 	});
 
 	async function start(target = followPubkey) {
-		// Cache I/O runs on the real event loop; only the network deadlines use fake timers.
+		// Cache I/O runs on the real event loop; only rx-nostr's EOSE timeout uses fake timers.
 		let started = false;
 		const useRequest = client.use.bind(client);
 		vi.spyOn(client, 'use').mockImplementation((...args) => {
@@ -454,7 +454,7 @@ describe('cached follow list requests with rx-nostr', () => {
 				await latestEventCache.putCachedLatestEvent(cached);
 			}
 			const { result, sockets } = await start();
-			await vi.advanceTimersByTimeAsync(5_000);
+			await vi.advanceTimersByTimeAsync(1_000);
 			await expect(result).resolves.toEqual(cached);
 			expect(sockets.flatMap((socket) => socket.sent)).toEqual([]);
 			expectCleanedUp([]);
@@ -471,7 +471,7 @@ describe('cached follow list requests with rx-nostr', () => {
 			if (completion === 'eose') {
 				sockets[0].eose();
 			}
-			await vi.advanceTimersByTimeAsync(5_000);
+			await vi.advanceTimersByTimeAsync(1_000);
 			await expect(result).resolves.toEqual(winner);
 			expect(write).toHaveBeenCalledExactlyOnceWith(winner);
 			await expect(
@@ -611,16 +611,12 @@ describe('cached follow list requests with rx-nostr', () => {
 		expectCleanedUp(sockets);
 	});
 
-	test.each(['deadline', 'internal-timeout', 'disconnect', 'closed'] as const)(
+	test.each(['eose-timeout', 'disconnect', 'closed'] as const)(
 		'returns undefined after %s without events',
 		async (failure) => {
 			const write = vi.spyOn(latestEventCache, 'putCachedLatestEvent');
-			if (failure === 'internal-timeout') {
-				client.dispose();
-				configureClient(1_000);
-			}
 			const { result, sockets } = await start();
-			if (failure === 'internal-timeout') {
+			if (failure === 'eose-timeout') {
 				await vi.advanceTimersByTimeAsync(1_000);
 			} else if (failure === 'disconnect') {
 				for (const socket of sockets) {
@@ -630,8 +626,6 @@ describe('cached follow list requests with rx-nostr', () => {
 				for (const socket of sockets) {
 					socket.receive(['CLOSED', socket.req[1], 'error: unavailable']);
 				}
-			} else {
-				await vi.advanceTimersByTimeAsync(5_000);
 			}
 			await expect(result).resolves.toBeUndefined();
 			expect(write).not.toHaveBeenCalled();
@@ -648,7 +642,7 @@ describe('cached follow list requests with rx-nostr', () => {
 		await latestEventCache.putCachedLatestEvent(other);
 		const write = vi.spyOn(latestEventCache, 'putCachedLatestEvent');
 		const { result, sockets } = await start(secondFollowPubkey);
-		await vi.advanceTimersByTimeAsync(5_000);
+		await vi.advanceTimersByTimeAsync(1_000);
 		await expect(result).resolves.toEqual(other);
 		await expect(
 			latestEventCache.getCachedLatestEvent([followPubkey, Contacts, ''])
