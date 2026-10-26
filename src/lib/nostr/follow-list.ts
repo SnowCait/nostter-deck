@@ -5,17 +5,15 @@ import { createRxBackwardReq } from 'rx-nostr';
 import { Subscription } from 'rxjs';
 import { getNostrClient } from './client';
 import { getCachedLatestEvent, putCachedLatestEvent } from './latest-event-cache';
-import { getNip65WriteRelaysForPubkey } from './nip65';
 import { normalizePubkey } from './pubkeys';
-import { combineRelays, defaultRelays, normalizeRelay } from './relays';
 
 const followListRequestTimeoutMs = 5_000;
 
 /**
- * Selects the best available kind 3 event from the persistent cache and account write relays.
+ * Selects the best available kind 3 event from the persistent cache and configured write relays.
  * Undefined means no event was found during this request, not that none exists.
  * Cache read and write failures reject.
- * Relay discovery and the kind 3 request each have a five-second network deadline.
+ * The kind 3 request has a five-second network deadline.
  */
 export async function getLatestFollowList(
 	pubkey: string
@@ -30,19 +28,7 @@ export async function getLatestFollowList(
 		cachedEvent?.kind === Contacts && normalizePubkey(cachedEvent.pubkey) === normalizedPubkey
 			? (cachedEvent as Nostr.Event<typeof Contacts>)
 			: undefined;
-	const client = getNostrClient();
-	const accountWriteRelays = await getNip65WriteRelaysForPubkey(normalizedPubkey);
-	const relays = combineRelays(
-		accountWriteRelays,
-		Object.keys(client.getDefaultRelays({ filter: 'write-all' }))
-	).flatMap((url) => {
-		const relay = normalizeRelay(url);
-		return relay ? [relay] : [];
-	});
-	const network = await requestFollowList(
-		normalizedPubkey,
-		combineRelays(relays.length > 0 ? relays : [...defaultRelays])
-	);
+	const network = await requestFollowList(normalizedPubkey);
 
 	if (network && shouldReplaceCurrentEvent(network, cached)) {
 		// use() supplies verified events.
@@ -59,10 +45,7 @@ export async function getLatestFollowList(
 	return network;
 }
 
-function requestFollowList(
-	pubkey: string,
-	relays: string[]
-): Promise<Nostr.Event<typeof Contacts> | undefined> {
+function requestFollowList(pubkey: string): Promise<Nostr.Event<typeof Contacts> | undefined> {
 	return new Promise((resolve, reject) => {
 		const client = getNostrClient();
 		const request = createRxBackwardReq();
@@ -82,7 +65,7 @@ function requestFollowList(
 
 		try {
 			subscriptions.add(
-				client.use(request).subscribe({
+				client.use(request, { on: { defaultWriteRelays: true } }).subscribe({
 					next: ({ event }) => {
 						if (
 							event.kind === Contacts &&
@@ -96,7 +79,7 @@ function requestFollowList(
 					error: finish
 				})
 			);
-			request.emit({ authors: [pubkey], kinds: [Contacts], limit: 1 }, { relays });
+			request.emit({ authors: [pubkey], kinds: [Contacts], limit: 1 });
 			request.over();
 		} catch (error) {
 			finished = true;

@@ -19,7 +19,7 @@ import { getNostrClient } from './client';
 import { getLatestFollowList } from './follow-list';
 import * as latestEventCache from './latest-event-cache';
 import * as nip65 from './nip65';
-import { getCachedNip65RelayTags, getNip65WriteRelaysForPubkey, refreshNip65Relays } from './nip65';
+import { getCachedNip65RelayTags, refreshNip65Relays } from './nip65';
 import { combineRelays, defaultRelays, indexerRelays, normalizeRelay } from './relays';
 
 const use = vi.hoisted(() => vi.fn());
@@ -82,42 +82,6 @@ afterEach(() => {
 });
 
 describe('replaceable event requests', () => {
-	test('reuses cached NIP-65 write relays without another request', async () => {
-		const { packets } = prepareRequest();
-		const refresh = refreshNip65Relays(pubkey);
-		packets.next({
-			event: event({
-				tags: [
-					['r', 'wss://write.example', 'write'],
-					['r', 'wss://both.example'],
-					['r', 'wss://read.example', 'read']
-				]
-			})
-		});
-		packets.complete();
-		await refresh;
-		use.mockClear();
-		await expect(getNip65WriteRelaysForPubkey(pubkey)).resolves.toEqual([
-			'wss://write.example/',
-			'wss://both.example/'
-		]);
-		expect(use).not.toHaveBeenCalled();
-	});
-
-	test('discovers NIP-65 write relays when the account has no cached relay list', async () => {
-		const { packets, emit } = prepareRequest();
-		const result = getNip65WriteRelaysForPubkey(otherPubkey);
-		packets.next({
-			event: event({ pubkey: otherPubkey, tags: [['r', 'wss://discovered.example', 'write']] })
-		});
-		packets.complete();
-		await expect(result).resolves.toEqual(['wss://discovered.example/']);
-		expect(emit).toHaveBeenCalledWith(
-			{ kinds: [RelayList], authors: [otherPubkey], limit: 1 },
-			{ relays: [...indexerRelays] }
-		);
-	});
-
 	test.each(orders)('selects the NIP-65 winner in arrival order %j', async (...order) => {
 		const { packets, emit, over } = prepareRequest();
 		const result = refreshNip65Relays(pubkey);
@@ -414,7 +378,7 @@ describe('cached follow list requests with rx-nostr', () => {
 			retry: { strategy: 'off' }
 		});
 		vi.mocked(getNostrClient).mockReturnValue(client);
-		vi.spyOn(nip65, 'getNip65WriteRelaysForPubkey').mockResolvedValue(followWriteRelays);
+		client.setDefaultRelays(followWriteRelays.map((relay) => ['r', relay, 'write']));
 		requestFinished = vi.fn();
 	}
 
@@ -452,23 +416,19 @@ describe('cached follow list requests with rx-nostr', () => {
 		expect(vi.getTimerCount()).toBe(0);
 	}
 
-	test('queries account and app write relays with normalized, unique URLs', async () => {
-		vi.mocked(nip65.getNip65WriteRelaysForPubkey).mockResolvedValue([
-			'wss://FIRST.example',
-			'wss://first.example/'
-		]);
+	test('queries only configured write relays without fetching NIP-65', async () => {
+		const refresh = vi.spyOn(nip65, 'refreshNip65Relays');
 		client.setDefaultRelays([
-			['r', 'wss://first.example/', 'write'],
 			['r', 'wss://app-write.example', 'write'],
 			['r', 'wss://app-read.example', 'read'],
 			['r', 'wss://app-both.example']
 		]);
 		const { result, sockets } = await start(followPubkey.toUpperCase());
-		// setDefaultRelays also creates a dormant socket for its read-only relay.
 		const queried = sockets.filter((socket) => socket.sent.some((message) => message[0] === 'REQ'));
-		expect(queried.map((socket) => normalizeRelay(socket.url)).sort()).toEqual(
-			['wss://first.example/', 'wss://app-both.example/', 'wss://app-write.example/'].sort()
-		);
+		expect(queried.map((socket) => normalizeRelay(socket.url)).sort()).toEqual([
+			'wss://app-both.example/',
+			'wss://app-write.example/'
+		]);
 		for (const socket of queried) {
 			expect(socket.req.slice(2)).toEqual([
 				{ authors: [followPubkey], kinds: [Contacts], limit: 1 }
@@ -476,20 +436,30 @@ describe('cached follow list requests with rx-nostr', () => {
 			socket.eose();
 		}
 		await expect(result).resolves.toBeUndefined();
-		expect(nip65.getNip65WriteRelaysForPubkey).toHaveBeenCalledWith(followPubkey);
+		expect(refresh).not.toHaveBeenCalled();
+		expect(client.use).toHaveBeenCalledExactlyOnceWith(expect.anything(), {
+			on: { defaultWriteRelays: true }
+		});
 		expectCleanedUp(queried);
 	});
 
-	test('falls back to default relays when neither source supplies write relays', async () => {
-		vi.mocked(nip65.getNip65WriteRelaysForPubkey).mockResolvedValue([]);
-		const { result, sockets } = await start();
-		expect(sockets.map((socket) => normalizeRelay(socket.url))).toEqual([...defaultRelays]);
-		for (const socket of sockets) {
-			socket.eose();
+	test.each(['empty', 'read-only', 'cache-only'] as const)(
+		'does not fall back to other relays with %s configuration',
+		async (configuration) => {
+			client.setDefaultRelays(
+				configuration === 'read-only' ? [['r', 'wss://app-read.example', 'read']] : []
+			);
+			const cached = configuration === 'cache-only' ? signedFollowEvent() : undefined;
+			if (cached) {
+				await latestEventCache.putCachedLatestEvent(cached);
+			}
+			const { result, sockets } = await start();
+			await vi.advanceTimersByTimeAsync(5_000);
+			await expect(result).resolves.toEqual(cached);
+			expect(sockets.flatMap((socket) => socket.sent)).toEqual([]);
+			expectCleanedUp([]);
 		}
-		await expect(result).resolves.toBeUndefined();
-		expectCleanedUp(sockets);
-	});
+	);
 
 	test.each(['eose', 'no-eose'] as const)(
 		'keeps a verified full event from one relay with %s while the other times out',
