@@ -4,7 +4,7 @@ import { Contacts } from 'nostr-tools/kinds';
 export type FollowListUpdate = Pick<Nostr.Event<typeof Contacts>, 'kind' | 'content' | 'tags'>;
 
 export function addFollow(
-	event: Nostr.Event<typeof Contacts> | undefined,
+	event: FollowListUpdate | undefined,
 	pubkey: string
 ): FollowListUpdate | null {
 	const tags = event?.tags ?? [];
@@ -20,7 +20,7 @@ export function addFollow(
 }
 
 export function removeFollow(
-	event: Nostr.Event<typeof Contacts> | undefined,
+	event: FollowListUpdate | undefined,
 	pubkey: string
 ): FollowListUpdate | null {
 	if (!event) {
