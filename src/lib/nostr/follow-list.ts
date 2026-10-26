@@ -9,19 +9,17 @@ import { getNip65WriteRelaysForPubkey } from './nip65';
 import { normalizePubkey } from './pubkeys';
 import { combineRelays, defaultRelays, normalizeRelay } from './relays';
 
-export type FollowListResult =
-	| { status: 'found'; event: Nostr.Event<typeof Contacts> }
-	| { status: 'not-found' }
-	| { status: 'unavailable' };
-
 const followListRequestTimeoutMs = 5_000;
 
 /**
  * Selects the best available kind 3 event from the persistent cache and account write relays.
- * Cache failures reject: they must not be mistaken for an absent follow list.
+ * Undefined means no event was found during this request, not that none exists.
+ * Cache read and write failures reject.
  * Relay discovery and the kind 3 request each have a five-second network deadline.
  */
-export async function getLatestFollowList(pubkey: string): Promise<FollowListResult> {
+export async function getLatestFollowList(
+	pubkey: string
+): Promise<Nostr.Event<typeof Contacts> | undefined> {
 	const normalizedPubkey = normalizePubkey(pubkey);
 	if (!normalizedPubkey) {
 		throw new Error('Invalid follow list pubkey');
@@ -46,9 +44,9 @@ export async function getLatestFollowList(pubkey: string): Promise<FollowListRes
 		combineRelays(relays.length > 0 ? relays : [...defaultRelays])
 	);
 
-	if (network.status === 'found' && shouldReplaceCurrentEvent(network.event, cached)) {
-		// use() supplies verified events; raw message monitoring is only used for EOSE.
-		await putCachedLatestEvent(network.event);
+	if (network && shouldReplaceCurrentEvent(network, cached)) {
+		// use() supplies verified events.
+		await putCachedLatestEvent(network);
 	}
 	// Another request may have saved a newer event while this one was fetching.
 	const latestCachedEvent = await getCachedLatestEvent([normalizedPubkey, Contacts, '']);
@@ -56,22 +54,20 @@ export async function getLatestFollowList(pubkey: string): Promise<FollowListRes
 		latestCachedEvent?.kind === Contacts &&
 		normalizePubkey(latestCachedEvent.pubkey) === normalizedPubkey
 	) {
-		return { status: 'found', event: latestCachedEvent as Nostr.Event<typeof Contacts> };
+		return latestCachedEvent as Nostr.Event<typeof Contacts>;
 	}
 	return network;
 }
 
-function requestFollowList(pubkey: string, relays: string[]): Promise<FollowListResult> {
+function requestFollowList(
+	pubkey: string,
+	relays: string[]
+): Promise<Nostr.Event<typeof Contacts> | undefined> {
 	return new Promise((resolve, reject) => {
 		const client = getNostrClient();
-		const requestId = `follow-list-${crypto.randomUUID()}`;
-		const request = createRxBackwardReq(requestId);
-		// rx-nostr 3.7.4 appends the emission index to the supplied ID (one emit here).
-		const subId = `${requestId}:0`;
+		const request = createRxBackwardReq();
 		const subscriptions = new Subscription();
-		const queriedRelays = new Set<string>();
 		let latest: Nostr.Event<typeof Contacts> | undefined;
-		let receivedEose = false;
 		let finished = false;
 		const finish = () => {
 			if (finished) {
@@ -80,34 +76,11 @@ function requestFollowList(pubkey: string, relays: string[]): Promise<FollowList
 			finished = true;
 			clearTimeout(timeoutId);
 			subscriptions.unsubscribe();
-			resolve(
-				latest
-					? { status: 'found', event: latest }
-					: { status: receivedEose ? 'not-found' : 'unavailable' }
-			);
+			resolve(latest);
 		};
 		const timeoutId = setTimeout(finish, followListRequestTimeoutMs);
 
 		try {
-			subscriptions.add(
-				client.createOutgoingMessageObservable().subscribe(({ to, message }) => {
-					const relay = normalizeRelay(to);
-					if (message[0] === 'REQ' && message[1] === subId && relay && relays.includes(relay)) {
-						queriedRelays.add(relay);
-					}
-				})
-			);
-			subscriptions.add(
-				client.createAllMessageObservable().subscribe((packet) => {
-					if (
-						packet.type === 'EOSE' &&
-						packet.subId === subId &&
-						queriedRelays.has(normalizeRelay(packet.from) ?? '')
-					) {
-						receivedEose = true;
-					}
-				})
-			);
 			subscriptions.add(
 				client.use(request).subscribe({
 					next: ({ event }) => {
@@ -119,10 +92,8 @@ function requestFollowList(pubkey: string, relays: string[]): Promise<FollowList
 							latest = event as Nostr.Event<typeof Contacts>;
 						}
 					},
-					// Completion also occurs on timeout/disconnection. Let raw EOSE monitoring
-					// receive the same message before tearing down its listener.
-					complete: () => queueMicrotask(finish),
-					error: () => queueMicrotask(finish)
+					complete: finish,
+					error: finish
 				})
 			);
 			request.emit({ authors: [pubkey], kinds: [Contacts], limit: 1 }, { relays });

@@ -394,8 +394,7 @@ function signedFollowEvent(
 
 describe('cached follow list requests with rx-nostr', () => {
 	let client: RxNostr;
-	let monitorFinished = vi.fn<() => void>();
-	let outgoingFinished = vi.fn<() => void>();
+	let requestFinished = vi.fn<() => void>();
 
 	beforeEach(async () => {
 		await latestEventCache.resetPersistentLatestEventCacheForTests();
@@ -416,16 +415,7 @@ describe('cached follow list requests with rx-nostr', () => {
 		});
 		vi.mocked(getNostrClient).mockReturnValue(client);
 		vi.spyOn(nip65, 'getNip65WriteRelaysForPubkey').mockResolvedValue(followWriteRelays);
-		monitorFinished = vi.fn();
-		outgoingFinished = vi.fn();
-		const messages = client.createAllMessageObservable();
-		const outgoing = client.createOutgoingMessageObservable();
-		vi.spyOn(client, 'createAllMessageObservable').mockReturnValue(
-			messages.pipe(finalize(monitorFinished))
-		);
-		vi.spyOn(client, 'createOutgoingMessageObservable').mockReturnValue(
-			outgoing.pipe(finalize(outgoingFinished))
-		);
+		requestFinished = vi.fn();
 	}
 
 	afterEach(() => {
@@ -444,7 +434,7 @@ describe('cached follow list requests with rx-nostr', () => {
 		const useRequest = client.use.bind(client);
 		vi.spyOn(client, 'use').mockImplementation((...args) => {
 			started = true;
-			return useRequest(...args);
+			return useRequest(...args).pipe(finalize(requestFinished));
 		});
 		const result = getLatestFollowList(target);
 		await vi.waitFor(() => expect(started).toBe(true));
@@ -455,8 +445,7 @@ describe('cached follow list requests with rx-nostr', () => {
 	}
 
 	function expectCleanedUp(sockets: FollowListRelaySocket[]) {
-		expect(monitorFinished).toHaveBeenCalledOnce();
-		expect(outgoingFinished).toHaveBeenCalledOnce();
+		expect(requestFinished).toHaveBeenCalledOnce();
 		for (const socket of sockets) {
 			expect(socket.sent).toContainEqual(['CLOSE', socket.req[1]]);
 		}
@@ -486,7 +475,7 @@ describe('cached follow list requests with rx-nostr', () => {
 			]);
 			socket.eose();
 		}
-		await expect(result).resolves.toEqual({ status: 'not-found' });
+		await expect(result).resolves.toBeUndefined();
 		expect(nip65.getNip65WriteRelaysForPubkey).toHaveBeenCalledWith(followPubkey);
 		expectCleanedUp(queried);
 	});
@@ -498,7 +487,7 @@ describe('cached follow list requests with rx-nostr', () => {
 		for (const socket of sockets) {
 			socket.eose();
 		}
-		await expect(result).resolves.toEqual({ status: 'not-found' });
+		await expect(result).resolves.toBeUndefined();
 		expectCleanedUp(sockets);
 	});
 
@@ -513,7 +502,7 @@ describe('cached follow list requests with rx-nostr', () => {
 				sockets[0].eose();
 			}
 			await vi.advanceTimersByTimeAsync(5_000);
-			await expect(result).resolves.toEqual({ status: 'found', event: winner });
+			await expect(result).resolves.toEqual(winner);
 			expect(write).toHaveBeenCalledExactlyOnceWith(winner);
 			await expect(
 				latestEventCache.getCachedLatestEvent([followPubkey, Contacts, ''])
@@ -546,7 +535,7 @@ describe('cached follow list requests with rx-nostr', () => {
 				socket.eose();
 			}
 			const winner = scenario === 'newer' || scenario === 'winning-tie' ? candidate : cached;
-			await expect(result).resolves.toEqual({ status: 'found', event: winner });
+			await expect(result).resolves.toEqual(winner);
 			await expect(
 				latestEventCache.getCachedLatestEvent([followPubkey, Contacts, ''])
 			).resolves.toEqual(winner);
@@ -589,7 +578,7 @@ describe('cached follow list requests with rx-nostr', () => {
 			for (const socket of sockets) {
 				socket.receive(['EOSE', requestA]);
 			}
-			await expect(resultA).resolves.toEqual({ status: 'found', event: v3 });
+			await expect(resultA).resolves.toEqual(v3);
 			await expect(write.mock.results[0].value).resolves.toBe('updated');
 
 			if (response !== 'no-event') {
@@ -598,7 +587,7 @@ describe('cached follow list requests with rx-nostr', () => {
 			for (const socket of sockets) {
 				socket.receive(['EOSE', requestB]);
 			}
-			await expect(resultB).resolves.toEqual({ status: 'found', event: v3 });
+			await expect(resultB).resolves.toEqual(v3);
 			if (response === 'newer-event') {
 				expect(write).toHaveBeenNthCalledWith(2, v2);
 				await expect(write.mock.results[1].value).resolves.toBe('ignored');
@@ -608,8 +597,7 @@ describe('cached follow list requests with rx-nostr', () => {
 			await expect(
 				latestEventCache.getCachedLatestEvent([followPubkey, Contacts, ''])
 			).resolves.toEqual(v3);
-			expect(monitorFinished).toHaveBeenCalledTimes(2);
-			expect(outgoingFinished).toHaveBeenCalledTimes(2);
+			expect(requestFinished).toHaveBeenCalledTimes(2);
 			for (const socket of sockets) {
 				expect(socket.sent).toContainEqual(['CLOSE', requestA]);
 				expect(socket.sent).toContainEqual(['CLOSE', requestB]);
@@ -634,7 +622,7 @@ describe('cached follow list requests with rx-nostr', () => {
 			for (const socket of sockets) {
 				socket.eose();
 			}
-			await expect(result).resolves.toEqual({ status: 'found', event: ties[0] });
+			await expect(result).resolves.toEqual(ties[0]);
 			expectCleanedUp(sockets);
 		}
 	);
@@ -648,23 +636,13 @@ describe('cached follow list requests with rx-nostr', () => {
 		for (const socket of sockets) {
 			socket.eose();
 		}
-		await expect(result).resolves.toEqual({ status: 'not-found' });
-		expect(write).not.toHaveBeenCalled();
-		expectCleanedUp(sockets);
-	});
-
-	test('returns not-found with just one real EOSE and no events', async () => {
-		const write = vi.spyOn(latestEventCache, 'putCachedLatestEvent');
-		const { result, sockets } = await start();
-		sockets[0].eose();
-		await vi.advanceTimersByTimeAsync(5_000);
-		await expect(result).resolves.toEqual({ status: 'not-found' });
+		await expect(result).resolves.toBeUndefined();
 		expect(write).not.toHaveBeenCalled();
 		expectCleanedUp(sockets);
 	});
 
 	test.each(['deadline', 'internal-timeout', 'disconnect', 'closed'] as const)(
-		'returns unavailable after %s without events or EOSE',
+		'returns undefined after %s without events',
 		async (failure) => {
 			const write = vi.spyOn(latestEventCache, 'putCachedLatestEvent');
 			if (failure === 'internal-timeout') {
@@ -685,32 +663,13 @@ describe('cached follow list requests with rx-nostr', () => {
 			} else {
 				await vi.advanceTimersByTimeAsync(5_000);
 			}
-			await expect(result).resolves.toEqual({ status: 'unavailable' });
+			await expect(result).resolves.toBeUndefined();
 			expect(write).not.toHaveBeenCalled();
-			// A disconnected/CLOSED relay may no longer accept CLOSE; listeners and timers still go away.
-			expect(monitorFinished).toHaveBeenCalledOnce();
-			expect(outgoingFinished).toHaveBeenCalledOnce();
+			// A disconnected/CLOSED relay may no longer accept CLOSE; the subscription and timer still go away.
+			expect(requestFinished).toHaveBeenCalledOnce();
 			expect(vi.getTimerCount()).toBe(0);
 		}
 	);
-
-	test('ignores EOSE for a different REQ or a relay that was not queried', async () => {
-		const { result, sockets } = await start();
-		sockets[0].receive(['EOSE', 'unrelated:0']);
-		const unrelated = createRxBackwardReq('unrelated');
-		const subscription = client.use(unrelated).subscribe();
-		unrelated.emit({ kinds: [0] }, { relays: ['wss://unrelated.example/'] });
-		unrelated.over();
-		await vi.waitFor(() => expect(FollowListRelaySocket.sockets).toHaveLength(3));
-		const other = FollowListRelaySocket.sockets.at(-1)!;
-		other.open();
-		other.receive(['EOSE', sockets[0].req[1]]);
-		other.eose();
-		await vi.advanceTimersByTimeAsync(5_000);
-		await expect(result).resolves.toEqual({ status: 'unavailable' });
-		subscription.unsubscribe();
-		expectCleanedUp(sockets.slice(0, 2));
-	});
 
 	test('returns cache when all relays are silent and keeps accounts separate', async () => {
 		const cached = signedFollowEvent();
@@ -720,7 +679,7 @@ describe('cached follow list requests with rx-nostr', () => {
 		const write = vi.spyOn(latestEventCache, 'putCachedLatestEvent');
 		const { result, sockets } = await start(secondFollowPubkey);
 		await vi.advanceTimersByTimeAsync(5_000);
-		await expect(result).resolves.toEqual({ status: 'found', event: other });
+		await expect(result).resolves.toEqual(other);
 		await expect(
 			latestEventCache.getCachedLatestEvent([followPubkey, Contacts, ''])
 		).resolves.toEqual(cached);
