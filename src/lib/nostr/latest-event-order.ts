@@ -3,7 +3,11 @@ import { isAddressableKind, isReplaceableKind } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
 import { normalizePubkey } from './pubkeys';
 
-export type LatestEventKey = [pubkey: string, kind: number, identifier: string];
+export type LatestEventKey<K extends number = number> = [
+	pubkey: string,
+	kind: K,
+	identifier: string
+];
 
 export type LatestEventCandidate = {
 	key: LatestEventKey;

@@ -93,8 +93,11 @@ export async function putCachedLatestEvents(
 	});
 }
 
-export async function getCachedLatestEvent(key: LatestEventKey) {
-	return (await persistentCacheDb.latestEvents.get(key))?.event;
+export async function getCachedLatestEvent<K extends number>(
+	key: LatestEventKey<K>
+): Promise<Nostr.Event<K> | undefined> {
+	const record = await persistentCacheDb.latestEvents.get(key);
+	return record?.event as Nostr.Event<K> | undefined;
 }
 
 export async function getCachedLatestEvents(keys: LatestEventKey[]) {
