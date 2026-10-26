@@ -2,8 +2,8 @@ import { shouldReplaceCurrentEvent } from '@nostter/nostr-protocol';
 import type * as Nostr from 'nostr-typedef';
 import { Contacts } from 'nostr-tools/kinds';
 import { createRxBackwardReq } from 'rx-nostr';
-import { getNostrClient } from './client';
-import { getCachedLatestEvent, putCachedLatestEvent } from './latest-event-cache';
+import { getNostrClient } from '$lib/nostr/client';
+import { getCachedLatestEvent, putCachedLatestEvent } from '$lib/nostr/latest-event-cache';
 
 /**
  * Uses the active account's write relays.
