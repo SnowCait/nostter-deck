@@ -5,7 +5,7 @@ import type * as Nostr from 'nostr-typedef';
 import { createComposerController } from './composer-controller.svelte';
 import { createMediaAttachmentController } from '$lib/features/composer/application/media-attachment-controller.svelte';
 import type { ChannelTimelineColumnConfig } from './types';
-import { eventToPost } from '$lib/nostr/posts';
+import { eventToPost } from '$lib/features/posts/post-model';
 
 const publishChannelMessage = vi.hoisted(() => vi.fn());
 const publishQuoteRepost = vi.hoisted(() => vi.fn());

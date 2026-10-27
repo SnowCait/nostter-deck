@@ -1,7 +1,7 @@
 import { SvelteSet } from 'svelte/reactivity';
 import { ShortTextNote } from 'nostr-tools/kinds';
 import type { EventSigner } from 'rx-nostr';
-import type { Post } from './types';
+import type { Post } from '$lib/features/posts/types';
 import { getPostLikeTarget, getPostRepostTarget } from './post-actions';
 import type { EmojiReaction, LikeReaction } from '$lib/nostr/emoji-reactions';
 import { getDefaultLikeReaction } from '$lib/account-settings';

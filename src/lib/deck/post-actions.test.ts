@@ -10,8 +10,8 @@ import {
 	getPostRepostTarget,
 	getPostShareTarget
 } from './post-actions';
-import type { Post } from './types';
-import { eventToPost } from '$lib/nostr/posts';
+import type { Post } from '$lib/features/posts/types';
+import { eventToPost } from '$lib/features/posts/post-model';
 
 function event(id: string, kind = ShortTextNote) {
 	return {

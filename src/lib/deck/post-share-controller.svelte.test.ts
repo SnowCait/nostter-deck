@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
 import { createPostShareController } from './post-share-controller.svelte';
-import { eventToPost } from '$lib/nostr/posts';
+import { eventToPost } from '$lib/features/posts/post-model';
 
 type TestShareNavigator = Parameters<typeof createPostShareController>[0] extends {
 	getNavigator?: () => infer Navigator;

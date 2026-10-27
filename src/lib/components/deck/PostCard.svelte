@@ -2,7 +2,7 @@
 	import { MessageCircle, Quote, Repeat2, ShieldCheck } from '@lucide/svelte';
 	import * as Popover from '$lib/components/ui/popover';
 	import { m } from '$lib/paraglide/messages.js';
-	import type { Post, PostMessage } from '$lib/deck/types';
+	import type { Post, PostMessage } from '$lib/features/posts/types';
 	import type { SharePostResult } from '$lib/deck/post-share-controller.svelte';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type {

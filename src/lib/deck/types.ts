@@ -1,7 +1,6 @@
 import type { NostrFilter } from '$lib/nostr/filters';
 import type { RelaySelection } from '$lib/nostr/relays';
-import type * as Nostr from 'nostr-typedef';
-import type { CustomEmoji } from '$lib/nostr/custom-emoji';
+import type { Post } from '$lib/features/posts/types';
 
 export type MessageKey =
 	| 'app_title'
@@ -156,24 +155,6 @@ export type ColumnTitleKey = Extract<
 export type ColumnSourceKey = ColumnTitleKey;
 export type ColumnWidth = 'narrow' | 'standard' | 'wide';
 export type ColumnIconKey = 'users' | 'search' | 'radio' | 'globe' | 'messages';
-export type PostMessage =
-	| { key: 'replying_to' }
-	| { key: 'reposted_by'; params: { name: string }; nameEmojis: CustomEmoji[] }
-	| { key: 'reposted_event_unavailable' }
-	| { key: 'reacted_by_like'; params: { name: string }; nameEmojis: CustomEmoji[] }
-	| {
-			key: 'reacted_by';
-			params: { name: string; content: string };
-			nameEmojis: CustomEmoji[];
-			contentEmojis: CustomEmoji[];
-	  }
-	| { key: 'reaction_event_unavailable' };
-
-export type PostContext = {
-	icon: 'reply' | 'repost' | 'heart';
-	message: PostMessage;
-};
-
 export type ColumnDisplayConfig = {
 	title?: string;
 	icon?: ColumnIconKey;
@@ -232,54 +213,6 @@ export type WebsiteColumnConfig = {
 } & ColumnDisplayConfig;
 
 export type ColumnConfig = TimelineColumnConfig | WebsiteColumnConfig;
-
-export type Post = {
-	id?: string;
-	events: {
-		source: Nostr.Event;
-		referenced?: Nostr.Event;
-	};
-	pubkey: string;
-	author: string;
-	handle: string;
-	avatarUrl?: string;
-	time: string;
-	body: string;
-	bodyEmojis: CustomEmoji[];
-	authorEmojis: CustomEmoji[];
-	accent: string;
-	mutePubkeys: string[];
-	contentWarning?: {
-		reason?: string;
-	};
-	referenceType?: 'repost' | 'reaction';
-	referenceStatus?: 'loading' | 'loaded' | 'unavailable';
-	verified?: boolean;
-	stats: {
-		replies: string;
-		reposts: string;
-		likes: string;
-	};
-	contexts?: PostContext[];
-	unavailableMessage?: PostMessage;
-	thread?: {
-		event: Nostr.Event;
-		rootId: string;
-		parentId?: string;
-		relayHints: string[];
-	};
-	attachment?: {
-		label: string;
-		title: string;
-		body: string;
-	};
-};
-
-export type ThreadPost = {
-	post: Post;
-	depth: number;
-	isMuted: boolean;
-};
 
 export type PresetTimelineColumn = PresetTimelineColumnConfig & {
 	posts: Post[];

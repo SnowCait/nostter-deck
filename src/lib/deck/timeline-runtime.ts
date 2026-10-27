@@ -10,7 +10,11 @@ import type {
 } from './types';
 import type { NostrFilter } from '$lib/nostr/filters';
 import type { RelaySelection } from '$lib/nostr/relays';
-import { eventToPost, reactionEventToPost, repostEventToPost } from '$lib/nostr/posts';
+import {
+	eventToPost,
+	reactionEventToPost,
+	repostEventToPost
+} from '$lib/features/posts/post-model';
 import { searchRelays } from '$lib/nostr/relays';
 import { getTimelineKey } from './timeline-cache';
 import type { Profile } from '$lib/nostr/profiles';

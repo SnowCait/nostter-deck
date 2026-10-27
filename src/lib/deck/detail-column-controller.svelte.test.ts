@@ -3,7 +3,7 @@ import { Repost, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
 import { createDetailColumnController } from './detail-column-controller.svelte';
 import type { ColumnConfig } from './types';
-import { eventToPost } from '$lib/nostr/posts';
+import { eventToPost } from '$lib/features/posts/post-model';
 import type { startThreadSubscription } from '$lib/nostr/thread';
 import type { startCustomTimelineSubscription } from '$lib/nostr/timeline';
 

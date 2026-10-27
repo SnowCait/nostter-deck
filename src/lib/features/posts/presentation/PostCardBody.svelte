@@ -8,7 +8,7 @@
 		type UrlMediaMetadata
 	} from '../application/url-media';
 	import { m } from '$lib/paraglide/messages.js';
-	import type { Post } from '$lib/deck/types';
+	import type { Post } from '$lib/features/posts/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import { getProfileDisplayName, type Profile } from '$lib/nostr/profiles';

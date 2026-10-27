@@ -1,6 +1,7 @@
 import { tick } from 'svelte';
 import { Repost, ShortTextNote } from 'nostr-tools/kinds';
-import type { ColumnConfig, Post, ThreadPost } from './types';
+import type { ColumnConfig } from './types';
+import type { Post, ThreadPost } from '$lib/features/posts/types';
 import {
 	addProfilePostEvent,
 	addProfileReferencedEvent,
@@ -14,7 +15,8 @@ import {
 } from './timeline-runtime';
 import type { ProfilePointer } from '$lib/nostr/nip19';
 import type { Profile } from '$lib/nostr/profiles';
-import { eventToPost, getThreadReference } from '$lib/nostr/posts';
+import { getThreadReference } from '$lib/nostr/posts';
+import { eventToPost } from '$lib/features/posts/post-model';
 import {
 	combineRelays,
 	defaultRelays,
