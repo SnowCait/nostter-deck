@@ -2,7 +2,6 @@ import { tick } from 'svelte';
 import { ChannelMessage, ShortTextNote } from 'nostr-tools/kinds';
 import type { EventSigner } from 'rx-nostr';
 import { getPostQuoteTarget, getPostReplyTarget } from '$lib/features/posts/domain/post-actions';
-import type { ChannelTimelineColumnConfig } from './types';
 import type { Post } from '$lib/features/posts/types';
 import type { RelaySelection } from '$lib/nostr/relays';
 import {
@@ -29,6 +28,11 @@ import { createPublishDiagnostic, type PublishOperation } from '$lib/nostr/publi
 import type { AccountMethod } from '$lib/nostr/accounts';
 import type { CustomEmojiDefinition, EmojiReaction } from '$lib/nostr/emoji-reactions';
 import { resolveRelaySelection as resolveSelectionRelays } from '$lib/nostr/relays';
+
+export type ChannelPublishTarget = {
+	channelId: string;
+	relays: RelaySelection;
+};
 
 type ComposerControllerOptions = {
 	getAccountPubkey: () => string | null;
@@ -244,7 +248,7 @@ export function createComposerController({
 	}
 
 	async function publishChannel(
-		channel: ChannelTimelineColumnConfig,
+		channel: ChannelPublishTarget,
 		content: string,
 		channelMedia?: MediaAttachmentController,
 		channelCustomEmojis: CustomEmojiDefinition[] = []

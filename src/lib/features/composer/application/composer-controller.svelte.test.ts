@@ -2,9 +2,8 @@ import { describe, expect, test, vi, beforeEach } from 'vitest';
 import { Reaction, ShortTextNote } from 'nostr-tools/kinds';
 import type { EventSigner } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
-import { createComposerController } from './composer-controller.svelte';
+import { createComposerController, type ChannelPublishTarget } from './composer-controller.svelte';
 import { createMediaAttachmentController } from '$lib/features/composer/application/media-attachment-controller.svelte';
-import type { ChannelTimelineColumnConfig } from './types';
 import { eventToPost } from '$lib/features/posts/post-model';
 
 const publishChannelMessage = vi.hoisted(() => vi.fn());
@@ -23,14 +22,9 @@ const pubkey = 'a'.repeat(64);
 const targetPubkey = 'b'.repeat(64);
 const targetRelay = 'wss://target.example/';
 const channel = {
-	id: 'channel-column',
-	type: 'timeline',
-	timelineKind: 'preset',
-	sourceKey: 'timeline_channel',
 	channelId: '4'.repeat(64),
-	relays: { type: 'custom', urls: ['wss://channel.example/'] },
-	width: 'standard'
-} satisfies ChannelTimelineColumnConfig;
+	relays: { type: 'custom', urls: ['wss://channel.example/'] }
+} satisfies ChannelPublishTarget;
 type UploadMedia = NonNullable<Parameters<typeof createComposerController>[0]['uploadMedia']>;
 
 function event(id: string, patch: Partial<Nostr.Event> = {}) {
