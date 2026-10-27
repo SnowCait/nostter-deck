@@ -18,11 +18,11 @@
 	import EmojiReactionPicker from './EmojiReactionPicker.svelte';
 	import ProfileAvatar from './ProfileAvatar.svelte';
 	import MutedContentPlaceholder from '$lib/features/muted-users/presentation/MutedContentPlaceholder.svelte';
-	import ContentWarningPlaceholder from './ContentWarningPlaceholder.svelte';
+	import ContentWarningPlaceholder from '$lib/features/posts/presentation/ContentWarningPlaceholder.svelte';
 	import EventJsonMenu from './EventJsonMenu.svelte';
 	import LikeReactionIcon from './LikeReactionIcon.svelte';
 	import PostCardBody from '$lib/features/posts/presentation/PostCardBody.svelte';
-	import PostCardContextList from './PostCardContextList.svelte';
+	import PostCardContextList from '$lib/features/posts/presentation/PostCardContextList.svelte';
 
 	type Props = {
 		post: Post;
