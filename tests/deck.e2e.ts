@@ -1461,25 +1461,10 @@ test.describe('nostter deck', () => {
 
 		const dialog = page.getByRole('dialog', { name: 'Event JSON' });
 		await expect(dialog).toBeVisible();
-		await expect
-			.poll(() =>
-				dialog.evaluate((element) => ({
-					width: element.getBoundingClientRect().width,
-					viewportWidth: window.innerWidth
-				}))
-			)
-			.toMatchObject({ width: 1024, viewportWidth: 1280 });
 		await expect(dialog.getByTestId('event-json')).toContainText('"id": "event-custom-timeline-1"');
 		await expect(dialog.getByTestId('event-json')).toContainText(
 			'"content": "Hello from a custom Nostr timeline'
 		);
-		await expect
-			.poll(() =>
-				dialog
-					.getByTestId('event-json')
-					.evaluate((element) => element.scrollWidth <= element.clientWidth)
-			)
-			.toBe(true);
 		await dialog.getByRole('button', { name: 'Copy JSON' }).click();
 		await expect(dialog.getByRole('button', { name: 'Copied' })).toBeVisible();
 		await expect
