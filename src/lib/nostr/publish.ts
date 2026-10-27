@@ -1,8 +1,8 @@
 import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import { now, type EventSigner } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
-import { buildNip10ReplyTags, buildNip18QuoteRepost } from '$lib/deck/post-actions';
-import { addContentMentionTags } from '$lib/deck/mention-actions';
+import { buildNip10ReplyTags, buildNip18QuoteRepost } from './post-tags';
+import { addContentMentionTags } from './mention-tags';
 import type { CustomEmojiDefinition, EmojiReaction, LikeReaction } from './emoji-reactions';
 import { publishEvent, type PublishEventOptions } from './relay/publish-event';
 
