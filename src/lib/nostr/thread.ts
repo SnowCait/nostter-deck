@@ -2,7 +2,7 @@ import { ShortTextNote } from 'nostr-tools/kinds';
 import { createRxBackwardReq, uniq, type LazyFilter } from 'rx-nostr';
 import type { Unsubscribable } from 'rxjs';
 import type * as Nostr from 'nostr-typedef';
-import { storeEvent } from '$lib/deck/timeline-cache';
+import { storeEvent } from './event-cache';
 import { getNostrClient } from './client';
 import { getThreadReference } from './posts';
 import { requestProfiles } from './profiles';

@@ -1,15 +1,8 @@
-import Dexie, { type Table } from 'dexie';
+import Dexie from 'dexie';
+import { sessionCacheDb } from '$lib/platform/session-cache-database';
+import { loadEventsByIds, storeEvents } from '$lib/nostr/event-cache';
 import type * as Nostr from 'nostr-typedef';
 import type { TimelineRequest } from './timeline-runtime';
-
-export type CachedEvent = {
-	eventId: string;
-	kind: number;
-	pubkey: string;
-	createdAt: number;
-	storedAt: number;
-	event: Nostr.Event;
-};
 
 export type CachedTimelineEvent = {
 	timelineEventKey: string;
@@ -25,51 +18,32 @@ type TimelineCursor = {
 	eventId: string;
 };
 
-class TimelineCacheDatabase extends Dexie {
-	events!: Table<CachedEvent, string>;
-	timelineEvents!: Table<CachedTimelineEvent, string>;
-
-	constructor() {
-		super('nostter-deck-session');
-
-		this.version(1).stores({
-			events: '&eventId, kind, pubkey, createdAt, [kind+pubkey]',
-			timelineEvents:
-				'&timelineEventKey, columnId, [columnId+timelineKey+sortCreatedAt+eventId], [columnId+timelineKey+eventId]'
-		});
-	}
-}
-
-const timelineCacheDb = new TimelineCacheDatabase();
+const cachedTimelineEvents = sessionCacheDb.table<CachedTimelineEvent, string>('timelineEvents');
 
 export function getTimelineKey(request: TimelineRequest) {
 	return hashString(stableStringify(request));
 }
 
 export async function resetSessionTimelineCache() {
-	await timelineCacheDb.transaction(
+	await sessionCacheDb.transaction(
 		'rw',
-		timelineCacheDb.events,
-		timelineCacheDb.timelineEvents,
+		sessionCacheDb.table('events'),
+		cachedTimelineEvents,
 		async () => {
-			await timelineCacheDb.events.clear();
-			await timelineCacheDb.timelineEvents.clear();
+			await sessionCacheDb.table('events').clear();
+			await cachedTimelineEvents.clear();
 		}
 	);
 }
 
 export async function clearTimelineColumn(columnId: string, keepTimelineKey?: string) {
-	const timelineEvents = timelineCacheDb.timelineEvents.where('columnId').equals(columnId);
+	const timelineEvents = cachedTimelineEvents.where('columnId').equals(columnId);
 	if (!keepTimelineKey) {
 		await timelineEvents.delete();
 		return;
 	}
 
 	await timelineEvents.filter((entry) => entry.timelineKey !== keepTimelineKey).delete();
-}
-
-export async function storeEvent(event: Nostr.Event) {
-	await timelineCacheDb.events.put(toCachedEvent(event));
 }
 
 export async function storeTimelineEvent(
@@ -89,13 +63,13 @@ export async function storeTimelineEvents(
 		return;
 	}
 
-	await timelineCacheDb.transaction(
+	await sessionCacheDb.transaction(
 		'rw',
-		timelineCacheDb.events,
-		timelineCacheDb.timelineEvents,
+		sessionCacheDb.table('events'),
+		cachedTimelineEvents,
 		async () => {
-			await timelineCacheDb.events.bulkPut(events.map(toCachedEvent));
-			await timelineCacheDb.timelineEvents.bulkPut(
+			await storeEvents(events);
+			await cachedTimelineEvents.bulkPut(
 				events.map((event) => toCachedTimelineEvent(columnId, timelineKey, event))
 			);
 		}
@@ -118,7 +92,7 @@ export async function loadOlderTimelineEvents(
 	cursor: TimelineCursor,
 	limit: number
 ) {
-	const entries = await timelineCacheDb.timelineEvents
+	const entries = await cachedTimelineEvents
 		.where('[columnId+timelineKey+sortCreatedAt+eventId]')
 		.between(
 			[columnId, timelineKey, -cursor.createdAt, cursor.eventId],
@@ -138,7 +112,7 @@ export async function loadNewerTimelineEvents(
 	cursor: TimelineCursor,
 	limit: number
 ) {
-	const entries = await timelineCacheDb.timelineEvents
+	const entries = await cachedTimelineEvents
 		.where('[columnId+timelineKey+sortCreatedAt+eventId]')
 		.between(
 			[columnId, timelineKey, Dexie.minKey, Dexie.minKey],
@@ -158,7 +132,7 @@ export async function hasOlderTimelineEvents(
 	timelineKey: string,
 	cursor: TimelineCursor
 ) {
-	const count = await timelineCacheDb.timelineEvents
+	const count = await cachedTimelineEvents
 		.where('[columnId+timelineKey+sortCreatedAt+eventId]')
 		.between(
 			[columnId, timelineKey, -cursor.createdAt, cursor.eventId],
@@ -177,7 +151,7 @@ export async function hasNewerTimelineEvents(
 	timelineKey: string,
 	cursor: TimelineCursor
 ) {
-	const count = await timelineCacheDb.timelineEvents
+	const count = await cachedTimelineEvents
 		.where('[columnId+timelineKey+sortCreatedAt+eventId]')
 		.between(
 			[columnId, timelineKey, Dexie.minKey, Dexie.minKey],
@@ -191,20 +165,8 @@ export async function hasNewerTimelineEvents(
 	return count > 0;
 }
 
-export async function loadEventsByIds(eventIds: string[]) {
-	const events = await timelineCacheDb.events.bulkGet(eventIds);
-
-	return Object.fromEntries(
-		events.flatMap((cachedEvent) => (cachedEvent ? [[cachedEvent.eventId, cachedEvent.event]] : []))
-	);
-}
-
-export async function loadEventById(eventId: string) {
-	return (await timelineCacheDb.events.get(eventId))?.event;
-}
-
 function getTimelineRange(columnId: string, timelineKey: string) {
-	return timelineCacheDb.timelineEvents
+	return cachedTimelineEvents
 		.where('[columnId+timelineKey+sortCreatedAt+eventId]')
 		.between(
 			[columnId, timelineKey, Dexie.minKey, Dexie.minKey],
@@ -216,17 +178,6 @@ async function entriesToEvents(entries: CachedTimelineEvent[]) {
 	return {
 		entries,
 		eventsById: await loadEventsByIds(entries.map((entry) => entry.eventId))
-	};
-}
-
-function toCachedEvent(event: Nostr.Event): CachedEvent {
-	return {
-		eventId: event.id,
-		kind: event.kind,
-		pubkey: event.pubkey,
-		createdAt: event.created_at,
-		storedAt: Date.now(),
-		event
 	};
 }
 

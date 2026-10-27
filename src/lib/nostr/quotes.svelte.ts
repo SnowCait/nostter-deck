@@ -3,7 +3,7 @@ import { createRxBackwardReq, uniq, type LazyFilter } from 'rx-nostr';
 import { SvelteMap } from 'svelte/reactivity';
 import type { Unsubscribable } from 'rxjs';
 import type * as Nostr from 'nostr-typedef';
-import { loadEventById, storeEvent } from '$lib/deck/timeline-cache';
+import { loadEventById, storeEvent } from './event-cache';
 import { getNostrClient } from './client';
 import { requestProfiles } from './profiles';
 import { combineRelays, defaultRelays, profileRelays } from './relays';
