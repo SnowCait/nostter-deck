@@ -13,7 +13,7 @@
 	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import { getProfileDisplayName, type Profile } from '$lib/nostr/profiles';
 	import type { AvatarShape } from '$lib/user-settings';
-	import CustomEmojiText from '$lib/components/deck/CustomEmojiText.svelte';
+	import CustomEmojiText from '$lib/components/CustomEmojiText.svelte';
 	import NostrQuoteCard from './NostrQuoteCard.svelte';
 	import ImageViewer from '$lib/components/ImageViewer.svelte';
 

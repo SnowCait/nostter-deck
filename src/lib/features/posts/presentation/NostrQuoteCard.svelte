@@ -7,9 +7,9 @@
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { AvatarShape } from '$lib/user-settings';
 	import type { Profile } from '$lib/nostr/profiles';
-	import ProfileAvatar from '$lib/components/deck/ProfileAvatar.svelte';
+	import ProfileAvatar from '$lib/components/ProfileAvatar.svelte';
 	import MutedContentPlaceholder from './MutedContentPlaceholder.svelte';
-	import CustomEmojiText from '$lib/components/deck/CustomEmojiText.svelte';
+	import CustomEmojiText from '$lib/components/CustomEmojiText.svelte';
 	import ContentWarningPlaceholder from './ContentWarningPlaceholder.svelte';
 	import EventJsonMenu from './EventJsonMenu.svelte';
 
