@@ -2,7 +2,8 @@ import { tick } from 'svelte';
 import { ChannelMessage, ShortTextNote } from 'nostr-tools/kinds';
 import type { EventSigner } from 'rx-nostr';
 import { getPostQuoteTarget, getPostReplyTarget } from './post-actions';
-import type { ChannelTimelineColumnConfig, Post, RelaySelection } from './types';
+import type { ChannelTimelineColumnConfig, Post } from './types';
+import type { RelaySelection } from '$lib/nostr/relays';
 import {
 	applyComposerEmojiSelection,
 	type ComposerCustomEmoji

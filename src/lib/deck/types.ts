@@ -1,3 +1,5 @@
+import type { NostrFilter } from '$lib/nostr/filters';
+import type { RelaySelection } from '$lib/nostr/relays';
 import type * as Nostr from 'nostr-typedef';
 import type { CustomEmoji } from '$lib/nostr/custom-emoji';
 
@@ -154,12 +156,6 @@ export type ColumnTitleKey = Extract<
 export type ColumnSourceKey = ColumnTitleKey;
 export type ColumnWidth = 'narrow' | 'standard' | 'wide';
 export type ColumnIconKey = 'users' | 'search' | 'radio' | 'globe' | 'messages';
-export type NostrFilter = Record<string, unknown>;
-export type RelaySelection =
-	| { type: 'default' }
-	| { type: 'custom'; urls: string[] }
-	| { type: 'nip65'; pubkey: string };
-
 export type PostMessage =
 	| { key: 'replying_to' }
 	| { key: 'reposted_by'; params: { name: string }; nameEmojis: CustomEmoji[] }

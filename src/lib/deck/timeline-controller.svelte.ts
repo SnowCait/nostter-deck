@@ -24,7 +24,7 @@ import {
 import type { ColumnConfig } from './types';
 import { startCustomTimelineSubscription } from '$lib/nostr/timeline';
 import { resolveRelaySelection as resolveSelectionRelays } from '$lib/nostr/relays';
-import type { RelaySelection } from './types';
+import type { RelaySelection } from '$lib/nostr/relays';
 
 type TimelineControllerOptions = {
 	getColumnConfigs: () => ColumnConfig[];

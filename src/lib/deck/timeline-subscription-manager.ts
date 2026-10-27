@@ -1,5 +1,6 @@
 import { emptyTimelineRuntime } from './timeline-runtime';
-import type { NostrFilter, RelaySelection } from './types';
+import type { NostrFilter } from '$lib/nostr/filters';
+import type { RelaySelection } from '$lib/nostr/relays';
 import type { TimelineRuntime } from './timeline-runtime';
 import type { TimelineEventPhase } from '$lib/nostr/timeline';
 import type * as Nostr from 'nostr-typedef';

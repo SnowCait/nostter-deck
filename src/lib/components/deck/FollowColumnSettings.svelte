@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages.js';
-	import type { FollowTimelineColumnConfig, RelaySelection } from '$lib/deck/types';
+	import type { FollowTimelineColumnConfig } from '$lib/deck/types';
+	import type { RelaySelection } from '$lib/nostr/relays';
 	import type { AccountRelayOption } from '$lib/deck/relay-selection-controller.svelte';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import { decodeProfilePointer, encodeNpub, type ProfilePointer } from '$lib/nostr/nip19';

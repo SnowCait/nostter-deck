@@ -2,7 +2,8 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { createColumnConfigFromDraft, type AddColumnType } from '$lib/deck/add-column';
 	import { columnSourceKeys } from '$lib/deck/data';
-	import type { ColumnConfig, ColumnIconKey, RelaySelection } from '$lib/deck/types';
+	import type { ColumnConfig, ColumnIconKey } from '$lib/deck/types';
+	import type { RelaySelection } from '$lib/nostr/relays';
 	import type { AccountRelayOption } from '$lib/deck/relay-selection-controller.svelte';
 	import { normalizeWebsiteUrl } from '$lib/deck/website-url';
 	import type { FontSizeTextClasses } from '$lib/font-size';
