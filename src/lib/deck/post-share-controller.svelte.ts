@@ -1,4 +1,4 @@
-import type { Post } from './types';
+import type { Post } from '$lib/features/posts/types';
 import { buildPostShareUrl } from './post-actions';
 
 export type SharePostResult =

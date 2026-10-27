@@ -1,9 +1,13 @@
 <script lang="ts">
 	import { Reaction, Repost } from 'nostr-tools/kinds';
 	import type * as Nostr from 'nostr-typedef';
-	import { eventToPost, reactionEventToPost, repostEventToPost } from '$lib/nostr/posts';
+	import {
+		eventToPost,
+		reactionEventToPost,
+		repostEventToPost
+	} from '$lib/features/posts/post-model';
 	import { getReferencedEventId } from '$lib/deck/timeline-runtime';
-	import type { Post } from '$lib/deck/types';
+	import type { Post } from '$lib/features/posts/types';
 	import type { SharePostResult } from '$lib/deck/post-share-controller.svelte';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type {

@@ -1,5 +1,5 @@
 import type * as Nostr from 'nostr-typedef';
-import type { Post } from './types';
+import type { Post } from '$lib/features/posts/types';
 import { encodeEventPointer } from '$lib/nostr/nip19';
 
 const postShareUrlBase = 'https://nostter.app/';

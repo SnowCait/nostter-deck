@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { ChevronRight, Heart, MessageCircle, Repeat2 } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
-	import type { Post, PostContext, PostMessage } from '$lib/deck/types';
+	import type { Post, PostContext, PostMessage } from '$lib/features/posts/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { CustomEmoji } from '$lib/nostr/custom-emoji';
 	import CustomEmojiText from '$lib/components/deck/CustomEmojiText.svelte';

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { MessageCircle, X } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
-	import type { Post, ThreadPost } from '$lib/deck/types';
+	import type { Post, ThreadPost } from '$lib/features/posts/types';
 	import type { SharePostResult } from '$lib/deck/post-share-controller.svelte';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type {

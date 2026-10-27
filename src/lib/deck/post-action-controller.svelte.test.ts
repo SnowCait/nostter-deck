@@ -3,9 +3,9 @@ import { Reaction, ShortTextNote } from 'nostr-tools/kinds';
 import type { EventSigner } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import { createPostActionController } from './post-action-controller.svelte';
-import type { Post } from './types';
+import type { Post } from '$lib/features/posts/types';
 import type { LikeReaction } from '$lib/nostr/emoji-reactions';
-import { eventToPost } from '$lib/nostr/posts';
+import { eventToPost } from '$lib/features/posts/post-model';
 
 const publishLikeReaction = vi.hoisted(() => vi.fn());
 const publishEmojiReaction = vi.hoisted(() => vi.fn());

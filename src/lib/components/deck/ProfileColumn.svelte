@@ -3,7 +3,7 @@
 	import { npubEncode } from 'nostr-tools/nip19';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { FontSizeTextClasses } from '$lib/font-size';
-	import type { Post } from '$lib/deck/types';
+	import type { Post } from '$lib/features/posts/types';
 	import type { SharePostResult } from '$lib/deck/post-share-controller.svelte';
 	import type {
 		CustomEmojiReactionCandidate,

@@ -12,9 +12,9 @@
 		ColumnConfig,
 		ColumnIconKey,
 		ColumnWidth,
-		ChannelTimelineColumnConfig,
-		Post
+		ChannelTimelineColumnConfig
 	} from '$lib/deck/types';
+	import type { Post } from '$lib/features/posts/types';
 	import type { NostrFilter } from '$lib/nostr/filters';
 	import type { RelaySelection } from '$lib/nostr/relays';
 	import type { TimelineRuntime } from '$lib/deck/timeline-runtime';

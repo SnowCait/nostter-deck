@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { neventEncode } from 'nostr-tools/nip19';
-	import { eventToPost } from '$lib/nostr/posts';
+	import { eventToPost } from '$lib/features/posts/post-model';
 	import { getNostrQuoteState, requestNostrQuote } from '$lib/nostr/quotes.svelte';
 	import { m } from '$lib/paraglide/messages.js';
-	import type { Post } from '$lib/deck/types';
+	import type { Post } from '$lib/features/posts/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { AvatarShape } from '$lib/user-settings';
 	import type { Profile } from '$lib/nostr/profiles';
