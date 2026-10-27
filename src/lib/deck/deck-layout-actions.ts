@@ -1,4 +1,4 @@
-import type { DeckLayoutMode } from '$lib/ui-state';
+import type { DeckLayoutMode } from './ui-state';
 
 export type EffectiveDeckLayoutMode = 'deck' | 'single';
 type ColumnIdentity = { id: string };
