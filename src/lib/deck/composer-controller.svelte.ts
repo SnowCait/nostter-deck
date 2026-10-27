@@ -8,7 +8,7 @@ import {
 	appendMediaUrls,
 	createMediaAttachmentController,
 	type MediaAttachmentController
-} from './media-attachment-controller.svelte';
+} from '$lib/features/composer/application/media-attachment-controller.svelte';
 import { uploadBlossomImage } from '$lib/nostr/blossom';
 import { getNip65ReadRelaysForPubkey } from '$lib/nostr/nip65';
 import {

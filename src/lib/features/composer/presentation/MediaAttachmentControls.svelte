@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { Image, X } from '@lucide/svelte';
-	import type { ComposerMediaAttachment } from '$lib/deck/media-attachment-controller.svelte';
+	import type { ComposerMediaAttachment } from '$lib/features/composer/application/media-attachment-controller.svelte';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import { m } from '$lib/paraglide/messages.js';
 
