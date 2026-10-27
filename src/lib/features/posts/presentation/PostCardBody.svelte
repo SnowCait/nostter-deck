@@ -14,7 +14,7 @@
 	import { getProfileDisplayName, type Profile } from '$lib/nostr/profiles';
 	import type { AvatarShape } from '$lib/user-settings';
 	import CustomEmojiText from '$lib/components/deck/CustomEmojiText.svelte';
-	import NostrQuoteCard from '$lib/components/deck/NostrQuoteCard.svelte';
+	import NostrQuoteCard from './NostrQuoteCard.svelte';
 	import ImageViewer from '$lib/components/ImageViewer.svelte';
 
 	type Props = {

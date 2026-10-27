@@ -7,10 +7,10 @@
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { AvatarShape } from '$lib/user-settings';
 	import type { Profile } from '$lib/nostr/profiles';
-	import ProfileAvatar from './ProfileAvatar.svelte';
-	import MutedContentPlaceholder from '$lib/features/muted-users/presentation/MutedContentPlaceholder.svelte';
-	import CustomEmojiText from './CustomEmojiText.svelte';
-	import ContentWarningPlaceholder from '$lib/features/posts/presentation/ContentWarningPlaceholder.svelte';
+	import ProfileAvatar from '$lib/components/deck/ProfileAvatar.svelte';
+	import MutedContentPlaceholder from './MutedContentPlaceholder.svelte';
+	import CustomEmojiText from '$lib/components/deck/CustomEmojiText.svelte';
+	import ContentWarningPlaceholder from './ContentWarningPlaceholder.svelte';
 	import EventJsonMenu from './EventJsonMenu.svelte';
 
 	type Props = {
