@@ -3,7 +3,7 @@ import { Reaction, ShortTextNote } from 'nostr-tools/kinds';
 import type { EventSigner } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import { createComposerController } from './composer-controller.svelte';
-import { createMediaAttachmentController } from './media-attachment-controller.svelte';
+import { createMediaAttachmentController } from '$lib/features/composer/application/media-attachment-controller.svelte';
 import type { ChannelTimelineColumnConfig } from './types';
 import { eventToPost } from '$lib/nostr/posts';
 

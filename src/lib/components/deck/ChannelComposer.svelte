@@ -2,12 +2,12 @@
 	import { onDestroy } from 'svelte';
 	import { Send } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
-	import { createPastedImageFileReader } from '$lib/deck/media-attachment-actions';
+	import { createPastedImageFileReader } from '$lib/features/composer/application/media-attachment-actions';
 	import {
 		applyComposerEmojiSelection,
 		type ComposerCustomEmoji
 	} from '$lib/deck/composer-emoji-actions';
-	import { createMediaAttachmentController } from '$lib/deck/media-attachment-controller.svelte';
+	import { createMediaAttachmentController } from '$lib/features/composer/application/media-attachment-controller.svelte';
 	import type { MentionCandidate } from '$lib/deck/mention-actions';
 	import type { ChannelTimelineColumnConfig } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
@@ -19,7 +19,7 @@
 	import type { PublishPostResult } from '$lib/nostr/relay/publish-event';
 	import type { Locale } from '$lib/paraglide/runtime.js';
 	import EmojiReactionPicker from './EmojiReactionPicker.svelte';
-	import MediaAttachmentControls from './MediaAttachmentControls.svelte';
+	import MediaAttachmentControls from '$lib/features/composer/presentation/MediaAttachmentControls.svelte';
 	import MentionTextarea from './MentionTextarea.svelte';
 	import PublishFailureNotice from './PublishFailureNotice.svelte';
 

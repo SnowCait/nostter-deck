@@ -5,7 +5,7 @@
 	import { columnIconKeys, getDefaultColumnIconKey } from '$lib/deck/column-icons';
 	import { getColumnTitle } from '$lib/deck/column-title';
 	import { columnWidths } from '$lib/deck/column-configs';
-	import type { MediaAttachmentController } from '$lib/deck/media-attachment-controller.svelte';
+	import type { MediaAttachmentController } from '$lib/features/composer/application/media-attachment-controller.svelte';
 	import type { MentionCandidate } from '$lib/deck/mention-actions';
 	import type { AccountRelayOption } from '$lib/deck/relay-selection-controller.svelte';
 	import type {
