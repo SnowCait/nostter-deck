@@ -15,7 +15,7 @@
 	import type { AvatarShape } from '$lib/user-settings';
 	import CustomEmojiText from '$lib/components/deck/CustomEmojiText.svelte';
 	import NostrQuoteCard from '$lib/components/deck/NostrQuoteCard.svelte';
-	import ImageViewer from '$lib/components/deck/ImageViewer.svelte';
+	import ImageViewer from '$lib/components/ImageViewer.svelte';
 
 	type Props = {
 		post: Post;
