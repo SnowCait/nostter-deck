@@ -16,7 +16,7 @@
 	import type { Locale } from '$lib/paraglide/runtime.js';
 	import CustomEmojiText from './CustomEmojiText.svelte';
 	import ProfileAvatar from './ProfileAvatar.svelte';
-	import PostCard from './PostCard.svelte';
+	import PostCard from '$lib/features/posts/presentation/PostCard.svelte';
 
 	type Props = {
 		id: string;

@@ -19,7 +19,7 @@
 	import type { Profile } from '$lib/nostr/profiles';
 	import type { Locale } from '$lib/paraglide/runtime.js';
 	import type { AvatarShape, PostActionVisibility } from '$lib/user-settings';
-	import PostCard from './PostCard.svelte';
+	import PostCard from '$lib/features/posts/presentation/PostCard.svelte';
 
 	type Props = {
 		eventId: string;

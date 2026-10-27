@@ -14,15 +14,15 @@
 	import type { Profile } from '$lib/nostr/profiles';
 	import type { Locale } from '$lib/paraglide/runtime.js';
 	import type { AvatarShape, PostActionVisibility } from '$lib/user-settings';
-	import CustomEmojiText from './CustomEmojiText.svelte';
-	import EmojiReactionPicker from './EmojiReactionPicker.svelte';
-	import ProfileAvatar from './ProfileAvatar.svelte';
-	import MutedContentPlaceholder from '$lib/features/muted-users/presentation/MutedContentPlaceholder.svelte';
-	import ContentWarningPlaceholder from '$lib/features/posts/presentation/ContentWarningPlaceholder.svelte';
+	import CustomEmojiText from '$lib/components/deck/CustomEmojiText.svelte';
+	import EmojiReactionPicker from '$lib/components/deck/EmojiReactionPicker.svelte';
+	import ProfileAvatar from '$lib/components/deck/ProfileAvatar.svelte';
+	import MutedContentPlaceholder from './MutedContentPlaceholder.svelte';
+	import ContentWarningPlaceholder from './ContentWarningPlaceholder.svelte';
 	import EventJsonMenu from './EventJsonMenu.svelte';
-	import LikeReactionIcon from '$lib/features/posts/presentation/LikeReactionIcon.svelte';
-	import PostCardBody from '$lib/features/posts/presentation/PostCardBody.svelte';
-	import PostCardContextList from '$lib/features/posts/presentation/PostCardContextList.svelte';
+	import LikeReactionIcon from './LikeReactionIcon.svelte';
+	import PostCardBody from './PostCardBody.svelte';
+	import PostCardContextList from './PostCardContextList.svelte';
 
 	type Props = {
 		post: Post;
