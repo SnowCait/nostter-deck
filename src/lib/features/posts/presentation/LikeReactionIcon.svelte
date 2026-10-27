@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Heart, PawPrint, Star } from '@lucide/svelte';
-	import { getLikeReactionIcon } from '$lib/deck/like-reaction-icon';
+	import { getLikeReactionIcon } from '$lib/features/posts/presentation/like-reaction-icon';
 	import type { LikeReaction } from '$lib/nostr/emoji-reactions';
 
 	type Props = {
