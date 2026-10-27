@@ -11,7 +11,7 @@
 		serializeMentionText,
 		type MentionCandidate,
 		type MentionRange
-	} from '$lib/deck/mention-actions';
+	} from '$lib/features/composer/domain/mention-actions';
 	import { m } from '$lib/paraglide/messages.js';
 
 	type Props = Omit<

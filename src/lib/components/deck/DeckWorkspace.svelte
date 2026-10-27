@@ -3,13 +3,13 @@
 	import ProfileColumn from '$lib/components/deck/ProfileColumn.svelte';
 	import ThreadColumn from '$lib/components/deck/ThreadColumn.svelte';
 	import type { createColumnDeckController } from '$lib/deck/column-deck-controller.svelte';
-	import type { createComposerController } from '$lib/deck/composer-controller.svelte';
+	import type { createComposerController } from '$lib/features/composer/application/composer-controller.svelte';
 	import type { createDeckLayoutController } from '$lib/deck/deck-layout-controller.svelte';
 	import type { createDetailColumnController } from '$lib/deck/detail-column-controller.svelte';
 	import type { createEmojiReactionController } from '$lib/features/emoji-reactions/application/emoji-reaction-controller.svelte';
 	import type { createPostActionController } from '$lib/features/posts/application/post-action-controller.svelte';
 	import type { createPostShareController } from '$lib/features/posts/application/post-share-controller.svelte';
-	import type { MentionCandidate } from '$lib/deck/mention-actions';
+	import type { MentionCandidate } from '$lib/features/composer/domain/mention-actions';
 	import type { AccountRelayOption } from '$lib/deck/relay-selection-controller.svelte';
 	import type { createTimelineController } from '$lib/deck/timeline-controller.svelte';
 	import { emptyTimelineRuntime } from '$lib/deck/timeline-runtime';

@@ -8,7 +8,7 @@ import { getNip65ReadRelaysForPubkey } from '$lib/nostr/nip65';
 import { normalizePubkey } from '$lib/nostr/pubkeys';
 import { defaultRelays, profileRelays } from '$lib/nostr/relays';
 import { listCachedProfiles, requestProfiles, type ProfileCacheEntry } from '$lib/nostr/profiles';
-import { createMentionCandidates } from './mention-actions';
+import { createMentionCandidates } from '../domain/mention-actions';
 
 type FollowPubkeyLoader = (
 	pubkey: string,

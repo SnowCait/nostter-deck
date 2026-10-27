@@ -6,7 +6,7 @@
 	import { getColumnTitle } from '$lib/deck/column-title';
 	import { columnWidths } from '$lib/deck/column-configs';
 	import type { MediaAttachmentController } from '$lib/features/composer/application/media-attachment-controller.svelte';
-	import type { MentionCandidate } from '$lib/deck/mention-actions';
+	import type { MentionCandidate } from '$lib/features/composer/domain/mention-actions';
 	import type { AccountRelayOption } from '$lib/deck/relay-selection-controller.svelte';
 	import type {
 		ColumnConfig,
@@ -32,7 +32,7 @@
 	import type { Profile } from '$lib/nostr/profiles';
 	import type { Locale } from '$lib/paraglide/runtime.js';
 	import ChannelColumnSettings from './ChannelColumnSettings.svelte';
-	import ChannelComposer from './ChannelComposer.svelte';
+	import ChannelComposer from '$lib/features/composer/presentation/ChannelComposer.svelte';
 	import ColumnIcon from './ColumnIcon.svelte';
 	import ColumnIconGlyph from './ColumnIconGlyph.svelte';
 	import CustomTimelineSettings from './CustomTimelineSettings.svelte';

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount, tick } from 'svelte';
 	import AddColumnDialog from '$lib/components/deck/AddColumnDialog.svelte';
-	import ComposePanel from '$lib/components/deck/ComposePanel.svelte';
+	import ComposePanel from '$lib/features/composer/presentation/ComposePanel.svelte';
 	import DeckWorkspace from '$lib/components/deck/DeckWorkspace.svelte';
 	import KeyboardShortcutsDialog from '$lib/components/deck/KeyboardShortcutsDialog.svelte';
 	import Sidebar from '$lib/components/deck/Sidebar.svelte';
@@ -11,8 +11,8 @@
 	import { createMutedUsersController } from '$lib/features/muted-users/application/muted-users-controller.svelte';
 	import { resetSessionTimelineCache } from '$lib/deck/timeline-cache';
 	import { createDetailColumnController } from '$lib/deck/detail-column-controller.svelte';
-	import { createComposerController } from '$lib/deck/composer-controller.svelte';
-	import { createMentionCandidateController } from '$lib/deck/mention-candidate-controller.svelte';
+	import { createComposerController } from '$lib/features/composer/application/composer-controller.svelte';
+	import { createMentionCandidateController } from '$lib/features/composer/application/mention-candidate-controller.svelte';
 	import { createEmojiReactionController } from '$lib/features/emoji-reactions/application/emoji-reaction-controller.svelte';
 	import { createPostActionController } from '$lib/features/posts/application/post-action-controller.svelte';
 	import { createPostShareController } from '$lib/features/posts/application/post-share-controller.svelte';

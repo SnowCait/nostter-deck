@@ -8,8 +8,7 @@
 		type ComposerCustomEmoji
 	} from '$lib/features/composer/domain/composer-emoji-actions';
 	import { createMediaAttachmentController } from '$lib/features/composer/application/media-attachment-controller.svelte';
-	import type { MentionCandidate } from '$lib/deck/mention-actions';
-	import type { ChannelTimelineColumnConfig } from '$lib/deck/types';
+	import type { MentionCandidate } from '$lib/features/composer/domain/mention-actions';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type {
 		CustomEmojiDefinition,
@@ -18,13 +17,13 @@
 	} from '$lib/nostr/emoji-reactions';
 	import type { PublishPostResult } from '$lib/nostr/relay/publish-event';
 	import type { Locale } from '$lib/paraglide/runtime.js';
-	import EmojiReactionPicker from './EmojiReactionPicker.svelte';
+	import EmojiReactionPicker from '$lib/components/deck/EmojiReactionPicker.svelte';
 	import MediaAttachmentControls from '$lib/features/composer/presentation/MediaAttachmentControls.svelte';
 	import MentionTextarea from './MentionTextarea.svelte';
 	import PublishFailureNotice from '$lib/features/composer/presentation/PublishFailureNotice.svelte';
 
 	type Props = {
-		channel: ChannelTimelineColumnConfig;
+		channel: { id: string };
 		textClass: FontSizeTextClasses;
 		mentionCandidates: MentionCandidate[];
 		emojiReactionCandidates: CustomEmojiReactionCandidate[];

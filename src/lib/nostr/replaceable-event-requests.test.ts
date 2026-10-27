@@ -13,7 +13,7 @@ import {
 } from 'rx-nostr';
 import { finalize, Subject, throwError } from 'rxjs';
 import { afterAll, afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { requestLatestFollowPubkeys } from '../deck/mention-candidate-controller.svelte';
+import { requestLatestFollowPubkeys } from '$lib/features/composer/application/mention-candidate-controller.svelte';
 import { loadUserEmojiReactionCandidates } from './emoji-reactions';
 import { getNostrClient } from './client';
 import { getLatestFollowList } from '../features/follow-list/application/follow-list';
