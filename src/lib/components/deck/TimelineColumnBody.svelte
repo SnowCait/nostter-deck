@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Post } from '$lib/features/posts/types';
-	import type { SharePostResult } from '$lib/deck/post-share-controller.svelte';
+	import type { SharePostResult } from '$lib/features/posts/application/post-share-controller.svelte';
 	import type { TimelineRuntime } from '$lib/deck/timeline-runtime';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type {

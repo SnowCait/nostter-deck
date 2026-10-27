@@ -8,7 +8,7 @@
 	} from '$lib/features/posts/post-model';
 	import { getReferencedEventId } from '$lib/deck/timeline-runtime';
 	import type { Post } from '$lib/features/posts/types';
-	import type { SharePostResult } from '$lib/deck/post-share-controller.svelte';
+	import type { SharePostResult } from '$lib/features/posts/application/post-share-controller.svelte';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type {
 		CustomEmojiReactionCandidate,

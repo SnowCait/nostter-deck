@@ -1,5 +1,5 @@
 import type { Post } from '$lib/features/posts/types';
-import { buildPostShareUrl } from './post-actions';
+import { buildPostShareUrl } from '../domain/post-actions';
 
 export type SharePostResult =
 	| { ok: true; method: 'web-share' | 'clipboard' }
