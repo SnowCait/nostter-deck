@@ -2,7 +2,7 @@
 	import { onDestroy } from 'svelte';
 	import { Send } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
-	import { createPastedImageFileReader } from '$lib/features/composer/application/media-attachment-actions';
+	import { createPastedImageFileReader } from '$lib/features/composer/presentation/media-attachment-actions';
 	import {
 		applyComposerEmojiSelection,
 		type ComposerCustomEmoji

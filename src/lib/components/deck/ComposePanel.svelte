@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { CalendarClock, MessageCircle, Quote, Send, UserRound, X } from '@lucide/svelte';
 	import type { createComposerController } from '$lib/deck/composer-controller.svelte';
-	import { createPastedImageFileReader } from '$lib/features/composer/application/media-attachment-actions';
+	import { createPastedImageFileReader } from '$lib/features/composer/presentation/media-attachment-actions';
 	import type { MentionCandidate } from '$lib/deck/mention-actions';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { Profile } from '$lib/nostr/profiles';
