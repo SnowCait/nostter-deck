@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'vitest';
-import { readMutedPubkeys, writeMutedPubkeys } from '$lib/muted-users';
+import { readMutedPubkeys, writeMutedPubkeys } from './muted-users';
 import { createMutedUsersController } from './muted-users-controller.svelte';
 
 const alice = 'a'.repeat(64);

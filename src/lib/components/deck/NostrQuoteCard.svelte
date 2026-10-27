@@ -8,7 +8,7 @@
 	import type { AvatarShape } from '$lib/user-settings';
 	import type { Profile } from '$lib/nostr/profiles';
 	import ProfileAvatar from './ProfileAvatar.svelte';
-	import MutedContentPlaceholder from './MutedContentPlaceholder.svelte';
+	import MutedContentPlaceholder from '$lib/features/muted-users/presentation/MutedContentPlaceholder.svelte';
 	import CustomEmojiText from './CustomEmojiText.svelte';
 	import ContentWarningPlaceholder from './ContentWarningPlaceholder.svelte';
 	import EventJsonMenu from './EventJsonMenu.svelte';

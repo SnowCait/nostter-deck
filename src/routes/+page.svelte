@@ -8,7 +8,7 @@
 	import { createColumnDeckController } from '$lib/deck/column-deck-controller.svelte';
 	import { createDeckLayoutController } from '$lib/deck/deck-layout-controller.svelte';
 	import { createDisplaySettingsController } from '$lib/deck/display-settings-controller.svelte';
-	import { createMutedUsersController } from '$lib/deck/muted-users-controller.svelte';
+	import { createMutedUsersController } from '$lib/features/muted-users/application/muted-users-controller.svelte';
 	import { resetSessionTimelineCache } from '$lib/deck/timeline-cache';
 	import { createDetailColumnController } from '$lib/deck/detail-column-controller.svelte';
 	import { createComposerController } from '$lib/deck/composer-controller.svelte';
