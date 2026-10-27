@@ -3,7 +3,10 @@ import { ChannelMessage, ShortTextNote } from 'nostr-tools/kinds';
 import type { EventSigner } from 'rx-nostr';
 import { getPostQuoteTarget, getPostReplyTarget } from './post-actions';
 import type { ChannelTimelineColumnConfig, Post, RelaySelection } from './types';
-import { applyComposerEmojiSelection, type ComposerCustomEmoji } from './composer-emoji-actions';
+import {
+	applyComposerEmojiSelection,
+	type ComposerCustomEmoji
+} from '$lib/features/composer/domain/composer-emoji-actions';
 import {
 	appendMediaUrls,
 	createMediaAttachmentController,

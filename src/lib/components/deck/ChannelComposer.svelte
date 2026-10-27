@@ -6,7 +6,7 @@
 	import {
 		applyComposerEmojiSelection,
 		type ComposerCustomEmoji
-	} from '$lib/deck/composer-emoji-actions';
+	} from '$lib/features/composer/domain/composer-emoji-actions';
 	import { createMediaAttachmentController } from '$lib/features/composer/application/media-attachment-controller.svelte';
 	import type { MentionCandidate } from '$lib/deck/mention-actions';
 	import type { ChannelTimelineColumnConfig } from '$lib/deck/types';
