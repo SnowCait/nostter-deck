@@ -5,12 +5,14 @@ import type { EventSigner } from 'rx-nostr';
 import { addFollow, removeFollow, type FollowListUpdate } from '../domain/follow-actions';
 import { getLatestFollowList } from './follow-list';
 import { publishAndCacheFollowList } from './publish-and-cache-follow-list';
+import { getCachedLatestEvent } from '$lib/nostr/latest-event-cache';
 import type { PublishPostResult } from '$lib/nostr/relay/publish-event';
 
 type Account = { pubkey: string; signer: EventSigner };
 type LoadStatus = 'loading' | 'ready' | 'unknown' | 'failed';
 type PublishError =
 	| { type: 'publish'; result: Extract<PublishPostResult, { ok: false }> }
+	| { type: 'conflict'; error?: unknown }
 	| { type: 'exception'; error: unknown };
 
 type Session = {
@@ -24,6 +26,7 @@ type Session = {
 	cacheError: unknown;
 	lastCreatedAt: number | undefined;
 	revision: number;
+	intents: Record<string, boolean>;
 	needsPublish: boolean;
 	paused: boolean;
 	loading?: Promise<void>;
@@ -112,6 +115,7 @@ export function createFollowListController() {
 					cacheError: null,
 					lastCreatedAt: accountWork(account.pubkey).lastCreatedAt,
 					revision: 0,
+					intents: {},
 					needsPublish: false,
 					paused: false
 				}
@@ -148,6 +152,40 @@ export function createFollowListController() {
 		return true;
 	}
 
+	function pauseForConflict(state: Session, error?: unknown) {
+		state.publishError = { type: 'conflict', ...(error === undefined ? {} : { error }) };
+		state.needsPublish = true;
+		state.paused = true;
+	}
+
+	async function readLatestBasis(state: Session, known: Nostr.Event<typeof Contacts> | undefined) {
+		try {
+			const cached = await getCachedLatestEvent([state.pubkey, Contacts, '']);
+			if (cached) {
+				return shouldReplaceCurrentEvent(cached, known) ? cached : known;
+			}
+			if (active === state) {
+				pauseForConflict(state);
+			}
+		} catch (error) {
+			if (active === state) {
+				pauseForConflict(state, error);
+			}
+		}
+	}
+
+	function adoptBasis(state: Session, basis: Nostr.Event<typeof Contacts>, rebase: boolean) {
+		state.event = basis;
+		if (rebase) {
+			let desired = toUpdate(basis);
+			for (const [pubkey, following] of Object.entries(state.intents)) {
+				desired =
+					(following ? addFollow(desired, pubkey) : removeFollow(desired, pubkey)) ?? desired;
+			}
+			state.desired = desired;
+		}
+	}
+
 	function startPublishing(state: Session) {
 		if (active !== state || state.status !== 'ready' || !state.desired || state.isPublishing) {
 			return false;
@@ -162,36 +200,79 @@ export function createFollowListController() {
 		const finished = Promise.withResolvers<void>();
 		work.pending = finished.promise;
 		state.isPublishing = true;
+		const refreshBeforeRetry = state.publishError?.type === 'conflict';
 		state.publishError = null;
 
 		void (async () => {
 			try {
+				let rebased = false;
+				if (refreshBeforeRetry) {
+					const basis = await readLatestBasis(state, work.published ?? state.event);
+					if (!basis) {
+						return;
+					}
+					work.published = basis;
+					if (active !== state) {
+						return;
+					}
+					adoptBasis(state, basis, true);
+					state.needsPublish = !sameList(state.desired!, basis);
+					if (!state.needsPublish) {
+						state.intents = {};
+						return;
+					}
+				}
 				while (active === state && state.desired && selectedAccount) {
 					const update = $state.snapshot(state.desired);
 					const revision = state.revision;
 					const { pubkey, signer } = selectedAccount;
-					const result = await publishAndCacheFollowList(
-						update,
-						pubkey,
-						signer,
-						work.lastCreatedAt
-					);
+					const previousCreatedAt =
+						work.lastCreatedAt === undefined
+							? undefined
+							: Math.max(work.lastCreatedAt, state.event?.created_at ?? 0);
+					const result = await publishAndCacheFollowList(update, pubkey, signer, previousCreatedAt);
 					work.lastCreatedAt = result.createdAt;
 					if (result.publishResult.ok) {
-						work.published = result.publishResult.event as Nostr.Event<typeof Contacts>;
+						// An ignored event is not a safe fallback until its cache basis is checked.
+						work.published =
+							result.cacheResult.status === 'ignored'
+								? undefined
+								: (result.publishResult.event as Nostr.Event<typeof Contacts>);
 					}
 					if (active !== state) {
 						return;
 					}
 					state.lastCreatedAt = result.createdAt;
 					if (result.publishResult.ok) {
-						state.event = work.published;
 						state.publishError = null;
 						state.cacheError =
 							result.cacheResult.status === 'failed' ? result.cacheResult.error : null;
+						const published = result.publishResult.event as Nostr.Event<typeof Contacts>;
+						let basis = published;
+						if (result.cacheResult.status === 'ignored') {
+							const latest = await readLatestBasis(state, published);
+							if (!latest) {
+								return;
+							}
+							basis = latest;
+							work.published = basis;
+						}
+						if (active !== state) {
+							return;
+						}
+						const newer = shouldReplaceCurrentEvent(basis, published);
+						adoptBasis(state, basis, newer);
 						state.needsPublish = false;
 						if (sameList(state.desired, state.event)) {
+							state.intents = {};
 							return;
+						}
+						if (newer) {
+							if (rebased) {
+								pauseForConflict(state);
+								return;
+							}
+							rebased = true;
 						}
 					} else {
 						state.publishError = { type: 'publish', result: result.publishResult };
@@ -230,6 +311,7 @@ export function createFollowListController() {
 			return false;
 		}
 		state.desired = update;
+		state.intents[pubkey] = following;
 		state.revision += 1;
 		startPublishing(state);
 		return true;
