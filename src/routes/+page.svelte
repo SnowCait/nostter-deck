@@ -14,8 +14,8 @@
 	import { createComposerController } from '$lib/deck/composer-controller.svelte';
 	import { createMentionCandidateController } from '$lib/deck/mention-candidate-controller.svelte';
 	import { createEmojiReactionController } from '$lib/features/emoji-reactions/application/emoji-reaction-controller.svelte';
-	import { createPostActionController } from '$lib/deck/post-action-controller.svelte';
-	import { createPostShareController } from '$lib/deck/post-share-controller.svelte';
+	import { createPostActionController } from '$lib/features/posts/application/post-action-controller.svelte';
+	import { createPostShareController } from '$lib/features/posts/application/post-share-controller.svelte';
 	import { createRelaySelectionController } from '$lib/deck/relay-selection-controller.svelte';
 	import { createKeyboardNavigation } from '$lib/deck/keyboard-navigation';
 	import { createUniqueColumnId } from '$lib/deck/column-actions';

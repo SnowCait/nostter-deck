@@ -2,7 +2,7 @@ import { SvelteSet } from 'svelte/reactivity';
 import { ShortTextNote } from 'nostr-tools/kinds';
 import type { EventSigner } from 'rx-nostr';
 import type { Post } from '$lib/features/posts/types';
-import { getPostLikeTarget, getPostRepostTarget } from './post-actions';
+import { getPostLikeTarget, getPostRepostTarget } from '../domain/post-actions';
 import type { EmojiReaction, LikeReaction } from '$lib/nostr/emoji-reactions';
 import { getDefaultLikeReaction } from '$lib/account-settings';
 import { getNip65ReadRelaysForPubkey } from '$lib/nostr/nip65';

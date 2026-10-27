@@ -1,7 +1,7 @@
 import { tick } from 'svelte';
 import { ChannelMessage, ShortTextNote } from 'nostr-tools/kinds';
 import type { EventSigner } from 'rx-nostr';
-import { getPostQuoteTarget, getPostReplyTarget } from './post-actions';
+import { getPostQuoteTarget, getPostReplyTarget } from '$lib/features/posts/domain/post-actions';
 import type { ChannelTimelineColumnConfig } from './types';
 import type { Post } from '$lib/features/posts/types';
 import type { RelaySelection } from '$lib/nostr/relays';

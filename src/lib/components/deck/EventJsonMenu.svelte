@@ -4,7 +4,7 @@
 	import * as Popover from '$lib/components/ui/popover';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { FontSizeTextClasses } from '$lib/font-size';
-	import type { SharePostResult } from '$lib/deck/post-share-controller.svelte';
+	import type { SharePostResult } from '$lib/features/posts/application/post-share-controller.svelte';
 	import EventJsonDialog from './EventJsonDialog.svelte';
 
 	type Props = {
