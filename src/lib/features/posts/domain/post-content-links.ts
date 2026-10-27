@@ -2,12 +2,6 @@ import { decode } from 'nostr-tools/nip19';
 import { normalizeRelay } from '$lib/nostr/relays';
 import { tokenizeCustomEmojiText, type CustomEmoji } from '$lib/nostr/custom-emoji';
 
-declare global {
-	interface URLConstructor {
-		canParse(url: string | URL, base?: string | URL): boolean;
-	}
-}
-
 export type PostContentToken =
 	| {
 			type: 'text';
@@ -54,8 +48,6 @@ const nostrReferencePattern = new RegExp(
 );
 const trailingUrlPunctuationPattern = /[),.;:!?，、。！？）］】]+$/;
 const hashtagPattern = /(^|[^\p{L}\p{N}_])#([\p{L}\p{N}_]+)/gu;
-
-ensureUrlCanParse();
 
 export function linkifyPostContent(
 	content: string,
@@ -148,11 +140,12 @@ function parseLinkCandidate(
 		return nostrReference;
 	}
 
-	if (!URL.canParse(value)) {
+	let url: URL;
+	try {
+		url = new URL(value);
+	} catch {
 		return null;
 	}
-
-	const url = new URL(value);
 	if (url.protocol !== 'http:' && url.protocol !== 'https:') {
 		return null;
 	}
@@ -225,23 +218,4 @@ function parseNostrReferenceData(identifier: string, entityType: NostrReferenceE
 
 function isNostrReferenceEntityType(value: string): value is NostrReferenceEntityType {
 	return nostrReferenceEntityTypes.includes(value as NostrReferenceEntityType);
-}
-
-function ensureUrlCanParse() {
-	if (typeof URL.canParse === 'function') {
-		return;
-	}
-
-	Object.defineProperty(URL, 'canParse', {
-		configurable: true,
-		writable: true,
-		value(url: string | URL, base?: string | URL) {
-			try {
-				new URL(url, base);
-				return true;
-			} catch {
-				return false;
-			}
-		}
-	});
 }

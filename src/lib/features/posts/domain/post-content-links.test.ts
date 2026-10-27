@@ -12,6 +12,24 @@ const nostrNaddr =
 const nostrNsec = 'nostr:nsec1yg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3qxh9tww';
 
 describe('post content links', () => {
+	test('parses URL candidates without URL.canParse or changing runtime globals', () => {
+		const descriptor = Object.getOwnPropertyDescriptor(URL, 'canParse');
+		Object.defineProperty(URL, 'canParse', { configurable: true, value: undefined });
+		try {
+			expect(linkifyPostContent('https://example.com/path https://[invalid')).toEqual([
+				{ type: 'link', text: 'https://example.com/path', href: 'https://example.com/path' },
+				{ type: 'text', text: ' https://[invalid' }
+			]);
+			expect(Reflect.get(URL, 'canParse')).toBeUndefined();
+		} finally {
+			if (descriptor) {
+				Object.defineProperty(URL, 'canParse', descriptor);
+			} else {
+				Reflect.deleteProperty(URL, 'canParse');
+			}
+		}
+	});
+
 	test('parses supported NIP-21 references', () => {
 		const tokens = linkifyPostContent(
 			[nostrNpub, nostrNprofile, nostrNote, nostrNevent, nostrNaddr].join(' ')

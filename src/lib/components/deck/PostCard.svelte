@@ -21,7 +21,7 @@
 	import ContentWarningPlaceholder from './ContentWarningPlaceholder.svelte';
 	import EventJsonMenu from './EventJsonMenu.svelte';
 	import LikeReactionIcon from './LikeReactionIcon.svelte';
-	import PostCardBody from './PostCardBody.svelte';
+	import PostCardBody from '$lib/features/posts/presentation/PostCardBody.svelte';
 	import PostCardContextList from './PostCardContextList.svelte';
 
 	type Props = {
