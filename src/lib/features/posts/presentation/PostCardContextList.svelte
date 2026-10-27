@@ -4,7 +4,7 @@
 	import type { Post, PostContext, PostMessage } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { CustomEmoji } from '$lib/nostr/custom-emoji';
-	import CustomEmojiText from './CustomEmojiText.svelte';
+	import CustomEmojiText from '$lib/components/deck/CustomEmojiText.svelte';
 
 	type Props = {
 		contexts?: PostContext[];

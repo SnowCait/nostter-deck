@@ -10,7 +10,7 @@
 	import ProfileAvatar from './ProfileAvatar.svelte';
 	import MutedContentPlaceholder from '$lib/features/muted-users/presentation/MutedContentPlaceholder.svelte';
 	import CustomEmojiText from './CustomEmojiText.svelte';
-	import ContentWarningPlaceholder from './ContentWarningPlaceholder.svelte';
+	import ContentWarningPlaceholder from '$lib/features/posts/presentation/ContentWarningPlaceholder.svelte';
 	import EventJsonMenu from './EventJsonMenu.svelte';
 
 	type Props = {
