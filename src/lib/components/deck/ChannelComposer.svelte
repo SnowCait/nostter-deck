@@ -21,7 +21,7 @@
 	import EmojiReactionPicker from './EmojiReactionPicker.svelte';
 	import MediaAttachmentControls from '$lib/features/composer/presentation/MediaAttachmentControls.svelte';
 	import MentionTextarea from './MentionTextarea.svelte';
-	import PublishFailureNotice from './PublishFailureNotice.svelte';
+	import PublishFailureNotice from '$lib/features/composer/presentation/PublishFailureNotice.svelte';
 
 	type Props = {
 		channel: ChannelTimelineColumnConfig;

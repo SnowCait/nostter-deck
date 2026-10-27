@@ -13,7 +13,7 @@
 	import EmojiReactionPicker from './EmojiReactionPicker.svelte';
 	import MentionTextarea from './MentionTextarea.svelte';
 	import ProfileAvatar from './ProfileAvatar.svelte';
-	import PublishFailureNotice from './PublishFailureNotice.svelte';
+	import PublishFailureNotice from '$lib/features/composer/presentation/PublishFailureNotice.svelte';
 
 	type Props = {
 		composer: ReturnType<typeof createComposerController>;
