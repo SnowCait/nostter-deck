@@ -1,11 +1,10 @@
+import { loadEventsByIds, storeEvent } from '$lib/nostr/event-cache';
 import {
 	clearTimelineColumn,
 	hasNewerTimelineEvents,
 	hasOlderTimelineEvents,
-	loadEventsByIds,
 	loadNewerTimelineEvents,
 	loadOlderTimelineEvents,
-	storeEvent,
 	storeTimelineEvents
 } from './timeline-cache';
 import {
