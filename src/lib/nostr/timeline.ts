@@ -9,7 +9,8 @@ import {
 } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
 import { takeLast, type Unsubscribable } from 'rxjs';
-import type { NostrFilter, RelaySelection } from '$lib/deck/types';
+import type { NostrFilter } from '$lib/nostr/filters';
+import type { RelaySelection } from '$lib/nostr/relays';
 import { expandAddressAuthors, getFilterAuthorAddress, type AuthorAddress } from './filters';
 import { getNostrClient } from './client';
 import { requestProfiles } from './profiles';

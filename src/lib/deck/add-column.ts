@@ -1,4 +1,6 @@
-import type { ColumnConfig, ColumnSourceKey, NostrFilter, RelaySelection } from './types';
+import type { ColumnConfig, ColumnSourceKey } from './types';
+import type { NostrFilter } from '$lib/nostr/filters';
+import type { RelaySelection } from '$lib/nostr/relays';
 import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
 import { combineRelays, defaultRelays } from '$lib/nostr/relays';
 

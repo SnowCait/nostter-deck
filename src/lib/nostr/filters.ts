@@ -1,6 +1,7 @@
 import { isAddressableKind, isReplaceableKind } from 'nostr-tools/kinds';
-import type { NostrFilter } from '$lib/deck/types';
 import { isPubkey, normalizePubkey } from './pubkeys';
+
+export type NostrFilter = Record<string, unknown>;
 
 export type AuthorAddress = {
 	key: string;

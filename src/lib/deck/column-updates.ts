@@ -1,11 +1,7 @@
 import { getDefaultColumnIconKey } from './column-icons';
-import type {
-	ColumnConfig,
-	ColumnIconKey,
-	ColumnWidth,
-	NostrFilter,
-	RelaySelection
-} from './types';
+import type { ColumnConfig, ColumnIconKey, ColumnWidth } from './types';
+import type { NostrFilter } from '$lib/nostr/filters';
+import type { RelaySelection } from '$lib/nostr/relays';
 import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
 import { combineRelays, defaultRelays } from '$lib/nostr/relays';
 

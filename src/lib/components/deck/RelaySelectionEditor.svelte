@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { npubEncode } from 'nostr-tools/nip19';
 	import { m } from '$lib/paraglide/messages.js';
-	import type { RelaySelection } from '$lib/deck/types';
+	import type { RelaySelection } from '$lib/nostr/relays';
 	import type { AccountRelayOption } from '$lib/deck/relay-selection-controller.svelte';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import {

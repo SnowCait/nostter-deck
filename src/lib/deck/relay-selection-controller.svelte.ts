@@ -7,7 +7,8 @@ import {
 } from '$lib/nostr/nip65';
 import { normalizePubkey } from '$lib/nostr/pubkeys';
 import { defaultRelays, resolveRelaySelection as resolveSelectionRelays } from '$lib/nostr/relays';
-import type { ColumnConfig, RelaySelection } from './types';
+import type { ColumnConfig } from './types';
+import type { RelaySelection } from '$lib/nostr/relays';
 
 export type AccountRelayOption = {
 	pubkey: string;

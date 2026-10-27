@@ -13,10 +13,10 @@
 		ColumnIconKey,
 		ColumnWidth,
 		ChannelTimelineColumnConfig,
-		NostrFilter,
-		Post,
-		RelaySelection
+		Post
 	} from '$lib/deck/types';
+	import type { NostrFilter } from '$lib/nostr/filters';
+	import type { RelaySelection } from '$lib/nostr/relays';
 	import type { TimelineRuntime } from '$lib/deck/timeline-runtime';
 	import type { SharePostResult } from '$lib/deck/post-share-controller.svelte';
 	import type { FontSizeTextClasses } from '$lib/font-size';

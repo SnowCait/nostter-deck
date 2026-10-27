@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { m } from '$lib/paraglide/messages.js';
-	import type { CustomTimelineColumnConfig, NostrFilter, RelaySelection } from '$lib/deck/types';
+	import type { CustomTimelineColumnConfig } from '$lib/deck/types';
+	import type { NostrFilter } from '$lib/nostr/filters';
+	import type { RelaySelection } from '$lib/nostr/relays';
 	import type { AccountRelayOption } from '$lib/deck/relay-selection-controller.svelte';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import { parseNostrFilters } from '$lib/nostr/filters';

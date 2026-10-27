@@ -24,7 +24,7 @@ import {
 import { buildThreadEvents, startThreadSubscription } from '$lib/nostr/thread';
 import { startCustomTimelineSubscription } from '$lib/nostr/timeline';
 import type * as Nostr from 'nostr-typedef';
-import type { RelaySelection } from './types';
+import type { RelaySelection } from '$lib/nostr/relays';
 
 export type DetailColumn =
 	| { type: 'thread'; sourceColumnId: string; eventId: string }
