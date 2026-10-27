@@ -13,7 +13,7 @@
 	import { createDetailColumnController } from '$lib/deck/detail-column-controller.svelte';
 	import { createComposerController } from '$lib/deck/composer-controller.svelte';
 	import { createMentionCandidateController } from '$lib/deck/mention-candidate-controller.svelte';
-	import { createEmojiReactionController } from '$lib/deck/emoji-reaction-controller.svelte';
+	import { createEmojiReactionController } from '$lib/features/emoji-reactions/application/emoji-reaction-controller.svelte';
 	import { createPostActionController } from '$lib/deck/post-action-controller.svelte';
 	import { createPostShareController } from '$lib/deck/post-share-controller.svelte';
 	import { createRelaySelectionController } from '$lib/deck/relay-selection-controller.svelte';
