@@ -1,6 +1,6 @@
 import type * as Nostr from 'nostr-typedef';
 import { npubEncode } from 'nostr-tools/nip19';
-import { decodeProfilePointer } from '$lib/nostr/nip19';
+import { matchMentionReferences } from '$lib/nostr/mention-tags';
 import { normalizePubkey } from '$lib/nostr/pubkeys';
 
 export type MentionCandidate = {
@@ -30,7 +30,6 @@ export type MentionProfileEntry = {
 	profile: Nostr.Content.Metadata;
 };
 
-const mentionReferencePattern = /nostr:((?:npub|nprofile)1[02-9ac-hj-np-z]+)/gi;
 const mentionBoundaryPattern = /[\s\p{Ps}\p{Pi}]/u;
 const mentionSeparatorPattern = /[\s\p{P}]/u;
 
@@ -291,10 +290,9 @@ export function hydrateCanonicalMentions(
 	let text = '';
 	let currentIndex = 0;
 	const mentions: MentionRange[] = [];
-	for (const match of canonical.matchAll(mentionReferencePattern)) {
-		const matchIndex = match.index ?? 0;
-		const pointer = decodeProfilePointer(match[1]);
-		const candidate = pointer ? candidatesByPubkey.get(pointer.pubkey) : undefined;
+	for (const reference of matchMentionReferences(canonical)) {
+		const matchIndex = reference.start;
+		const candidate = candidatesByPubkey.get(reference.pubkey);
 		if (!candidate) {
 			continue;
 		}
@@ -304,37 +302,8 @@ export function hydrateCanonicalMentions(
 		const start = text.length;
 		text += displayMention;
 		mentions.push({ start, end: start + displayMention.length, pubkey: candidate.pubkey });
-		currentIndex = matchIndex + match[0].length;
+		currentIndex = reference.end;
 	}
 	text += canonical.slice(currentIndex);
 	return { text, mentions };
-}
-
-export function extractMentionPubkeys(content: string) {
-	const pubkeys: string[] = [];
-	for (const match of content.matchAll(mentionReferencePattern)) {
-		const pointer = decodeProfilePointer(match[1]);
-		if (pointer && !pubkeys.includes(pointer.pubkey)) {
-			pubkeys.push(pointer.pubkey);
-		}
-	}
-	return pubkeys;
-}
-
-export function addContentMentionTags(tags: string[][], content: string) {
-	const taggedPubkeys = new Set(
-		tags.flatMap((tag) => {
-			const pubkey = tag[0] === 'p' ? normalizePubkey(tag[1]) : null;
-			return pubkey ? [pubkey] : [];
-		})
-	);
-	const nextTags = [...tags];
-	for (const pubkey of extractMentionPubkeys(content)) {
-		if (taggedPubkeys.has(pubkey)) {
-			continue;
-		}
-		taggedPubkeys.add(pubkey);
-		nextTags.push(['p', pubkey]);
-	}
-	return nextTags;
 }
