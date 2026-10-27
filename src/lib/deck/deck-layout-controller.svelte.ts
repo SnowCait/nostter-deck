@@ -1,6 +1,6 @@
 import { getEffectiveDeckLayoutMode, resolveSingleColumnId } from './deck-layout-actions';
 import type { ColumnConfig } from './types';
-import { readUiState, updateUiState, type DeckLayoutMode } from '$lib/ui-state';
+import { readUiState, updateUiState, type DeckLayoutMode } from './ui-state';
 
 type DeckLayoutControllerOptions = {
 	getColumns: () => ColumnConfig[];
