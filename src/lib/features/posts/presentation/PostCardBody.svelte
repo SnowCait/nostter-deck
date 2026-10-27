@@ -1,21 +1,21 @@
 <script lang="ts">
-	import { linkifyPostContent, type PostContentToken } from '$lib/deck/post-content-links';
+	import { linkifyPostContent, type PostContentToken } from '../domain/post-content-links';
 	import {
 		clearUrlPreviewImage,
 		getUrlMediaMetadata,
 		requestUrlMediaMetadata,
 		setUrlImageDimensions,
 		type UrlMediaMetadata
-	} from '$lib/deck/url-media';
+	} from '../application/url-media';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Post } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import type { ProfilePointer } from '$lib/nostr/nip19';
 	import { getProfileDisplayName, type Profile } from '$lib/nostr/profiles';
 	import type { AvatarShape } from '$lib/user-settings';
-	import CustomEmojiText from './CustomEmojiText.svelte';
-	import NostrQuoteCard from './NostrQuoteCard.svelte';
-	import ImageViewer from './ImageViewer.svelte';
+	import CustomEmojiText from '$lib/components/deck/CustomEmojiText.svelte';
+	import NostrQuoteCard from '$lib/components/deck/NostrQuoteCard.svelte';
+	import ImageViewer from '$lib/components/deck/ImageViewer.svelte';
 
 	type Props = {
 		post: Post;
