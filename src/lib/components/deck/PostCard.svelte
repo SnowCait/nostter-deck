@@ -20,7 +20,7 @@
 	import MutedContentPlaceholder from '$lib/features/muted-users/presentation/MutedContentPlaceholder.svelte';
 	import ContentWarningPlaceholder from '$lib/features/posts/presentation/ContentWarningPlaceholder.svelte';
 	import EventJsonMenu from './EventJsonMenu.svelte';
-	import LikeReactionIcon from './LikeReactionIcon.svelte';
+	import LikeReactionIcon from '$lib/features/posts/presentation/LikeReactionIcon.svelte';
 	import PostCardBody from '$lib/features/posts/presentation/PostCardBody.svelte';
 	import PostCardContextList from '$lib/features/posts/presentation/PostCardContextList.svelte';
 
