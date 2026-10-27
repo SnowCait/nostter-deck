@@ -1,9 +1,5 @@
-import {
-	addMutedPubkey,
-	readMutedPubkeys,
-	removeMutedPubkey,
-	writeMutedPubkeys
-} from '$lib/muted-users';
+import { addMutedPubkey, removeMutedPubkey } from '../domain/muted-users';
+import { readMutedPubkeys, writeMutedPubkeys } from './muted-users';
 
 export function createMutedUsersController() {
 	function isMutedUser(pubkey: string) {

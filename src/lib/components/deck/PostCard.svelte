@@ -17,7 +17,7 @@
 	import CustomEmojiText from './CustomEmojiText.svelte';
 	import EmojiReactionPicker from './EmojiReactionPicker.svelte';
 	import ProfileAvatar from './ProfileAvatar.svelte';
-	import MutedContentPlaceholder from './MutedContentPlaceholder.svelte';
+	import MutedContentPlaceholder from '$lib/features/muted-users/presentation/MutedContentPlaceholder.svelte';
 	import ContentWarningPlaceholder from './ContentWarningPlaceholder.svelte';
 	import EventJsonMenu from './EventJsonMenu.svelte';
 	import LikeReactionIcon from './LikeReactionIcon.svelte';
