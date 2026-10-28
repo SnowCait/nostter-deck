@@ -14,9 +14,9 @@
 	import type { Profile } from '$lib/nostr/profiles';
 	import type { Locale } from '$lib/paraglide/runtime.js';
 	import type { AvatarShape, PostActionVisibility } from '$lib/user-settings';
-	import CustomEmojiText from '$lib/components/deck/CustomEmojiText.svelte';
-	import EmojiReactionPicker from '$lib/components/deck/EmojiReactionPicker.svelte';
-	import ProfileAvatar from '$lib/components/deck/ProfileAvatar.svelte';
+	import CustomEmojiText from '$lib/components/CustomEmojiText.svelte';
+	import EmojiReactionPicker from '$lib/components/EmojiReactionPicker.svelte';
+	import ProfileAvatar from '$lib/components/ProfileAvatar.svelte';
 	import MutedContentPlaceholder from './MutedContentPlaceholder.svelte';
 	import ContentWarningPlaceholder from './ContentWarningPlaceholder.svelte';
 	import EventJsonMenu from './EventJsonMenu.svelte';

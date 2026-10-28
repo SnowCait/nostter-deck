@@ -17,7 +17,7 @@
 	} from '$lib/nostr/emoji-reactions';
 	import type { PublishPostResult } from '$lib/nostr/relay/publish-event';
 	import type { Locale } from '$lib/paraglide/runtime.js';
-	import EmojiReactionPicker from '$lib/components/deck/EmojiReactionPicker.svelte';
+	import EmojiReactionPicker from '$lib/components/EmojiReactionPicker.svelte';
 	import MediaAttachmentControls from '$lib/features/composer/presentation/MediaAttachmentControls.svelte';
 	import MentionTextarea from './MentionTextarea.svelte';
 	import PublishFailureNotice from '$lib/features/composer/presentation/PublishFailureNotice.svelte';

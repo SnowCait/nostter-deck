@@ -10,9 +10,9 @@
 	import type { Locale } from '$lib/paraglide/runtime.js';
 	import type { AvatarShape } from '$lib/user-settings';
 	import MediaAttachmentControls from '$lib/features/composer/presentation/MediaAttachmentControls.svelte';
-	import EmojiReactionPicker from '$lib/components/deck/EmojiReactionPicker.svelte';
+	import EmojiReactionPicker from '$lib/components/EmojiReactionPicker.svelte';
 	import MentionTextarea from './MentionTextarea.svelte';
-	import ProfileAvatar from '$lib/components/deck/ProfileAvatar.svelte';
+	import ProfileAvatar from '$lib/components/ProfileAvatar.svelte';
 	import PublishFailureNotice from '$lib/features/composer/presentation/PublishFailureNotice.svelte';
 
 	type Props = {

@@ -14,8 +14,8 @@
 	import type { AvatarShape, PostActionVisibility } from '$lib/user-settings';
 	import { getProfileDisplayName, type Profile } from '$lib/nostr/profiles';
 	import type { Locale } from '$lib/paraglide/runtime.js';
-	import CustomEmojiText from './CustomEmojiText.svelte';
-	import ProfileAvatar from './ProfileAvatar.svelte';
+	import CustomEmojiText from '$lib/components/CustomEmojiText.svelte';
+	import ProfileAvatar from '$lib/components/ProfileAvatar.svelte';
 	import PostCard from '$lib/features/posts/presentation/PostCard.svelte';
 
 	type Props = {

@@ -10,7 +10,7 @@
 	import { getProfileDisplayName, type Profile } from '$lib/nostr/profiles';
 	import type { AvatarShape } from '$lib/user-settings';
 	import AccountLoginDialog from './AccountLoginDialog.svelte';
-	import ProfileAvatar from './ProfileAvatar.svelte';
+	import ProfileAvatar from '$lib/components/ProfileAvatar.svelte';
 
 	type Props = {
 		isCollapsed: boolean;

@@ -33,9 +33,9 @@
 		type PostActionVisibility,
 		type ThemePreference
 	} from '$lib/user-settings';
-	import ProfileAvatar from './ProfileAvatar.svelte';
-	import CustomEmojiText from './CustomEmojiText.svelte';
-	import EmojiReactionPicker from './EmojiReactionPicker.svelte';
+	import ProfileAvatar from '$lib/components/ProfileAvatar.svelte';
+	import CustomEmojiText from '$lib/components/CustomEmojiText.svelte';
+	import EmojiReactionPicker from '$lib/components/EmojiReactionPicker.svelte';
 	import InputHelpButton from './InputHelpButton.svelte';
 
 	type Props = {
