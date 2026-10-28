@@ -26,7 +26,6 @@ type Session = {
 	cacheError: unknown;
 	lastCreatedAt: number | undefined;
 	revision: number;
-	intents: Record<string, boolean>;
 	needsPublish: boolean;
 	paused: boolean;
 	loading?: Promise<void>;
@@ -66,6 +65,7 @@ export function createFollowListController() {
 	}
 
 	async function load(state: Session, work: AccountWork) {
+		const recoveringConflict = state.publishError?.type === 'conflict';
 		try {
 			await work.pending;
 			if (active !== state) {
@@ -79,12 +79,18 @@ export function createFollowListController() {
 			}
 			// A successful publish remains a valid basis even if its cache write failed.
 			const event =
-				work.published && shouldReplaceCurrentEvent(work.published, fetched)
+				!recoveringConflict && work.published && shouldReplaceCurrentEvent(work.published, fetched)
 					? work.published
 					: fetched;
 			state.event = event;
 			state.desired = event ? toUpdate(event) : undefined;
 			state.status = event ? 'ready' : 'unknown';
+			if (recoveringConflict && event) {
+				work.published = event;
+				state.publishError = null;
+				state.needsPublish = false;
+				state.paused = false;
+			}
 		} catch (error) {
 			if (active !== state) {
 				return;
@@ -115,7 +121,6 @@ export function createFollowListController() {
 					cacheError: null,
 					lastCreatedAt: accountWork(account.pubkey).lastCreatedAt,
 					revision: 0,
-					intents: {},
 					needsPublish: false,
 					paused: false
 				}
@@ -130,7 +135,7 @@ export function createFollowListController() {
 
 	function reload(): Promise<void> {
 		const state = active;
-		if (!state || state.status === 'ready') {
+		if (!state || (state.status === 'ready' && state.publishError?.type !== 'conflict')) {
 			return Promise.resolve();
 		}
 		if (state.loading) {
@@ -144,7 +149,7 @@ export function createFollowListController() {
 
 	/** Call only after independently confirming absence; an undefined fetch is insufficient. */
 	function confirmEmptyFollowList() {
-		if (!active || active.status !== 'unknown') {
+		if (!active || active.status !== 'unknown' || active.publishError?.type === 'conflict') {
 			return false;
 		}
 		active.desired = { kind: Contacts, tags: [], content: '' };
@@ -156,34 +161,6 @@ export function createFollowListController() {
 		state.publishError = { type: 'conflict', ...(error === undefined ? {} : { error }) };
 		state.needsPublish = true;
 		state.paused = true;
-	}
-
-	async function readLatestBasis(state: Session, known: Nostr.Event<typeof Contacts> | undefined) {
-		try {
-			const cached = await getCachedLatestEvent([state.pubkey, Contacts, '']);
-			if (cached) {
-				return shouldReplaceCurrentEvent(cached, known) ? cached : known;
-			}
-			if (active === state) {
-				pauseForConflict(state);
-			}
-		} catch (error) {
-			if (active === state) {
-				pauseForConflict(state, error);
-			}
-		}
-	}
-
-	function adoptBasis(state: Session, basis: Nostr.Event<typeof Contacts>, rebase: boolean) {
-		state.event = basis;
-		if (rebase) {
-			let desired = toUpdate(basis);
-			for (const [pubkey, following] of Object.entries(state.intents)) {
-				desired =
-					(following ? addFollow(desired, pubkey) : removeFollow(desired, pubkey)) ?? desired;
-			}
-			state.desired = desired;
-		}
 	}
 
 	function startPublishing(state: Session) {
@@ -200,28 +177,10 @@ export function createFollowListController() {
 		const finished = Promise.withResolvers<void>();
 		work.pending = finished.promise;
 		state.isPublishing = true;
-		const refreshBeforeRetry = state.publishError?.type === 'conflict';
 		state.publishError = null;
 
 		void (async () => {
 			try {
-				let rebased = false;
-				if (refreshBeforeRetry) {
-					const basis = await readLatestBasis(state, work.published ?? state.event);
-					if (!basis) {
-						return;
-					}
-					work.published = basis;
-					if (active !== state) {
-						return;
-					}
-					adoptBasis(state, basis, true);
-					state.needsPublish = !sameList(state.desired!, basis);
-					if (!state.needsPublish) {
-						state.intents = {};
-						return;
-					}
-				}
 				while (active === state && state.desired && selectedAccount) {
 					const update = $state.snapshot(state.desired);
 					const revision = state.revision;
@@ -248,31 +207,29 @@ export function createFollowListController() {
 						state.cacheError =
 							result.cacheResult.status === 'failed' ? result.cacheResult.error : null;
 						const published = result.publishResult.event as Nostr.Event<typeof Contacts>;
-						let basis = published;
 						if (result.cacheResult.status === 'ignored') {
-							const latest = await readLatestBasis(state, published);
-							if (!latest) {
+							let cached: Nostr.Event<typeof Contacts> | undefined;
+							try {
+								cached = await getCachedLatestEvent([state.pubkey, Contacts, '']);
+							} catch (error) {
+								if (active === state) {
+									pauseForConflict(state, error);
+								}
 								return;
 							}
-							basis = latest;
-							work.published = basis;
-						}
-						if (active !== state) {
-							return;
-						}
-						const newer = shouldReplaceCurrentEvent(basis, published);
-						adoptBasis(state, basis, newer);
-						state.needsPublish = false;
-						if (sameList(state.desired, state.event)) {
-							state.intents = {};
-							return;
-						}
-						if (newer) {
-							if (rebased) {
+							if (active !== state) {
+								return;
+							}
+							if (!cached || cached.id !== published.id) {
 								pauseForConflict(state);
 								return;
 							}
-							rebased = true;
+							work.published = published;
+						}
+						state.event = published;
+						state.needsPublish = false;
+						if (sameList(state.desired, state.event)) {
+							return;
 						}
 					} else {
 						state.publishError = { type: 'publish', result: result.publishResult };
@@ -301,7 +258,12 @@ export function createFollowListController() {
 
 	function changeFollow(pubkey: string, following: boolean) {
 		const state = active;
-		if (!state || state.status !== 'ready' || !state.desired) {
+		if (
+			!state ||
+			state.status !== 'ready' ||
+			!state.desired ||
+			state.publishError?.type === 'conflict'
+		) {
 			return false;
 		}
 		const update = following
@@ -311,14 +273,18 @@ export function createFollowListController() {
 			return false;
 		}
 		state.desired = update;
-		state.intents[pubkey] = following;
 		state.revision += 1;
 		startPublishing(state);
 		return true;
 	}
 
 	function retry() {
-		if (!active || active.isPublishing || !active.publishError) {
+		if (
+			!active ||
+			active.isPublishing ||
+			!active.publishError ||
+			active.publishError.type === 'conflict'
+		) {
 			return false;
 		}
 		active.paused = false;
