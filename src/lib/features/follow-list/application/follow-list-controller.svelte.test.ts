@@ -293,11 +293,7 @@ describe('follow list controller', () => {
 			await controller.reload();
 			expect(getLatestFollowList).toHaveBeenCalledTimes(2);
 			expect(controller.event).toEqual(newer);
-			expect(controller.desired).toEqual({
-				kind: Contacts,
-				tags: newer.tags,
-				content: newer.content
-			});
+			expect(controller.desired).toEqual(newer);
 			expect(controller.publishError).toBeNull();
 			expect(controller.isFollowing(alice)).toBe(false);
 			expect(controller.isFollowing(bob)).toBe(false);

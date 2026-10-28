@@ -37,10 +37,6 @@ type AccountWork = {
 	published?: Nostr.Event<typeof Contacts>;
 };
 
-function toUpdate(event: Nostr.Event<typeof Contacts>): FollowListUpdate {
-	return { kind: Contacts, tags: event.tags, content: event.content };
-}
-
 function sameList(desired: FollowListUpdate, event: FollowListUpdate | undefined) {
 	return (
 		desired.content === (event?.content ?? '') &&
@@ -83,7 +79,7 @@ export function createFollowListController() {
 					? work.published
 					: fetched;
 			state.event = event;
-			state.desired = event ? toUpdate(event) : undefined;
+			state.desired = event;
 			state.status = event ? 'ready' : 'unknown';
 			if (recoveringConflict && event) {
 				work.published = event;
