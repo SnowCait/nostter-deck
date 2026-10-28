@@ -260,186 +260,122 @@ describe('follow list controller', () => {
 		expect(attempts).toHaveLength(1);
 	});
 
-	test('rebases only outstanding local choices onto newer cached tags and content', async () => {
-		const { controller, attempts, succeed } = harness();
-		const read = Promise.withResolvers<Nostr.Event<typeof Contacts> | undefined>();
-		vi.mocked(getCachedLatestEvent).mockReturnValue(read.promise);
-		await controller.setAccount(account);
-		controller.follow(alice);
-		controller.unfollow(existing);
-		await succeed(0, { status: 'ignored' });
-		// Include changes made while the ignored write's cache reread is pending.
-		controller.follow(bob);
-		const newer = event(
-			owner,
-			{
-				kind: Contacts,
-				tags: [
-					['p', existing, 'wss://changed.example/', 'remove me'],
-					['p', carol, 'wss://remote.example/', 'remote', 'extra'],
-					['p', bob, 'wss://bob.example/', 'keep this hint'],
-					['custom', 'new data'],
-					['client', 'other client']
-				],
-				content: 'new remote content'
-			},
-			200
-		);
-		read.resolve(newer);
-		await settleCacheRead();
-		expect(controller.event).toEqual(newer);
-		expect(attempts).toHaveLength(2);
-		expect(attempts[1].previous).toBe(200);
-		expect(attempts[1].update).toEqual({
-			kind: Contacts,
-			tags: [...newer.tags.slice(1), ['p', alice, '']],
-			content: newer.content
-		});
-		expect(controller.isFollowing(existing)).toBe(false);
-		expect(controller.isFollowing(carol)).toBe(true);
-		expect(attempts[0].update.tags).toEqual([...event().tags, ['p', alice, '']]);
-		await succeed(1, { status: 'updated' }, 201);
-		expect(attempts).toHaveLength(2);
-		expect(controller.publishError).toBeNull();
-	});
-
-	test('adopts a newer cache without republishing when it already satisfies local choices', async () => {
-		const { controller, attempts, succeed } = harness();
-		await controller.setAccount(account);
-		controller.follow(alice);
-		const newer = event(
-			owner,
-			{
-				kind: Contacts,
-				tags: [...event().tags, ['p', alice, 'wss://hint.example/'], ['p', carol]],
-				content: 'new content'
-			},
-			200
-		);
-		vi.mocked(getCachedLatestEvent).mockResolvedValue(newer);
-		await succeed(0, { status: 'ignored' });
-		await settleCacheRead();
-		expect(controller.event).toEqual(newer);
-		expect(controller.desired).toEqual({
-			kind: Contacts,
-			tags: newer.tags,
-			content: newer.content
-		});
-		expect(controller.isPublishing).toBe(false);
-		expect(attempts).toHaveLength(1);
-	});
-
-	test('does not replay acknowledged choices over later external changes', async () => {
-		const { controller, attempts, succeed } = harness();
-		await controller.setAccount(account);
-		controller.follow(alice);
-		await succeed(0);
-		controller.follow(bob);
-		const newer = event(owner, { kind: Contacts, tags: [['p', carol]], content: 'remote' }, 200);
-		vi.mocked(getCachedLatestEvent).mockResolvedValue(newer);
-		await succeed(1, { status: 'ignored' });
-		await settleCacheRead();
-		expect(attempts[2].update.tags).toEqual([
-			['p', carol],
-			['p', bob, '']
-		]);
-		expect(controller.isFollowing(alice)).toBe(false);
-		await succeed(2, { status: 'updated' }, 201);
-	});
-
-	test('pauses recurring conflicts and rereads the basis before a manual retry', async () => {
-		const { controller, attempts, succeed } = harness();
-		await controller.setAccount(account);
-		controller.follow(alice);
-		controller.follow(bob);
-		const first = event(
-			owner,
-			{
-				kind: Contacts,
-				tags: [
-					['p', carol],
-					['p', alice]
-				],
-				content: 'first'
-			},
-			200
-		);
-		vi.mocked(getCachedLatestEvent).mockResolvedValue(first);
-		await succeed(0, { status: 'ignored' });
-		await settleCacheRead();
-		const second = event(
-			owner,
-			{ kind: Contacts, tags: [['p', existing]], content: 'second' },
-			300
-		);
-		vi.mocked(getCachedLatestEvent).mockResolvedValue(second);
-		await succeed(1, { status: 'ignored' }, 201);
-		await settleCacheRead();
-		expect(attempts).toHaveLength(2);
-		expect(controller.isPublishing).toBe(false);
-		expect(controller.publishError).toEqual({ type: 'conflict' });
-		expect(controller.event).toEqual(second);
-		expect(controller.isFollowing(alice)).toBe(true);
-		expect(controller.isFollowing(bob)).toBe(true);
-		controller.unfollow(existing);
-		expect(attempts).toHaveLength(2);
-		const third = event(
-			owner,
-			{
-				kind: Contacts,
-				tags: [
-					['p', existing],
-					['p', carol]
-				],
-				content: 'third'
-			},
-			400
-		);
-		vi.mocked(getCachedLatestEvent).mockResolvedValue(third);
-		expect(controller.retry()).toBe(true);
-		await settleCacheRead();
-		expect(attempts[2].update).toEqual({
-			kind: Contacts,
-			tags: [
-				['p', carol],
-				['p', alice, ''],
-				['p', bob, '']
-			],
-			content: 'third'
-		});
-		expect(attempts[2].previous).toBe(400);
-		await succeed(2, { status: 'updated' }, 401);
-		expect(controller.publishError).toBeNull();
-	});
-
-	test.each(['missing', 'rejected'] as const)(
-		'pauses rather than publishing an old snapshot when the ignored write cache read is %s',
+	test.each(['different', 'missing', 'rejected'] as const)(
+		'stops on an ignored write when the cached event is %s and recovers only by reloading',
 		async (mode) => {
 			const { controller, attempts, succeed } = harness();
 			await controller.setAccount(account);
 			controller.follow(alice);
-			if (mode === 'rejected') {
+			controller.follow(bob);
+			const newer = {
+				...event(owner, { kind: Contacts, tags: [['p', carol]], content: 'remote' }, 200),
+				id: '0'.repeat(64)
+			};
+			if (mode === 'different') {
+				vi.mocked(getCachedLatestEvent).mockResolvedValue(newer);
+			} else if (mode === 'rejected') {
 				vi.mocked(getCachedLatestEvent).mockRejectedValue(new Error('Cache read failed'));
 			}
 			await succeed(0, { status: 'ignored' });
 			await settleCacheRead();
 			expect(controller.publishError).toMatchObject({ type: 'conflict' });
+			expect(controller.cacheError).toBeNull();
 			expect(controller.lastCreatedAt).toBe(100);
 			expect(controller.isPublishing).toBe(false);
-			controller.follow(bob);
+			const desired = controller.desired;
+			expect(controller.follow(carol)).toBe(false);
+			expect(controller.unfollow(existing)).toBe(false);
+			expect(controller.retry()).toBe(false);
+			expect(controller.desired).toEqual(desired);
 			expect(attempts).toHaveLength(1);
-			const newer = event(owner, { kind: Contacts, tags: [['p', carol]], content: 'new' }, 200);
-			vi.mocked(getCachedLatestEvent).mockResolvedValue(newer);
-			expect(controller.retry()).toBe(true);
-			await settleCacheRead();
+
+			vi.mocked(getLatestFollowList).mockResolvedValueOnce(newer);
+			await controller.reload();
+			expect(getLatestFollowList).toHaveBeenCalledTimes(2);
+			expect(controller.event).toEqual(newer);
+			expect(controller.desired).toEqual({
+				kind: Contacts,
+				tags: newer.tags,
+				content: newer.content
+			});
+			expect(controller.publishError).toBeNull();
+			expect(controller.isFollowing(alice)).toBe(false);
+			expect(controller.isFollowing(bob)).toBe(false);
+			expect(attempts).toHaveLength(1);
+			controller.follow(existing);
 			expect(attempts[1].update.tags).toEqual([
 				['p', carol],
-				['p', alice, ''],
-				['p', bob, '']
+				['p', existing, '']
 			]);
+			expect(attempts[1].previous).toBe(200);
 			await succeed(1, { status: 'updated' }, 201);
 		}
 	);
+
+	test('blocks operations queued during a cache reread once a different event is found', async () => {
+		const { controller, attempts, succeed } = harness();
+		const read = Promise.withResolvers<Nostr.Event<typeof Contacts> | undefined>();
+		vi.mocked(getCachedLatestEvent).mockReturnValue(read.promise);
+		await controller.setAccount(account);
+		controller.follow(alice);
+		await succeed(0, { status: 'ignored' });
+		controller.follow(bob);
+		read.resolve({ ...event(), id: '0'.repeat(64) });
+		await settleCacheRead();
+		expect(controller.publishError).toEqual({ type: 'conflict' });
+		expect(controller.retry()).toBe(false);
+		expect(attempts).toHaveLength(1);
+	});
+
+	test.each(['missing', 'rejected'] as const)(
+		'keeps the conflict locked when reloading is %s',
+		async (mode) => {
+			const { controller, attempts, succeed } = harness();
+			await controller.setAccount(account);
+			controller.follow(alice);
+			await succeed(0, { status: 'ignored' });
+			await settleCacheRead();
+			if (mode === 'missing') {
+				vi.mocked(getLatestFollowList).mockResolvedValueOnce(undefined);
+			} else {
+				vi.mocked(getLatestFollowList).mockRejectedValueOnce(new Error('Reload failed'));
+			}
+			await controller.reload();
+			expect(controller.status).toBe(mode === 'missing' ? 'unknown' : 'failed');
+			expect(controller.publishError).toMatchObject({ type: 'conflict' });
+			expect(controller.confirmEmptyFollowList()).toBe(false);
+			expect(controller.follow(bob)).toBe(false);
+			expect(controller.retry()).toBe(false);
+			expect(attempts).toHaveLength(1);
+			await controller.reload();
+			expect(controller.status).toBe('ready');
+			expect(controller.publishError).toBeNull();
+			expect(controller.isFollowing(alice)).toBe(false);
+		}
+	);
+
+	test('ignores a conflict reload result after switching accounts', async () => {
+		const { controller, succeed } = harness();
+		await controller.setAccount(account);
+		controller.follow(alice);
+		await succeed(0, { status: 'ignored' });
+		await settleCacheRead();
+		const fetched = Promise.withResolvers<Nostr.Event<typeof Contacts> | undefined>();
+		const started = Promise.withResolvers<void>();
+		vi.mocked(getLatestFollowList).mockImplementationOnce(() => {
+			started.resolve();
+			return fetched.promise;
+		});
+		const loading = controller.reload();
+		await started.promise;
+		await controller.setAccount(otherAccount);
+		fetched.resolve(event(owner, { kind: Contacts, tags: [['p', carol]], content: 'old' }));
+		await loading;
+		expect(controller.pubkey).toBe(otherOwner);
+		expect(controller.event?.pubkey).toBe(otherOwner);
+		expect(controller.isFollowing(carol)).toBe(false);
+		expect(controller.publishError).toBeNull();
+	});
 
 	test.each(['newer', 'missing'] as const)(
 		'isolates a %s cache reread across account switches',
@@ -466,7 +402,7 @@ describe('follow list controller', () => {
 			expect(controller.isPublishing).toBe(true);
 			expect(attempts).toHaveLength(2);
 			await succeed(1);
-			vi.mocked(getLatestFollowList).mockResolvedValueOnce(undefined);
+			vi.mocked(getLatestFollowList).mockResolvedValueOnce(mode === 'newer' ? latest : undefined);
 			await controller.setAccount(account);
 			if (mode === 'newer') {
 				expect(controller.event).toEqual(latest);
