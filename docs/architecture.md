@@ -38,6 +38,15 @@ Create subdirectories only for clear responsibilities. These layers are optional
 - Controllers own reactive state and coordinate side effects.
 - Place `*-controller.svelte.ts` modules with the feature or deck behavior that owns their state. Feature use-case controllers belong in application; controllers for presentation state belong in presentation. Deck-wide coordination stays in `deck/`.
 
+### Follow-list controller lifecycle
+
+- Create a controller with the authenticated account's public key and concrete signer. Both are fixed; do not pass a signer that delegates to whichever account is currently active.
+- Creation starts loading. Calling `reload()` during loading waits for that load; mutations require a ready basis.
+- Call `dispose()` before switching authentication or leaving the active view. It immediately blocks mutations, retries, reloads, and automatic follow-up publications. Queued desired changes are not published after disposal.
+- Disposal cannot cancel a signing or relay request already started. Its promise waits for controller work to settle. The composition layer must keep that promise and await it before creating another controller for the same public key, and must never run two live controllers for that key.
+- A disposed controller cannot be reactivated. Reuse a live controller only while the same authentication session remains active; create a new one after authentication changes. Authentication can close an old NIP-46 signer, so an outstanding attempt may fail.
+- Attempt timestamps and successful events whose cache writes failed live only in the controller. Awaiting disposal prevents overlap but does not transfer that basis to a replacement. Before discarding it, the composition layer must account for its `lastCreatedAt`, publication result, and cache errors when establishing a safe replacement basis; reconstruction alone does not preserve uncached state. Cross-controller retention and account selection belong to future composition wiring.
+
 ## Actions
 
 - Put pure logic in `*-actions.ts` modules within the owning area. Feature rules belong in domain; deck layout and column rules belong in `deck/`.

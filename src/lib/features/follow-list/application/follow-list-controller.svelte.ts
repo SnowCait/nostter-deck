@@ -1,4 +1,3 @@
-import { shouldReplaceCurrentEvent } from '@nostter/nostr-protocol';
 import type * as Nostr from 'nostr-typedef';
 import { Contacts } from 'nostr-tools/kinds';
 import type { EventSigner } from 'rx-nostr';
@@ -15,8 +14,7 @@ type PublishError =
 	| { type: 'conflict'; error?: unknown }
 	| { type: 'exception'; error: unknown };
 
-type Session = {
-	pubkey: string;
+type State = {
 	status: LoadStatus;
 	event: Nostr.Event<typeof Contacts> | undefined;
 	desired: FollowListUpdate | undefined;
@@ -31,12 +29,6 @@ type Session = {
 	loading?: Promise<void>;
 };
 
-type AccountWork = {
-	pending?: Promise<void>;
-	lastCreatedAt?: number;
-	published?: Nostr.Event<typeof Contacts>;
-};
-
 function sameList(desired: FollowListUpdate, event: FollowListUpdate | undefined) {
 	return (
 		desired.content === (event?.content ?? '') &&
@@ -44,94 +36,64 @@ function sameList(desired: FollowListUpdate, event: FollowListUpdate | undefined
 	);
 }
 
-export function createFollowListController() {
-	let active = $state<Session | null>(null);
-	let selectedAccount: Account | null = null;
-	// Bookkeeping survives view changes; it is not rendered state.
-	// eslint-disable-next-line svelte/prefer-svelte-reactivity
-	const accounts = new Map<string, AccountWork>();
+/**
+ * Owns one account and its signer for its entire lifetime.
+ * Call dispose before changing authentication. It stops new work, but cannot cancel
+ * signing or relay requests already started; await it before replacing this controller
+ * for the same pubkey. A disposed controller cannot be reused.
+ */
+export function createFollowListController({ pubkey, signer }: Account) {
+	const state = $state<State>({
+		status: 'loading',
+		event: undefined,
+		desired: undefined,
+		isPublishing: false,
+		loadError: null,
+		publishError: null,
+		cacheError: null,
+		lastCreatedAt: undefined,
+		revision: 0,
+		needsPublish: false,
+		paused: false
+	});
+	let disposed = false;
+	let pending: Promise<void> | undefined;
 
-	function accountWork(pubkey: string) {
-		let work = accounts.get(pubkey);
-		if (!work) {
-			work = {};
-			accounts.set(pubkey, work);
-		}
-		return work;
-	}
-
-	async function load(state: Session, work: AccountWork) {
+	async function load() {
 		const recoveringConflict = state.publishError?.type === 'conflict';
 		try {
-			await work.pending;
-			if (active !== state) {
+			await pending;
+			if (disposed) {
 				return;
 			}
 			state.isPublishing = false;
-			state.lastCreatedAt = work.lastCreatedAt;
-			const fetched = await getLatestFollowList(state.pubkey);
-			if (active !== state) {
+			const event = await getLatestFollowList(pubkey);
+			if (disposed) {
 				return;
 			}
-			// A successful publish remains a valid basis even if its cache write failed.
-			const event =
-				!recoveringConflict && work.published && shouldReplaceCurrentEvent(work.published, fetched)
-					? work.published
-					: fetched;
 			state.event = event;
 			state.desired = event;
 			state.status = event ? 'ready' : 'unknown';
 			if (recoveringConflict && event) {
-				work.published = event;
 				state.publishError = null;
 				state.needsPublish = false;
 				state.paused = false;
 			}
 		} catch (error) {
-			if (active !== state) {
+			if (disposed) {
 				return;
 			}
 			state.loadError = error;
 			state.status = 'failed';
 		} finally {
-			if (active === state) {
+			if (!disposed) {
 				state.loading = undefined;
 			}
 		}
 	}
 
-	function setAccount(account: Account | null): Promise<void> {
-		selectedAccount = account;
-		if (account && active?.pubkey === account.pubkey) {
-			return active.loading ?? Promise.resolve();
-		}
-		active = account
-			? {
-					pubkey: account.pubkey,
-					status: 'loading',
-					event: undefined,
-					desired: undefined,
-					isPublishing: Boolean(accountWork(account.pubkey).pending),
-					loadError: null,
-					publishError: null,
-					cacheError: null,
-					lastCreatedAt: accountWork(account.pubkey).lastCreatedAt,
-					revision: 0,
-					needsPublish: false,
-					paused: false
-				}
-			: null;
-		if (!active) {
-			return Promise.resolve();
-		}
-		const state = active;
-		state.loading = load(state, accountWork(state.pubkey));
-		return state.loading;
-	}
-
 	function reload(): Promise<void> {
-		const state = active;
-		if (!state || (state.status === 'ready' && state.publishError?.type !== 'conflict')) {
+		if (disposed || (state.status === 'ready' && state.publishError?.type !== 'conflict')) {
 			return Promise.resolve();
 		}
 		if (state.loading) {
@@ -139,64 +101,48 @@ export function createFollowListController() {
 		}
 		state.status = 'loading';
 		state.loadError = null;
-		state.loading = load(state, accountWork(state.pubkey));
+		state.loading = load();
 		return state.loading;
 	}
 
 	/** Call only after independently confirming absence; an undefined fetch is insufficient. */
 	function confirmEmptyFollowList() {
-		if (!active || active.status !== 'unknown' || active.publishError?.type === 'conflict') {
+		if (disposed || state.status !== 'unknown' || state.publishError?.type === 'conflict') {
 			return false;
 		}
-		active.desired = { kind: Contacts, tags: [], content: '' };
-		active.status = 'ready';
+		state.desired = { kind: Contacts, tags: [], content: '' };
+		state.status = 'ready';
 		return true;
 	}
 
-	function pauseForConflict(state: Session, error?: unknown) {
+	function pauseForConflict(error?: unknown) {
 		state.publishError = { type: 'conflict', ...(error === undefined ? {} : { error }) };
 		state.needsPublish = true;
 		state.paused = true;
 	}
 
-	function startPublishing(state: Session) {
-		if (active !== state || state.status !== 'ready' || !state.desired || state.isPublishing) {
+	function startPublishing() {
+		if (disposed || state.status !== 'ready' || !state.desired || state.isPublishing) {
 			return false;
 		}
 		if (state.paused || (!state.needsPublish && sameList(state.desired, state.event))) {
 			return false;
 		}
-		const work = accountWork(state.pubkey);
-		if (work.pending) {
-			return false;
-		}
 		const finished = Promise.withResolvers<void>();
-		work.pending = finished.promise;
+		pending = finished.promise;
 		state.isPublishing = true;
 		state.publishError = null;
 
 		void (async () => {
 			try {
-				while (active === state && state.desired && selectedAccount) {
+				while (!disposed && state.desired) {
 					const update = $state.snapshot(state.desired);
 					const revision = state.revision;
-					const { pubkey, signer } = selectedAccount;
 					const previousCreatedAt =
-						work.lastCreatedAt === undefined
+						state.lastCreatedAt === undefined
 							? undefined
-							: Math.max(work.lastCreatedAt, state.event?.created_at ?? 0);
+							: Math.max(state.lastCreatedAt, state.event?.created_at ?? 0);
 					const result = await publishAndCacheFollowList(update, pubkey, signer, previousCreatedAt);
-					work.lastCreatedAt = result.createdAt;
-					if (result.publishResult.ok) {
-						// An ignored event is not a safe fallback until its cache basis is checked.
-						work.published =
-							result.cacheResult.status === 'ignored'
-								? undefined
-								: (result.publishResult.event as Nostr.Event<typeof Contacts>);
-					}
-					if (active !== state) {
-						return;
-					}
 					state.lastCreatedAt = result.createdAt;
 					if (result.publishResult.ok) {
 						state.publishError = null;
@@ -206,21 +152,20 @@ export function createFollowListController() {
 						if (result.cacheResult.status === 'ignored') {
 							let cached: Nostr.Event<typeof Contacts> | undefined;
 							try {
-								cached = await getCachedLatestEvent([state.pubkey, Contacts, '']);
+								cached = await getCachedLatestEvent([pubkey, Contacts, '']);
 							} catch (error) {
-								if (active === state) {
-									pauseForConflict(state, error);
+								if (!disposed) {
+									pauseForConflict(error);
 								}
 								return;
 							}
-							if (active !== state) {
+							if (disposed) {
 								return;
 							}
 							if (!cached || cached.id !== published.id) {
-								pauseForConflict(state);
+								pauseForConflict();
 								return;
 							}
-							work.published = published;
 						}
 						state.event = published;
 						state.needsPublish = false;
@@ -238,14 +183,14 @@ export function createFollowListController() {
 					}
 				}
 			} catch (error) {
-				if (active === state) {
+				if (!disposed) {
 					state.publishError = { type: 'exception', error };
 					state.needsPublish = true;
 					state.paused = true;
 				}
 			} finally {
 				state.isPublishing = false;
-				work.pending = undefined;
+				pending = undefined;
 				finished.resolve();
 			}
 		})();
@@ -253,9 +198,8 @@ export function createFollowListController() {
 	}
 
 	function changeFollow(pubkey: string, following: boolean) {
-		const state = active;
 		if (
-			!state ||
+			disposed ||
 			state.status !== 'ready' ||
 			!state.desired ||
 			state.publishError?.type === 'conflict'
@@ -270,58 +214,63 @@ export function createFollowListController() {
 		}
 		state.desired = update;
 		state.revision += 1;
-		startPublishing(state);
+		startPublishing();
 		return true;
 	}
 
 	function retry() {
 		if (
-			!active ||
-			active.isPublishing ||
-			!active.publishError ||
-			active.publishError.type === 'conflict'
+			disposed ||
+			state.isPublishing ||
+			!state.publishError ||
+			state.publishError.type === 'conflict'
 		) {
 			return false;
 		}
-		active.paused = false;
-		return startPublishing(active);
+		state.paused = false;
+		return startPublishing();
 	}
 
+	state.loading = load();
+
 	return {
-		setAccount,
+		dispose() {
+			disposed = true;
+			return Promise.all([pending, state.loading]).then(() => {});
+		},
 		reload,
 		confirmEmptyFollowList,
 		follow: (pubkey: string) => changeFollow(pubkey, true),
 		unfollow: (pubkey: string) => changeFollow(pubkey, false),
 		retry,
 		isFollowing: (pubkey: string) =>
-			active?.desired?.tags.some((tag) => tag[0] === 'p' && tag[1] === pubkey),
+			state.desired?.tags.some((tag) => tag[0] === 'p' && tag[1] === pubkey),
 		get pubkey() {
-			return active?.pubkey ?? null;
+			return pubkey;
 		},
 		get status() {
-			return active?.status ?? 'idle';
+			return state.status;
 		},
 		get event() {
-			return $state.snapshot(active?.event);
+			return $state.snapshot(state.event);
 		},
 		get desired() {
-			return $state.snapshot(active?.desired);
+			return $state.snapshot(state.desired);
 		},
 		get isPublishing() {
-			return active?.isPublishing ?? false;
+			return state.isPublishing;
 		},
 		get loadError() {
-			return active?.loadError ?? null;
+			return state.loadError ?? null;
 		},
 		get publishError() {
-			return active?.publishError ?? null;
+			return state.publishError;
 		},
 		get cacheError() {
-			return active?.cacheError ?? null;
+			return state.cacheError ?? null;
 		},
 		get lastCreatedAt() {
-			return active?.lastCreatedAt;
+			return state.lastCreatedAt;
 		}
 	};
 }
