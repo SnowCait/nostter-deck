@@ -60,20 +60,19 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      - name: Verify standard-user process launch
-        timeout-minutes: 2
+      - run: choco install gsudo --version=2.6.1 --yes --no-progress
+      - name: Verify medium integrity and exit status
         run: |
-          $tokenLog = Join-Path $env:RUNNER_TEMP 'desktop-token.txt'
-          whoami /groups
-          runas /showtrustlevels
-          Start-Process runas.exe -ArgumentList ('/trustlevel:0x20000 "cmd.exe /c whoami /groups > {0}"' -f $tokenLog) -Wait
-          $token = Get-Content $tokenLog -Raw
+          $token = gsudo --direct --integrity Medium whoami /groups
           Write-Output $token
           if ($token -notmatch 'S-1-16-8192') { throw 'The child process is not running at medium integrity.' }
+          gsudo --direct --integrity Medium cmd /c exit 7
+          if ($LASTEXITCODE -ne 7) { throw 'Child exit status was not preserved.' }
+          $global:LASTEXITCODE = 0
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24.x'
       - run: npm ci
       - run: npm run tauri:build -- --debug --no-bundle --ci
-      - run: npm run test:desktop
+      - run: gsudo --direct --integrity Medium npm run test:desktop
