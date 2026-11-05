@@ -31,7 +31,7 @@
 		"@scure/base": "^2.2.0",
 		"@tauri-apps/api": "^2",
 		"@tauri-apps/plugin-opener": "^2",
-		"@tauri-apps/plugin-window-state": "^2.4.1",
+		"@tauri-apps/plugin-window-state": "^2.5.0",
 		"async-lock": "^1.4.1",
 		"dexie": "^4.4.2",
 		"emoji-picker-element": "^1.29.1",
