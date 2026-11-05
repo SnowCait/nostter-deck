@@ -17,7 +17,43 @@ updates:
       interval: quarterly
     cooldown:
       default-days: 7
+    open-pull-requests-limit: 20
     groups:
-      npm-dependencies:
+      svelte:
         patterns:
-          - '*'
+          - 'svelte'
+          - 'svelte-check'
+          - '@sveltejs/*'
+        update-types:
+          - minor
+          - patch
+      tauri:
+        patterns:
+          - '@tauri-apps/*'
+        update-types:
+          - minor
+          - patch
+      tailwind:
+        patterns:
+          - 'tailwindcss'
+          - '@tailwindcss/*'
+        update-types:
+          - minor
+          - patch
+      eslint:
+        patterns:
+          - 'eslint'
+          - 'eslint-*'
+          - '@eslint/*'
+          - 'typescript-eslint'
+          - 'globals'
+        update-types:
+          - minor
+          - patch
+      prettier:
+        patterns:
+          - 'prettier'
+          - 'prettier-plugin-*'
+        update-types:
+          - minor
+          - patch
