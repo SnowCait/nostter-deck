@@ -1,4 +1,5 @@
 /// <reference types="@wdio/mocha-framework" />
+/// <reference types="webdriverio" />
 import { $, browser, expect } from '@wdio/globals';
 
 describe('Windows desktop smoke test', () => {
@@ -13,6 +14,6 @@ describe('Windows desktop smoke test', () => {
 		await $('button[aria-label="Settings"]').click();
 		const dialog = await $('[role="dialog"]');
 		await expect(dialog).toBeDisplayed();
-		await expect(dialog.$('h2')).toHaveText('Settings');
+		await expect(dialog.$('[role="heading"]')).toHaveText('Settings');
 	});
 });
