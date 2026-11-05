@@ -70,7 +70,7 @@
 		"prettier-plugin-svelte": "^3.4.1",
 		"prettier-plugin-tailwindcss": "^0.8.0",
 		"rollup-plugin-visualizer": "^7.0.1",
-		"shadcn-svelte": "^1.2.7",
+		"shadcn-svelte": "^1.7.1",
 		"svelte": "^5.0.0",
 		"svelte-check": "^4.0.0",
 		"tailwind-merge": "^3.6.0",
