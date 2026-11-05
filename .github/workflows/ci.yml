@@ -60,14 +60,20 @@ jobs:
     timeout-minutes: 45
 
     steps:
+      - name: Verify standard-user process launch
+        timeout-minutes: 2
+        run: |
+          $tokenLog = Join-Path $env:RUNNER_TEMP 'desktop-token.txt'
+          whoami /groups
+          runas /showtrustlevels
+          Start-Process runas.exe -ArgumentList ('/trustlevel:0x20000 "cmd.exe /c whoami /groups > {0}"' -f $tokenLog) -Wait
+          $token = Get-Content $tokenLog -Raw
+          Write-Output $token
+          if ($token -notmatch 'S-1-16-8192') { throw 'The child process is not running at medium integrity.' }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24.x'
       - run: npm ci
       - run: npm run tauri:build -- --debug --no-bundle --ci
-      # Elevated WebView2 ignores the environment override used by Edge WebDriver.
-      # https://github.com/MicrosoftEdge/WebView2Feedback/issues/5640#issuecomment-4923662109
-      - name: Enable WebView2 remote debugging
-        run: reg add HKLM\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments /v nostter-deck.exe /t REG_SZ /d "--remote-debugging-port=0" /f
       - run: npm run test:desktop
