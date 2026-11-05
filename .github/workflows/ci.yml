@@ -42,7 +42,7 @@ jobs:
           retention-days: 14
 
   rust:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 45
     defaults:
       run:
@@ -54,12 +54,6 @@ jobs:
         run: |
           rustup override set stable
           rustup component add rustfmt clippy
-      - name: Install Tauri Linux dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libwebkit2gtk-4.1-dev build-essential curl wget file \
-            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
       - run: cargo fmt --all --check
       - run: cargo clippy --locked --all-targets -- -D warnings
       - run: cargo test --locked
