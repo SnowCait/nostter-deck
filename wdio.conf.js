@@ -1,6 +1,4 @@
 import { fileURLToPath } from 'node:url';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
 
 export const config = {
 	runner: 'local',
@@ -24,8 +22,6 @@ export const config = {
 		{
 			browserName: 'tauri',
 			'tauri:options': {
-				// Match Tauri's default LocalData directory without a registry override.
-				webviewOptions: { userDataFolder: join(homedir(), 'AppData', 'Local', 'app.nostter.deck') },
 				application: fileURLToPath(
 					new URL('./src-tauri/target/debug/nostter-deck.exe', import.meta.url)
 				)

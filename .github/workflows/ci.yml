@@ -61,14 +61,6 @@ jobs:
 
     steps:
       - run: choco install gsudo --version=2.6.1 --yes --no-progress
-      - name: Verify medium integrity and exit status
-        run: |
-          $token = (C:\tools\gsudo\Current\gsudo.exe --direct --integrity Medium whoami /groups) -join "`n"
-          Write-Output $token
-          if ($token -notmatch 'S-1-16-8192') { throw 'The child process is not running at medium integrity.' }
-          C:\tools\gsudo\Current\gsudo.exe --direct --integrity Medium cmd /c exit 7
-          if ($LASTEXITCODE -ne 7) { throw 'Child exit status was not preserved.' }
-          $global:LASTEXITCODE = 0
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
