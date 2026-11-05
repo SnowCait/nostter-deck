@@ -4,7 +4,9 @@ import { $, browser, expect } from '@wdio/globals';
 
 describe('Windows desktop smoke test', () => {
 	it('shows the initial screen and opens Settings', async () => {
-		// Select the app window explicitly; service auto-focus requires the optional WDIO plugin.
+		// Work around @wdio/tauri-service 1.5.1 repeatedly attempting
+		// auto-focus recovery without the optional Tauri plugin.
+		// Switching to the current window disables that recovery.
 		await browser.switchToWindow(await browser.getWindowHandle());
 
 		const heading = await $('h1');
