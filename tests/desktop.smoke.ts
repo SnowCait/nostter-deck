@@ -1,8 +1,11 @@
 /// <reference types="@wdio/mocha-framework" />
-import { $, expect } from '@wdio/globals';
+import { $, browser, expect } from '@wdio/globals';
 
 describe('Windows desktop smoke test', () => {
 	it('shows the initial screen and opens Settings', async () => {
+		// Select the app window explicitly; service auto-focus requires the optional WDIO plugin.
+		await browser.switchToWindow(await browser.getWindowHandle());
+
 		const heading = await $('h1');
 		await expect(heading).toBeDisplayed();
 		await expect(heading.$('img')).toHaveAttribute('alt', 'nostter deck');
