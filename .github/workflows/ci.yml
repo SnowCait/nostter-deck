@@ -60,11 +60,11 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      - run: choco install gsudo --version=2.6.1 --yes --no-progress
+      - run: winget install --id gerardog.gsudo --exact --version 2.6.1 --source winget --installer-type wix --silent --accept-package-agreements --accept-source-agreements
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24.x'
       - run: npm ci
       - run: npm run tauri:build -- --debug --no-bundle --ci
-      - run: C:\tools\gsudo\Current\gsudo.exe --direct --integrity Medium npm run test:desktop
+      - run: '& "$env:ProgramFiles\gsudo\Current\gsudo.exe" --direct --integrity Medium npm run test:desktop'
