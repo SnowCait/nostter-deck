@@ -57,3 +57,18 @@ updates:
         update-types:
           - minor
           - patch
+
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: quarterly
+    cooldown:
+      default-days: 7
+    groups:
+      tauri:
+        patterns:
+          - tauri
+          - tauri-*
+        update-types:
+          - minor
+          - patch
