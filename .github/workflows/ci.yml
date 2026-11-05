@@ -66,4 +66,13 @@ jobs:
           node-version: '24.x'
       - run: npm ci
       - run: npm run tauri:build -- --debug --no-bundle --ci
+      # Elevated WebView2 ignores the environment overrides used by Edge WebDriver.
+      # https://github.com/MicrosoftEdge/WebView2Feedback/issues/5640#issuecomment-4923662109
+      - name: Configure WebView2 automation
+        run: |
+          $policy = 'HKLM:\SOFTWARE\Policies\Microsoft\Edge\WebView2'
+          New-Item "$policy\AdditionalBrowserArguments" -Force | Out-Null
+          New-ItemProperty "$policy\AdditionalBrowserArguments" -Name 'nostter-deck.exe' -Value '--remote-debugging-port=0' -PropertyType String -Force | Out-Null
+          New-Item "$policy\UserDataFolder" -Force | Out-Null
+          New-ItemProperty "$policy\UserDataFolder" -Name 'nostter-deck.exe' -Value (Join-Path $env:TEMP 'nostter-deck-webdriver') -PropertyType String -Force | Out-Null
       - run: npm run test:desktop

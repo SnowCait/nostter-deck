@@ -1,4 +1,6 @@
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 export const config = {
 	runner: 'local',
@@ -23,6 +25,7 @@ export const config = {
 		{
 			browserName: 'tauri',
 			'tauri:options': {
+				webviewOptions: { userDataFolder: join(tmpdir(), 'nostter-deck-webdriver') },
 				application: fileURLToPath(
 					new URL('./src-tauri/target/debug/nostter-deck.exe', import.meta.url)
 				)
