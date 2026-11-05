@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 
 export const config = {
 	runner: 'local',
+	logLevel: 'debug',
 	specs: ['./tests/desktop.smoke.ts'],
 	maxInstances: 1,
 	framework: 'mocha',
