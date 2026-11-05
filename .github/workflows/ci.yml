@@ -63,10 +63,10 @@ jobs:
       - run: choco install gsudo --version=2.6.1 --yes --no-progress
       - name: Verify medium integrity and exit status
         run: |
-          $token = (gsudo --direct --integrity Medium whoami /groups) -join "`n"
+          $token = (C:\tools\gsudo\Current\gsudo.exe --direct --integrity Medium whoami /groups) -join "`n"
           Write-Output $token
           if ($token -notmatch 'S-1-16-8192') { throw 'The child process is not running at medium integrity.' }
-          gsudo --direct --integrity Medium cmd /c exit 7
+          C:\tools\gsudo\Current\gsudo.exe --direct --integrity Medium cmd /c exit 7
           if ($LASTEXITCODE -ne 7) { throw 'Child exit status was not preserved.' }
           $global:LASTEXITCODE = 0
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -75,4 +75,4 @@ jobs:
           node-version: '24.x'
       - run: npm ci
       - run: npm run tauri:build -- --debug --no-bundle --ci
-      - run: gsudo --direct --integrity Medium npm run test:desktop
+      - run: C:\tools\gsudo\Current\gsudo.exe --direct --integrity Medium npm run test:desktop
