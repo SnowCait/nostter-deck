@@ -67,4 +67,7 @@ jobs:
           node-version: '24.x'
       - run: npm ci
       - run: npm run tauri:build -- --debug --no-bundle --ci
+      # High Integrity WebView2 hosts ignore WEBVIEW2_* environment overrides.
+      # Run E2E at Medium Integrity to honor them without machine-wide registry policies.
+      # https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/security
       - run: '& "$env:ProgramFiles\gsudo\Current\gsudo.exe" --direct --integrity Medium npm run test:desktop'
