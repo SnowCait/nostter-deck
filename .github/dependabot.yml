@@ -1,4 +1,8 @@
 version: 2
+multi-ecosystem-groups:
+  tauri:
+    schedule:
+      interval: quarterly
 updates:
   - package-ecosystem: github-actions
     directory: /
@@ -18,18 +22,14 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 30
+    ignore:
+      - dependency-name: '@tauri-apps/*'
     groups:
       svelte:
         patterns:
           - 'svelte'
           - 'svelte-check'
           - '@sveltejs/*'
-        update-types:
-          - minor
-          - patch
-      tauri:
-        patterns:
-          - '@tauri-apps/*'
         update-types:
           - minor
           - patch
@@ -57,3 +57,30 @@ updates:
         update-types:
           - minor
           - patch
+
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: quarterly
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: tauri
+      - dependency-name: tauri-*
+
+  - package-ecosystem: npm
+    directory: /
+    cooldown:
+      default-days: 7
+    patterns:
+      - '@tauri-apps/*'
+    multi-ecosystem-group: tauri
+
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    cooldown:
+      default-days: 7
+    patterns:
+      - tauri
+      - tauri-*
+    multi-ecosystem-group: tauri
