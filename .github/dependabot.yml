@@ -17,7 +17,7 @@ updates:
       interval: quarterly
     cooldown:
       default-days: 7
-    open-pull-requests-limit: 20
+    open-pull-requests-limit: 30
     groups:
       svelte:
         patterns:
