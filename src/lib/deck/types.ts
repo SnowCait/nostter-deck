@@ -190,9 +190,7 @@ export type ChannelTimelineColumnConfig = {
 } & ColumnDisplayConfig;
 
 export type PresetTimelineColumnConfig =
-	| FollowTimelineColumnConfig
-	| SearchTimelineColumnConfig
-	| ChannelTimelineColumnConfig;
+	FollowTimelineColumnConfig | SearchTimelineColumnConfig | ChannelTimelineColumnConfig;
 
 export type CustomTimelineColumnConfig = {
 	id: string;

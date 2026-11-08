@@ -22,8 +22,7 @@ export type LikePostResult =
 	| { ok: false; reason: 'no-target' | 'unauthenticated' | 'already-liked' | 'already-publishing' };
 
 export type EmojiReactionResult =
-	| PublishPostResult
-	| { ok: false; reason: 'no-target' | 'unauthenticated' | 'already-publishing' };
+	PublishPostResult | { ok: false; reason: 'no-target' | 'unauthenticated' | 'already-publishing' };
 
 export type RepostResult =
 	| PublishPostResult
