@@ -37,6 +37,29 @@ updates:
         patterns:
           - 'tailwindcss'
           - '@tailwindcss/*'
+          - 'tailwind-merge'
+          - 'tailwind-variants'
+        update-types:
+          - minor
+          - patch
+      wdio:
+        patterns:
+          - 'webdriverio'
+          - '@wdio/*'
+        update-types:
+          - minor
+          - patch
+      rx-nostr:
+        patterns:
+          - 'rx-nostr'
+          - '@rx-nostr/crypto'
+        update-types:
+          - minor
+          - patch
+      emoji-picker-element:
+        patterns:
+          - 'emoji-picker-element'
+          - 'emoji-picker-element-data'
         update-types:
           - minor
           - patch
