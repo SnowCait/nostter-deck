@@ -389,7 +389,7 @@ describe('follow list controller', () => {
 		fetched.resolve(undefined);
 		await loading;
 		expect(controller.status).toBe('ready');
-		expect(controller.isFollowing(alice)).toBeUndefined();
+		expect(controller.isFollowing(alice)).toBe(false);
 		expect(controller.desired).toBeUndefined();
 		expect(controller.unfollow(alice)).toBe(false);
 		expect(controller.desired).toBeUndefined();
