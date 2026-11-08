@@ -60,7 +60,52 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      - run: winget install --id gerardog.gsudo --exact --version 2.6.1 --source winget --installer-type wix --silent --accept-package-agreements --accept-source-agreements
+      - id: install_gsudo
+        shell: pwsh
+        run: |
+          "started_at=$([DateTimeOffset]::UtcNow.ToString('o'))" >> $env:GITHUB_OUTPUT
+          winget install --id gerardog.gsudo --exact --version 2.6.1 --source winget --installer-type wix --silent --accept-package-agreements --accept-source-agreements --verbose-logs
+      - name: Collect WinGet diagnostic logs
+        if: ${{ failure() && steps.install_gsudo.outcome == 'failure' }}
+        shell: pwsh
+        env:
+          INSTALL_STARTED_AT: ${{ steps.install_gsudo.outputs.started_at }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $info = winget --info 2>&1 | Out-String
+          $logsPathMatch = [regex]::Match($info, '(?m)^\s*Logs:\s*(.+?)\s*$')
+          if (-not $logsPathMatch.Success) {
+            Write-Warning 'WinGet did not report its diagnostic log directory.'
+            exit 0
+          }
+
+          $logsDirectory = [Environment]::ExpandEnvironmentVariables($logsPathMatch.Groups[1].Value.Trim())
+          if (-not (Test-Path -LiteralPath $logsDirectory -PathType Container)) {
+            Write-Warning 'The WinGet diagnostic log directory is unavailable.'
+            exit 0
+          }
+
+          $startedAt = [DateTimeOffset]::Parse($env:INSTALL_STARTED_AT).UtcDateTime
+          $logFiles = Get-ChildItem -LiteralPath $logsDirectory -Filter 'WinGet-*.log' -File -ErrorAction SilentlyContinue |
+            Where-Object {
+              $_.LastWriteTimeUtc -ge $startedAt -and
+              (Select-String -Path $_.FullName -SimpleMatch 'gsudo' -Quiet -ErrorAction SilentlyContinue)
+            }
+          if (-not $logFiles) {
+            Write-Warning 'No WinGet diagnostic logs for the gsudo installation were found.'
+            exit 0
+          }
+
+          $artifactDirectory = Join-Path $env:RUNNER_TEMP 'winget-gsudo-install-logs'
+          New-Item -ItemType Directory -Path $artifactDirectory -Force | Out-Null
+          $logFiles | Copy-Item -Destination $artifactDirectory
+      - name: Upload WinGet diagnostic logs
+        if: ${{ failure() && steps.install_gsudo.outcome == 'failure' }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: winget-gsudo-install-logs-${{ github.run_id }}
+          path: ${{ runner.temp }}/winget-gsudo-install-logs/
+          if-no-files-found: ignore
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-node@v7.1.0
         with:
