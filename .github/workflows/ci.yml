@@ -60,7 +60,14 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      - run: winget install --id gerardog.gsudo --exact --version 2.6.1 --source winget --installer-type wix --silent --accept-package-agreements --accept-source-agreements
+      - id: install_gsudo
+        run: winget install --id gerardog.gsudo --exact --version 2.6.1 --source winget --installer-type wix --silent --accept-package-agreements --accept-source-agreements --verbose-logs
+      - name: Upload WinGet logs
+        if: ${{ failure() && steps.install_gsudo.outcome == 'failure' }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: winget-logs
+          path: ~/AppData/Local/Packages/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe/LocalState/DiagOutputDir/*.log
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-node@v7.1.0
         with:
