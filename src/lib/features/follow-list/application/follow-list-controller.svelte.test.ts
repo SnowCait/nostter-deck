@@ -337,10 +337,11 @@ describe('follow list controller', () => {
 				vi.mocked(getLatestFollowList).mockRejectedValueOnce(new Error('Reload failed'));
 			}
 			await controller.reload();
-			expect(controller.status).toBe(mode === 'missing' ? 'unknown' : 'failed');
+			expect(controller.status).toBe(mode === 'missing' ? 'ready' : 'failed');
 			expect(controller.publishError).toMatchObject({ type: 'conflict' });
-			expect(controller.confirmEmptyFollowList()).toBe(false);
+			expect(controller.isPublishing).toBe(false);
 			expect(controller.follow(bob)).toBe(false);
+			expect(controller.unfollow(existing)).toBe(false);
 			expect(controller.retry()).toBe(false);
 			expect(attempts).toHaveLength(1);
 			await controller.reload();
@@ -377,23 +378,25 @@ describe('follow list controller', () => {
 		}
 	);
 
-	test('blocks unknown bases and starts empty only after explicit independent confirmation', async () => {
+	test('blocks loading operations and publishes the first follow after an empty load', async () => {
 		const fetched = Promise.withResolvers<Nostr.Event<typeof Contacts> | undefined>();
 		vi.mocked(getLatestFollowList).mockReturnValue(fetched.promise);
 		const { controller, attempts, succeed } = harness();
 		const loading = controller.reload();
 		expect(controller.status).toBe('loading');
-		expect(controller.confirmEmptyFollowList()).toBe(false);
-		expect(controller.follow(alice)).toBe(false);
-		fetched.resolve(undefined);
-		await loading;
-		expect(controller.status).toBe('unknown');
-		expect(controller.isFollowing(alice)).toBeUndefined();
 		expect(controller.follow(alice)).toBe(false);
 		expect(controller.unfollow(alice)).toBe(false);
+		fetched.resolve(undefined);
+		await loading;
+		expect(controller.status).toBe('ready');
+		expect(controller.isFollowing(alice)).toBeUndefined();
+		expect(controller.desired).toBeUndefined();
+		expect(controller.unfollow(alice)).toBe(false);
+		expect(controller.desired).toBeUndefined();
 		expect(attempts).toHaveLength(0);
-		expect(controller.confirmEmptyFollowList()).toBe(true);
-		controller.follow(alice);
+		expect(controller.follow(alice)).toBe(true);
+		expect(controller.isPublishing).toBe(true);
+		expect(attempts).toHaveLength(1);
 		expect(attempts[0].update).toEqual({ kind: Contacts, tags: [['p', alice, '']], content: '' });
 		await succeed(0);
 	});
@@ -406,7 +409,7 @@ describe('follow list controller', () => {
 		expect(controller.status).toBe('failed');
 		expect(controller.loadError).toBe(error);
 		expect(controller.follow(alice)).toBe(false);
-		expect(controller.confirmEmptyFollowList()).toBe(false);
+		expect(controller.unfollow(existing)).toBe(false);
 		expect(attempts).toHaveLength(0);
 		await controller.reload();
 		expect(controller.status).toBe('ready');
@@ -451,7 +454,6 @@ describe('follow list controller', () => {
 		await loading;
 		await draining;
 		expect(controller.event).toBeUndefined();
-		expect(controller.confirmEmptyFollowList()).toBe(false);
 		await controller.reload();
 		expect(getLatestFollowList).toHaveBeenCalledTimes(1);
 	});

@@ -8,7 +8,7 @@ import { getCachedLatestEvent } from '$lib/nostr/latest-event-cache';
 import type { PublishPostResult } from '$lib/nostr/relay/publish-event';
 
 type Account = { pubkey: string; signer: EventSigner };
-type LoadStatus = 'loading' | 'ready' | 'unknown' | 'failed';
+type LoadStatus = 'loading' | 'ready' | 'failed';
 type PublishError =
 	| { type: 'publish'; result: Extract<PublishPostResult, { ok: false }> }
 	| { type: 'conflict'; error?: unknown }
@@ -73,7 +73,7 @@ export function createFollowListController({ pubkey, signer }: Account) {
 			}
 			state.event = event;
 			state.desired = event;
-			state.status = event ? 'ready' : 'unknown';
+			state.status = 'ready';
 			if (recoveringConflict && event) {
 				state.publishError = null;
 				state.needsPublish = false;
@@ -103,16 +103,6 @@ export function createFollowListController({ pubkey, signer }: Account) {
 		state.loadError = null;
 		state.loading = load();
 		return state.loading;
-	}
-
-	/** Call only after independently confirming absence; an undefined fetch is insufficient. */
-	function confirmEmptyFollowList() {
-		if (disposed || state.status !== 'unknown' || state.publishError?.type === 'conflict') {
-			return false;
-		}
-		state.desired = { kind: Contacts, tags: [], content: '' };
-		state.status = 'ready';
-		return true;
 	}
 
 	function pauseForConflict(error?: unknown) {
@@ -198,12 +188,7 @@ export function createFollowListController({ pubkey, signer }: Account) {
 	}
 
 	function changeFollow(pubkey: string, following: boolean) {
-		if (
-			disposed ||
-			state.status !== 'ready' ||
-			!state.desired ||
-			state.publishError?.type === 'conflict'
-		) {
+		if (disposed || state.status !== 'ready' || state.publishError?.type === 'conflict') {
 			return false;
 		}
 		const update = following
@@ -239,7 +224,6 @@ export function createFollowListController({ pubkey, signer }: Account) {
 			return Promise.all([pending, state.loading]).then(() => {});
 		},
 		reload,
-		confirmEmptyFollowList,
 		follow: (pubkey: string) => changeFollow(pubkey, true),
 		unfollow: (pubkey: string) => changeFollow(pubkey, false),
 		retry,
