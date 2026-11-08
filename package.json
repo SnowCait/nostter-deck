@@ -65,7 +65,7 @@
 		"@wdio/mocha-framework": "^9.32.0",
 		"@wdio/spec-reporter": "^9.32.0",
 		"@wdio/tauri-service": "^1.5.1",
-		"bits-ui": "^2.18.1",
+		"bits-ui": "^2.20.2",
 		"clsx": "^2.1.1",
 		"eslint": "^10.3.0",
 		"eslint-config-prettier": "^10.1.8",
