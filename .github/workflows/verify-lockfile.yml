@@ -1,4 +1,4 @@
-name: verify-lockfile
+name: Verify workflow lockfile
 
 on:
   pull_request:
