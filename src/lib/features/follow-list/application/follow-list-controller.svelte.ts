@@ -227,8 +227,8 @@ export function createFollowListController({ pubkey, signer }: Account) {
 		follow: (pubkey: string) => changeFollow(pubkey, true),
 		unfollow: (pubkey: string) => changeFollow(pubkey, false),
 		retry,
-		isFollowing: (pubkey: string) =>
-			state.desired?.tags.some((tag) => tag[0] === 'p' && tag[1] === pubkey),
+		isFollowing: (pubkey: string): boolean =>
+			state.desired?.tags.some((tag) => tag[0] === 'p' && tag[1] === pubkey) ?? false,
 		get pubkey() {
 			return pubkey;
 		},
