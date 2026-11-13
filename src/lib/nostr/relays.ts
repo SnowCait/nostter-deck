@@ -1,9 +1,7 @@
 import { normalizePubkey } from './pubkeys';
 
 export type RelaySelection =
-	| { type: 'default' }
-	| { type: 'custom'; urls: string[] }
-	| { type: 'nip65'; pubkey: string };
+	{ type: 'default' } | { type: 'custom'; urls: string[] } | { type: 'nip65'; pubkey: string };
 
 export const defaultRelays = ['wss://relay.damus.io/', 'wss://nos.lol/'] as const;
 export const searchRelays = ['wss://nostr.wine/', 'wss://search.nos.today/'] as const;

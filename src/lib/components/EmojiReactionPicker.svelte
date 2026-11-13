@@ -66,14 +66,12 @@
 		}))
 	);
 	const pickerCustomEmoji = $derived(
-		customEmojis.map(
-			(candidate): CustomEmoji => ({
-				name: candidate.pickerName,
-				shortcodes: candidate.shortcodes,
-				url: candidate.url,
-				category: getPickerCategory(candidate.categoryId ?? fallbackCategoryLabel)
-			})
-		)
+		customEmojis.map((candidate): CustomEmoji => ({
+			name: candidate.pickerName,
+			shortcodes: candidate.shortcodes,
+			url: candidate.url,
+			category: getPickerCategory(candidate.categoryId ?? fallbackCategoryLabel)
+		}))
 	);
 
 	const i18nByLocale = {

@@ -9,9 +9,7 @@ import { requestProfiles } from './profiles';
 import { combineRelays, defaultRelays, profileRelays } from './relays';
 
 export type NostrQuoteState =
-	| { status: 'loading' }
-	| { status: 'loaded'; event: Nostr.Event }
-	| { status: 'unavailable' };
+	{ status: 'loading' } | { status: 'loaded'; event: Nostr.Event } | { status: 'unavailable' };
 
 type QuoteEntry = {
 	references: number;
