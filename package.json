@@ -29,7 +29,7 @@
 	"dependencies": {
 		"@nostter/nostr-protocol": "0.1.0",
 		"@rx-nostr/crypto": "^3.1.6",
-		"@scure/base": "^2.2.0",
+		"@scure/base": "^2.4.0",
 		"@tauri-apps/api": "^2",
 		"@tauri-apps/plugin-opener": "^2",
 		"@tauri-apps/plugin-window-state": "^2.4.1",
