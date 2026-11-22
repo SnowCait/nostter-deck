@@ -25,14 +25,59 @@ Regular columns provide the following display settings in addition to type-speci
 
 | Setting | Behavior                                                                                              |
 | ------- | ----------------------------------------------------------------------------------------------------- |
-| Title   | Can be customized. When unset, display a title appropriate to the column type.                        |
+| Title   | Can be customized. When unset, display the dynamically generated default title described below.       |
 | Icon    | Can be selected from the available icons. When unset, display an icon appropriate to the column type. |
 | Width   | Can be set to one of three sizes: **Narrow**, **Standard**, or **Wide**.                              |
 
 - The initial column width is **Standard**.
-- Remove leading and trailing whitespace from a custom title. If the title is cleared, display the default title.
+- Remove leading and trailing whitespace from a custom title.
 - Apply the configured column width in deck view. In single-column view, fit the column to the display area.
 - Editing a column's settings must not change it to a different column type.
+
+#### Default Titles
+
+When no custom title is set, a preset column displays its title in the format `<localized column type>: <target>`.
+
+| Preset column    | Target                     |
+| ---------------- | -------------------------- |
+| Follow Timeline  | Target user's display name |
+| Search Timeline  | Search query               |
+| Channel Timeline | Channel name               |
+| User Posts       | Target user's display name |
+| Notifications    | Target user's display name |
+
+The column type label follows the application's current display language.
+
+For user-targeted columns, resolve the display name in the following order:
+
+1. Profile `display_name`.
+2. Profile `name`.
+3. Shortened `npub`.
+
+Use the same name resolution and fallback behavior as the existing `getProfileDisplayName()` function.
+
+For search columns, use the configured search query with leading and trailing whitespace removed.
+
+For channel columns, resolve the channel name in the following order:
+
+1. The name from the latest valid kind 41 metadata event authored by the creator of the kind 40 channel creation event.
+2. The name from the kind 40 channel creation event.
+3. The shortened channel ID.
+
+Ignore kind 41 metadata events authored by anyone other than the channel creator.
+
+Default titles are generated dynamically from the column configuration and available metadata and are not persisted.
+
+- Update the default title when the target user, search query, or channel changes.
+- Update the default title when relevant profile or channel metadata changes.
+- Display a fallback immediately when metadata is unavailable, without waiting for retrieval to complete.
+- Metadata retrieval failures must not prevent the column from being displayed.
+- A configured custom title always takes precedence over the generated default.
+- Custom titles are persisted and must not change automatically when column targets or metadata change.
+- Clearing a custom title restores the dynamically generated default.
+- Long titles are truncated only in the UI; the underlying title string is preserved.
+
+The existing default title behavior for Custom Timeline and Website columns remains unchanged.
 
 ### 2.3 Reordering and Deleting Columns
 
