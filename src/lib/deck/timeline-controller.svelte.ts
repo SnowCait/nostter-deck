@@ -1,3 +1,5 @@
+import { ShortTextNote } from 'nostr-tools/kinds';
+import { getQuoteTags } from '$lib/nostr/posts';
 import { loadEventsByIds, storeEvent } from '$lib/nostr/event-cache';
 import {
 	clearTimelineColumn,
@@ -119,7 +121,13 @@ export function createTimelineController({
 					columnId: column.id,
 					signature,
 					filters,
-					relays
+					relays,
+					...(column.timelineKind === 'preset' && column.sourceKey === 'nav_notifications'
+						? {
+								getAdditionalReferenceTags: (event) =>
+									event.kind === ShortTextNote ? getQuoteTags(event) : []
+							}
+						: {})
 				}
 			];
 		});

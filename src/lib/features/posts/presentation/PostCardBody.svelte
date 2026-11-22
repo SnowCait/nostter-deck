@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { NostrQuoteState } from '$lib/nostr/quotes.svelte';
 	import { linkifyPostContent, type PostContentToken } from '../domain/post-content-links';
 	import {
 		clearUrlPreviewImage,
@@ -18,6 +19,7 @@
 	import ImageViewer from '$lib/components/ImageViewer.svelte';
 
 	type Props = {
+		getQuoteReferenceState?: (id: string) => NostrQuoteState | undefined;
 		post: Post;
 		textClass: FontSizeTextClasses;
 		avatarShape: AvatarShape;
@@ -32,6 +34,7 @@
 	};
 
 	const {
+		getQuoteReferenceState,
 		post,
 		textClass,
 		avatarShape,
@@ -309,6 +312,7 @@
 					<NostrQuoteCard
 						href={token.href}
 						eventId={token.eventId}
+						referenceState={getQuoteReferenceState?.(token.eventId)}
 						relayHints={token.relayHints ?? []}
 						{textClass}
 						{avatarShape}

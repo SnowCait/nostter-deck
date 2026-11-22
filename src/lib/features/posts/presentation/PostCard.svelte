@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { NostrQuoteState } from '$lib/nostr/quotes.svelte';
 	import { MessageCircle, Quote, Repeat2, ShieldCheck } from '@lucide/svelte';
 	import * as Popover from '$lib/components/ui/popover';
 	import { m } from '$lib/paraglide/messages.js';
@@ -25,6 +26,7 @@
 	import PostCardContextList from './PostCardContextList.svelte';
 
 	type Props = {
+		getQuoteReferenceState?: (id: string) => NostrQuoteState | undefined;
 		post: Post;
 		isLoggedIn: boolean;
 		textClass: FontSizeTextClasses;
@@ -63,6 +65,7 @@
 	};
 
 	const {
+		getQuoteReferenceState,
 		post,
 		isLoggedIn,
 		textClass,
@@ -309,6 +312,7 @@
 					{:else}
 						<PostCardBody
 							{post}
+							{getQuoteReferenceState}
 							{textClass}
 							{avatarShape}
 							{getProfile}

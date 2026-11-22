@@ -10,6 +10,8 @@ export type AddColumnDraft = {
 	id: string;
 	columnType: AddColumnType;
 	websiteUrl: string | null;
+	notificationsTarget?: string | null;
+	includeOwnEvents?: boolean;
 	followTarget: ProfilePointer | null;
 	searchQuery: string;
 	channelTarget: ChannelPointer | null;
@@ -62,6 +64,21 @@ export function createColumnConfigFromDraft(draft: AddColumnDraft): ColumnConfig
 					sourceKey: draft.columnType,
 					pubkey: draft.followTarget.pubkey,
 					relays: draft.presetTimelineRelays ?? getFollowRelaySelection(draft.followTarget),
+					width: 'standard'
+				}
+			: null;
+	}
+
+	if (draft.columnType === 'nav_notifications') {
+		return draft.notificationsTarget && draft.presetTimelineRelays
+			? {
+					id: draft.id,
+					type: 'timeline',
+					timelineKind: 'preset',
+					sourceKey: draft.columnType,
+					pubkey: draft.notificationsTarget,
+					relays: draft.presetTimelineRelays,
+					includeOwnEvents: draft.includeOwnEvents ?? false,
 					width: 'standard'
 				}
 			: null;

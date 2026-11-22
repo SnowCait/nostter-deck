@@ -120,6 +120,30 @@ export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 						}
 					];
 				}
+				if (candidate.sourceKey === 'nav_notifications') {
+					const normalizedPubkey = normalizePubkey(pubkey);
+					const normalizedRelays = normalizeRelaySelection(relays);
+					if (!normalizedPubkey || !normalizedRelays) {
+						return [];
+					}
+
+					const column = {
+						id: candidate.id,
+						type: 'timeline',
+						timelineKind: 'preset',
+						sourceKey: candidate.sourceKey,
+						pubkey: normalizedPubkey,
+						relays: normalizedRelays,
+						includeOwnEvents: candidate.includeOwnEvents === true,
+						width: candidate.width
+					} satisfies ColumnConfig;
+					return [
+						{
+							...column,
+							...normalizeColumnDisplayConfig(candidate, getDefaultColumnIconKey(column))
+						}
+					];
+				}
 				if (candidate.sourceKey === 'timeline_search') {
 					if (typeof query !== 'string' || query.trim().length === 0) {
 						return [];

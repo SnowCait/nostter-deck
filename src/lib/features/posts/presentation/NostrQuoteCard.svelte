@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { neventEncode } from 'nostr-tools/nip19';
 	import { eventToPost } from '$lib/features/posts/post-model';
-	import { getNostrQuoteState, requestNostrQuote } from '$lib/nostr/quotes.svelte';
+	import {
+		getNostrQuoteState,
+		requestNostrQuote,
+		type NostrQuoteState
+	} from '$lib/nostr/quotes.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Post } from '$lib/features/posts/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
@@ -14,6 +18,7 @@
 	import EventJsonMenu from './EventJsonMenu.svelte';
 
 	type Props = {
+		referenceState?: NostrQuoteState;
 		href: string;
 		eventId: string;
 		relayHints: string[];
@@ -25,6 +30,7 @@
 	};
 
 	let {
+		referenceState,
 		href,
 		eventId,
 		relayHints,
@@ -37,7 +43,7 @@
 	let isMutedQuoteRevealed = $state(false);
 	let isSensitiveQuoteRevealed = $state(false);
 
-	const quoteState = $derived(getNostrQuoteState(eventId));
+	const quoteState = $derived(referenceState ?? getNostrQuoteState(eventId));
 	const loadedQuoteEvent = $derived(quoteState?.status === 'loaded' ? quoteState.event : undefined);
 	const quotedPost = $derived.by(() => {
 		if (!loadedQuoteEvent) {
@@ -73,7 +79,11 @@
 		onOpenThread?.(quotedPost);
 	}
 
-	$effect(() => requestNostrQuote(eventId, relayHints));
+	$effect(() => {
+		if (!referenceState) {
+			return requestNostrQuote(eventId, relayHints);
+		}
+	});
 </script>
 
 {#snippet quoteContent()}

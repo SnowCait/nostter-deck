@@ -1,4 +1,6 @@
 <script lang="ts">
+	import type { NostrQuoteState } from '$lib/nostr/quotes.svelte';
+	import type { Snippet } from 'svelte';
 	import { Reaction, Repost } from 'nostr-tools/kinds';
 	import type * as Nostr from 'nostr-typedef';
 	import {
@@ -22,6 +24,8 @@
 	import PostCard from '$lib/features/posts/presentation/PostCard.svelte';
 
 	type Props = {
+		getQuoteReferenceState?: (id: string) => NostrQuoteState | undefined;
+		context?: Snippet<[Nostr.Event]>;
 		eventId: string;
 		getEvent: (eventId: string) => Nostr.Event | undefined;
 		isReferenceUnavailable: (eventId: string) => boolean;
@@ -62,6 +66,8 @@
 	};
 
 	const {
+		getQuoteReferenceState,
+		context,
 		eventId,
 		getEvent,
 		isReferenceUnavailable,
@@ -167,9 +173,11 @@
 </script>
 
 <div bind:this={cardElement}>
-	{#if post && !isHidden}
+	{#if event && post && !isHidden}
+		{@render context?.(event)}
 		<PostCard
 			{post}
+			{getQuoteReferenceState}
 			{isLoggedIn}
 			{textClass}
 			{avatarShape}

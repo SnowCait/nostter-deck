@@ -16,7 +16,7 @@ export function getDefaultColumnIconKey(column: ColumnConfig): ColumnIconKey {
 	if (column.sourceKey === 'timeline_follow') {
 		return 'users';
 	}
-	if (column.sourceKey === 'timeline_channel') {
+	if (column.sourceKey === 'timeline_channel' || column.sourceKey === 'nav_notifications') {
 		return 'messages';
 	}
 

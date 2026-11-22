@@ -8,6 +8,7 @@
 	import { normalizeWebsiteUrl } from '$lib/deck/website-url';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import { parseNostrFilters } from '$lib/nostr/filters';
+	import { parseNotificationTarget } from '$lib/features/notifications/domain/notification-actions';
 	import { decodeChannelPointer, decodeProfilePointer } from '$lib/nostr/nip19';
 	import type { Profile } from '$lib/nostr/profiles';
 	import { m } from '$lib/paraglide/messages.js';
@@ -43,6 +44,7 @@
 		timeline_follow: 'users',
 		timeline_search: 'search',
 		timeline_channel: 'messages',
+		nav_notifications: 'messages',
 		custom_timeline: 'radio',
 		website: 'globe'
 	} satisfies Record<AddColumnType, ColumnIconKey>;
@@ -50,6 +52,7 @@
 	let selectedColumnType = $state<AddColumnType>(defaultColumnType);
 	let websiteUrl = $state('');
 	let followTarget = $state('');
+	let includeOwnEvents = $state(false);
 	let searchQuery = $state('');
 	let channelTarget = $state('');
 	let customTimelineFilters = $state('[{"kinds":[1],"limit":20}]');
@@ -78,6 +81,14 @@
 		}
 	]);
 	const parsedFollowTarget = $derived(decodeProfilePointer(followTarget));
+	const notificationsTarget = $derived(parseNotificationTarget(followTarget));
+	const presetTargetPubkey = $derived(
+		selectedColumnType === 'nav_notifications'
+			? notificationsTarget
+			: selectedColumnType === 'timeline_follow'
+				? parsedFollowTarget?.pubkey
+				: null
+	);
 	const parsedChannelTarget = $derived(decodeChannelPointer(channelTarget));
 	const parsedCustomTimelineFilters = $derived(parseNostrFilters(customTimelineFilters));
 	const parsedPresetTimelineRelays = $derived(resolvePresetTimelineRelays());
@@ -99,16 +110,19 @@
 	});
 
 	$effect(() => {
-		if (selectedColumnType !== 'timeline_follow' || !parsedFollowTarget) {
-			followRelayTargetPubkey = '';
+		if (!presetTargetPubkey) {
+			if (selectedColumnType !== 'nav_notifications') {
+				followRelayTargetPubkey = '';
+			}
 			return;
 		}
 
-		const nextPubkey = parsedFollowTarget.pubkey;
+		const nextPubkey = presetTargetPubkey;
 		const shouldTrackFollowTarget =
-			!presetTimelineRelayDraft ||
-			presetTimelineRelayDraft.type === 'default' ||
-			(presetTimelineRelayDraft.type === 'nip65' &&
+			(selectedColumnType === 'nav_notifications'
+				? !followRelayTargetPubkey && presetTimelineRelayDraft?.type === 'default'
+				: !presetTimelineRelayDraft || presetTimelineRelayDraft.type === 'default') ||
+			(presetTimelineRelayDraft?.type === 'nip65' &&
 				presetTimelineRelayDraft.pubkey === followRelayTargetPubkey);
 		if (
 			shouldTrackFollowTarget &&
@@ -125,6 +139,8 @@
 			columnType: selectedColumnType,
 			websiteUrl: normalizedWebsiteUrl,
 			followTarget: parsedFollowTarget,
+			notificationsTarget,
+			includeOwnEvents,
 			searchQuery,
 			channelTarget: parsedChannelTarget,
 			presetTimelineRelays: parsedPresetTimelineRelays,
@@ -137,6 +153,7 @@
 		selectedColumnType = defaultColumnType;
 		websiteUrl = '';
 		followTarget = '';
+		includeOwnEvents = false;
 		searchQuery = '';
 		channelTarget = '';
 		customTimelineFilters = '[{"kinds":[1],"limit":20}]';
@@ -151,8 +168,8 @@
 			return presetTimelineRelayDraft;
 		}
 
-		if (selectedColumnType === 'timeline_follow' && parsedFollowTarget) {
-			return { type: 'nip65' as const, pubkey: parsedFollowTarget.pubkey };
+		if (selectedColumnType === 'timeline_follow' && presetTargetPubkey) {
+			return { type: 'nip65' as const, pubkey: presetTargetPubkey };
 		}
 
 		if (
@@ -222,7 +239,7 @@
 			{/each}
 		</div>
 
-		{#if selectedColumnType === 'timeline_follow'}
+		{#if selectedColumnType === 'timeline_follow' || selectedColumnType === 'nav_notifications'}
 			<label
 				class={[
 					'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
@@ -230,7 +247,7 @@
 				]}
 				for="follow-target"
 			>
-				{m.follow_target()}
+				{selectedColumnType === 'nav_notifications' ? m.notifications_target() : m.follow_target()}
 			</label>
 			<input
 				id="follow-target"
@@ -240,6 +257,12 @@
 				]}
 				bind:value={followTarget}
 			/>
+			{#if selectedColumnType === 'nav_notifications'}
+				<label class={['mt-3 flex items-center gap-2', textClass.control]}>
+					<input type="checkbox" bind:checked={includeOwnEvents} />
+					{m.notifications_include_own_events()}
+				</label>
+			{/if}
 			<div class="mt-4">
 				<RelaySelectionEditor
 					id="preset-follow"

@@ -36,6 +36,7 @@
 	import ColumnIcon from './ColumnIcon.svelte';
 	import ColumnIconGlyph from './ColumnIconGlyph.svelte';
 	import CustomTimelineSettings from './CustomTimelineSettings.svelte';
+	import NotificationsColumnSettings from '$lib/features/notifications/presentation/NotificationsColumnSettings.svelte';
 	import FollowColumnSettings from './FollowColumnSettings.svelte';
 	import SearchColumnSettings from './SearchColumnSettings.svelte';
 	import TimelineColumnBody from './TimelineColumnBody.svelte';
@@ -87,6 +88,11 @@
 		onTitleChange: (title: string) => void;
 		onIconChange: (icon: ColumnIconKey | null) => void;
 		onWidthChange: (width: ColumnWidth) => void;
+		onNotificationsSave: (
+			pubkey: string,
+			relays: RelaySelection,
+			includeOwnEvents: boolean
+		) => void;
 		onFollowSave: (profile: ProfilePointer, relays: RelaySelection) => void;
 		onSearchSave: (query: string) => void;
 		onChannelSave: (channel: ChannelPointer, relays: RelaySelection) => void;
@@ -151,6 +157,7 @@
 		onTitleChange,
 		onIconChange,
 		onWidthChange,
+		onNotificationsSave,
 		onFollowSave,
 		onSearchSave,
 		onChannelSave,
@@ -330,6 +337,16 @@
 					{profileRelays}
 					onSave={onFollowSave}
 				/>
+			{:else if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'nav_notifications'}
+				<NotificationsColumnSettings
+					{column}
+					{textClass}
+					{accountRelayOptions}
+					{getProfile}
+					{requestProfiles}
+					{profileRelays}
+					onSave={onNotificationsSave}
+				/>
 			{:else if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_search'}
 				<SearchColumnSettings {column} {textClass} onSave={onSearchSave} />
 			{:else if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_channel'}
@@ -505,6 +522,7 @@
 		{:else}
 			<TimelineColumnBody
 				{runtime}
+				{column}
 				{isColumnActive}
 				{isLoggedIn}
 				{textClass}

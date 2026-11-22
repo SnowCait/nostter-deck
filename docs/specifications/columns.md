@@ -90,13 +90,14 @@ Regular columns provide the following display settings in addition to type-speci
 - Display the following five types of notifications:
   - **Replies:** Kind 1 replies containing the target user's `p` tag, including replies to other participants in a thread. A direct reply to a post authored by the target user is not required. Inherited `p` tags also qualify.
   - **Mentions:** Kind 1 posts containing an explicit NIP-27 `nostr:npub` or `nostr:nprofile` reference in their content that identifies the target user. A `p` tag alone does not qualify as a mention. Legacy NIP-08 `#[index]` mentions are not supported.
-  - **Quotes:** Kind 1 posts quoting posts authored by the target user.
+  - **Quotes:** Kind 1 posts quoting posts authored by the target user via a `q` tag. An event reference in the content alone does not qualify, and a `q` tag alone does not indicate a reply.
   - **Reactions:** Kind 7 reactions to posts authored by the target user.
   - **Reposts:** Kind 6 reposts of posts authored by the target user.
 - Do not display events that match none of these notification types, even if they contain the target user's `p` tag.
 - Display each event only once, even when it matches multiple notification types, and indicate the applicable types.
+- Display qualifying notifications while referenced posts are being retrieved, and keep displaying them if retrieval fails. When a reference is retrieved and its author disproves a notification type that depends on the referenced author, remove that type and display the event only if another type still applies.
 - Allow users to configure **Include own events** independently for each column:
-  - Off by default.
+  - Off by default. Changing this setting affects which retrieved events are displayed without changing the subscription filter.
   - When off, exclude events authored by the target user.
   - When on, include events authored by the target user if they satisfy the same notification eligibility and classification rules.
 - Display notification types and related content, and allow users to open the related post or thread.

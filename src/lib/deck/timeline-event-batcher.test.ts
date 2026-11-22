@@ -110,6 +110,40 @@ describe('timeline event batcher', () => {
 		expect(store.read().loadedEventsById[referenced.id]).toEqual(referenced);
 	});
 
+	test('keeps multiple references for the same event when they arrive in one batch', async () => {
+		vi.useFakeTimers();
+		const first = event('a'.repeat(64), 90);
+		const second = event('b'.repeat(64), 91);
+		const source = event('c'.repeat(64), 100, {
+			tags: [
+				['q', first.id],
+				['q', second.id]
+			]
+		});
+		const store = createRuntimeStore({
+			...emptyTimelineRuntime('timeline'),
+			getAdditionalReferenceTags: (event) => event.tags.filter(([name]) => name === 'q')
+		});
+		const batcher = createTimelineEventBatcher({
+			...store,
+			storeEvent: vi.fn(async () => {}),
+			storeTimelineEvents: vi.fn(async () => {}),
+			hydrateReferencedEvents: vi.fn(async () => {})
+		});
+
+		batcher.addEvent('column', 'timeline', source, 'initial');
+		batcher.addReferencedEvent('column', source.id, first);
+		batcher.addReferencedEvent('column', source.id, second);
+		await vi.advanceTimersByTimeAsync(16);
+
+		expect(store.read().visibleEventIds).toEqual([source.id]);
+		expect(store.read().loadedEventsById).toEqual({
+			[source.id]: source,
+			[first.id]: first,
+			[second.id]: second
+		});
+	});
+
 	test('cancels unflushed batches', async () => {
 		vi.useFakeTimers();
 		const store = createRuntimeStore(emptyTimelineRuntime('timeline'));

@@ -16,6 +16,7 @@ import {
 import {
 	saveChannelSettings as saveChannelSettingsConfig,
 	saveCustomTimelineSettings as saveCustomTimelineSettingsConfig,
+	saveNotificationsSettings as saveNotificationsSettingsConfig,
 	saveFollowSettings as saveFollowSettingsConfig,
 	saveSearchSettings as saveSearchSettingsConfig,
 	updateColumnIcon as updateColumnIconConfig,
@@ -360,6 +361,18 @@ export function createColumnDeckController({
 		openSettingsColumnId = null;
 	}
 
+	function saveNotificationsSettings(
+		columnId: string,
+		pubkey: string,
+		relays: Parameters<typeof saveNotificationsSettingsConfig>[3],
+		includeOwnEvents: boolean
+	) {
+		setColumns(
+			saveNotificationsSettingsConfig(columns, columnId, pubkey, relays, includeOwnEvents)
+		);
+		openSettingsColumnId = null;
+	}
+
 	function saveFollowSettings(columnId: string, profile: ProfilePointer) {
 		setColumns(saveFollowSettingsConfig(columns, columnId, profile));
 		openSettingsColumnId = null;
@@ -437,6 +450,7 @@ export function createColumnDeckController({
 		updateColumnTitle,
 		updateColumnIcon,
 		saveCustomTimelineSettings,
+		saveNotificationsSettings,
 		saveFollowSettings,
 		saveFollowRelaySettings,
 		saveSearchSettings,

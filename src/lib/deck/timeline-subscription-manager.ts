@@ -15,10 +15,12 @@ export type TimelineSubscriptionTarget = {
 	signature: string;
 	filters: NostrFilter[];
 	relays: RelaySelection;
+	getAdditionalReferenceTags?: (event: Nostr.Event) => string[][];
 };
 
 type TimelineSubscriptionManagerOptions = {
 	startSubscription: (options: {
+		getAdditionalReferenceTags?: TimelineSubscriptionTarget['getAdditionalReferenceTags'];
 		filters: NostrFilter[];
 		relays: RelaySelection;
 		onEvent: (event: Nostr.Event, meta: { phase: TimelineEventPhase }) => void;
@@ -78,9 +80,17 @@ export function createTimelineSubscriptionManager({
 			subscriptions.get(target.columnId)?.stop();
 			cancelPendingBatch(target.columnId);
 			void clearTimelineColumn(target.columnId, target.signature);
-			setRuntime(target.columnId, emptyTimelineRuntime(target.signature));
+			setRuntime(target.columnId, {
+				...emptyTimelineRuntime(target.signature),
+				...(target.getAdditionalReferenceTags && {
+					getAdditionalReferenceTags: target.getAdditionalReferenceTags
+				})
+			});
 
 			const subscription = startSubscription({
+				...(target.getAdditionalReferenceTags && {
+					getAdditionalReferenceTags: target.getAdditionalReferenceTags
+				}),
 				filters: target.filters,
 				relays: target.relays,
 				onEvent: (event, { phase }) => onEvent(target.columnId, target.signature, event, phase),

@@ -91,6 +91,23 @@ export function saveFollowSettings(
 	);
 }
 
+export function saveNotificationsSettings(
+	columns: ColumnConfig[],
+	columnId: string,
+	pubkey: string,
+	relays: RelaySelection,
+	includeOwnEvents: boolean
+): ColumnConfig[] {
+	return columns.map((column) =>
+		column.id === columnId &&
+		column.type === 'timeline' &&
+		column.timelineKind === 'preset' &&
+		column.sourceKey === 'nav_notifications'
+			? { ...column, pubkey, relays, includeOwnEvents }
+			: column
+	);
+}
+
 export function saveSearchSettings(
 	columns: ColumnConfig[],
 	columnId: string,
