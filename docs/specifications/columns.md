@@ -38,13 +38,13 @@ Regular columns provide the following display settings in addition to type-speci
 
 When no custom title is set, a preset column displays its title in the format `<localized column type>: <target>`.
 
-| Preset column | Target |
-|---|---|
-| Follow Timeline | Target user's display name |
-| Search Timeline | Search query |
-| Channel Timeline | Channel name |
-| User Posts | Target user's display name |
-| Notifications | Target user's display name |
+| Preset column    | Target                     |
+| ---------------- | -------------------------- |
+| Follow Timeline  | Target user's display name |
+| Search Timeline  | Search query               |
+| Channel Timeline | Channel name               |
+| User Posts       | Target user's display name |
+| Notifications    | Target user's display name |
 
 The column type label follows the application's current display language.
 
