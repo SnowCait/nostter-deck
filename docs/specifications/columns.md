@@ -86,17 +86,24 @@ Regular columns provide the following display settings in addition to type-speci
 
 - Display notifications related to a specified user.
 - Identify the target user by a public key entered as an `npub`. Each column can have its own target user.
+- Only consider events containing a `p` tag referencing the target user. References in the event content or to related posts do not qualify an event without this tag.
 - Display the following five types of notifications:
-  - **Replies:** Kind 1 replies to posts authored by the target user.
-  - **Mentions:** Kind 1 posts mentioning the target user.
+  - **Replies:** Kind 1 replies containing the target user's `p` tag, including replies to other participants in a thread. A direct reply to a post authored by the target user is not required. Inherited `p` tags also qualify.
+  - **Mentions:** Kind 1 posts containing an explicit NIP-27 `nostr:npub` or `nostr:nprofile` reference in their content that identifies the target user. A `p` tag alone does not qualify as a mention. Legacy NIP-08 `#[index]` mentions are not supported.
   - **Quotes:** Kind 1 posts quoting posts authored by the target user.
   - **Reactions:** Kind 7 reactions to posts authored by the target user.
   - **Reposts:** Kind 6 reposts of posts authored by the target user.
-- Distinguish notification types based on their relationship to the target user or referenced post.
+- Do not display events that match none of these notification types, even if they contain the target user's `p` tag.
+- Display each event only once, even when it matches multiple notification types, and indicate the applicable types.
+- Allow users to configure **Include own events** independently for each column:
+  - Off by default.
+  - When off, exclude events authored by the target user.
+  - When on, include events authored by the target user if they satisfy the same notification eligibility and classification rules.
+- Display notification types and related content, and allow users to open the related post or thread.
 - By default, retrieve notifications from the target user's NIP-65 read relays. If no read relays are available, use the application's default relays.
 - Allow users to select different relays.
-- Users can change the target user and relay selection after creating the column.
-- Save these settings independently for each column.
+- Users can change the target user, relay selection, and **Include own events** setting after creating the column.
+- Save these settings independently for each column and restore them when the application is reopened.
 - Switching the signed-in account must not automatically change the column's target user.
 
 ### 3.6 Custom Timeline
