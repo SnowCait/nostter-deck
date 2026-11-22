@@ -34,7 +34,7 @@ Regular columns provide the following display settings in addition to type-speci
 - Apply the configured column width in deck view. In single-column view, fit the column to the display area.
 - Editing a column's settings must not change it to a different column type.
 
-### Default Titles
+#### Default Titles
 
 When no custom title is set, a preset column displays its title in the format `<localized column type>: <target>`.
 
