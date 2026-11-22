@@ -23,11 +23,11 @@ This document defines the expected user-facing behavior for column types, additi
 
 Regular columns provide the following display settings in addition to type-specific settings.
 
-| Setting | Behavior |
-| --- | --- |
-| Title | Can be customized. When unset, display a title appropriate to the column type. |
-| Icon | Can be selected from the available icons. When unset, display an icon appropriate to the column type. |
-| Width | Can be set to one of three sizes: **Narrow**, **Standard**, or **Wide**. |
+| Setting | Behavior                                                                                              |
+| ------- | ----------------------------------------------------------------------------------------------------- |
+| Title   | Can be customized. When unset, display a title appropriate to the column type.                        |
+| Icon    | Can be selected from the available icons. When unset, display an icon appropriate to the column type. |
+| Width   | Can be set to one of three sizes: **Narrow**, **Standard**, or **Wide**.                              |
 
 - The initial column width is **Standard**.
 - Remove leading and trailing whitespace from a custom title. If the title is cleared, display the default title.
