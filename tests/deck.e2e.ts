@@ -509,9 +509,17 @@ test.describe('nostter deck', () => {
 		const columnTypeRadios = addColumnDialog
 			.getByRole('radiogroup', { name: 'Column type' })
 			.getByRole('radio');
-		await expect(columnTypeRadios).toHaveCount(5);
-		for (const name of ['Follow', 'Search', 'Channel', 'Custom timeline', 'Website']) {
-			await expect(addColumnDialog.getByRole('radio', { name })).toBeVisible();
+		const columnTypes = [
+			'Follow',
+			'Search',
+			'Channel',
+			'Notifications',
+			'Custom timeline',
+			'Website'
+		];
+		await expect(columnTypeRadios).toHaveCount(columnTypes.length);
+		for (const name of columnTypes) {
+			await expect(addColumnDialog.getByRole('radio', { name, exact: true })).toBeVisible();
 		}
 
 		await selectColumnType(page, 'website');
