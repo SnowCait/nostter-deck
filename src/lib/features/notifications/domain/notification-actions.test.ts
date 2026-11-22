@@ -77,6 +77,13 @@ describe('notification classification', () => {
 		}
 	);
 
+	test('uses the fetched quote author even when the q tag names a different author', () => {
+		const source = event({ tags: [targetTag, ['q', reference, '', other]] });
+		expect(types(source)).toEqual(['quote']);
+		expect(types(source, event({ id: reference, pubkey: target }))).toEqual(['quote']);
+		expect(types(source, event({ id: reference, pubkey: other }))).toEqual([]);
+	});
+
 	test('returns all applicable types and deduplicates repeated references', () => {
 		const multi = event({
 			content: `nostr:${npubEncode(target)}`,

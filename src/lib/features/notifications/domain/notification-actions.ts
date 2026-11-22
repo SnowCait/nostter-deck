@@ -27,9 +27,9 @@ export function classifyNotification(
 		return { types, relatedEventIds: [] };
 	}
 
-	function referencesTarget(id: string, authorHint?: string) {
-		const author = getEvent(id)?.pubkey ?? normalizePubkey(authorHint);
-		return !author || author === pubkey;
+	function referencesTarget(id: string) {
+		const referenced = getEvent(id);
+		return !referenced || referenced.pubkey === pubkey;
 	}
 
 	if (event.kind === ShortTextNote) {
@@ -39,8 +39,8 @@ export function classifyNotification(
 		if (extractMentionPubkeys(event.content).includes(pubkey)) {
 			types.push('mention');
 		}
-		for (const [, id, , author] of getQuoteTags(event)) {
-			if (referencesTarget(id, author)) {
+		for (const [, id] of getQuoteTags(event)) {
+			if (referencesTarget(id)) {
 				relatedEventIds.add(id);
 			}
 		}
