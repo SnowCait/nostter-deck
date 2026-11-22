@@ -82,13 +82,30 @@ Regular columns provide the following display settings in addition to type-speci
 - Save these settings independently for each column.
 - Switching the signed-in account must not automatically change the target user.
 
-### 3.5 Custom Timeline
+### 3.5 Notifications (Preset)
+
+- Display notifications related to a specified user.
+- Identify the target user by a public key entered as an `npub`. Each column can have its own target user.
+- Display the following five types of notifications:
+  - **Replies:** Kind 1 replies to posts authored by the target user.
+  - **Mentions:** Kind 1 posts mentioning the target user.
+  - **Quotes:** Kind 1 posts quoting posts authored by the target user.
+  - **Reactions:** Kind 7 reactions to posts authored by the target user.
+  - **Reposts:** Kind 6 reposts of posts authored by the target user.
+- Distinguish notification types based on their relationship to the target user or referenced post.
+- By default, retrieve notifications from the target user's NIP-65 read relays. If no read relays are available, use the application's default relays.
+- Allow users to select different relays.
+- Users can change the target user and relay selection after creating the column.
+- Save these settings independently for each column.
+- Switching the signed-in account must not automatically change the column's target user.
+
+### 3.6 Custom Timeline
 
 - Allow users to specify Nostr retrieval criteria (filters) and relays, and display events retrieved using those criteria.
 - Filters and relay selection are required.
 - Users can change the filters and relay selection after creating the column.
 
-### 3.6 Website
+### 3.7 Website
 
 - Display a user-specified website within a column.
 - Only HTTPS URLs are accepted. If the input omits a URL scheme, prepend HTTPS.
