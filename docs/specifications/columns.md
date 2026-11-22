@@ -66,13 +66,29 @@ Regular columns provide the following display settings in addition to type-speci
 - If the channel reference includes relay information, use it when determining the initial relay selection.
 - Users can change the target channel and relay settings after creating the column.
 
-### 3.4 Custom Timeline
+### 3.4 User Posts (Preset)
+
+- Display posts authored by a specified user.
+- Identify the target user by public key. Each column can have its own target user.
+- Include kind 1 text notes, including quote posts.
+- Provide the following independently configurable options, both enabled by default:
+  - **Include replies:** Include kind 1 replies.
+  - **Include reposts:** Include kind 6 reposts.
+- Treat quote posts as regular kind 1 posts without a separate visibility option. A `q` tag alone does not make a post a reply.
+- Exclude kind 16 generic reposts and kind 7 reactions.
+- By default, retrieve posts from the target user's NIP-65 write relays. If no write relays are available, use the application's default relays.
+- Allow users to select different relays.
+- Users can change the target user, relay selection, and visibility options after creating the column.
+- Save these settings independently for each column.
+- Switching the signed-in account must not automatically change the target user.
+
+### 3.5 Custom Timeline
 
 - Allow users to specify Nostr retrieval criteria (filters) and relays, and display events retrieved using those criteria.
 - Filters and relay selection are required.
 - Users can change the filters and relay selection after creating the column.
 
-### 3.5 Website
+### 3.6 Website
 
 - Display a user-specified website within a column.
 - Only HTTPS URLs are accepted. If the input omits a URL scheme, prepend HTTPS.
