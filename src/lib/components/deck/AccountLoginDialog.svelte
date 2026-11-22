@@ -107,8 +107,7 @@
 				<textarea
 					readonly
 					value={nostrConnectUri}
-					class="h-20 w-full rounded border border-slate-300 p-2 text-xs"
-				></textarea>
+					class="h-20 w-full rounded border border-slate-300 p-2 text-xs"></textarea>
 				<button
 					type="button"
 					class="rounded-md border border-slate-300 px-3 py-2"

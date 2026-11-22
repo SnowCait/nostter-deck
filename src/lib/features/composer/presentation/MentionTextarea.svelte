@@ -239,8 +239,7 @@
 		onclick={(event) => updateSelection(event.currentTarget)}
 		onkeyup={(event) => updateSelection(event.currentTarget)}
 		oncompositionstart={() => (isComposing = true)}
-		oncompositionend={handleCompositionEnd}
-	></textarea>
+		oncompositionend={handleCompositionEnd}></textarea>
 
 	{#if isListOpen}
 		<ul
