@@ -49,9 +49,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y libwebkit2gtk-4.1-dev librsvg2-dev
-      - name: Install Rust target using the repository toolchain
+      - name: Install Rust toolchain
         working-directory: src-tauri
-        run: rustup target add ${{ matrix.target }}
+        run: rustup toolchain install
       - run: npm ci
       - name: Build application package
         env:
