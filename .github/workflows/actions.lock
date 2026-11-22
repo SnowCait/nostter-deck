@@ -13,6 +13,10 @@ workflows:
         - 'actions/deploy-pages@v5.0.1'
         - 'actions/setup-node@v7.1.0'
         - 'actions/upload-pages-artifact@v5.0.0'
+    '.github/workflows/native-build.yml':
+        - 'actions/checkout@v7.0.1'
+        - 'actions/setup-node@v7.1.0'
+        - 'actions/upload-artifact@v7.0.2'
     '.github/workflows/verify-lockfile.yml':
         - 'actions/checkout@v7.0.1'
 dependencies:

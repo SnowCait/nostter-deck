@@ -1,0 +1,65 @@
+name: Native build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64-nsis
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundle: nsis
+            artifact: nsis/*.exe
+          - name: macos-arm64-dmg
+            runner: macos-15
+            target: aarch64-apple-darwin
+            bundle: dmg
+            artifact: dmg/*.dmg
+          - name: macos-x64-dmg
+            runner: macos-15-intel
+            target: x86_64-apple-darwin
+            bundle: dmg
+            artifact: dmg/*.dmg
+          - name: linux-x64-deb
+            runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+            bundle: deb
+            artifact: deb/*.deb
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24.x'
+          package-manager-cache: false
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libwebkit2gtk-4.1-dev librsvg2-dev
+      - name: Install Rust target using the repository toolchain
+        working-directory: src-tauri
+        run: rustup target add ${{ matrix.target }}
+      - run: npm ci
+      - name: Build application package
+        env:
+          # Tauri uses this certificate-free signing identity on macOS.
+          APPLE_SIGNING_IDENTITY: '-'
+        run: npm run tauri:build -- --ci --target ${{ matrix.target }} --bundles ${{ matrix.bundle }} -- --locked
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: nostter-deck-${{ matrix.name }}
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/${{ matrix.artifact }}
+          if-no-files-found: error
