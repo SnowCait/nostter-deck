@@ -23,6 +23,7 @@
 	import ColumnAddPlaceholder from './ColumnAddPlaceholder.svelte';
 
 	type Props = {
+		getColumnTitle: (column: ColumnConfig) => string;
 		columnDeckController: ReturnType<typeof createColumnDeckController>;
 		deckLayoutController: ReturnType<typeof createDeckLayoutController>;
 		timelineController: ReturnType<typeof createTimelineController>;
@@ -49,6 +50,7 @@
 	};
 
 	const {
+		getColumnTitle,
 		columnDeckController,
 		deckLayoutController,
 		timelineController,
@@ -91,6 +93,7 @@
 	{@const columnIndex = columnDeckController.getColumnIndex(column.id)}
 	<DeckColumn
 		{column}
+		title={getColumnTitle(column)}
 		runtime={timelineController.runtimes[column.id] ?? emptyColumnRuntime}
 		id={getColumnId(column.id)}
 		{isSingleColumn}

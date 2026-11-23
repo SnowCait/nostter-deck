@@ -338,8 +338,8 @@ test.describe('nostter deck', () => {
 		await page.mouse.click(320, 20);
 		await expectSidebarWidth(page, sidebarCollapsedWidth);
 
-		await sidebarButton(page, 'Search').click();
-		await expectColumnOrder(columns, ['Search']);
+		await sidebarButton(page, 'Search: nostter').click();
+		await expectColumnOrder(columns, ['Search: nostter']);
 
 		await page.getByRole('button', { name: 'Expand sidebar' }).click();
 		await sidebarButton(page, 'example.com').click();
@@ -347,7 +347,7 @@ test.describe('nostter deck', () => {
 		await expectColumnOrder(columns, ['example.com']);
 
 		await page.getByRole('button', { name: 'Deck layout' }).click();
-		await expectColumnOrder(columns, ['Search', 'example.com']);
+		await expectColumnOrder(columns, ['Search: nostter', 'example.com']);
 		await expectStoredDeckLayoutMode(page, 'deck');
 
 		await page.getByRole('button', { name: 'Single column layout' }).dispatchEvent('click');
@@ -363,7 +363,7 @@ test.describe('nostter deck', () => {
 
 		await addPresetColumn(page, 'timeline_search');
 		await addWebsiteColumn(page, 'example.com');
-		await expectColumnOrder(columns, ['Search', 'example.com']);
+		await expectColumnOrder(columns, ['Search: nostter', 'example.com']);
 
 		await page.getByRole('button', { name: 'Single column layout' }).dispatchEvent('click');
 		await expectColumnOrder(columns, ['example.com']);
@@ -409,21 +409,21 @@ test.describe('nostter deck', () => {
 		await addPresetColumn(page, 'timeline_search');
 		await addWebsiteColumn(page, 'example.com');
 
-		await expectColumnOrder(columns, ['Search', 'example.com']);
-		await expect(sidebarButtonIcon(page, 'Search')).toBeVisible();
+		await expectColumnOrder(columns, ['Search: nostter', 'example.com']);
+		await expect(sidebarButtonIcon(page, 'Search: nostter')).toBeVisible();
 		await expect(sidebarButtonIcon(page, 'example.com')).toBeVisible();
 
 		const addedColumn = columns.nth(1);
 		await columnOptionsButton(addedColumn).click();
 		await addedColumn.getByRole('button', { name: 'Move column left' }).click();
 
-		await expectColumnOrder(columns, ['example.com', 'Search']);
+		await expectColumnOrder(columns, ['example.com', 'Search: nostter']);
 
 		await columns.first().getByRole('button', { name: 'Move column right' }).click();
-		await expectColumnOrder(columns, ['Search', 'example.com']);
+		await expectColumnOrder(columns, ['Search: nostter', 'example.com']);
 
 		await columns.nth(1).getByRole('button', { name: 'Delete column' }).click();
-		await expectColumnOrder(columns, ['Search']);
+		await expectColumnOrder(columns, ['Search: nostter']);
 	});
 
 	test('reorders columns by dragging sidebar icons', async ({ page }) => {
@@ -433,10 +433,10 @@ test.describe('nostter deck', () => {
 
 		await addPresetColumn(page, 'timeline_search');
 		await addWebsiteColumn(page, 'example.com');
-		await expectColumnOrder(columns, ['Search', 'example.com']);
+		await expectColumnOrder(columns, ['Search: nostter', 'example.com']);
 
 		const sidebarColumns = sidebar(page).getByTestId('sidebar-column');
-		const searchSidebarColumn = sidebarButton(page, 'Search');
+		const searchSidebarColumn = sidebarButton(page, 'Search: nostter');
 		const websiteSidebarColumn = sidebarButton(page, 'example.com');
 		const searchDragHandle = searchSidebarColumn.getByTestId('sidebar-column-drag-handle');
 		await expect(searchDragHandle).toHaveCSS('cursor', 'pointer');
@@ -451,8 +451,8 @@ test.describe('nostter deck', () => {
 			targetPosition: { x: websiteBox!.width / 2, y: websiteBox!.height - 1 }
 		});
 
-		await expectColumnOrder(columns, ['example.com', 'Search']);
-		await expect(sidebarColumns).toHaveText(['example.com', 'Search']);
+		await expectColumnOrder(columns, ['example.com', 'Search: nostter']);
+		await expect(sidebarColumns).toHaveText(['example.com', 'Search: nostter']);
 
 		const sidebarBackground = await sidebar(page).evaluate(
 			(element) => getComputedStyle(element).backgroundColor
@@ -467,8 +467,8 @@ test.describe('nostter deck', () => {
 		await expect(inactiveIndicator).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
 
 		await page.reload();
-		await expectColumnOrder(columns, ['example.com', 'Search']);
-		await expect(sidebarColumns).toHaveText(['example.com', 'Search']);
+		await expectColumnOrder(columns, ['example.com', 'Search: nostter']);
+		await expect(sidebarColumns).toHaveText(['example.com', 'Search: nostter']);
 		await expect(sidebar(page)).toHaveCSS('background-color', sidebarBackground);
 
 		await page.getByRole('button', { name: 'Collapse sidebar' }).click();
@@ -477,19 +477,19 @@ test.describe('nostter deck', () => {
 		const collapsedWebsiteBox = await collapsedWebsiteColumn.boundingBox();
 		expect(collapsedWebsiteBox).not.toBeNull();
 
-		await sidebarButton(page, 'Search')
+		await sidebarButton(page, 'Search: nostter')
 			.getByTestId('sidebar-column-drag-handle')
 			.dragTo(collapsedWebsiteColumn, {
 				targetPosition: { x: collapsedWebsiteBox!.width / 2, y: 1 }
 			});
 
-		await expectColumnOrder(columns, ['Search', 'example.com']);
-		await expect(sidebarColumns).toHaveText(['Search', 'example.com']);
+		await expectColumnOrder(columns, ['Search: nostter', 'example.com']);
+		await expect(sidebarColumns).toHaveText(['Search: nostter', 'example.com']);
 
-		await sidebarButton(page, 'Search').click();
-		await expect(sidebarButton(page, 'Search')).toHaveAttribute('aria-current', 'page');
+		await sidebarButton(page, 'Search: nostter').click();
+		await expect(sidebarButton(page, 'Search: nostter')).toHaveAttribute('aria-current', 'page');
 		expect(
-			await sidebarButton(page, 'Search')
+			await sidebarButton(page, 'Search: nostter')
 				.getByTestId('sidebar-column-active-indicator')
 				.evaluate((element) => getComputedStyle(element).backgroundColor)
 		).not.toBe('rgba(0, 0, 0, 0)');
@@ -616,7 +616,7 @@ test.describe('nostter deck', () => {
 		await saveButton.click();
 
 		const followColumn = columns.first();
-		await expectColumnOrder(columns, [...columnNames, 'Follow']);
+		await expectColumnOrder(columns, [...columnNames, `Follow: ${contactListNpub.slice(0, 12)}`]);
 		await expect(followColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expectStoredFollowColumn(page, contactListAuthorPubkey, {
 			type: 'nip65',
@@ -658,7 +658,7 @@ test.describe('nostter deck', () => {
 		});
 
 		await page.reload();
-		await expectColumnOrder(columns, [...columnNames, 'Follow']);
+		await expectColumnOrder(columns, [...columnNames, `Follow: ${contactListNpub.slice(0, 12)}`]);
 		await expect(followColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expectStoredFollowColumn(page, contactListAuthorPubkey, {
 			type: 'nip65',
@@ -684,7 +684,7 @@ test.describe('nostter deck', () => {
 		await saveButton.click();
 
 		const searchColumn = columns.first();
-		await expectColumnOrder(columns, [...columnNames, 'Search']);
+		await expectColumnOrder(columns, [...columnNames, 'Search: nostter']);
 		await expect(searchColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
 		await expectStoredSearchColumn(page, 'nostter');
 		await expect
@@ -707,6 +707,8 @@ test.describe('nostter deck', () => {
 
 		await searchColumn.getByRole('button', { name: 'Save' }).click();
 		await expect(searchColumn.getByLabel('Search query')).toHaveCount(0);
+		await expectColumnOrder(columns, [...columnNames, 'Search: edited']);
+		await expect(sidebarButton(page, 'Search: edited')).toBeVisible();
 		await expect(
 			searchColumn.getByText('Edited search result from a Nostr search relay')
 		).toBeVisible();
@@ -716,7 +718,7 @@ test.describe('nostter deck', () => {
 			.toBe(searchRelays.length);
 
 		await page.reload();
-		await expectColumnOrder(columns, [...columnNames, 'Search']);
+		await expectColumnOrder(columns, [...columnNames, 'Search: edited']);
 		await expect(
 			searchColumn.getByText('Edited search result from a Nostr search relay')
 		).toBeVisible();
@@ -735,14 +737,14 @@ test.describe('nostter deck', () => {
 			customRelays: channelRelay
 		});
 
-		await expectColumnOrder(columns, [...columnNames, 'Channel']);
+		await expectColumnOrder(columns, [...columnNames, `Channel: ${channelId.slice(0, 12)}`]);
 		await expectStoredChannelColumn(page, channelId, {
 			type: 'custom',
 			urls: expect.arrayContaining([...defaultRelays, channelRelay])
 		});
 
 		await page.reload();
-		await expectColumnOrder(columns, [...columnNames, 'Channel']);
+		await expectColumnOrder(columns, [...columnNames, `Channel: ${channelId.slice(0, 12)}`]);
 		await expectStoredChannelColumn(page, channelId, {
 			type: 'custom',
 			urls: expect.arrayContaining([...defaultRelays, channelRelay])
@@ -759,7 +761,7 @@ test.describe('nostter deck', () => {
 		await addPresetColumn(page, 'timeline_channel', { channelTarget: channelId });
 
 		const channelColumn = columns.first();
-		await expectColumnOrder(columns, ['Channel']);
+		await expectColumnOrder(columns, [`Channel: ${channelId.slice(0, 12)}`]);
 		await expectStoredChannelColumn(page, channelId);
 
 		await columnOptionsButton(channelColumn).click();
@@ -769,7 +771,7 @@ test.describe('nostter deck', () => {
 			type: 'nip65',
 			pubkey: textEventPubkey
 		});
-		await expectColumnOrder(columns, ['Channel']);
+		await expectColumnOrder(columns, [`Channel: ${channelId.slice(0, 12)}`]);
 
 		await columnOptionsButton(channelColumn).click();
 		await channelColumn.getByText('Default', { exact: true }).click();
@@ -793,7 +795,7 @@ test.describe('nostter deck', () => {
 			type: 'custom',
 			urls: expect.arrayContaining([...defaultRelays, customRelay])
 		});
-		await expectColumnOrder(columns, ['Channel']);
+		await expectColumnOrder(columns, [`Channel: ${channelId.slice(0, 12)}`]);
 	});
 
 	test('changes and persists column title and icon', async ({ page }) => {
@@ -803,7 +805,7 @@ test.describe('nostter deck', () => {
 
 		await addPresetColumn(page, 'timeline_search');
 		const searchColumn = columns.first();
-		await expectColumnOrder(columns, ['Search']);
+		await expectColumnOrder(columns, ['Search: nostter']);
 
 		await columnOptionsButton(searchColumn).click();
 		await searchColumn.getByLabel('Column title').fill('My search');
@@ -829,14 +831,14 @@ test.describe('nostter deck', () => {
 		).toHaveAttribute('aria-pressed', 'true');
 
 		await searchColumn.getByLabel('Column title').fill('   ');
-		await expectColumnOrder(columns, ['Search']);
+		await expectColumnOrder(columns, ['Search: nostter']);
 		await expectStoredFirstColumnDisplay(page, { icon: 'radio' });
 
 		await searchColumn
 			.getByRole('group', { name: 'Column icon' })
 			.getByRole('button', { name: 'Default' })
 			.click();
-		await expect(sidebarButtonIcon(page, 'Search')).toHaveClass(/lucide-search/);
+		await expect(sidebarButtonIcon(page, 'Search: nostter')).toHaveClass(/lucide-search/);
 		await expectStoredFirstColumnDisplay(page, {});
 	});
 
@@ -2484,7 +2486,7 @@ test.describe('nostter deck', () => {
 		await addPresetColumn(page, 'timeline_search');
 		await addWebsiteColumn(page, 'example.com');
 
-		await expectColumnOrder(columns, ['Search', 'example.com']);
+		await expectColumnOrder(columns, ['Search: nostter', 'example.com']);
 		await expectColumnWidth(columns.first(), standardColumnWidth);
 		await expectColumnWidth(columns.nth(1), standardColumnWidth);
 
@@ -2500,7 +2502,7 @@ test.describe('nostter deck', () => {
 		await expectStoredColumnConfigWidths(page, ['wide', 'standard']);
 
 		await page.reload();
-		await expectColumnOrder(columns, ['Search', 'example.com']);
+		await expectColumnOrder(columns, ['Search: nostter', 'example.com']);
 		await expectColumnWidth(columns.first(), wideColumnWidth);
 		await expectColumnWidth(columns.nth(1), standardColumnWidth);
 		await columnOptionsButton(columns.first()).click();
@@ -2518,23 +2520,23 @@ test.describe('nostter deck', () => {
 
 		await addPresetColumn(page, 'timeline_search');
 		await addWebsiteColumn(page, 'example.com');
-		await expectColumnOrder(columns, ['Search', 'example.com']);
+		await expectColumnOrder(columns, ['Search: nostter', 'example.com']);
 		await expectColumnWidth(columns.nth(1), standardColumnWidth);
 
 		await columnOptionsButton(columns.nth(1)).click();
 		await selectDropdownOption(page, columns.nth(1).getByLabel('Column width'), 'Wide');
 		await columns.nth(1).getByRole('button', { name: 'Move column left' }).click();
-		await expectColumnOrder(columns, ['example.com', 'Search']);
+		await expectColumnOrder(columns, ['example.com', 'Search: nostter']);
 		await expectStoredColumnConfigWidths(page, ['wide', 'standard']);
 
 		await page.reload();
-		await expectColumnOrder(columns, ['example.com', 'Search']);
+		await expectColumnOrder(columns, ['example.com', 'Search: nostter']);
 		await expectColumnWidth(columns.first(), wideColumnWidth);
 
 		await columnOptionsButton(columns.first()).click();
 		await columns.first().getByRole('button', { name: 'Delete column' }).click();
 		await page.reload();
-		await expectColumnOrder(columns, ['Search']);
+		await expectColumnOrder(columns, ['Search: nostter']);
 	});
 
 	test('collapses and expands the sidebar', async ({ page }) => {
@@ -2560,7 +2562,7 @@ test.describe('nostter deck', () => {
 		await expectStoredSidebarCollapsed(page, true);
 		await expectSidebarIconsCentered(page, [
 			...sidebarButtonNames,
-			'Search',
+			'Search: nostter',
 			'example.com',
 			'Expand sidebar'
 		]);

@@ -5,6 +5,7 @@
 	import DeckWorkspace from '$lib/components/deck/DeckWorkspace.svelte';
 	import KeyboardShortcutsDialog from '$lib/components/deck/KeyboardShortcutsDialog.svelte';
 	import Sidebar from '$lib/components/deck/Sidebar.svelte';
+	import { createColumnTitleController } from '$lib/deck/column-title-controller.svelte';
 	import { createColumnDeckController } from '$lib/deck/column-deck-controller.svelte';
 	import { createDeckLayoutController } from '$lib/deck/deck-layout-controller.svelte';
 	import { createDisplaySettingsController } from '$lib/deck/display-settings-controller.svelte';
@@ -92,6 +93,11 @@
 	const relaySelectionController = createRelaySelectionController({
 		getAccounts: () => accounts,
 		getColumnConfigs: () => columnDeckController.columns
+	});
+	const columnTitleController = createColumnTitleController({
+		getColumns: () => columnDeckController.columns,
+		getLocale: () => appLocale,
+		resolveRelaySelection: relaySelectionController.resolveRelaySelection
 	});
 	const mentionCandidateController = createMentionCandidateController();
 	const composer = createComposerController({
@@ -239,6 +245,7 @@
 	]}
 >
 	<Sidebar
+		getColumnTitle={columnTitleController.getTitle}
 		columns={columnDeckController.columns}
 		decks={columnDeckController.store.decks}
 		activeDeckId={columnDeckController.store.activeDeckId}
@@ -302,6 +309,7 @@
 	{/if}
 
 	<DeckWorkspace
+		getColumnTitle={columnTitleController.getTitle}
 		{columnDeckController}
 		{deckLayoutController}
 		{timelineController}

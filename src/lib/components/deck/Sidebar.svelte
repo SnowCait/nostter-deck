@@ -29,6 +29,7 @@
 	import SettingsDialog from './SettingsDialog.svelte';
 
 	type Props = {
+		getColumnTitle: (column: ColumnConfig) => string;
 		columns: ColumnConfig[];
 		decks: ColumnDeck[];
 		activeDeckId: string;
@@ -78,6 +79,7 @@
 	};
 
 	const {
+		getColumnTitle,
 		columns,
 		decks,
 		activeDeckId,
@@ -249,6 +251,7 @@
 		{/if}
 
 		<SidebarColumnList
+			{getColumnTitle}
 			{columns}
 			{activeColumnId}
 			isCollapsed={isVisuallyCollapsed}
