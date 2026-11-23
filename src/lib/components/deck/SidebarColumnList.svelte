@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { getColumnTitle } from '$lib/deck/column-title';
 	import type { ColumnConfig } from '$lib/deck/types';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import { m } from '$lib/paraglide/messages.js';
 	import ColumnIcon from './ColumnIcon.svelte';
 
 	type Props = {
+		getColumnTitle: (column: ColumnConfig) => string;
 		columns: ColumnConfig[];
 		activeColumnId: string;
 		isCollapsed: boolean;
@@ -15,6 +15,7 @@
 	};
 
 	const {
+		getColumnTitle,
 		columns,
 		activeColumnId,
 		isCollapsed,

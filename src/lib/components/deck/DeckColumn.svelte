@@ -3,7 +3,6 @@
 	import * as Select from '$lib/components/ui/select';
 	import { m } from '$lib/paraglide/messages.js';
 	import { columnIconKeys, getDefaultColumnIconKey } from '$lib/deck/column-icons';
-	import { getColumnTitle } from '$lib/deck/column-title';
 	import { columnWidths } from '$lib/deck/column-configs';
 	import type { MediaAttachmentController } from '$lib/features/composer/application/media-attachment-controller.svelte';
 	import type { MentionCandidate } from '$lib/features/composer/domain/mention-actions';
@@ -43,6 +42,7 @@
 
 	type Props = {
 		column: ColumnConfig;
+		title: string;
 		runtime: TimelineRuntime;
 		id: string;
 		isSingleColumn?: boolean;
@@ -112,6 +112,7 @@
 
 	const {
 		column,
+		title,
 		runtime,
 		id,
 		isSingleColumn = false,
@@ -290,7 +291,7 @@
 			<div class="flex min-w-0 items-center gap-2">
 				<ColumnIcon {column} iconClass={columnIconClass} />
 				{#if column.type === 'timeline'}
-					<h2 class={['min-w-0 flex-1', textClass.title]} aria-label={getColumnTitle(column)}>
+					<h2 class={['min-w-0 flex-1', textClass.title]} aria-label={title}>
 						<button
 							type="button"
 							class="block w-full truncate text-left font-bold focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 dark:focus-visible:outline-sky-400"
@@ -298,12 +299,12 @@
 							aria-label={m.scroll_to_top()}
 							onclick={scrollToTop}
 						>
-							{getColumnTitle(column)}
+							{title}
 						</button>
 					</h2>
 				{:else}
 					<h2 class={['min-w-0 truncate font-bold', textClass.title]}>
-						{getColumnTitle(column)}
+						{title}
 					</h2>
 				{/if}
 			</div>
@@ -513,7 +514,7 @@
 				<iframe
 					class="h-full w-full border-0 bg-white dark:bg-slate-950"
 					src={column.url}
-					title={getColumnTitle(column)}
+					{title}
 					sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
 				></iframe>
 			{:else}
