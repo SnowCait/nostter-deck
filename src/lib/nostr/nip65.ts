@@ -54,11 +54,19 @@ export function hasNip65WriteRelay(relayTags: Nip65RelayTag[]) {
 }
 
 export function getNip65ReadRelays(relayTags: Nip65RelayTag[]) {
+	return getNip65Relays(relayTags, 'read');
+}
+
+export function getNip65WriteRelays(relayTags: Nip65RelayTag[]) {
+	return getNip65Relays(relayTags, 'write');
+}
+
+function getNip65Relays(relayTags: Nip65RelayTag[], direction: 'read' | 'write') {
 	return [
 		...new Set(
 			relayTags.flatMap((tag) => {
 				const relay = normalizeRelay(tag[1]);
-				return relay && (tag[2] === undefined || tag[2] === 'read') ? [relay] : [];
+				return relay && (tag[2] === undefined || tag[2] === direction) ? [relay] : [];
 			})
 		)
 	];

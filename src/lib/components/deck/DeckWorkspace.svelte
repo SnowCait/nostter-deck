@@ -143,6 +143,7 @@
 		onTitleChange={(title) => columnDeckController.updateColumnTitle(column.id, title)}
 		onIconChange={(icon) => columnDeckController.updateColumnIcon(column.id, icon)}
 		onWidthChange={(width) => columnDeckController.updateColumnWidth(column.id, width)}
+		onUserPostsSave={(settings) => columnDeckController.saveUserPostsSettings(column.id, settings)}
 		onNotificationsSave={(pubkey, relays, includeOwnEvents) =>
 			columnDeckController.saveNotificationsSettings(column.id, pubkey, relays, includeOwnEvents)}
 		onFollowSave={(profile, relays) =>

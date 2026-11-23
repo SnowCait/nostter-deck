@@ -15,6 +15,7 @@
 	import type { Locale } from '$lib/paraglide/runtime.js';
 	import { getQuoteTags } from '$lib/nostr/posts';
 	import type { TimelineColumnConfig } from '$lib/deck/types';
+	import { isVisibleUserPost } from '$lib/features/user-posts/domain/user-posts-actions';
 	import { classifyNotification } from '$lib/features/notifications/domain/notification-actions';
 	import NotificationContext from '$lib/features/notifications/presentation/NotificationContext.svelte';
 	import TimelineEventCard from './TimelineEventCard.svelte';
@@ -106,7 +107,19 @@
 	const notificationsColumn = $derived(
 		column.timelineKind === 'preset' && column.sourceKey === 'nav_notifications' ? column : null
 	);
+	const userPostsColumn = $derived(
+		column.timelineKind === 'preset' && column.sourceKey === 'timeline_user_posts' ? column : null
+	);
 	const entries = $derived.by(() => {
+		if (userPostsColumn) {
+			return runtime.visibleEventIds.flatMap((eventId) => {
+				const event = getEvent(eventId);
+				return event && isVisibleUserPost(event, userPostsColumn)
+					? [{ eventId, notification: null }]
+					: [];
+			});
+		}
+
 		if (!notificationsColumn) {
 			return runtime.visibleEventIds.map((eventId) => ({ eventId, notification: null }));
 		}
@@ -190,7 +203,7 @@
 		]}
 	>
 		{m.custom_timeline_empty()}
-		{#if notificationsColumn && runtime.hasNewerStored}
+		{#if (notificationsColumn || userPostsColumn) && runtime.hasNewerStored}
 			<button
 				type="button"
 				class="underline"
@@ -200,7 +213,7 @@
 				{m.notifications_load_newer()}
 			</button>
 		{/if}
-		{#if notificationsColumn && runtime.hasOlderStored}
+		{#if (notificationsColumn || userPostsColumn) && runtime.hasOlderStored}
 			<button
 				type="button"
 				class="underline"

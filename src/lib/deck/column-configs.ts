@@ -120,6 +120,34 @@ export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 						}
 					];
 				}
+				if (candidate.sourceKey === 'timeline_user_posts') {
+					const normalizedPubkey = normalizePubkey(pubkey);
+					const normalizedRelays =
+						normalizedPubkey && candidate.relays?.type === 'nip65-write'
+							? { type: 'nip65-write' as const, pubkey: normalizedPubkey }
+							: normalizeRelaySelection(relays);
+					if (!normalizedPubkey || !normalizedRelays || normalizedRelays.type === 'nip65') {
+						return [];
+					}
+
+					const column = {
+						id: candidate.id,
+						type: 'timeline',
+						timelineKind: 'preset',
+						sourceKey: candidate.sourceKey,
+						pubkey: normalizedPubkey,
+						relays: normalizedRelays,
+						includeReplies: candidate.includeReplies !== false,
+						includeReposts: candidate.includeReposts !== false,
+						width: candidate.width
+					} satisfies ColumnConfig;
+					return [
+						{
+							...column,
+							...normalizeColumnDisplayConfig(candidate, getDefaultColumnIconKey(column))
+						}
+					];
+				}
 				if (candidate.sourceKey === 'nav_notifications') {
 					const normalizedPubkey = normalizePubkey(pubkey);
 					const normalizedRelays = normalizeRelaySelection(relays);

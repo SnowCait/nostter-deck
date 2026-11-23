@@ -84,6 +84,19 @@ export function getTimelineRequest(column: ColumnConfig): TimelineRequest | null
 		};
 	}
 
+	if (column.sourceKey === 'timeline_user_posts') {
+		return {
+			filters: [
+				{
+					kinds: [ShortTextNote, Repost],
+					authors: [column.pubkey],
+					limit: presetTimelineInitialLimit
+				}
+			],
+			relays: column.relays
+		};
+	}
+
 	if (column.sourceKey === 'nav_notifications') {
 		return {
 			filters: [
