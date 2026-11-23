@@ -1,13 +1,7 @@
+import { getLastEventTag } from '$lib/nostr/posts';
 import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
-import type {
-	Column,
-	ChannelTimelineColumnConfig,
-	ColumnConfig,
-	CustomTimelineColumnConfig,
-	FollowTimelineColumnConfig,
-	SearchTimelineColumnConfig
-} from './types';
+import type { Column, ColumnConfig, TimelineColumnConfig } from './types';
 import type { NostrFilter } from '$lib/nostr/filters';
 import type { RelaySelection } from '$lib/nostr/relays';
 import {
@@ -21,6 +15,7 @@ import type { Profile } from '$lib/nostr/profiles';
 
 export type TimelineRuntime = {
 	timelineKey: string;
+	getAdditionalReferenceTags?: (event: Nostr.Event) => string[][];
 	visibleEventIds: string[];
 	liveEventIds: string[];
 	loadedEventsById: Record<string, Nostr.Event>;
@@ -58,11 +53,7 @@ export function emptyTimelineRuntime(timelineKey = ''): TimelineRuntime {
 	};
 }
 
-export type FetchableTimelineColumn =
-	| CustomTimelineColumnConfig
-	| FollowTimelineColumnConfig
-	| SearchTimelineColumnConfig
-	| ChannelTimelineColumnConfig;
+export type FetchableTimelineColumn = TimelineColumnConfig;
 
 export function isFetchableTimelineColumn(column: ColumnConfig): column is FetchableTimelineColumn {
 	return column.type === 'timeline';
@@ -86,6 +77,19 @@ export function getTimelineRequest(column: ColumnConfig): TimelineRequest | null
 				{
 					kinds: [ShortTextNote],
 					authors: `3:${column.pubkey}:`,
+					limit: presetTimelineInitialLimit
+				}
+			],
+			relays: column.relays
+		};
+	}
+
+	if (column.sourceKey === 'nav_notifications') {
+		return {
+			filters: [
+				{
+					kinds: [ShortTextNote, Repost, Reaction],
+					'#p': [column.pubkey],
 					limit: presetTimelineInitialLimit
 				}
 			],
@@ -274,7 +278,7 @@ export function getReferencedEventId(event: Nostr.Event) {
 		return null;
 	}
 
-	return event.tags.findLast((tag) => tag[0] === 'e' && tag[1])?.[1] ?? null;
+	return getLastEventTag(event)?.[1] ?? null;
 }
 
 export function timelineRuntimeToPosts(

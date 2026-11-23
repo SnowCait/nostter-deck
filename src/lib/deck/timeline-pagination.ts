@@ -203,12 +203,18 @@ export function createTimelinePagination({
 	};
 }
 
+function getTimelineReferenceIds(runtime: TimelineRuntime, event: Nostr.Event) {
+	const id = getReferencedEventId(event);
+	return [
+		...(id ? [id] : []),
+		...(runtime.getAdditionalReferenceTags?.(event).map((tag) => tag[1]) ?? [])
+	];
+}
+
 export function getMissingReferencedEventIds(runtime: TimelineRuntime) {
 	return runtime.visibleEventIds
 		.map((eventId) => runtime.loadedEventsById[eventId])
-		.flatMap((event) =>
-			event ? [getReferencedEventId(event)].flatMap((id) => (id ? [id] : [])) : []
-		)
+		.flatMap((event) => (event ? getTimelineReferenceIds(runtime, event) : []))
 		.filter((eventId) => !runtime.loadedEventsById[eventId]);
 }
 
@@ -234,9 +240,9 @@ export function getEventCursor(event?: Nostr.Event): TimelineCursor | null {
 export function pruneLoadedEvents(runtime: TimelineRuntime): TimelineRuntime {
 	const retainedEventIds = new Set(runtime.visibleEventIds);
 	for (const eventId of runtime.visibleEventIds) {
-		const referencedEventId = getReferencedEventId(runtime.loadedEventsById[eventId]);
-		if (referencedEventId) {
-			retainedEventIds.add(referencedEventId);
+		const event = runtime.loadedEventsById[eventId];
+		for (const id of event ? getTimelineReferenceIds(runtime, event) : []) {
+			retainedEventIds.add(id);
 		}
 	}
 

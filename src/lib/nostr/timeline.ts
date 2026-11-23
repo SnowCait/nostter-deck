@@ -8,20 +8,22 @@ import {
 	type LazyFilter
 } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
-import { takeLast, type Unsubscribable } from 'rxjs';
+import { filter, take, takeLast, type Unsubscribable } from 'rxjs';
 import type { NostrFilter } from '$lib/nostr/filters';
 import type { RelaySelection } from '$lib/nostr/relays';
 import { expandAddressAuthors, getFilterAuthorAddress, type AuthorAddress } from './filters';
 import { getNostrClient } from './client';
 import { requestProfiles } from './profiles';
+import { getLastEventTag } from './posts';
 import { getVerifiedEmbeddedRepostedEvent } from './reposts';
-import { combineRelays, profileRelays, resolveRelaySelection } from './relays';
+import { combineRelays, normalizeRelay, profileRelays, resolveRelaySelection } from './relays';
 
 export type TimelineEventPhase = 'initial' | 'live';
 
 type CustomTimelineSubscriptionOptions = {
 	filters: NostrFilter[];
 	relays: RelaySelection;
+	getAdditionalReferenceTags?: (event: Nostr.Event) => string[][];
 	onEvent: (event: Nostr.Event, meta: { phase: TimelineEventPhase }) => void;
 	onReferencedEvent: (referenceEventId: string, event: Nostr.Event) => void;
 	onReferencedEventUnavailable: (referenceEventId: string) => void;
@@ -32,6 +34,7 @@ type CustomTimelineSubscriptionOptions = {
 export function startCustomTimelineSubscription({
 	filters,
 	relays,
+	getAdditionalReferenceTags,
 	onEvent,
 	onReferencedEvent,
 	onReferencedEventUnavailable,
@@ -146,11 +149,10 @@ export function startCustomTimelineSubscription({
 		addressReq.over();
 	}
 
-	function getReferencedEventId(referenceEvent: Nostr.Event) {
-		return referenceEvent.tags.findLast((tag) => tag[0] === 'e' && tag[1])?.[1] ?? null;
-	}
-
-	function requestReferencedEvent(referenceEvent: Nostr.Event) {
+	function requestReferencedEvents(referenceEvent: Nostr.Event, tags: string[][]) {
+		if (tags.length === 0) {
+			return;
+		}
 		const embeddedEvent =
 			referenceEvent.kind === Repost ? getVerifiedEmbeddedRepostedEvent(referenceEvent) : null;
 		if (embeddedEvent) {
@@ -159,33 +161,37 @@ export function startCustomTimelineSubscription({
 			return;
 		}
 
-		const referencedEventId = getReferencedEventId(referenceEvent);
-		if (!referencedEventId) {
-			return;
-		}
+		const ids = [...new Set(tags.map((tag) => tag[1]))];
+		const hints = getAdditionalReferenceTags
+			? tags.flatMap((tag) => normalizeRelay(tag[2]) ?? [])
+			: [];
 
 		const referenceReq = createRxBackwardReq();
-		let hasReferencedEvent = false;
+		let remaining = ids.length;
 		let removeSubscription = () => {};
 		const subscription = rxNostr
 			.use(referenceReq)
-			.pipe(uniq())
+			.pipe(
+				filter(({ event }) => ids.includes(event.id)),
+				uniq(),
+				take(ids.length)
+			)
 			.subscribe({
 				next: ({ event }) => {
-					hasReferencedEvent = true;
+					remaining -= 1;
 					onReferencedEvent(referenceEvent.id, event);
 					requestProfiles([event.pubkey], profileRelayUrls);
 				},
 				complete: () => {
 					removeSubscription();
-					if (!hasReferencedEvent) {
+					if (remaining > 0) {
 						onReferencedEventUnavailable(referenceEvent.id);
 					}
 				}
 			});
 
 		removeSubscription = addSubscription(subscription);
-		referenceReq.emit({ ids: [referencedEventId] } as LazyFilter, { relays: relayUrls });
+		referenceReq.emit({ ids } as LazyFilter, { relays: combineRelays(relayUrls, hints) });
 		referenceReq.over();
 	}
 
@@ -253,10 +259,13 @@ export function startCustomTimelineSubscription({
 
 	function handleTimelineEvent(event: Nostr.Event, phase: TimelineEventPhase) {
 		requestProfiles([event.pubkey], profileRelayUrls);
-		if (event.kind === Repost || event.kind === Reaction) {
-			requestReferencedEvent(event);
-		}
 		onEvent(event, { phase });
+		const primaryTag =
+			event.kind === Repost || event.kind === Reaction ? getLastEventTag(event) : undefined;
+		requestReferencedEvents(event, [
+			...(primaryTag ? [primaryTag] : []),
+			...(getAdditionalReferenceTags?.(event) ?? [])
+		]);
 	}
 
 	return {

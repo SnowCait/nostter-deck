@@ -20,6 +20,14 @@ export function getContentWarning(tags: Nostr.Event['tags']): ContentWarning | n
 	return reason ? { reason } : {};
 }
 
+export function getQuoteTags(event: Nostr.Event) {
+	return event.tags.filter(([name, id]) => name === 'q' && /^[0-9a-f]{64}$/.test(id ?? ''));
+}
+
+export function getLastEventTag(event: Nostr.Event) {
+	return event.tags.findLast(([name, id]) => name === 'e' && id);
+}
+
 export function getReferencedPubkey(event: Nostr.Event) {
 	for (let index = event.tags.length - 1; index >= 0; index -= 1) {
 		const tag = event.tags[index];

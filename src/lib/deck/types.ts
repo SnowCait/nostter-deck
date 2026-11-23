@@ -150,7 +150,7 @@ export type MessageKey =
 
 export type ColumnTitleKey = Extract<
 	MessageKey,
-	'timeline_follow' | 'timeline_search' | 'timeline_channel'
+	'timeline_follow' | 'timeline_search' | 'timeline_channel' | 'nav_notifications'
 >;
 export type ColumnSourceKey = ColumnTitleKey;
 export type ColumnWidth = 'narrow' | 'standard' | 'wide';
@@ -189,8 +189,16 @@ export type ChannelTimelineColumnConfig = {
 	width: ColumnWidth;
 } & ColumnDisplayConfig;
 
+export type NotificationsColumnConfig = Omit<FollowTimelineColumnConfig, 'sourceKey'> & {
+	sourceKey: 'nav_notifications';
+	includeOwnEvents: boolean;
+};
+
 export type PresetTimelineColumnConfig =
-	FollowTimelineColumnConfig | SearchTimelineColumnConfig | ChannelTimelineColumnConfig;
+	| FollowTimelineColumnConfig
+	| SearchTimelineColumnConfig
+	| ChannelTimelineColumnConfig
+	| NotificationsColumnConfig;
 
 export type CustomTimelineColumnConfig = {
 	id: string;

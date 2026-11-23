@@ -140,6 +140,8 @@
 		onTitleChange={(title) => columnDeckController.updateColumnTitle(column.id, title)}
 		onIconChange={(icon) => columnDeckController.updateColumnIcon(column.id, icon)}
 		onWidthChange={(width) => columnDeckController.updateColumnWidth(column.id, width)}
+		onNotificationsSave={(pubkey, relays, includeOwnEvents) =>
+			columnDeckController.saveNotificationsSettings(column.id, pubkey, relays, includeOwnEvents)}
 		onFollowSave={(profile, relays) =>
 			columnDeckController.saveFollowRelaySettings(column.id, profile, relays)}
 		onSearchSave={(query) => columnDeckController.saveSearchSettings(column.id, query)}

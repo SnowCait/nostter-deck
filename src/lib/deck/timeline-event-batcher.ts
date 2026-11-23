@@ -15,7 +15,7 @@ type PendingTimelineEvent = {
 type PendingTimelineBatch = {
 	timelineKey: string;
 	events: PendingTimelineEvent[];
-	referencedEvents: Map<string, Nostr.Event>;
+	referencedEvents: Map<string, { sourceId: string; event: Nostr.Event }>;
 	unavailableReferenceEventIds: string[];
 	timeoutId: ReturnType<typeof setTimeout>;
 };
@@ -65,7 +65,7 @@ export function createTimelineEventBatcher({
 		}
 
 		cancelPendingBatch(columnId);
-		const referencedEvents = new Map<string, Nostr.Event>();
+		const referencedEvents: PendingTimelineBatch['referencedEvents'] = new Map();
 		const nextBatch: PendingTimelineBatch = {
 			timelineKey,
 			events: [{ event, phase }],
@@ -80,7 +80,10 @@ export function createTimelineEventBatcher({
 		void storeEvent(event);
 		const pendingBatch = pendingBatches.get(columnId);
 		if (pendingBatch?.events.some(({ event }) => event.id === referenceEventId)) {
-			pendingBatch.referencedEvents.set(referenceEventId, event);
+			pendingBatch.referencedEvents.set(`${referenceEventId}:${event.id}`, {
+				sourceId: referenceEventId,
+				event
+			});
 			return;
 		}
 
@@ -160,9 +163,9 @@ export function createTimelineEventBatcher({
 			events.flatMap(({ event, phase }) => (phase === 'live' ? [event.id] : []))
 		);
 		const trimmedVisibleEventIds = trimVisibleEventIds(nextVisibleEventIds, 'older');
-		const referencedEvents = [...pendingBatch.referencedEvents.entries()].flatMap(
-			([referenceEventId, event]) =>
-				trimmedVisibleEventIds.includes(referenceEventId) ? [[event.id, event] as const] : []
+		const referencedEvents = [...pendingBatch.referencedEvents.values()].flatMap(
+			({ sourceId, event }) =>
+				trimmedVisibleEventIds.includes(sourceId) ? [[event.id, event] as const] : []
 		);
 
 		setRuntime(
