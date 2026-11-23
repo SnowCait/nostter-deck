@@ -121,8 +121,12 @@ The existing default title behavior for Custom Timeline and Website columns rema
   - **Include reposts:** Include kind 6 reposts.
 - Treat quote posts as regular kind 1 posts without a separate visibility option. A `q` tag alone does not make a post a reply.
 - Exclude kind 16 generic reposts and kind 7 reactions.
-- By default, retrieve posts from the target user's NIP-65 write relays. If no write relays are available, use the application's default relays.
-- Allow users to select different relays.
+- Provide the following relay selection options when creating or editing a User Posts column:
+  - **Target user's relays (recommended):** Selected by default. Retrieve posts from the column's target user's NIP-65 write relays. If no write relays are available, use the application's default relays.
+  - **Application default relays:** Retrieve posts from the application's default relays.
+  - **Custom relays:** Retrieve posts from the explicitly configured relays.
+- When **Target user's relays** is selected, use the column's target user for relay lookup without providing a separate user or account selector.
+- When the target user changes, use the new target user's relays if **Target user's relays** is selected. Preserve the relay selection if **Application default relays** or **Custom relays** is selected.
 - Users can change the target user, relay selection, and visibility options after creating the column.
 - Save these settings independently for each column.
 - Switching the signed-in account must not automatically change the target user.
