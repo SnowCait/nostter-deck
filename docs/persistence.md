@@ -4,15 +4,15 @@
 
 Distinguish stored data by its purpose and ownership.
 
-| Category | Scope | Examples |
-| --- | --- | --- |
-| User settings | Application | Theme, font size, avatar shape |
-| Account settings | Account public key | Like reaction preference |
+| Category            | Scope              | Examples                                      |
+| ------------------- | ------------------ | --------------------------------------------- |
+| User settings       | Application        | Theme, font size, avatar shape                |
+| Account settings    | Account public key | Like reaction preference                      |
 | Authentication data | Account connection | Authentication method, connection credentials |
-| UI state | Application | Sidebar state, layout mode |
-| Deck configuration | Deck and column | Column types, settings, ordering |
-| Persistent cache | Application | Retrieved metadata, relay information |
-| Session cache | Session | Retrieved events, timeline entries |
+| UI state            | Application        | Sidebar state, layout mode                    |
+| Deck configuration  | Deck and column    | Column types, settings, ordering              |
+| Persistent cache    | Application        | Retrieved metadata, relay information         |
+| Session cache       | Session            | Retrieved events, timeline entries            |
 
 ## Storage Design
 
