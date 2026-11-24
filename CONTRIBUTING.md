@@ -19,3 +19,7 @@ Use issue types to classify issues by their purpose, regardless of the size of t
 Use labels to provide additional context, such as affected areas or cross-cutting concerns.
 
 Do not use labels to duplicate issue types.
+
+## Pull requests
+
+Follow the [Release Guidelines](docs/releasing.md#pull-requests) for release labeling.
