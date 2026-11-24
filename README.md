@@ -4,6 +4,7 @@ Multi-column Nostr client.
 
 ## Documentation
 
+- [Documentation guidelines](docs/README.md)
 - [Architecture guidelines](docs/architecture.md)
 - [Contributing](CONTRIBUTING.md)
 
