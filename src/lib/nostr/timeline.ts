@@ -1,18 +1,22 @@
-import { isAddressableKind, Reaction, Repost } from 'nostr-tools/kinds';
+import { shouldReplaceCurrentEvent } from '@nostter/nostr-protocol';
+import { Contacts, isAddressableKind, Reaction, Repost } from 'nostr-tools/kinds';
 import {
 	createRxBackwardReq,
 	createRxForwardReq,
-	latest,
+	createUniq,
 	now,
 	uniq,
+	type EventPacket,
 	type LazyFilter
 } from 'rx-nostr';
 import type * as Nostr from 'nostr-typedef';
-import { filter, take, takeLast, type Unsubscribable } from 'rxjs';
+import { catchError, EMPTY, filter, finalize, reduce, Subscription, take } from 'rxjs';
 import type { NostrFilter } from '$lib/nostr/filters';
 import type { RelaySelection } from '$lib/nostr/relays';
 import { expandAddressAuthors, getFilterAuthorAddress, type AuthorAddress } from './filters';
 import { getNostrClient } from './client';
+import { getCachedLatestEvent, putCachedLatestEvent } from './latest-event-cache';
+import { getLatestEventKey, type LatestEventKey } from './latest-event-order';
 import { requestProfiles } from './profiles';
 import { getLastEventTag } from './posts';
 import { getVerifiedEmbeddedRepostedEvent } from './reposts';
@@ -44,15 +48,15 @@ export function startCustomTimelineSubscription({
 	const relayUrls = resolveRelaySelection(relays);
 	const profileRelayUrls = combineRelays(relayUrls, [...profileRelays]);
 	const rxNostr = getNostrClient();
-	const initialTimelineReq = createRxBackwardReq();
-	const liveTimelineReq = createRxForwardReq();
 	const subscriptionBoundary = now();
-	const pendingFiltersByAddress = new Map<string, NostrFilter[]>();
-	const subscriptions: Unsubscribable[] = [];
+	const subscriptions = new Subscription();
+	const [uniqueInitialEvents] = createUniq<EventPacket, string>((packet) => packet.event.id);
+	const [uniqueLiveEvents] = createUniq<EventPacket, string>((packet) => packet.event.id);
+	let pendingInitialWork = 0;
 	let isLoading = false;
 
 	function setLoading(nextIsLoading: boolean) {
-		if (isLoading === nextIsLoading) {
+		if (subscriptions.closed || isLoading === nextIsLoading) {
 			return;
 		}
 
@@ -60,13 +64,12 @@ export function startCustomTimelineSubscription({
 		onLoadingChange(nextIsLoading);
 	}
 
-	function addSubscription(subscription: Unsubscribable) {
-		subscriptions.push(subscription);
-
+	function trackInitialWork() {
+		pendingInitialWork += 1;
 		return () => {
-			const index = subscriptions.indexOf(subscription);
-			if (index >= 0) {
-				subscriptions.splice(index, 1);
+			pendingInitialWork -= 1;
+			if (pendingInitialWork === 0) {
+				setLoading(false);
 			}
 		};
 	}
@@ -91,11 +94,41 @@ export function startCustomTimelineSubscription({
 		) as NostrFilter;
 	}
 
-	function emitTimelineFilters(nextFilters: NostrFilter[]) {
-		if (nextFilters.length > 0) {
-			initialTimelineReq.emit(nextFilters.map((filter) => withTimelineBoundary(filter, 'initial')));
-			liveTimelineReq.emit(nextFilters.map((filter) => withTimelineBoundary(filter, 'live')));
+	function startTimelineFilters(nextFilters: NostrFilter[]) {
+		if (nextFilters.length === 0) {
+			return;
 		}
+
+		const group = new Subscription();
+		subscriptions.add(group);
+		const relayScope = { on: { relays: relayUrls } };
+		const initialReq = createRxBackwardReq();
+		const liveReq = createRxForwardReq();
+		const finishInitial = trackInitialWork();
+
+		group.add(
+			rxNostr
+				.use(initialReq, relayScope)
+				.pipe(uniqueInitialEvents, finalize(finishInitial))
+				.subscribe({
+					next: ({ event }) => handleTimelineEvent(event, 'initial'),
+					error: (error) => onError(formatRelayError(relayUrls.join(', '), error))
+				})
+		);
+		group.add(
+			rxNostr
+				.use(liveReq, relayScope)
+				.pipe(uniqueLiveEvents)
+				.subscribe({
+					next: ({ event }) => handleTimelineEvent(event, 'live'),
+					error: (error) => onError(formatRelayError(relayUrls.join(', '), error))
+				})
+		);
+
+		initialReq.emit(nextFilters.map((filter) => withTimelineBoundary(filter, 'initial')));
+		initialReq.over();
+		liveReq.emit(nextFilters.map((filter) => withTimelineBoundary(filter, 'live')));
+		return group;
 	}
 
 	function getAddressFilter(address: AuthorAddress): NostrFilter {
@@ -112,39 +145,88 @@ export function startCustomTimelineSubscription({
 		return filter;
 	}
 
-	function emitResolvedAddressFilters(
-		address: AuthorAddress,
-		event: Nostr.Event,
-		pendingFilters: NostrFilter[]
-	) {
-		const authors = [
-			...event.tags.flatMap((tag) => (tag[0] === 'p' && tag[1] ? [tag[1]] : [])),
-			...(address.kind === 3 ? [address.pubkey] : [])
-		];
-		const expandedFilters = pendingFilters.flatMap((filter) => {
-			const expandedFilter = expandAddressAuthors(filter, authors);
-			return expandedFilter ? [expandedFilter] : [];
+	function resolveAddress(address: AuthorAddress, sourceFilters: NostrFilter[]) {
+		const key: LatestEventKey = [address.pubkey, address.kind, address.identifier];
+		const addressReq = createRxBackwardReq();
+		const addressRelayUrls = address.kind === Contacts ? profileRelayUrls : relayUrls;
+		const finishResolution = trackInitialWork();
+		let appliedEvent: Nostr.Event | undefined;
+		let appliedAuthors: string[] = [];
+		let activeGroup: Subscription | undefined;
+
+		function applyEvent(event: Nostr.Event) {
+			if (subscriptions.closed || !shouldReplaceCurrentEvent(event, appliedEvent)) {
+				return;
+			}
+
+			appliedEvent = event;
+			const authors = [
+				...event.tags.flatMap((tag) => (tag[0] === 'p' && tag[1] ? [tag[1]] : [])),
+				...(address.kind === Contacts ? [address.pubkey] : [])
+			];
+			const expandedFilters = sourceFilters.flatMap((filter) => {
+				const expanded = expandAddressAuthors(filter, authors);
+				return expanded ? [expanded] : [];
+			});
+			const nextAuthors = expandedFilters[0]?.authors ?? [];
+			const previousAuthors = new Set(appliedAuthors);
+			if (
+				nextAuthors.length === previousAuthors.size &&
+				nextAuthors.every((author) => previousAuthors.has(author))
+			) {
+				return;
+			}
+
+			appliedAuthors = nextAuthors;
+			const previousGroup = activeGroup;
+			activeGroup = startTimelineFilters(expandedFilters);
+			previousGroup?.unsubscribe();
+		}
+
+		function readCachedEvent() {
+			return getCachedLatestEvent(key).catch(() => undefined);
+		}
+
+		const cachedEvent = readCachedEvent().then((event) => {
+			if (event) {
+				applyEvent(event);
+				finishResolution();
+			}
+			return event;
 		});
 
-		emitTimelineFilters(expandedFilters);
-	}
+		subscriptions.add(
+			rxNostr
+				.use(addressReq)
+				.pipe(
+					filter(({ event }) => matchesLatestEventKey(event, key)),
+					catchError(() => EMPTY),
+					reduce(
+						(latest: Nostr.Event | undefined, { event }) =>
+							shouldReplaceCurrentEvent(event, latest) ? event : latest,
+						undefined
+					)
+				)
+				.subscribe(async (networkEvent) => {
+					const cached = await cachedEvent;
+					if (subscriptions.closed) {
+						return;
+					}
 
-	function resolveAddress(address: AuthorAddress, pendingFilters: NostrFilter[]) {
-		const addressReq = createRxBackwardReq();
-		const addressRelayUrls = address.kind === 3 ? profileRelayUrls : relayUrls;
-		let removeSubscription = () => {};
+					if (networkEvent) {
+						await putCachedLatestEvent(networkEvent).catch(() => undefined);
+						// A concurrent writer may have saved a newer event during the relay request.
+						const current = await readCachedEvent();
+						applyEvent(
+							current && shouldReplaceCurrentEvent(current, networkEvent) ? current : networkEvent
+						);
+					}
+					if (!cached) {
+						finishResolution();
+					}
+				})
+		);
 
-		const subscription = rxNostr
-			.use(addressReq)
-			.pipe(uniq(), latest(), takeLast(1))
-			.subscribe({
-				next: ({ event }) => emitResolvedAddressFilters(address, event, pendingFilters),
-				complete: () => {
-					removeSubscription();
-				}
-			});
-
-		removeSubscription = addSubscription(subscription);
 		addressReq.emit(getAddressFilter(address) as LazyFilter, { relays: addressRelayUrls });
 		addressReq.over();
 	}
@@ -168,7 +250,6 @@ export function startCustomTimelineSubscription({
 
 		const referenceReq = createRxBackwardReq();
 		let remaining = ids.length;
-		let removeSubscription = () => {};
 		const subscription = rxNostr
 			.use(referenceReq)
 			.pipe(
@@ -183,68 +264,37 @@ export function startCustomTimelineSubscription({
 					requestProfiles([event.pubkey], profileRelayUrls);
 				},
 				complete: () => {
-					removeSubscription();
 					if (remaining > 0) {
 						onReferencedEventUnavailable(referenceEvent.id);
 					}
 				}
 			});
 
-		removeSubscription = addSubscription(subscription);
+		subscriptions.add(subscription);
 		referenceReq.emit({ ids } as LazyFilter, { relays: combineRelays(relayUrls, hints) });
 		referenceReq.over();
 	}
 
-	function emitInitialTimelineFilters() {
-		const directFilters: NostrFilter[] = [];
-		const addressesByKey = new Map<string, AuthorAddress>();
-
-		for (const filter of filters) {
-			const address = getFilterAuthorAddress(filter);
-			if (!address) {
-				directFilters.push(filter);
-				continue;
-			}
-
-			pendingFiltersByAddress.set(address.key, [
-				...(pendingFiltersByAddress.get(address.key) ?? []),
-				filter
-			]);
-			addressesByKey.set(address.key, address);
+	const directFilters: NostrFilter[] = [];
+	const sources = new Map<string, { address: AuthorAddress; filters: NostrFilter[] }>();
+	for (const filter of filters) {
+		const address = getFilterAuthorAddress(filter);
+		if (!address) {
+			directFilters.push(filter);
+			continue;
 		}
 
-		emitTimelineFilters(directFilters);
-		for (const address of addressesByKey.values()) {
-			resolveAddress(address, pendingFiltersByAddress.get(address.key) ?? []);
+		const source = sources.get(address.key);
+		if (source) {
+			source.filters.push(filter);
+		} else {
+			sources.set(address.key, { address, filters: [filter] });
 		}
 	}
 
 	setLoading(true);
-
-	addSubscription(
-		rxNostr
-			.use(initialTimelineReq, { on: { relays: relayUrls } })
-			.pipe(uniq())
-			.subscribe({
-				next: ({ event }) => {
-					setLoading(false);
-					handleTimelineEvent(event, 'initial');
-				},
-				complete: () => setLoading(false)
-			})
-	);
-
-	addSubscription(
-		rxNostr
-			.use(liveTimelineReq, { on: { relays: relayUrls } })
-			.pipe(uniq())
-			.subscribe(({ event }) => {
-				setLoading(false);
-				handleTimelineEvent(event, 'live');
-			})
-	);
-
-	addSubscription(
+	const finishSetup = trackInitialWork();
+	subscriptions.add(
 		rxNostr.createAllErrorObservable().subscribe(({ from, reason }) => {
 			if (!relayUrls.includes(from)) {
 				return;
@@ -255,9 +305,14 @@ export function startCustomTimelineSubscription({
 		})
 	);
 
-	emitInitialTimelineFilters();
+	startTimelineFilters(directFilters);
+	for (const { address, filters } of sources.values()) {
+		resolveAddress(address, filters);
+	}
+	finishSetup();
 
 	function handleTimelineEvent(event: Nostr.Event, phase: TimelineEventPhase) {
+		setLoading(false);
 		requestProfiles([event.pubkey], profileRelayUrls);
 		onEvent(event, { phase });
 		const primaryTag =
@@ -270,11 +325,18 @@ export function startCustomTimelineSubscription({
 
 	return {
 		stop() {
-			for (const subscription of subscriptions) {
-				subscription.unsubscribe();
-			}
+			subscriptions.unsubscribe();
 		}
 	};
+}
+
+function matchesLatestEventKey(event: Nostr.Event, [pubkey, kind, identifier]: LatestEventKey) {
+	try {
+		const [eventPubkey, eventKind, eventIdentifier] = getLatestEventKey(event);
+		return eventPubkey === pubkey && eventKind === kind && eventIdentifier === identifier;
+	} catch {
+		return false;
+	}
 }
 
 function formatRelayError(relay: string, reason: unknown) {
