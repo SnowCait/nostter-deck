@@ -15,6 +15,7 @@
 	import MutedContentPlaceholder from './MutedContentPlaceholder.svelte';
 	import CustomEmojiText from '$lib/components/CustomEmojiText.svelte';
 	import ContentWarningPlaceholder from './ContentWarningPlaceholder.svelte';
+	import PostTimestamp from './PostTimestamp.svelte';
 	import EventJsonMenu from './EventJsonMenu.svelte';
 
 	type Props = {
@@ -97,13 +98,11 @@
 				fallbackClass={`${quotedPost.accent} text-sm font-bold text-white`}
 			/>
 			<span class="flex min-w-0 flex-1 flex-col">
-				<span class="flex min-w-0 items-center gap-1.5">
-					<span class={['truncate font-bold', textClass.account]}>
+				<span class="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
+					<span class={['max-w-full truncate font-bold', textClass.account]}>
 						<CustomEmojiText text={quotedPost.author} customEmojis={quotedPost.authorEmojis} />
 					</span>
-					<span class={['shrink-0 text-slate-500 dark:text-slate-400', textClass.meta]}>
-						· {quotedPost.time}
-					</span>
+					<PostTimestamp createdAt={quotedPost.events.source.created_at} class={textClass.meta} />
 				</span>
 				<span
 					class={['mt-1 line-clamp-2 [overflow-wrap:anywhere] whitespace-pre-wrap', textClass.body]}
@@ -159,7 +158,7 @@
 			title={m.open_thread()}
 			aria-label={m.open_thread()}
 			data-testid="nostr-quote"
-			class="flex h-28 w-full overflow-hidden rounded-md border border-slate-200 bg-slate-50 p-3 pr-11 text-left text-slate-700 transition hover:border-slate-300 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-700 dark:hover:bg-slate-800"
+			class="flex min-h-28 w-full overflow-hidden rounded-md border border-slate-200 bg-slate-50 p-3 pr-11 text-left text-slate-700 transition hover:border-slate-300 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-700 dark:hover:bg-slate-800"
 			onclick={openThread}
 		>
 			{@render quoteContent()}
@@ -170,7 +169,7 @@
 			target="_blank"
 			rel="external noopener noreferrer"
 			data-testid="nostr-quote"
-			class="flex h-28 overflow-hidden rounded-md border border-slate-200 bg-slate-50 p-3 pr-11 text-slate-700 transition hover:border-slate-300 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-700 dark:hover:bg-slate-800"
+			class="flex min-h-28 overflow-hidden rounded-md border border-slate-200 bg-slate-50 p-3 pr-11 text-slate-700 transition hover:border-slate-300 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-700 dark:hover:bg-slate-800"
 		>
 			{@render quoteContent()}
 		</a>

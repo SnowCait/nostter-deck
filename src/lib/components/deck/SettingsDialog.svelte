@@ -1,6 +1,7 @@
 <script lang="ts">
 	import {
 		ChevronDown,
+		Clock,
 		CircleUserRound,
 		Heart,
 		Languages,
@@ -27,10 +28,12 @@
 		avatarShapePreferences,
 		fontSizePreferences,
 		postActionVisibilityPreferences,
+		postTimestampModes,
 		themePreferences,
 		type AvatarShape,
 		type FontSize,
 		type PostActionVisibility,
+		type PostTimestampMode,
 		type ThemePreference
 	} from '$lib/user-settings';
 	import ProfileAvatar from '$lib/components/ProfileAvatar.svelte';
@@ -44,6 +47,7 @@
 		fontSize: FontSize;
 		avatarShape: AvatarShape;
 		postActionVisibility: PostActionVisibility;
+		postTimestampMode: PostTimestampMode;
 		includeClientTag: boolean;
 		likeReaction: LikeReaction;
 		appLocale: Locale;
@@ -53,6 +57,7 @@
 		onFontSizeChange: (fontSize: FontSize) => void;
 		onThemeChange: (theme: ThemePreference) => void;
 		onAvatarShapeChange: (avatarShape: AvatarShape) => void;
+		onPostTimestampModeChange: (mode: PostTimestampMode) => void;
 		onPostActionVisibilityChange: (visibility: PostActionVisibility) => void;
 		onIncludeClientTagChange: (includeClientTag: boolean) => void;
 		mutedPubkeys: string[];
@@ -68,6 +73,7 @@
 		fontSize,
 		avatarShape,
 		postActionVisibility,
+		postTimestampMode,
 		includeClientTag,
 		likeReaction,
 		appLocale,
@@ -78,6 +84,7 @@
 		onThemeChange,
 		onAvatarShapeChange,
 		onPostActionVisibilityChange,
+		onPostTimestampModeChange,
 		onIncludeClientTagChange,
 		mutedPubkeys,
 		getProfile,
@@ -110,6 +117,13 @@
 		onInteraction: () => m.post_action_visibility_on_interaction(),
 		always: () => m.post_action_visibility_always()
 	} satisfies Record<PostActionVisibility, () => string>;
+	const timestampLabels = {
+		absolute: m.post_timestamp_absolute,
+		relative: m.post_timestamp_relative
+	};
+	const timestampOptions = $derived(
+		postTimestampModes.map((value) => ({ value, label: timestampLabels[value]() }))
+	);
 	const localeOptions = $derived(locales.map((value) => ({ value, label: localeLabels[value] })));
 	const themeOptions = $derived(
 		themePreferences.map((value) => ({ value, label: themeLabels[value]() }))
@@ -184,6 +198,12 @@
 	function selectAvatarShape(value: string) {
 		const selectedAvatarShape = value as AvatarShape;
 		onAvatarShapeChange(selectedAvatarShape);
+	}
+
+	function selectPostTimestampMode(value: string) {
+		if (value === 'absolute' || value === 'relative') {
+			onPostTimestampModeChange(value);
+		}
 	}
 
 	function selectPostActionVisibility(value: string) {
@@ -527,6 +547,40 @@
 				</Select.Trigger>
 				<Select.Content class="z-[60]">
 					{#each postActionVisibilityOptions as option (option.value)}
+						<Select.Item value={option.value} label={option.label} />
+					{/each}
+				</Select.Content>
+			</Select.Root>
+
+			<label
+				id="post-timestamp-label"
+				for="post-timestamp"
+				class={[
+					'mt-4 mb-2 flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-300',
+					textClass.control
+				]}
+			>
+				<Clock class="size-4 shrink-0 text-slate-500 dark:text-slate-400" aria-hidden="true" />
+				{m.post_timestamp_mode()}
+			</label>
+			<Select.Root
+				type="single"
+				items={timestampOptions}
+				value={postTimestampMode}
+				onValueChange={selectPostTimestampMode}
+			>
+				<Select.Trigger
+					id="post-timestamp"
+					aria-labelledby="post-timestamp-label"
+					class={[
+						'h-10 w-full border-slate-300 bg-white px-3 text-slate-950 shadow-none focus-visible:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-900 dark:focus-visible:border-sky-400 dark:focus-visible:ring-sky-950',
+						textClass.control
+					]}
+				>
+					<span class="truncate">{timestampLabels[postTimestampMode]()}</span>
+				</Select.Trigger>
+				<Select.Content class="z-[60]">
+					{#each timestampOptions as option (option.value)}
 						<Select.Item value={option.value} label={option.label} />
 					{/each}
 				</Select.Content>

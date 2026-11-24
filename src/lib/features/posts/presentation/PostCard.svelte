@@ -22,6 +22,7 @@
 	import ContentWarningPlaceholder from './ContentWarningPlaceholder.svelte';
 	import EventJsonMenu from './EventJsonMenu.svelte';
 	import LikeReactionIcon from './LikeReactionIcon.svelte';
+	import PostTimestamp from './PostTimestamp.svelte';
 	import PostCardBody from './PostCardBody.svelte';
 	import PostCardContextList from './PostCardContextList.svelte';
 
@@ -134,9 +135,7 @@
 	const isQuoteDisabled = $derived(!onQuotePost || !canQuotePost(post));
 	const isRepostMenuDisabled = $derived(isRepostDisabled && isQuoteDisabled);
 	const isEmojiReactionDisabled = $derived(!onReactWithEmojiPost || !canReactWithEmojiPost(post));
-	const keyboardNavigationKey = $derived(
-		post.id ?? `${post.pubkey}:${post.time}:${post.body.slice(0, 80)}`
-	);
+	const keyboardNavigationKey = $derived(post.id ?? post.events.source.id);
 
 	function openPostAuthorProfile() {
 		onOpenProfile?.({ pubkey: post.pubkey, relays: [] });
@@ -264,26 +263,26 @@
 				<div class="min-w-0 flex-1">
 					<div class="flex items-start justify-between gap-2">
 						<div class="min-w-0">
-							<div class="flex min-w-0 items-center gap-1.5">
-								<button
-									type="button"
-									data-keyboard-open-profile
-									class={[
-										'truncate rounded-sm text-left font-bold hover:underline focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none',
-										textClass.account
-									]}
-									title={m.open_profile({ name: post.author })}
-									aria-label={m.open_profile({ name: post.author })}
-									onclick={openPostAuthorProfile}
-								>
-									<CustomEmojiText text={post.author} customEmojis={post.authorEmojis} />
-								</button>
-								{#if post.verified ?? true}
-									<ShieldCheck class="size-4 shrink-0 text-sky-500" aria-label={m.verified()} />
-								{/if}
-								<span class={['shrink-0 text-slate-500 dark:text-slate-400', textClass.meta]}>
-									· {post.time}
-								</span>
+							<div class="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
+								<div class="flex max-w-full min-w-0 items-center gap-1.5">
+									<button
+										type="button"
+										data-keyboard-open-profile
+										class={[
+											'truncate rounded-sm text-left font-bold hover:underline focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none',
+											textClass.account
+										]}
+										title={m.open_profile({ name: post.author })}
+										aria-label={m.open_profile({ name: post.author })}
+										onclick={openPostAuthorProfile}
+									>
+										<CustomEmojiText text={post.author} customEmojis={post.authorEmojis} />
+									</button>
+									{#if post.verified ?? true}
+										<ShieldCheck class="size-4 shrink-0 text-sky-500" aria-label={m.verified()} />
+									{/if}
+								</div>
+								<PostTimestamp createdAt={post.events.source.created_at} class={textClass.meta} />
 							</div>
 						</div>
 						<EventJsonMenu

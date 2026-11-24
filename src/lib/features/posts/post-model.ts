@@ -59,7 +59,6 @@ export function repostEventToPost(
 		...repostedPost,
 		id: repostEvent.id,
 		events: { source: repostEvent, referenced: repostedEvent },
-		time: formatRelativeTime(repostEvent.created_at),
 		mutePubkeys,
 		referenceType: 'repost',
 		contexts: [context, ...(repostedPost.contexts ?? [])]
@@ -108,7 +107,6 @@ export function reactionEventToPost(
 		...reactedPost,
 		id: reactionEvent.id,
 		events: { source: reactionEvent, referenced: reactedEvent },
-		time: formatRelativeTime(reactionEvent.created_at),
 		mutePubkeys,
 		referenceType: 'reaction',
 		contexts: [context, ...(reactedPost.contexts ?? [])]
@@ -125,7 +123,6 @@ function createPost(event: Nostr.Event, profile?: Profile): Post {
 		id: event.id,
 		events: { source: event },
 		...author,
-		time: formatRelativeTime(event.created_at),
 		body: event.content,
 		bodyEmojis:
 			event.kind === ShortTextNote || event.kind === ChannelMessage
@@ -182,25 +179,6 @@ function createPostAuthor(pubkey: string, profile?: Profile) {
 		authorEmojis: profile?.customEmojis ?? [],
 		accent: accentClasses[hashString(pubkey) % accentClasses.length]
 	};
-}
-
-function formatRelativeTime(createdAt: number) {
-	const elapsedSeconds = Math.max(0, Math.floor(Date.now() / 1000) - createdAt);
-	if (elapsedSeconds < 60) {
-		return `${elapsedSeconds}s`;
-	}
-
-	const elapsedMinutes = Math.floor(elapsedSeconds / 60);
-	if (elapsedMinutes < 60) {
-		return `${elapsedMinutes}m`;
-	}
-
-	const elapsedHours = Math.floor(elapsedMinutes / 60);
-	if (elapsedHours < 24) {
-		return `${elapsedHours}h`;
-	}
-
-	return `${Math.floor(elapsedHours / 24)}d`;
 }
 
 function hashString(value: string) {

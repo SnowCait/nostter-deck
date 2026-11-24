@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import { npubEncode } from 'nostr-tools/nip19';
 import type * as Nostr from 'nostr-typedef';
@@ -539,34 +539,4 @@ describe('post display models', () => {
 			eventToPost(event({ kind: ChannelMessage, tags: [['q', '4'.repeat(64)]] }))
 		).not.toHaveProperty('contexts');
 	});
-
-	test.each([
-		[-1, '0s'],
-		[0, '0s'],
-		[59, '59s'],
-		[60, '1m'],
-		[3599, '59m'],
-		[3600, '1h'],
-		[86399, '23h'],
-		[86400, '1d']
-	])(
-		'preserves relative time at elapsed %s seconds for notes, reposts, and reactions',
-		(elapsed, expected) => {
-			const now = 2_000_000_000;
-			const clock = vi.spyOn(Date, 'now').mockReturnValue(now * 1000);
-			try {
-				const source = event({ created_at: now - elapsed });
-				const target = event({ created_at: now - 10_000 });
-				expect(eventToPost(source).time).toBe(expected);
-				expect(repostEventToPost({ ...source, kind: Repost }, target, getProfile).time).toBe(
-					expected
-				);
-				expect(reactionEventToPost({ ...source, kind: Reaction }, target, getProfile).time).toBe(
-					expected
-				);
-			} finally {
-				clock.mockRestore();
-			}
-		}
-	);
 });

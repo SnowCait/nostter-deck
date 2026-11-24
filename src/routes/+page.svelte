@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { providePostTimestampFormatter } from '$lib/features/posts/presentation/post-timestamp-context.svelte';
 	import { onDestroy, onMount, tick } from 'svelte';
 	import AddColumnDialog from '$lib/components/deck/AddColumnDialog.svelte';
 	import ComposePanel from '$lib/features/composer/presentation/ComposePanel.svelte';
@@ -65,6 +66,10 @@
 		accountPubkey ? getProfileDisplayName(accountProfile, accountPubkey) : ''
 	);
 	const appLocale = $derived(getLocale());
+	providePostTimestampFormatter(
+		() => displaySettingsController.postTimestampMode,
+		() => appLocale
+	);
 	const textClass = $derived(textClassByFontSize[displaySettingsController.fontSize]);
 	const likeReaction = $derived(readLikeReaction(accountPubkey));
 
@@ -270,6 +275,7 @@
 		fontSize={displaySettingsController.fontSize}
 		avatarShape={displaySettingsController.avatarShape}
 		postActionVisibility={displaySettingsController.postActionVisibility}
+		postTimestampMode={displaySettingsController.postTimestampMode}
 		includeClientTag={displaySettingsController.includeClientTag}
 		{likeReaction}
 		{appLocale}
@@ -278,6 +284,7 @@
 		onThemeChange={displaySettingsController.updateTheme}
 		onFontSizeChange={displaySettingsController.updateFontSize}
 		onAvatarShapeChange={displaySettingsController.updateAvatarShape}
+		onPostTimestampModeChange={displaySettingsController.updatePostTimestampMode}
 		onPostActionVisibilityChange={displaySettingsController.updatePostActionVisibility}
 		onIncludeClientTagChange={displaySettingsController.updateIncludeClientTag}
 		onSelectColumn={focusColumn}

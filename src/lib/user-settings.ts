@@ -5,6 +5,9 @@ export const fontSizePreferences = ['large', 'medium', 'small'] as const;
 export const avatarShapePreferences = ['circle', 'square'] as const;
 export const postActionVisibilityPreferences = ['onInteraction', 'always'] as const;
 
+export const postTimestampModes = ['absolute', 'relative'] as const;
+
+export type PostTimestampMode = (typeof postTimestampModes)[number];
 export type ThemePreference = (typeof themePreferences)[number];
 export type FontSize = (typeof fontSizePreferences)[number];
 export type AvatarShape = (typeof avatarShapePreferences)[number];
@@ -16,6 +19,7 @@ export type UserSettings = {
 	avatarShape: AvatarShape;
 	includeClientTag: boolean;
 	postActionVisibility: PostActionVisibility;
+	postTimestampMode: PostTimestampMode;
 };
 
 const userSettingsStorageKey = 'nostter:user-settings';
@@ -25,7 +29,8 @@ const defaultUserSettings: UserSettings = {
 	fontSize: 'medium',
 	avatarShape: 'circle',
 	includeClientTag: true,
-	postActionVisibility: 'onInteraction'
+	postActionVisibility: 'onInteraction',
+	postTimestampMode: 'absolute'
 };
 
 const userSettingsState = persistedState<UserSettings>(
@@ -73,7 +78,11 @@ export function normalizeUserSettings(value: unknown): UserSettings {
 				: defaultUserSettings.includeClientTag,
 		postActionVisibility: isPostActionVisibility(candidate.postActionVisibility)
 			? candidate.postActionVisibility
-			: defaultUserSettings.postActionVisibility
+			: defaultUserSettings.postActionVisibility,
+		postTimestampMode:
+			candidate.postTimestampMode === 'relative'
+				? 'relative'
+				: defaultUserSettings.postTimestampMode
 	};
 }
 

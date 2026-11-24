@@ -21,6 +21,7 @@
 		AvatarShape,
 		FontSize,
 		PostActionVisibility,
+		PostTimestampMode,
 		ThemePreference
 	} from '$lib/user-settings';
 	import AccountMenu from './AccountMenu.svelte';
@@ -54,6 +55,7 @@
 		fontSize: FontSize;
 		avatarShape: AvatarShape;
 		postActionVisibility: PostActionVisibility;
+		postTimestampMode: PostTimestampMode;
 		includeClientTag: boolean;
 		likeReaction: LikeReaction;
 		appLocale: Locale;
@@ -62,6 +64,7 @@
 		onThemeChange: (theme: ThemePreference) => void;
 		onFontSizeChange: (fontSize: FontSize) => void;
 		onAvatarShapeChange: (avatarShape: AvatarShape) => void;
+		onPostTimestampModeChange: (mode: PostTimestampMode) => void;
 		onPostActionVisibilityChange: (visibility: PostActionVisibility) => void;
 		onIncludeClientTagChange: (includeClientTag: boolean) => void;
 		onSelectColumn: (columnId: string) => void;
@@ -104,6 +107,7 @@
 		fontSize,
 		avatarShape,
 		postActionVisibility,
+		postTimestampMode,
 		includeClientTag,
 		likeReaction,
 		appLocale,
@@ -113,6 +117,7 @@
 		onFontSizeChange,
 		onAvatarShapeChange,
 		onPostActionVisibilityChange,
+		onPostTimestampModeChange,
 		onIncludeClientTagChange,
 		onSelectColumn,
 		onReorderColumn,
@@ -401,6 +406,7 @@
 	{fontSize}
 	{avatarShape}
 	{postActionVisibility}
+	{postTimestampMode}
 	{includeClientTag}
 	{likeReaction}
 	{appLocale}
@@ -411,6 +417,7 @@
 	{onFontSizeChange}
 	{onAvatarShapeChange}
 	{onPostActionVisibilityChange}
+	{onPostTimestampModeChange}
 	{onIncludeClientTagChange}
 	{mutedPubkeys}
 	{getProfile}
