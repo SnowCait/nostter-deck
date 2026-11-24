@@ -95,6 +95,8 @@ test('uses target write relays and persists independent User Posts settings', as
 	const dialog = await openAddUserPosts(page);
 	await expect(dialog.getByRole('radio', { name: targetRelayLabel })).toBeChecked();
 	await expect(dialog.getByRole('radio', { name: 'Account', exact: true })).toHaveCount(0);
+	await expect(dialog.getByLabel('Include replies')).toHaveCount(0);
+	await expect(dialog.getByLabel('Include reposts')).toHaveCount(0);
 	const input = dialog.getByLabel('Target user public key');
 	const save = dialog.getByRole('button', { name: 'Save' });
 	await input.fill('invalid key');

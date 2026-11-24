@@ -15,6 +15,7 @@ async function addNotifications(page: Page, pubkey: string) {
 	await page.getByRole('button', { name: 'Add column' }).first().click();
 	const dialog = page.getByRole('dialog', { name: 'Add column' });
 	await dialog.getByText('Notifications', { exact: true }).click();
+	await expect(dialog.getByLabel('Include own events')).toHaveCount(0);
 	const input = dialog.getByLabel('Target user (npub)');
 	const save = dialog.getByRole('button', { name: 'Save' });
 	await input.fill(pubkey);
