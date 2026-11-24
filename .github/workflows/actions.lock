@@ -18,6 +18,9 @@ workflows:
         - 'actions/setup-node@v7.1.0'
         - 'actions/upload-artifact@v7.0.2'
     '.github/workflows/release-label.yml': []
+    '.github/workflows/release.yml':
+        - 'actions/checkout@v7.0.1'
+        - 'willabides/release-train@v3.9.0'
     '.github/workflows/verify-lockfile.yml':
         - 'actions/checkout@v7.0.1'
 dependencies:
@@ -58,3 +61,8 @@ dependencies:
         repo_id: 496012378
         uses:
             - 'actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f'
+    'willabides/release-train@v3.9.0':
+        ref: 'v3.9.0'
+        commit: 'sha1-7b56e55e8afcd6a40c2c84122ba73e306a559ae0'
+        owner_id: 233500
+        repo_id: 647410115
