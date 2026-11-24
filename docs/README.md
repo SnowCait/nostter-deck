@@ -7,6 +7,7 @@
 | [Architecture Guidelines](architecture.md) | Code organization, responsibility boundaries, and dependencies |
 | [UI Guidelines](ui-guidelines.md)          | Common user interface design principles                        |
 | [Persistence Guidelines](persistence.md)   | Data classification, storage, lifecycle, and compatibility     |
+| [Release Guidelines](releasing.md)         | Versioning, release scheduling, distribution, and recovery     |
 | [Specifications](specifications/)          | Expected behavior of individual features                       |
 | [Contributing](../CONTRIBUTING.md)         | Contribution and project management rules                      |
 

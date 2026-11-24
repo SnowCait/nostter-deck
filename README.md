@@ -6,6 +6,7 @@ Multi-column Nostr client.
 
 - [Documentation guidelines](docs/README.md)
 - [Architecture guidelines](docs/architecture.md)
+- [Release guidelines](docs/releasing.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## Recommended IDE Setup
