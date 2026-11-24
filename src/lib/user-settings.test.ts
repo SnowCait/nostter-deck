@@ -8,7 +8,8 @@ describe('user settings storage', () => {
 			fontSize: 'medium',
 			avatarShape: 'circle',
 			includeClientTag: true,
-			postActionVisibility: 'onInteraction'
+			postActionVisibility: 'onInteraction',
+			postTimestampMode: 'absolute'
 		}));
 	});
 
@@ -20,7 +21,8 @@ describe('user settings storage', () => {
 			fontSize: 'medium',
 			avatarShape: 'circle',
 			includeClientTag: true,
-			postActionVisibility: 'onInteraction'
+			postActionVisibility: 'onInteraction',
+			postTimestampMode: 'absolute'
 		});
 	});
 
@@ -30,7 +32,8 @@ describe('user settings storage', () => {
 			fontSize: 'large',
 			avatarShape: 'square',
 			includeClientTag: false,
-			postActionVisibility: 'always'
+			postActionVisibility: 'always',
+			postTimestampMode: 'relative'
 		}));
 
 		expect(readUserSettings()).toEqual({
@@ -38,7 +41,8 @@ describe('user settings storage', () => {
 			fontSize: 'large',
 			avatarShape: 'square',
 			includeClientTag: false,
-			postActionVisibility: 'always'
+			postActionVisibility: 'always',
+			postTimestampMode: 'relative'
 		});
 	});
 
@@ -59,4 +63,13 @@ describe('user settings storage', () => {
 			}).postActionVisibility
 		).toBe('onInteraction');
 	});
+	test.each([undefined, 'invalid'])(
+		'uses absolute timestamps for legacy or invalid preferences (%s)',
+		(postTimestampMode) => {
+			expect(normalizeUserSettings({ fontSize: 'large', postTimestampMode })).toMatchObject({
+				fontSize: 'large',
+				postTimestampMode: 'absolute'
+			});
+		}
+	);
 });

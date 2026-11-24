@@ -4,6 +4,7 @@ import {
 	type AvatarShape,
 	type FontSize,
 	type PostActionVisibility,
+	type PostTimestampMode,
 	type ThemePreference
 } from '$lib/user-settings';
 
@@ -28,6 +29,10 @@ export function createDisplaySettingsController() {
 		updateSetting((settings) => ({ ...settings, postActionVisibility: nextVisibility }));
 	}
 
+	function updatePostTimestampMode(postTimestampMode: PostTimestampMode) {
+		updateSetting((settings) => ({ ...settings, postTimestampMode }));
+	}
+
 	function updateIncludeClientTag(includeClientTag: boolean) {
 		updateSetting((settings) => ({ ...settings, includeClientTag }));
 	}
@@ -45,6 +50,9 @@ export function createDisplaySettingsController() {
 		get postActionVisibility() {
 			return readUserSettings().postActionVisibility;
 		},
+		get postTimestampMode() {
+			return readUserSettings().postTimestampMode;
+		},
 		get includeClientTag() {
 			return readUserSettings().includeClientTag;
 		},
@@ -52,6 +60,7 @@ export function createDisplaySettingsController() {
 		updateFontSize,
 		updateAvatarShape,
 		updatePostActionVisibility,
+		updatePostTimestampMode,
 		updateIncludeClientTag
 	};
 }

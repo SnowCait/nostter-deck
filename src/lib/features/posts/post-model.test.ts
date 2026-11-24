@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { ChannelMessage, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import { npubEncode } from 'nostr-tools/nip19';
 import type * as Nostr from 'nostr-typedef';
@@ -540,33 +540,18 @@ describe('post display models', () => {
 		).not.toHaveProperty('contexts');
 	});
 
-	test.each([
-		[-1, '0s'],
-		[0, '0s'],
-		[59, '59s'],
-		[60, '1m'],
-		[3599, '59m'],
-		[3600, '1h'],
-		[86399, '23h'],
-		[86400, '1d']
-	])(
-		'preserves relative time at elapsed %s seconds for notes, reposts, and reactions',
-		(elapsed, expected) => {
-			const now = 2_000_000_000;
-			const clock = vi.spyOn(Date, 'now').mockReturnValue(now * 1000);
-			try {
-				const source = event({ created_at: now - elapsed });
-				const target = event({ created_at: now - 10_000 });
-				expect(eventToPost(source).time).toBe(expected);
-				expect(repostEventToPost({ ...source, kind: Repost }, target, getProfile).time).toBe(
-					expected
-				);
-				expect(reactionEventToPost({ ...source, kind: Reaction }, target, getProfile).time).toBe(
-					expected
-				);
-			} finally {
-				clock.mockRestore();
-			}
-		}
-	);
+	test('keeps the action creation time in the source event for reposts and reactions', () => {
+		const original = event({ created_at: 100 });
+		const repost = event({ kind: Repost, created_at: 200 });
+		const reaction = event({ kind: Reaction, created_at: 300 });
+
+		expect(repostEventToPost(repost, original, getProfile).events).toEqual({
+			source: repost,
+			referenced: original
+		});
+		expect(reactionEventToPost(reaction, original, getProfile).events).toEqual({
+			source: reaction,
+			referenced: original
+		});
+	});
 });

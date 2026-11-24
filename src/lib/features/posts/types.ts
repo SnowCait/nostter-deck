@@ -30,7 +30,6 @@ export type Post = {
 	author: string;
 	handle: string;
 	avatarUrl?: string;
-	time: string;
 	body: string;
 	bodyEmojis: CustomEmoji[];
 	authorEmojis: CustomEmoji[];
