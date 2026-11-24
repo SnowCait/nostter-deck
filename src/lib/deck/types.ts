@@ -44,7 +44,6 @@ export type MessageKey =
 	| 'quote_placeholder'
 	| 'replying_to_author'
 	| 'quoting_author'
-	| 'schedule_post'
 	| 'collapse_sidebar'
 	| 'collapse_sidebar_short'
 	| 'expand_sidebar'
