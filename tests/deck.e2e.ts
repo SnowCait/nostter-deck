@@ -3067,7 +3067,7 @@ test.describe('nostter deck', () => {
 
 		await expect(composer.getByRole('button', { name: 'Add media' })).toBeVisible();
 		await expect(composer.getByRole('button', { name: 'Add emoji' })).toBeVisible();
-		await expect(composer.getByRole('button', { name: 'Schedule post' })).toBeVisible();
+		await expect(composer.getByRole('button', { name: 'Schedule post' })).toHaveCount(0);
 		await expect(composer.getByRole('button', { name: 'Post visibility' })).toHaveCount(0);
 
 		await composer.getByLabel('Post text').fill('Drafting from the deck.');
