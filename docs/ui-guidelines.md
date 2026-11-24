@@ -30,3 +30,20 @@
 
 - Maintain usability across screen sizes, text sizes, and themes.
 - Localize user-facing text and accommodate different text lengths.
+
+## Identifier Display
+
+When displaying shortened NIP-19 identifiers, retain approximately the same amount of identifying information regardless of the identifier type.
+
+| Identifier | Prefix length |
+| ---------- | ------------: |
+| `npub`     |            12 |
+| `note`     |            12 |
+| `nevent`   |            17 |
+| `nprofile` |            19 |
+
+- Include the human-readable prefix and the separator `1` in the character count.
+- For `nevent` and `nprofile`, shorten the encoded identifier containing only the event ID or public key, respectively.
+- Display only the specified prefix, without an ellipsis or trailing characters.
+- Use shortened identifiers for display only. Preserve complete identifiers for copying, linking, and input.
+- Do not use shortened identifiers to determine identity or uniqueness.

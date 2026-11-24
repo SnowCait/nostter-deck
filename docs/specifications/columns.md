@@ -54,7 +54,7 @@ For user-targeted columns, resolve the display name in the following order:
 2. Profile `name`.
 3. Shortened `npub`.
 
-Use the same name resolution and fallback behavior as the existing `getProfileDisplayName()` function.
+Use the same name resolution and fallback behavior as the existing `getProfileDisplayName()` function. Shorten the `npub` according to [Identifier Display](../ui-guidelines.md#identifier-display).
 
 For search columns, use the configured search query with leading and trailing whitespace removed.
 
@@ -62,9 +62,9 @@ For channel columns, resolve the channel name in the following order:
 
 1. The name from the latest valid kind 41 metadata event authored by the creator of the kind 40 channel creation event.
 2. The name from the kind 40 channel creation event.
-3. The first 17 characters of the channel ID encoded as an `nevent` containing only the event ID.
+3. Shortened `nevent` of the channel ID.
 
-Ignore kind 41 metadata events authored by anyone other than the channel creator.
+Ignore kind 41 metadata events authored by anyone other than the channel creator. Shorten the `nevent` according to [Identifier Display](../ui-guidelines.md#identifier-display).
 
 Default titles are generated dynamically from the column configuration and available metadata and are not persisted.
 
