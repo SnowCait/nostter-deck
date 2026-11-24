@@ -141,7 +141,7 @@
 	"website_url": "Web サイト URL",
 	"follow_target": "npub または nprofile",
 	"search_query": "検索語",
-	"channel_target": "チャンネル ID または nevent",
+	"channel_target": "チャンネル ID",
 	"channel_post_text": "チャンネルメッセージ",
 	"channel_compose_placeholder": "メッセージ",
 	"custom_timeline_filters": "REQ フィルター",

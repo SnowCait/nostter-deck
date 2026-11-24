@@ -128,7 +128,7 @@ test('updates shared titles from metadata and stops watching channels that leave
 	await columnOptionsButton(duplicate).click();
 	await duplicate.getByRole('button', { name: 'Delete column' }).click();
 	await columnOptionsButton(channel).click();
-	await channel.getByLabel('Channel ID or nevent').fill(unavailableChannelId);
+	await channel.getByLabel('Channel ID').fill(unavailableChannelId);
 	await channel.getByRole('button', { name: 'Save' }).click();
 	await expect(channel.getByRole('heading')).toHaveText(
 		`Channel: ${unavailableChannelId.slice(0, 12)}`
