@@ -5,11 +5,11 @@ on:
     branches: [main]
     types: [opened, reopened, synchronize, labeled, unlabeled, edited]
 
-permissions: {}
+permissions:
+  pull-requests: read
 
 concurrency:
   group: release-label-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
 
 jobs:
   validate:
@@ -18,8 +18,11 @@ jobs:
     steps:
       - name: Check release labels
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          count=$(jq '[.pull_request.labels[].name | select(. == "release:major" or . == "release:minor" or . == "release:patch" or . == "release:none")] | length' "$GITHUB_EVENT_PATH")
+          count=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" | jq '[.labels[].name | select(. == "release:major" or . == "release:minor" or . == "release:patch" or . == "release:none")] | length')
           if [ "$count" -eq 0 ]; then
             echo "::error::Exactly one release label is required; none found."
             exit 1
