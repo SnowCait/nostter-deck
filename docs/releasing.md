@@ -6,7 +6,11 @@ Use `MAJOR.MINOR.PATCH` version numbers based on the impact of changes on users.
 
 - **MAJOR**: Backward-incompatible changes to user-facing functionality, supported platforms, or persisted user data.
 - **MINOR**: Backward-compatible additions and enhancements to user-facing functionality.
-- **PATCH**: Bug fixes, performance improvements, security fixes, and dependency updates affecting the distributed application.
+- **PATCH**: Bug fixes, UI and UX improvements to existing functionality, wording and display format improvements, performance improvements, security fixes, and dependency updates affecting the distributed application.
+
+Distinguish MINOR and PATCH by whether a change adds or enhances functionality or operations available to users, or only improves the quality of existing functionality. Adding a new column type or setting is MINOR. Improving an existing input label, placeholder, or identifier display format is PATCH.
+
+Classify changes by their impact on users, not by their size, implementation difficulty, or issue type.
 
 Git tags use the `vMAJOR.MINOR.PATCH` format and are the source of truth for release versions.
 
