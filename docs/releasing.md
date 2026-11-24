@@ -14,6 +14,12 @@ Classify changes by their impact on users, not by their size, implementation dif
 
 Git tags use the `vMAJOR.MINOR.PATCH` format and are the source of truth for release versions.
 
+Update the application version in `package.json` and synchronize `package-lock.json` through a dedicated pull request before releasing.
+
+Assign `release:none` to version update pull requests.
+
+Automate the creation and merging of version update pull requests using a GitHub App without bypassing branch protection or required checks.
+
 ## Pull Requests
 
 Assign exactly one release label to each pull request before merging.
@@ -47,13 +53,17 @@ Skip the release if no changes require one.
 
 Release the web and native applications from the same source commit with the same version number.
 
-Apply the release version during the build without creating version update commits.
+Build applications using the committed version without modifying it during the build.
+
+Ensure that the release tag and distributed applications match the application version recorded in the tagged source commit.
 
 Deploy the web application to GitHub Pages and distribute native application packages through GitHub Releases.
 
 Generate release notes automatically from the included pull requests.
 
 ## Release Validation and Recovery
+
+Verify that the calculated release version matches the committed application version at the selected release commit.
 
 Require successful CI checks for the release commit and successful builds for all distribution targets before publishing.
 
