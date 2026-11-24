@@ -7,10 +7,6 @@ on:
 
 permissions: {}
 
-concurrency:
-  group: release-label-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   validate:
     name: Validate release label
