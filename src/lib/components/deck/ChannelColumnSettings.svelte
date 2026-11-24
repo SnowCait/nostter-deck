@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { neventEncode } from 'nostr-tools/nip19';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { ChannelTimelineColumnConfig } from '$lib/deck/types';
 	import type { RelaySelection } from '$lib/nostr/relays';
@@ -50,7 +51,7 @@
 		targetDraftColumnId = column.id;
 		targetDraftSource = column.channelId;
 		relayDraftSource = nextRelayDraft;
-		targetDraft = column.channelId;
+		targetDraft = neventEncode({ id: column.channelId });
 		relayDraft = column.relays;
 	});
 

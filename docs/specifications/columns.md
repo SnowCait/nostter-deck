@@ -62,7 +62,7 @@ For channel columns, resolve the channel name in the following order:
 
 1. The name from the latest valid kind 41 metadata event authored by the creator of the kind 40 channel creation event.
 2. The name from the kind 40 channel creation event.
-3. The shortened channel ID.
+3. The first 17 characters of the channel ID encoded as an `nevent` containing only the event ID.
 
 Ignore kind 41 metadata events authored by anyone other than the channel creator.
 
@@ -108,6 +108,8 @@ The existing default title behavior for Custom Timeline and Website columns rema
 
 - Display Nostr channel messages (kind 42) belonging to a specified channel.
 - Allow users to select the target channel and the relays used to retrieve messages.
+- Accept a channel ID in hexadecimal or `nevent` format. Display the saved channel ID as a complete `nevent` containing only the event ID when editing settings.
+- Keep the channel ID in hexadecimal form in saved settings.
 - If the channel reference includes relay information, use it when determining the initial relay selection.
 - Users can change the target channel and relay settings after creating the column.
 

@@ -1,6 +1,6 @@
 import { expect, test, type WebSocketRoute } from '@playwright/test';
 import type { Filter } from 'nostr-tools/filter';
-import { npubEncode } from 'nostr-tools/nip19';
+import { neventEncode, npubEncode } from 'nostr-tools/nip19';
 import { ChannelCreation, ChannelMetadata, Metadata } from 'nostr-tools/kinds';
 import {
 	addPresetColumn,
@@ -108,7 +108,9 @@ test('updates shared titles from metadata and stops watching channels that leave
 
 	await addPresetColumn(page, 'timeline_channel', { channelTarget: channelId });
 	const channel = columns.nth(1);
-	await expect(channel.getByRole('heading')).toHaveText(`Channel: ${channelId.slice(0, 12)}`);
+	await expect(channel.getByRole('heading')).toHaveText(
+		`Channel: ${neventEncode({ id: channelId }).slice(0, 17)}`
+	);
 	await expect.poll(() => channels.length).toBeGreaterThan(0);
 	for (const { socket, id } of channels) {
 		sendEvent(socket, id, ChannelCreation, channelId, 'Original', 1);
@@ -131,14 +133,14 @@ test('updates shared titles from metadata and stops watching channels that leave
 	await channel.getByLabel('Channel ID').fill(unavailableChannelId);
 	await channel.getByRole('button', { name: 'Save' }).click();
 	await expect(channel.getByRole('heading')).toHaveText(
-		`Channel: ${unavailableChannelId.slice(0, 12)}`
+		`Channel: ${neventEncode({ id: unavailableChannelId }).slice(0, 17)}`
 	);
 	await expect.poll(() => channels.every(({ closed }) => closed)).toBe(true);
 
 	await page.getByRole('button', { name: 'Settings' }).click();
 	await selectDropdownOption(page, page.getByLabel('Language'), 'JA');
 	await expect(channel.getByRole('heading')).toHaveText(
-		`チャンネル: ${unavailableChannelId.slice(0, 12)}`
+		`チャンネル: ${neventEncode({ id: unavailableChannelId }).slice(0, 17)}`
 	);
 	await expect(sidebarButton(page, 'フォロー: Alicia')).toBeVisible();
 });

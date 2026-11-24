@@ -1,5 +1,5 @@
 import { ChannelCreation, ChannelMetadata } from 'nostr-tools/kinds';
-import { npubEncode } from 'nostr-tools/nip19';
+import { neventEncode, npubEncode } from 'nostr-tools/nip19';
 import type * as Nostr from 'nostr-typedef';
 import { describe, expect, test } from 'vitest';
 import type { Profile } from '$lib/nostr/profiles';
@@ -55,7 +55,7 @@ describe('column titles', () => {
 
 	test('prefers a custom title and resumes the current channel title when cleared', () => {
 		const config = { ...column, sourceKey: 'timeline_channel', channelId, relays } as const;
-		expect(title(config)).toBe(`Channel: ${channelId.slice(0, 12)}`);
+		expect(title(config)).toBe(`Channel: ${neventEncode({ id: channelId }).slice(0, 17)}`);
 		expect(title({ ...config, title: 'Pinned title' }, undefined, 'Renamed')).toBe('Pinned title');
 		expect(title({ ...config, title: '' }, undefined, 'Renamed')).toBe('Channel: Renamed');
 	});

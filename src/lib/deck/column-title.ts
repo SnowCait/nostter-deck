@@ -1,4 +1,5 @@
 import { ChannelCreation, ChannelMetadata } from 'nostr-tools/kinds';
+import { neventEncode } from 'nostr-tools/nip19';
 import type * as Nostr from 'nostr-typedef';
 import { getProfileDisplayName, type Profile } from '$lib/nostr/profiles';
 import { m } from '$lib/paraglide/messages.js';
@@ -32,7 +33,7 @@ export function getColumnTitle(
 		case 'timeline_search':
 			return `${label}: ${column.query.trim()}`;
 		case 'timeline_channel':
-			return `${label}: ${getChannelName(column.channelId) ?? column.channelId.slice(0, 12)}`;
+			return `${label}: ${getChannelName(column.channelId) ?? neventEncode({ id: column.channelId }).slice(0, 17)}`;
 	}
 }
 
