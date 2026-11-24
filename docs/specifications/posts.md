@@ -39,6 +39,7 @@ Display elapsed time using the following units.
 
 - Round down to the nearest whole unit.
 - Display future timestamps as `0s`.
+- Update relative timestamps automatically as time passes, without requiring new events, unrelated UI changes, or an application reload.
 
 ### 1.4 Layout
 
