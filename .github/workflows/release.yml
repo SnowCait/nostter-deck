@@ -5,6 +5,10 @@ on:
 
 permissions: {}
 
+defaults:
+  run:
+    shell: bash
+
 concurrency:
   group: release
   cancel-in-progress: false
