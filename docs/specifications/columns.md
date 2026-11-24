@@ -118,7 +118,7 @@ The existing default title behavior for Custom Timeline and Website columns rema
 - Display posts authored by a specified user.
 - Identify the target user by public key. Each column can have its own target user.
 - Include kind 1 text notes, including quote posts.
-- Provide the following independently configurable options, both enabled by default:
+- Create columns with the following options enabled by default. Users can configure them independently after creation:
   - **Include replies:** Include kind 1 replies.
   - **Include reposts:** Include kind 6 reposts.
 - Treat quote posts as regular kind 1 posts without a separate visibility option. A `q` tag alone does not make a post a reply.
@@ -148,7 +148,7 @@ The existing default title behavior for Custom Timeline and Website columns rema
 - Display each event only once, even when it matches multiple notification types, and indicate the applicable types.
 - Display qualifying notifications while referenced posts are being retrieved, and keep displaying them if retrieval fails. When a reference is retrieved and its author disproves a notification type that depends on the referenced author, remove that type and display the event only if another type still applies.
 - Allow users to configure **Include own events** independently for each column:
-  - Off by default. Changing this setting affects which retrieved events are displayed without changing the subscription filter.
+  - Create columns with this setting off. Users can change it after creation, affecting which retrieved events are displayed without changing the subscription filter.
   - When off, exclude events authored by the target user.
   - When on, include events authored by the target user if they satisfy the same notification eligibility and classification rules.
 - Display notification types and related content, and allow users to open the related post or thread.

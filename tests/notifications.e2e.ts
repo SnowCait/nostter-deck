@@ -20,7 +20,6 @@ async function addNotifications(page: Page, pubkey: string) {
 	await input.fill(pubkey);
 	await expect(save).toBeDisabled();
 	await input.fill(npubEncode(pubkey));
-	await expect(dialog.getByLabel('Include own events')).not.toBeChecked();
 	await save.click();
 }
 
@@ -94,6 +93,9 @@ test('enriches notifications asynchronously and restores independent column sett
 	await openDeck(page);
 	await addNotifications(page, target);
 	const first = deckColumns(page).first();
+	await expect
+		.poll(() => readStoredColumns(page))
+		.toEqual([expect.objectContaining({ includeOwnEvents: false })]);
 	await expect.poll(() => timelineRequests).toContainEqual({ relay: readRelay, pubkey: target });
 	expect(timelineRequests).not.toContainEqual({ relay: writeRelay, pubkey: target });
 	await expect(first.getByText('Provisional quote', { exact: true })).toBeVisible();

@@ -51,14 +51,16 @@
 	]}
 	bind:value={draft.target}
 />
-<label class={['mb-2 flex items-center gap-2', textClass.control]}>
-	<input type="checkbox" bind:checked={draft.includeReplies} />
-	{m.user_posts_include_replies()}
-</label>
-<label class={['mb-3 flex items-center gap-2', textClass.control]}>
-	<input type="checkbox" bind:checked={draft.includeReposts} />
-	{m.user_posts_include_reposts()}
-</label>
+{#if settings}
+	<label class={['mb-2 flex items-center gap-2', textClass.control]}>
+		<input type="checkbox" bind:checked={draft.includeReplies} />
+		{m.user_posts_include_replies()}
+	</label>
+	<label class={['mb-3 flex items-center gap-2', textClass.control]}>
+		<input type="checkbox" bind:checked={draft.includeReposts} />
+		{m.user_posts_include_reposts()}
+	</label>
+{/if}
 <RelaySelectionEditor {id} bind:value={draft.relays} targetPubkey={pubkey} {textClass} />
 {#if onSave}
 	<button

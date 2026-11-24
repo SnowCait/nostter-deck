@@ -95,8 +95,6 @@ test('uses target write relays and persists independent User Posts settings', as
 	const dialog = await openAddUserPosts(page);
 	await expect(dialog.getByRole('radio', { name: targetRelayLabel })).toBeChecked();
 	await expect(dialog.getByRole('radio', { name: 'Account', exact: true })).toHaveCount(0);
-	await expect(dialog.getByLabel('Include replies')).toBeChecked();
-	await expect(dialog.getByLabel('Include reposts')).toBeChecked();
 	const input = dialog.getByLabel('Target user public key');
 	const save = dialog.getByRole('button', { name: 'Save' });
 	await input.fill('invalid key');
@@ -104,6 +102,9 @@ test('uses target write relays and persists independent User Posts settings', as
 	await input.fill(npubEncode(target));
 	await save.click();
 	const first = deckColumns(page).first();
+	await expect
+		.poll(() => readStoredColumns(page))
+		.toEqual([expect.objectContaining({ includeReplies: true, includeReposts: true })]);
 	await expect.poll(() => requests).toContainEqual({ relay: writeRelay, pubkey: target });
 	expect(requests).not.toContainEqual({ relay: readRelay, pubkey: target });
 	await expect(first.getByText('Quote from target', { exact: true })).toBeVisible();
