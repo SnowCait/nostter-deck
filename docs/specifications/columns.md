@@ -168,6 +168,15 @@ The existing default title behavior for Custom Timeline and Website columns rema
 - Only HTTPS URLs are accepted. If the input omits a URL scheme, prepend HTTPS.
 - When no custom title is set, display the URL's hostname.
 
+### 3.8 Timeline Author Sources
+
+Follow Timeline columns and custom timelines with an event address in an author filter share these rules.
+
+- Use a cached author-source event when available so post retrieval can start while the relay request is in progress.
+- Request the latest author-source event from relays once when the timeline subscription starts. If the cache is unavailable, use the relay result to resolve the authors.
+- If the relay refresh fails, continue retrieving posts with the cached author-source event when available.
+- When the resolved set of authors changes, update which authors the timeline retrieves and retain the posts already retrieved.
+
 ## 4. Column Actions from Posts
 
 - Selecting a hashtag in a post can open a search column using that hashtag as the search query.

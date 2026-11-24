@@ -98,7 +98,7 @@ export function getFilterAuthorAddress(filter: NostrFilter) {
 	return parseAuthorAddress(filter.authors);
 }
 
-export function expandAddressAuthors(filter: NostrFilter, authors: string[]): NostrFilter | null {
+export function expandAddressAuthors(filter: NostrFilter, authors: string[]) {
 	const uniqueAuthors = [...new Set(authors.flatMap((author) => normalizePubkey(author) ?? []))];
 	if (uniqueAuthors.length === 0) {
 		return null;
