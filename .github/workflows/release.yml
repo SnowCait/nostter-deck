@@ -3,15 +3,22 @@ name: Release
 on:
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pull-requests: read
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   plan:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+      actions: read
     outputs:
+      should-release: ${{ steps.validate.outputs.should-release }}
       commit-sha: ${{ github.sha }}
       previous-ref: ${{ steps.version.outputs.previous-ref }}
       first-release: ${{ steps.version.outputs.first-release }}
@@ -24,6 +31,15 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Reject unfinished releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          releases=$(gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -c 'add // []')
+          if jq -e 'any(.[]; .draft)' <<< "$releases" >/dev/null; then
+            echo 'An unfinished draft release exists' >&2
+            exit 1
+          fi
       - id: version
         uses: WillAbides/release-train@v3.9.0
         with:
@@ -36,6 +52,30 @@ jobs:
           initial-release-tag: v1.0.0
           create-tag: false
           create-release: false
+      - name: Validate release plan and CI
+        id: validate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FIRST_RELEASE: ${{ steps.version.outputs.first-release }}
+          PREVIOUS_REF: ${{ steps.version.outputs.previous-ref }}
+          CHANGE_LEVEL: ${{ steps.version.outputs.change-level }}
+        run: |
+          tags=$(git tag --sort=-version:refname | grep -E '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' || true)
+          latest=$(printf '%s\n' "$tags" | head -n 1)
+          if [[ "$FIRST_RELEASE" == true ]]; then
+            [[ -z "$latest" ]] || { echo 'Unexpected previous tag' >&2; exit 1; }
+          else
+            [[ "$latest" == "$PREVIOUS_REF" ]] || { echo 'Previous release tag does not match' >&2; exit 1; }
+            releases=$(gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -c 'add // []')
+            jq -e --arg tag "$PREVIOUS_REF" 'any(.[]; .tag_name == $tag and .draft == false)' <<< "$releases" >/dev/null || { echo 'Previous published release is missing' >&2; exit 1; }
+          fi
+          if [[ "$FIRST_RELEASE" != true && "$CHANGE_LEVEL" == none ]]; then
+            echo 'should-release=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          run=$(gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" -f branch=main -f event=push -f head_sha="$GITHUB_SHA" -F per_page=1 --jq '.workflow_runs[0]')
+          jq -e '.status == "completed" and .conclusion == "success"' <<< "$run" >/dev/null || { echo 'Latest CI run is not successful' >&2; exit 1; }
+          echo 'should-release=true' >> "$GITHUB_OUTPUT"
       - name: Summarize release plan
         env:
           COMMIT_SHA: ${{ github.sha }}
@@ -54,3 +94,216 @@ jobs:
             printf -- '- Release tag: `%s`\n' "$RELEASE_TAG"
             printf -- '- Change level: `%s`\n' "$CHANGE_LEVEL"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  build-web:
+    needs: plan
+    if: needs.plan.outputs.should-release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.commit-sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24.x'
+          cache: npm
+      - uses: actions/configure-pages@v6.0.0
+      - run: npm ci
+      - name: Set release version
+        env:
+          RELEASE_VERSION: ${{ needs.plan.outputs.release-version }}
+        run: npm version "$RELEASE_VERSION" --no-git-tag-version
+      - run: npm run paraglide:compile
+      - run: npm run build
+      - name: Bundle Report
+        run: |
+          {
+            echo '# Bundle Report'
+            echo
+            echo '## Client'
+            sed -n '2,10p' .svelte-kit/output/client/stats.md
+            echo '## Server'
+            sed -n '2,10p' .svelte-kit/output/server/stats.md
+            echo '<details><summary>Client Details</summary>'
+            echo
+            cat .svelte-kit/output/client/stats.md
+            echo
+            echo '</details>'
+            echo '<details><summary>Server Details</summary>'
+            echo
+            cat .svelte-kit/output/server/stats.md
+            echo
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - run: touch build/.nojekyll
+      - uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: build
+
+  build-native:
+    needs: plan
+    if: needs.plan.outputs.should-release == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/native-build.yml
+    with:
+      ref: ${{ needs.plan.outputs.commit-sha }}
+      version: ${{ needs.plan.outputs.release-version }}
+
+  prepare-release:
+    needs: [plan, build-web, build-native]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      release-id: ${{ steps.prepare.outputs.release-id }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      COMMIT_SHA: ${{ needs.plan.outputs.commit-sha }}
+      PREVIOUS_REF: ${{ needs.plan.outputs.previous-ref }}
+      FIRST_RELEASE: ${{ needs.plan.outputs.first-release }}
+      RELEASE_TAG: ${{ needs.plan.outputs.release-tag }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.commit-sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          pattern: nostter-deck-*
+          path: native-artifacts
+      - name: Validate packages
+        run: |
+          shopt -s nullglob
+          mkdir release-assets
+          declare -A names
+          files_to_copy=()
+          targets=()
+          collision=false
+          for target in windows-x64-nsis macos-arm64-dmg macos-x64-dmg linux-x64-deb; do
+            case "$target" in
+              windows-*) ext=exe ;;
+              macos-*) ext=dmg ;;
+              linux-*) ext=deb ;;
+            esac
+            files=("native-artifacts/nostter-deck-$target"/*."$ext")
+            [[ ${#files[@]} -gt 0 ]] || { echo "Missing packages for $target" >&2; exit 1; }
+            for file in "${files[@]}"; do
+              name=$(basename "$file")
+              if [[ -n "${names[$name]:-}" ]]; then collision=true; fi
+              names[$name]=1
+              files_to_copy+=("$file")
+              targets+=("$target")
+            done
+          done
+          for i in "${!files_to_copy[@]}"; do
+            file="${files_to_copy[$i]}"
+            name=$(basename "$file")
+            if [[ "$collision" == true ]]; then name="${targets[$i]}-$name"; fi
+            cp -n -- "$file" "release-assets/$name"
+          done
+      - name: Check release state
+        id: state
+        run: bash .github/scripts/release-state.sh prepare
+      - name: Prepare draft and upload packages
+        id: prepare
+        env:
+          EXISTING_ID: ${{ steps.state.outputs.release-id }}
+        run: |
+          id="$EXISTING_ID"
+          if [[ -z "$id" ]]; then
+            args=(--draft --target "$COMMIT_SHA" --title "$RELEASE_TAG (run $GITHUB_RUN_ID)" --generate-notes)
+            if [[ "$FIRST_RELEASE" != true ]]; then args+=(--notes-start-tag "$PREVIOUS_REF"); fi
+            gh release create "$RELEASE_TAG" "${args[@]}"
+            id=$(gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -er --arg tag "$RELEASE_TAG" --arg sha "$COMMIT_SHA" --arg title "$RELEASE_TAG (run $GITHUB_RUN_ID)" '[add[] | select(.draft and .tag_name == $tag and .target_commitish == $sha and .name == $title)] | if length == 1 then .[0].id else error("Draft not found or ambiguous") end')
+          fi
+          for file in release-assets/*; do
+            name=$(basename "$file")
+            assets=$(gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases/$id/assets?per_page=100" | jq -c 'add // []')
+            asset=$(jq -c --arg name "$name" '[.[] | select(.name == $name)]' <<< "$assets")
+            count=$(jq 'length' <<< "$asset")
+            [[ "$count" -le 1 ]] || { echo "Duplicate asset: $name" >&2; exit 1; }
+            if [[ "$count" == 1 ]]; then
+              state=$(jq -r '.[0].state' <<< "$asset")
+              if [[ "$state" == uploaded ]]; then
+                digest=$(jq -r '.[0].digest // empty' <<< "$asset")
+                [[ "$digest" == "sha256:$(sha256sum "$file" | cut -d ' ' -f 1)" ]] || { echo "Asset digest mismatch: $name" >&2; exit 1; }
+                continue
+              elif [[ "$state" == starter ]]; then
+                asset_id=$(jq -r '.[0].id' <<< "$asset")
+                gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id"
+              else
+                echo "Unexpected asset state: $name" >&2; exit 1
+              fi
+            fi
+            gh release upload "$RELEASE_TAG" "$file"
+          done
+          assets=$(gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases/$id/assets?per_page=100" | jq -c 'add // []')
+          for file in release-assets/*; do
+            name=$(basename "$file")
+            digest="sha256:$(sha256sum "$file" | cut -d ' ' -f 1)"
+            jq -e --arg name "$name" --arg digest "$digest" 'any(.[]; .name == $name and .state == "uploaded" and .digest == $digest)' <<< "$assets" >/dev/null || { echo "Asset not verified: $name" >&2; exit 1; }
+          done
+          echo "release-id=$id" >> "$GITHUB_OUTPUT"
+
+  deploy-pages:
+    needs: [plan, prepare-release]
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      COMMIT_SHA: ${{ needs.plan.outputs.commit-sha }}
+      PREVIOUS_REF: ${{ needs.plan.outputs.previous-ref }}
+      FIRST_RELEASE: ${{ needs.plan.outputs.first-release }}
+      RELEASE_TAG: ${{ needs.plan.outputs.release-tag }}
+      RELEASE_ID: ${{ needs.prepare-release.outputs.release-id }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.commit-sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check release state
+        run: bash .github/scripts/release-state.sh deploy
+      - id: deployment
+        uses: actions/deploy-pages@v5.0.1
+
+  publish-release:
+    needs: [plan, prepare-release, deploy-pages]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      COMMIT_SHA: ${{ needs.plan.outputs.commit-sha }}
+      PREVIOUS_REF: ${{ needs.plan.outputs.previous-ref }}
+      FIRST_RELEASE: ${{ needs.plan.outputs.first-release }}
+      RELEASE_TAG: ${{ needs.plan.outputs.release-tag }}
+      RELEASE_ID: ${{ needs.prepare-release.outputs.release-id }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.commit-sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check release state
+        id: state
+        run: bash .github/scripts/release-state.sh publish
+      - name: Publish release
+        if: steps.state.outputs.already-published != 'true'
+        run: |
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" -F draft=false -f name="$RELEASE_TAG" -f target_commitish="$COMMIT_SHA"
+      - name: Verify release tag
+        run: |
+          git fetch --force origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          [[ "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" == "$COMMIT_SHA" ]]

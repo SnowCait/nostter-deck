@@ -2,6 +2,14 @@ name: Native build
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -39,6 +47,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
         with:
+          ref: ${{ inputs.ref || github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@v7.1.0
         with:
@@ -53,6 +62,12 @@ jobs:
         working-directory: src-tauri
         run: rustup toolchain install
       - run: npm ci
+      - name: Set release version
+        if: inputs.version != ''
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: npm version "$RELEASE_VERSION" --no-git-tag-version
       - name: Build application package
         env:
           # Tauri uses this certificate-free signing identity on macOS.
