@@ -738,14 +738,20 @@ test.describe('nostter deck', () => {
 			customRelays: channelRelay
 		});
 
-		await expectColumnOrder(columns, [...columnNames, `Channel: ${channelId.slice(0, 12)}`]);
+		await expectColumnOrder(columns, [
+			...columnNames,
+			`Channel: ${neventEncode({ id: channelId }).slice(0, 17)}`
+		]);
 		await expectStoredChannelColumn(page, channelId, {
 			type: 'custom',
 			urls: expect.arrayContaining([...defaultRelays, channelRelay])
 		});
 
 		await page.reload();
-		await expectColumnOrder(columns, [...columnNames, `Channel: ${channelId.slice(0, 12)}`]);
+		await expectColumnOrder(columns, [
+			...columnNames,
+			`Channel: ${neventEncode({ id: channelId }).slice(0, 17)}`
+		]);
 		await expectStoredChannelColumn(page, channelId, {
 			type: 'custom',
 			urls: expect.arrayContaining([...defaultRelays, channelRelay])
@@ -762,17 +768,22 @@ test.describe('nostter deck', () => {
 		await addPresetColumn(page, 'timeline_channel', { channelTarget: channelId });
 
 		const channelColumn = columns.first();
-		await expectColumnOrder(columns, [`Channel: ${channelId.slice(0, 12)}`]);
+		await expectColumnOrder(columns, [`Channel: ${neventEncode({ id: channelId }).slice(0, 17)}`]);
 		await expectStoredChannelColumn(page, channelId);
 
 		await columnOptionsButton(channelColumn).click();
+		await expect(channelColumn.getByLabel('Channel ID')).toHaveValue(
+			neventEncode({ id: channelId })
+		);
+		await channelColumn.getByLabel('Channel ID').fill(channelId);
+		await expect(channelColumn.getByLabel('Channel ID')).toHaveValue(channelId);
 		await channelColumn.getByText('Account', { exact: true }).click();
 		await channelColumn.getByRole('button', { name: 'Save' }).click();
 		await expectStoredChannelColumn(page, channelId, {
 			type: 'nip65',
 			pubkey: textEventPubkey
 		});
-		await expectColumnOrder(columns, [`Channel: ${channelId.slice(0, 12)}`]);
+		await expectColumnOrder(columns, [`Channel: ${neventEncode({ id: channelId }).slice(0, 17)}`]);
 
 		await columnOptionsButton(channelColumn).click();
 		await channelColumn.getByText('Default', { exact: true }).click();
@@ -796,7 +807,7 @@ test.describe('nostter deck', () => {
 			type: 'custom',
 			urls: expect.arrayContaining([...defaultRelays, customRelay])
 		});
-		await expectColumnOrder(columns, [`Channel: ${channelId.slice(0, 12)}`]);
+		await expectColumnOrder(columns, [`Channel: ${neventEncode({ id: channelId }).slice(0, 17)}`]);
 	});
 
 	test('changes and persists column title and icon', async ({ page }) => {
