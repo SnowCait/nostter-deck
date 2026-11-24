@@ -73,11 +73,11 @@ describe('relay selection controller', () => {
 				['r', 'wss://both.example/']
 			]
 		});
-		const selection = { type: 'nip65-write', pubkey: pubkeyA } as const;
-		expect(controller.resolveRelaySelection(selection)).toEqual([...defaultRelays]);
+		const selection = { type: 'nip65', pubkey: pubkeyA } as const;
+		expect(controller.resolveRelaySelection(selection, 'write')).toEqual([...defaultRelays]);
 		controller.refreshNip65RelayList(pubkeyA);
 		await Promise.resolve();
-		expect(controller.resolveRelaySelection(selection)).toEqual([
+		expect(controller.resolveRelaySelection(selection, 'write')).toEqual([
 			'wss://write.example/',
 			'wss://both.example/'
 		]);

@@ -150,7 +150,7 @@ test('uses target write relays and persists independent User Posts settings', as
 				pubkey: target,
 				includeReplies: false,
 				includeReposts: true,
-				relays: { type: 'nip65-write', pubkey: target }
+				relays: { type: 'nip65', pubkey: target }
 			}),
 			expect.objectContaining({
 				sourceKey: 'timeline_user_posts',

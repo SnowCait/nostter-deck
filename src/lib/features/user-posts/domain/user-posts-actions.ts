@@ -5,11 +5,9 @@ import { isShortTextNoteReplyEvent } from '$lib/nostr/posts';
 import { normalizePubkey } from '$lib/nostr/pubkeys';
 import type { RelaySelection } from '$lib/nostr/relays';
 
-export type UserPostsRelaySelection = Exclude<RelaySelection, { type: 'nip65' }>;
-
 export type UserPostsSettings = {
 	pubkey: string;
-	relays: UserPostsRelaySelection;
+	relays: RelaySelection;
 	includeReplies: boolean;
 	includeReposts: boolean;
 };
@@ -25,13 +23,13 @@ export function parseUserPostsTarget(input: string) {
 
 export function resolveUserPostsSettings(draft: UserPostsDraft): UserPostsSettings | null {
 	const pubkey = parseUserPostsTarget(draft.target);
-	if (!pubkey || !draft.relays || draft.relays.type === 'nip65') {
+	if (!pubkey || !draft.relays) {
 		return null;
 	}
 
 	return {
 		pubkey,
-		relays: draft.relays.type === 'nip65-write' ? { type: 'nip65-write', pubkey } : draft.relays,
+		relays: draft.relays.type === 'nip65' ? { type: 'nip65', pubkey } : draft.relays,
 		includeReplies: draft.includeReplies,
 		includeReposts: draft.includeReposts
 	};

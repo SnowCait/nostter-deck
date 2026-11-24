@@ -122,11 +122,8 @@ export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 				}
 				if (candidate.sourceKey === 'timeline_user_posts') {
 					const normalizedPubkey = normalizePubkey(pubkey);
-					const normalizedRelays =
-						normalizedPubkey && candidate.relays?.type === 'nip65-write'
-							? { type: 'nip65-write' as const, pubkey: normalizedPubkey }
-							: normalizeRelaySelection(relays);
-					if (!normalizedPubkey || !normalizedRelays || normalizedRelays.type === 'nip65') {
+					const normalizedRelays = normalizeRelaySelection(relays);
+					if (!normalizedPubkey || !normalizedRelays) {
 						return [];
 					}
 
@@ -136,7 +133,10 @@ export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 						timelineKind: 'preset',
 						sourceKey: candidate.sourceKey,
 						pubkey: normalizedPubkey,
-						relays: normalizedRelays,
+						relays:
+							normalizedRelays.type === 'nip65'
+								? { type: 'nip65', pubkey: normalizedPubkey }
+								: normalizedRelays,
 						includeReplies: candidate.includeReplies !== false,
 						includeReposts: candidate.includeReposts !== false,
 						width: candidate.width

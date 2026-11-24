@@ -58,16 +58,14 @@
 			return;
 		}
 
-		if (value.type === 'nip65-write') {
-			relaySelectionMode = 'account';
-			selectedDefaultRelays = [];
-			customRelayDraft = '';
-			return;
-		}
-
 		if (value.type === 'nip65') {
 			relaySelectionMode = 'account';
-			selectedAccountRelayPubkey = value.pubkey;
+			if (useTargetRelays) {
+				selectedDefaultRelays = [];
+				customRelayDraft = '';
+			} else {
+				selectedAccountRelayPubkey = value.pubkey;
+			}
 			return;
 		}
 
@@ -130,7 +128,7 @@
 
 		if (relaySelectionMode === 'account') {
 			if (useTargetRelays) {
-				return { type: 'nip65-write' as const, pubkey: targetPubkey ?? '' };
+				return { type: 'nip65' as const, pubkey: targetPubkey ?? '' };
 			}
 			return selectedAccountRelayPubkey
 				? { type: 'nip65' as const, pubkey: selectedAccountRelayPubkey }

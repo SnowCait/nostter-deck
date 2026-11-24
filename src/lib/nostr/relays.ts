@@ -1,10 +1,7 @@
 import { normalizePubkey } from './pubkeys';
 
 export type RelaySelection =
-	| { type: 'default' }
-	| { type: 'custom'; urls: string[] }
-	| { type: 'nip65'; pubkey: string }
-	| { type: 'nip65-write'; pubkey: string };
+	{ type: 'default' } | { type: 'custom'; urls: string[] } | { type: 'nip65'; pubkey: string };
 
 export const defaultRelays = ['wss://relay.damus.io/', 'wss://nos.lol/'] as const;
 export const searchRelays = ['wss://nostr.wine/', 'wss://search.nos.today/'] as const;
@@ -107,8 +104,7 @@ export function normalizeRelaySelection(value: unknown): RelaySelection | null {
 
 export function resolveRelaySelection(
 	selection: RelaySelection,
-	getNip65ReadRelays?: (pubkey: string) => string[],
-	getNip65WriteRelays?: (pubkey: string) => string[]
+	getNip65Relays?: (pubkey: string) => string[]
 ) {
 	if (selection.type === 'default') {
 		return [...defaultRelays];
@@ -118,8 +114,7 @@ export function resolveRelaySelection(
 		return selection.urls;
 	}
 
-	const lookup = selection.type === 'nip65-write' ? getNip65WriteRelays : getNip65ReadRelays;
-	const nip65Relays = lookup?.(selection.pubkey) ?? [];
+	const nip65Relays = getNip65Relays?.(selection.pubkey) ?? [];
 	return nip65Relays.length > 0 ? nip65Relays : [...defaultRelays];
 }
 

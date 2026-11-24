@@ -50,13 +50,13 @@ test('filters replies and kind 6 reposts independently and keeps quote-only post
 test('retargets only the target-user relay selection and requires a valid public key and relay choice', () => {
 	const draft: UserPostsDraft = {
 		target: npubEncode(other),
-		relays: { type: 'nip65-write', pubkey },
+		relays: { type: 'nip65', pubkey },
 		includeReplies: false,
 		includeReposts: true
 	};
 	expect(resolveUserPostsSettings(draft)).toEqual({
 		pubkey: other,
-		relays: { type: 'nip65-write', pubkey: other },
+		relays: { type: 'nip65', pubkey: other },
 		includeReplies: false,
 		includeReposts: true
 	});

@@ -24,7 +24,7 @@
 	let draft = $state<UserPostsDraft>(
 		untrack(() => ({
 			target: settings ? encodeNpub(settings.pubkey) : '',
-			relays: settings?.relays ?? { type: 'nip65-write', pubkey: '' },
+			relays: settings?.relays ?? { type: 'nip65', pubkey: '' },
 			includeReplies: settings?.includeReplies ?? true,
 			includeReposts: settings?.includeReposts ?? true
 		}))

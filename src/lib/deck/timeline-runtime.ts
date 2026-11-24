@@ -31,6 +31,7 @@ export type TimelineRuntime = {
 export type TimelineRequest = {
 	filters: NostrFilter[];
 	relays: RelaySelection;
+	relayDirection?: 'write';
 };
 
 export const timelinePageSize = 100;
@@ -93,7 +94,8 @@ export function getTimelineRequest(column: ColumnConfig): TimelineRequest | null
 					limit: presetTimelineInitialLimit
 				}
 			],
-			relays: column.relays
+			relays: column.relays,
+			relayDirection: 'write'
 		};
 	}
 

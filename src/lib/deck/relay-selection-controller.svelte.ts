@@ -40,11 +40,7 @@ export function getAccountRelayOptions(accounts: AccountRecord[]): AccountRelayO
 export function getNip65RelaySelectionPubkeys(columns: ColumnConfig[]) {
 	const pubkeys: string[] = [];
 	for (const column of columns) {
-		if (
-			column.type !== 'timeline' ||
-			!('relays' in column) ||
-			(column.relays.type !== 'nip65' && column.relays.type !== 'nip65-write')
-		) {
+		if (column.type !== 'timeline' || !('relays' in column) || column.relays.type !== 'nip65') {
 			continue;
 		}
 
@@ -85,12 +81,9 @@ export function createRelaySelectionController({
 		});
 	}
 
-	function resolveRelaySelection(selection: RelaySelection) {
-		return resolveSelectionRelays(
-			selection,
-			(pubkey) => getNip65ReadRelays(getRelayTags(pubkey)),
-			(pubkey) => getNip65WriteRelays(getRelayTags(pubkey))
-		);
+	function resolveRelaySelection(selection: RelaySelection, direction: 'read' | 'write' = 'read') {
+		const getRelays = direction === 'write' ? getNip65WriteRelays : getNip65ReadRelays;
+		return resolveSelectionRelays(selection, (pubkey) => getRelays(getRelayTags(pubkey)));
 	}
 
 	$effect(() => {
