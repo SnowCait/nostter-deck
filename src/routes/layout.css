@@ -117,6 +117,16 @@
 }
 
 @layer base {
+	input::placeholder,
+	textarea::placeholder {
+		@apply text-slate-400;
+	}
+
+	.dark input::placeholder,
+	.dark textarea::placeholder {
+		@apply text-slate-500;
+	}
+
 	* {
 		@apply border-border outline-ring/50;
 	}
