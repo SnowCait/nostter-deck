@@ -1,0 +1,30 @@
+name: Release label
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, labeled, unlabeled, edited]
+
+permissions: {}
+
+concurrency:
+  group: release-label-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate release label
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check release labels
+        shell: bash
+        run: |
+          count=$(jq '[.pull_request.labels[].name | select(. == "release:major" or . == "release:minor" or . == "release:patch" or . == "release:none")] | length' "$GITHUB_EVENT_PATH")
+          if [ "$count" -eq 0 ]; then
+            echo "::error::Exactly one release label is required; none found."
+            exit 1
+          elif [ "$count" -gt 1 ]; then
+            echo "::error::Exactly one release label is required; found $count."
+            exit 1
+          fi
+          echo "Exactly one release label is present."
