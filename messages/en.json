@@ -141,7 +141,7 @@
 	"website_url": "Website URL",
 	"follow_target": "npub or nprofile",
 	"search_query": "Search query",
-	"channel_target": "Channel ID or nevent",
+	"channel_target": "Channel ID",
 	"channel_post_text": "Channel message",
 	"channel_compose_placeholder": "Message",
 	"custom_timeline_filters": "REQ filters",

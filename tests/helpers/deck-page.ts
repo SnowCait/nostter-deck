@@ -91,7 +91,7 @@ export async function addPresetColumn(
 		await page.getByLabel('Search query').fill(options.query ?? 'nostter');
 	}
 	if (sourceKey === 'timeline_channel') {
-		await page.getByLabel('Channel ID or nevent').fill(options.channelTarget ?? '');
+		await page.getByLabel('Channel ID').fill(options.channelTarget ?? '');
 	}
 	if (options.customRelays !== undefined && sourceKey !== 'timeline_search') {
 		await dialog.getByText('Custom', { exact: true }).click();
