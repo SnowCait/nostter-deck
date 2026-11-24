@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { CalendarClock, MessageCircle, Quote, Send, UserRound, X } from '@lucide/svelte';
+	import { MessageCircle, Quote, Send, UserRound, X } from '@lucide/svelte';
 	import type { createComposerController } from '$lib/features/composer/application/composer-controller.svelte';
 	import { createPastedImageFileReader } from '$lib/features/composer/presentation/media-attachment-actions';
 	import type { MentionCandidate } from '$lib/features/composer/domain/mention-actions';
@@ -190,15 +190,6 @@
 				label={m.add_emoji()}
 				onSelect={selectEmoji}
 			/>
-			<button
-				type="button"
-				class="flex size-9 cursor-not-allowed items-center justify-center rounded-md text-slate-400 dark:text-slate-600"
-				title={m.coming_soon()}
-				aria-label={m.schedule_post()}
-				disabled
-			>
-				<CalendarClock class="size-4" aria-hidden="true" />
-			</button>
 		</MediaAttachmentControls>
 
 		{#if composer.publishFailure}

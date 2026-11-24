@@ -9,6 +9,7 @@
 ## Controls and Settings
 
 - Present only necessary choices and inputs.
+- Do not display controls for unimplemented features.
 - Make current selections and defaults clear.
 - Preserve explicit user choices unless the user changes them.
 - Use consistent controls for equivalent actions.
