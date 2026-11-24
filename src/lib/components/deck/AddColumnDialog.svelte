@@ -55,7 +55,6 @@
 	let selectedColumnType = $state<AddColumnType>(defaultColumnType);
 	let websiteUrl = $state('');
 	let followTarget = $state('');
-	let includeOwnEvents = $state(false);
 	let userPostsSettings = $state<UserPostsSettings | null>(null);
 	let searchQuery = $state('');
 	let channelTarget = $state('');
@@ -147,7 +146,6 @@
 			websiteUrl: normalizedWebsiteUrl,
 			followTarget: parsedFollowTarget,
 			notificationsTarget,
-			includeOwnEvents,
 			userPostsSettings,
 			searchQuery,
 			channelTarget: parsedChannelTarget,
@@ -161,7 +159,6 @@
 		selectedColumnType = defaultColumnType;
 		websiteUrl = '';
 		followTarget = '';
-		includeOwnEvents = false;
 		userPostsSettings = null;
 		searchQuery = '';
 		channelTarget = '';
@@ -266,12 +263,6 @@
 				]}
 				bind:value={followTarget}
 			/>
-			{#if selectedColumnType === 'nav_notifications'}
-				<label class={['mt-3 flex items-center gap-2', textClass.control]}>
-					<input type="checkbox" bind:checked={includeOwnEvents} />
-					{m.notifications_include_own_events()}
-				</label>
-			{/if}
 			<div class="mt-4">
 				<RelaySelectionEditor
 					id="preset-follow"

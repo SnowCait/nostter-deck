@@ -12,7 +12,6 @@ export type AddColumnDraft = {
 	columnType: AddColumnType;
 	websiteUrl: string | null;
 	notificationsTarget?: string | null;
-	includeOwnEvents?: boolean;
 	userPostsSettings?: UserPostsSettings | null;
 	followTarget: ProfilePointer | null;
 	searchQuery: string;
@@ -93,7 +92,7 @@ export function createColumnConfigFromDraft(draft: AddColumnDraft): ColumnConfig
 					sourceKey: draft.columnType,
 					pubkey: draft.notificationsTarget,
 					relays: draft.presetTimelineRelays,
-					includeOwnEvents: draft.includeOwnEvents ?? false,
+					includeOwnEvents: false,
 					width: 'standard'
 				}
 			: null;
