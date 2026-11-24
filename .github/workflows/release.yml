@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  plan:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      commit-sha: ${{ github.sha }}
+      previous-ref: ${{ steps.version.outputs.previous-ref }}
+      first-release: ${{ steps.version.outputs.first-release }}
+      release-version: ${{ steps.version.outputs.release-version }}
+      release-tag: ${{ steps.version.outputs.release-tag }}
+      change-level: ${{ steps.version.outputs.change-level }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - id: version
+        uses: WillAbides/release-train@v3.9.0
+        with:
+          ref: ${{ github.sha }}
+          labels: |
+            release:major=semver:breaking
+            release:minor=semver:minor
+            release:patch=semver:patch
+            release:none=semver:none
+          initial-release-tag: v1.0.0
+          create-tag: false
+          create-release: false
+      - name: Summarize release plan
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          PREVIOUS_REF: ${{ steps.version.outputs.previous-ref }}
+          FIRST_RELEASE: ${{ steps.version.outputs.first-release }}
+          RELEASE_VERSION: ${{ steps.version.outputs.release-version }}
+          RELEASE_TAG: ${{ steps.version.outputs.release-tag }}
+          CHANGE_LEVEL: ${{ steps.version.outputs.change-level }}
+        run: |
+          {
+            echo '## Release plan'
+            printf '\n- Commit: `%s`\n' "$COMMIT_SHA"
+            printf -- '- Previous ref: `%s`\n' "$PREVIOUS_REF"
+            printf -- '- First release: `%s`\n' "$FIRST_RELEASE"
+            printf -- '- Release version: `%s`\n' "$RELEASE_VERSION"
+            printf -- '- Release tag: `%s`\n' "$RELEASE_TAG"
+            printf -- '- Change level: `%s`\n' "$CHANGE_LEVEL"
+          } >> "$GITHUB_STEP_SUMMARY"
