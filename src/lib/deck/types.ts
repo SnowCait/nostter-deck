@@ -1,3 +1,4 @@
+import type { UserPostsSettings } from '$lib/features/user-posts/domain/user-posts-actions';
 import type { NostrFilter } from '$lib/nostr/filters';
 import type { RelaySelection } from '$lib/nostr/relays';
 import type { Post } from '$lib/features/posts/types';
@@ -7,6 +8,7 @@ export type MessageKey =
 	| 'nav_home'
 	| 'nav_search'
 	| 'nav_notifications'
+	| 'timeline_user_posts'
 	| 'nav_bookmarks'
 	| 'nav_settings'
 	| 'action_post'
@@ -150,7 +152,11 @@ export type MessageKey =
 
 export type ColumnTitleKey = Extract<
 	MessageKey,
-	'timeline_follow' | 'timeline_search' | 'timeline_channel' | 'nav_notifications'
+	| 'timeline_follow'
+	| 'timeline_search'
+	| 'timeline_channel'
+	| 'nav_notifications'
+	| 'timeline_user_posts'
 >;
 export type ColumnSourceKey = ColumnTitleKey;
 export type ColumnWidth = 'narrow' | 'standard' | 'wide';
@@ -194,11 +200,18 @@ export type NotificationsColumnConfig = Omit<FollowTimelineColumnConfig, 'source
 	includeOwnEvents: boolean;
 };
 
+export type UserPostsColumnConfig = Omit<
+	FollowTimelineColumnConfig,
+	'sourceKey' | 'pubkey' | 'relays'
+> &
+	UserPostsSettings & { sourceKey: 'timeline_user_posts' };
+
 export type PresetTimelineColumnConfig =
 	| FollowTimelineColumnConfig
 	| SearchTimelineColumnConfig
 	| ChannelTimelineColumnConfig
-	| NotificationsColumnConfig;
+	| NotificationsColumnConfig
+	| UserPostsColumnConfig;
 
 export type CustomTimelineColumnConfig = {
 	id: string;

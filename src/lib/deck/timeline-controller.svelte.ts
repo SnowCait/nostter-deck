@@ -30,13 +30,13 @@ import type { RelaySelection } from '$lib/nostr/relays';
 type TimelineControllerOptions = {
 	getColumnConfigs: () => ColumnConfig[];
 	isReady: () => boolean;
-	resolveRelaySelection?: (selection: RelaySelection) => string[];
+	resolveRelaySelection?: (selection: RelaySelection, direction?: 'write') => string[];
 };
 
 export function createTimelineController({
 	getColumnConfigs,
 	isReady,
-	resolveRelaySelection = resolveSelectionRelays
+	resolveRelaySelection = (selection) => resolveSelectionRelays(selection)
 }: TimelineControllerOptions) {
 	let runtimes = $state<Record<string, TimelineRuntime>>({});
 
@@ -113,7 +113,10 @@ export function createTimelineController({
 			}
 
 			const filters = $state.snapshot(request.filters);
-			const relays = { type: 'custom' as const, urls: resolveRelaySelection(request.relays) };
+			const relays = {
+				type: 'custom' as const,
+				urls: resolveRelaySelection(request.relays, request.relayDirection)
+			};
 			const signature = getTimelineSignature({ filters, relays });
 
 			return [

@@ -2,11 +2,12 @@ import type { AccountRecord } from '$lib/nostr/accounts';
 import {
 	getCachedNip65RelayTags,
 	getNip65ReadRelays,
+	getNip65WriteRelays,
 	refreshNip65Relays,
 	type Nip65RelayTag
 } from '$lib/nostr/nip65';
 import { normalizePubkey } from '$lib/nostr/pubkeys';
-import { defaultRelays, resolveRelaySelection as resolveSelectionRelays } from '$lib/nostr/relays';
+import { resolveRelaySelection as resolveSelectionRelays } from '$lib/nostr/relays';
 import type { ColumnConfig } from './types';
 import type { RelaySelection } from '$lib/nostr/relays';
 
@@ -20,10 +21,6 @@ type RelaySelectionControllerOptions = {
 	getCachedRelayTags?: (pubkey: string) => Nip65RelayTag[];
 	refreshRelayTags?: (pubkey: string) => Promise<Nip65RelayTag[] | null>;
 };
-
-function sameRelays(left: string[], right: string[]) {
-	return left.length === right.length && left.every((relay, index) => relay === right[index]);
-}
 
 export function getAccountRelayOptions(accounts: AccountRecord[]): AccountRelayOption[] {
 	const seenPubkeys: string[] = [];
@@ -61,64 +58,37 @@ export function createRelaySelectionController({
 	getCachedRelayTags = getCachedNip65RelayTags,
 	refreshRelayTags = refreshNip65Relays
 }: RelaySelectionControllerOptions) {
-	let nip65ReadRelaysByPubkey = $state<Record<string, string[]>>({});
+	const relayTagsByPubkey = $state<Record<string, Nip65RelayTag[]>>({});
 	const requestedPubkeys: string[] = [];
-	const refreshTokens: Record<string, number> = {};
-
 	const accountRelayOptions = $derived(getAccountRelayOptions(getAccounts()));
 
-	function setNip65ReadRelays(pubkey: string, relays: string[]) {
-		if (sameRelays(nip65ReadRelaysByPubkey[pubkey] ?? [], relays)) {
-			return;
-		}
-
-		nip65ReadRelaysByPubkey = {
-			...nip65ReadRelaysByPubkey,
-			[pubkey]: relays
-		};
+	function getRelayTags(pubkey: string) {
+		const normalized = normalizePubkey(pubkey);
+		return normalized ? (relayTagsByPubkey[normalized] ?? getCachedRelayTags(normalized)) : [];
 	}
 
-	function getCachedReadRelays(pubkey: string) {
-		return getNip65ReadRelays(getCachedRelayTags(pubkey));
-	}
-
-	function getNip65ReadRelayUrls(pubkey: string) {
-		const normalizedPubkey = normalizePubkey(pubkey);
-		if (!normalizedPubkey) {
-			return [...defaultRelays];
-		}
-
-		const relays =
-			nip65ReadRelaysByPubkey[normalizedPubkey] ?? getCachedReadRelays(normalizedPubkey);
-		return relays.length > 0 ? relays : [...defaultRelays];
-	}
-
-	function refreshNip65ReadRelays(pubkey: string) {
+	function refreshNip65RelayList(pubkey: string) {
 		const normalizedPubkey = normalizePubkey(pubkey);
 		if (!normalizedPubkey || requestedPubkeys.includes(normalizedPubkey)) {
 			return;
 		}
 
 		requestedPubkeys.push(normalizedPubkey);
-		setNip65ReadRelays(normalizedPubkey, getCachedReadRelays(normalizedPubkey));
-		const token = (refreshTokens[normalizedPubkey] ?? 0) + 1;
-		refreshTokens[normalizedPubkey] = token;
 		void refreshRelayTags(normalizedPubkey).then((relayTags) => {
-			if (refreshTokens[normalizedPubkey] !== token || relayTags === null) {
-				return;
+			if (relayTags !== null) {
+				relayTagsByPubkey[normalizedPubkey] = relayTags;
 			}
-
-			setNip65ReadRelays(normalizedPubkey, getNip65ReadRelays(relayTags));
 		});
 	}
 
-	function resolveRelaySelection(selection: RelaySelection) {
-		return resolveSelectionRelays(selection, getNip65ReadRelayUrls);
+	function resolveRelaySelection(selection: RelaySelection, direction: 'read' | 'write' = 'read') {
+		const getRelays = direction === 'write' ? getNip65WriteRelays : getNip65ReadRelays;
+		return resolveSelectionRelays(selection, (pubkey) => getRelays(getRelayTags(pubkey)));
 	}
 
 	$effect(() => {
 		for (const pubkey of getNip65RelaySelectionPubkeys(getColumnConfigs())) {
-			refreshNip65ReadRelays(pubkey);
+			refreshNip65RelayList(pubkey);
 		}
 	});
 
@@ -126,8 +96,7 @@ export function createRelaySelectionController({
 		get accountRelayOptions() {
 			return accountRelayOptions;
 		},
-		getNip65ReadRelayUrls,
-		refreshNip65ReadRelays,
+		refreshNip65RelayList,
 		resolveRelaySelection
 	};
 }

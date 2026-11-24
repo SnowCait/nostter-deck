@@ -16,6 +16,7 @@ import {
 import {
 	saveChannelSettings as saveChannelSettingsConfig,
 	saveCustomTimelineSettings as saveCustomTimelineSettingsConfig,
+	saveUserPostsSettings as saveUserPostsSettingsConfig,
 	saveNotificationsSettings as saveNotificationsSettingsConfig,
 	saveFollowSettings as saveFollowSettingsConfig,
 	saveSearchSettings as saveSearchSettingsConfig,
@@ -361,6 +362,14 @@ export function createColumnDeckController({
 		openSettingsColumnId = null;
 	}
 
+	function saveUserPostsSettings(
+		columnId: string,
+		settings: Parameters<typeof saveUserPostsSettingsConfig>[2]
+	) {
+		setColumns(saveUserPostsSettingsConfig(columns, columnId, settings));
+		openSettingsColumnId = null;
+	}
+
 	function saveNotificationsSettings(
 		columnId: string,
 		pubkey: string,
@@ -450,6 +459,7 @@ export function createColumnDeckController({
 		updateColumnTitle,
 		updateColumnIcon,
 		saveCustomTimelineSettings,
+		saveUserPostsSettings,
 		saveNotificationsSettings,
 		saveFollowSettings,
 		saveFollowRelaySettings,

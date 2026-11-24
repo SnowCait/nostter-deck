@@ -40,7 +40,11 @@ export function createColumnTitleController({
 			if (column.type !== 'timeline' || column.timelineKind !== 'preset') {
 				continue;
 			}
-			if (column.sourceKey === 'timeline_follow' || column.sourceKey === 'nav_notifications') {
+			if (
+				column.sourceKey === 'timeline_follow' ||
+				column.sourceKey === 'nav_notifications' ||
+				column.sourceKey === 'timeline_user_posts'
+			) {
 				pubkeys.add(column.pubkey);
 			}
 			if (column.sourceKey === 'timeline_channel') {

@@ -35,6 +35,8 @@
 	import ColumnIcon from './ColumnIcon.svelte';
 	import ColumnIconGlyph from './ColumnIconGlyph.svelte';
 	import CustomTimelineSettings from './CustomTimelineSettings.svelte';
+	import UserPostsFields from '$lib/features/user-posts/presentation/UserPostsFields.svelte';
+	import type { UserPostsSettings } from '$lib/features/user-posts/domain/user-posts-actions';
 	import NotificationsColumnSettings from '$lib/features/notifications/presentation/NotificationsColumnSettings.svelte';
 	import FollowColumnSettings from './FollowColumnSettings.svelte';
 	import SearchColumnSettings from './SearchColumnSettings.svelte';
@@ -88,6 +90,7 @@
 		onTitleChange: (title: string) => void;
 		onIconChange: (icon: ColumnIconKey | null) => void;
 		onWidthChange: (width: ColumnWidth) => void;
+		onUserPostsSave: (settings: UserPostsSettings) => void;
 		onNotificationsSave: (
 			pubkey: string,
 			relays: RelaySelection,
@@ -158,6 +161,7 @@
 		onTitleChange,
 		onIconChange,
 		onWidthChange,
+		onUserPostsSave,
 		onNotificationsSave,
 		onFollowSave,
 		onSearchSave,
@@ -337,6 +341,13 @@
 					{requestProfiles}
 					{profileRelays}
 					onSave={onFollowSave}
+				/>
+			{:else if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_user_posts'}
+				<UserPostsFields
+					id={`user-posts-${column.id}`}
+					settings={column}
+					{textClass}
+					onSave={onUserPostsSave}
 				/>
 			{:else if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'nav_notifications'}
 				<NotificationsColumnSettings

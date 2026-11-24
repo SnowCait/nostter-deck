@@ -19,22 +19,25 @@
 		id: string;
 		value: RelaySelection | null;
 		textClass: FontSizeTextClasses;
-		accountRelayOptions: AccountRelayOption[];
-		getProfile: (pubkey: string) => Profile | undefined;
-		requestProfiles: (pubkeys: string[], relays: string[]) => void;
-		profileRelays: string[];
+		targetPubkey?: string | null;
+		accountRelayOptions?: AccountRelayOption[];
+		getProfile?: (pubkey: string) => Profile | undefined;
+		requestProfiles?: (pubkeys: string[], relays: string[]) => void;
+		profileRelays?: string[];
 	};
 
 	let {
 		id,
 		value = $bindable(),
 		textClass,
-		accountRelayOptions,
+		targetPubkey,
+		accountRelayOptions = [],
 		getProfile,
 		requestProfiles,
-		profileRelays
+		profileRelays = []
 	}: Props = $props();
 
+	const useTargetRelays = $derived(targetPubkey !== undefined);
 	let relayDraftSource = $state('');
 	let relaySelectionMode = $state<RelaySelectionMode>('default');
 	let selectedAccountRelayPubkey = $state('');
@@ -50,14 +53,19 @@
 		relayDraftSource = nextRelayDraftSource;
 		if (!value || value.type === 'default') {
 			relaySelectionMode = 'default';
-			selectedDefaultRelays = [...defaultRelays];
+			selectedDefaultRelays = useTargetRelays ? [] : [...defaultRelays];
 			customRelayDraft = '';
 			return;
 		}
 
 		if (value.type === 'nip65') {
 			relaySelectionMode = 'account';
-			selectedAccountRelayPubkey = value.pubkey;
+			if (useTargetRelays) {
+				selectedDefaultRelays = [];
+				customRelayDraft = '';
+			} else {
+				selectedAccountRelayPubkey = value.pubkey;
+			}
 			return;
 		}
 
@@ -67,6 +75,9 @@
 	});
 
 	$effect(() => {
+		if (useTargetRelays) {
+			return;
+		}
 		if (accountRelayOptions.length === 0) {
 			if (relaySelectionMode === 'account' && !selectedAccountRelayPubkey) {
 				relaySelectionMode = 'default';
@@ -85,7 +96,7 @@
 			return;
 		}
 
-		requestProfiles(pubkeys, profileRelays);
+		requestProfiles?.(pubkeys, profileRelays);
 	});
 
 	$effect(() => {
@@ -116,6 +127,9 @@
 		}
 
 		if (relaySelectionMode === 'account') {
+			if (useTargetRelays) {
+				return { type: 'nip65' as const, pubkey: targetPubkey ?? '' };
+			}
 			return selectedAccountRelayPubkey
 				? { type: 'nip65' as const, pubkey: selectedAccountRelayPubkey }
 				: null;
@@ -126,7 +140,7 @@
 	}
 
 	function getAccountRelayName(pubkey: string) {
-		return getProfileDisplayName(getProfile(pubkey), pubkey);
+		return getProfileDisplayName(getProfile?.(pubkey), pubkey);
 	}
 
 	function getAccountRelayNpub(pubkey: string) {
@@ -154,6 +168,7 @@
 	<label
 		class={[
 			'flex min-h-10 min-w-0 cursor-pointer items-center justify-center rounded-md border px-2 text-center font-semibold transition',
+			useTargetRelays && 'focus-within:ring-2 focus-within:ring-sky-500',
 			relaySelectionMode === 'default'
 				? 'border-sky-500 bg-sky-50 text-sky-700 dark:border-sky-400 dark:bg-sky-950/50 dark:text-sky-300'
 				: 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800',
@@ -167,15 +182,18 @@
 			value="default"
 			bind:group={relaySelectionMode}
 		/>
-		<span class="truncate">{m.custom_timeline_relay_mode_default()}</span>
+		<span class={useTargetRelays ? 'py-1 [overflow-wrap:anywhere]' : 'truncate'}>
+			{useTargetRelays ? m.user_posts_default_relays() : m.custom_timeline_relay_mode_default()}
+		</span>
 	</label>
 	<label
 		class={[
 			'flex min-h-10 min-w-0 cursor-pointer items-center justify-center rounded-md border px-2 text-center font-semibold transition',
+			useTargetRelays && 'focus-within:ring-2 focus-within:ring-sky-500',
 			relaySelectionMode === 'account'
 				? 'border-sky-500 bg-sky-50 text-sky-700 dark:border-sky-400 dark:bg-sky-950/50 dark:text-sky-300'
 				: 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800',
-			accountRelayOptions.length === 0 && !selectedAccountRelayPubkey
+			!useTargetRelays && accountRelayOptions.length === 0 && !selectedAccountRelayPubkey
 				? 'cursor-not-allowed opacity-50'
 				: '',
 			textClass.control
@@ -187,13 +205,16 @@
 			name={`relay-mode-${id}`}
 			value="account"
 			bind:group={relaySelectionMode}
-			disabled={accountRelayOptions.length === 0 && !selectedAccountRelayPubkey}
+			disabled={!useTargetRelays && accountRelayOptions.length === 0 && !selectedAccountRelayPubkey}
 		/>
-		<span class="truncate">{m.custom_timeline_relay_mode_account()}</span>
+		<span class={useTargetRelays ? 'py-1 [overflow-wrap:anywhere]' : 'truncate'}>
+			{useTargetRelays ? m.user_posts_target_relays() : m.custom_timeline_relay_mode_account()}
+		</span>
 	</label>
 	<label
 		class={[
 			'flex min-h-10 min-w-0 cursor-pointer items-center justify-center rounded-md border px-2 text-center font-semibold transition',
+			useTargetRelays && 'focus-within:ring-2 focus-within:ring-sky-500',
 			relaySelectionMode === 'custom'
 				? 'border-sky-500 bg-sky-50 text-sky-700 dark:border-sky-400 dark:bg-sky-950/50 dark:text-sky-300'
 				: 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800',
@@ -207,11 +228,13 @@
 			value="custom"
 			bind:group={relaySelectionMode}
 		/>
-		<span class="truncate">{m.custom_timeline_relay_mode_custom()}</span>
+		<span class={useTargetRelays ? 'py-1 [overflow-wrap:anywhere]' : 'truncate'}>
+			{useTargetRelays ? m.user_posts_custom_relays() : m.custom_timeline_relay_mode_custom()}
+		</span>
 	</label>
 </div>
 
-{#if relaySelectionMode === 'account'}
+{#if relaySelectionMode === 'account' && !useTargetRelays}
 	<p class={['mb-2 font-semibold text-slate-700 dark:text-slate-300', textClass.control]}>
 		{m.custom_timeline_account_relays()}
 	</p>

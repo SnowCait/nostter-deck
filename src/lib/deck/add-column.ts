@@ -1,3 +1,4 @@
+import type { UserPostsSettings } from '$lib/features/user-posts/domain/user-posts-actions';
 import type { ColumnConfig, ColumnSourceKey } from './types';
 import type { NostrFilter } from '$lib/nostr/filters';
 import type { RelaySelection } from '$lib/nostr/relays';
@@ -12,6 +13,7 @@ export type AddColumnDraft = {
 	websiteUrl: string | null;
 	notificationsTarget?: string | null;
 	includeOwnEvents?: boolean;
+	userPostsSettings?: UserPostsSettings | null;
 	followTarget: ProfilePointer | null;
 	searchQuery: string;
 	channelTarget: ChannelPointer | null;
@@ -64,6 +66,19 @@ export function createColumnConfigFromDraft(draft: AddColumnDraft): ColumnConfig
 					sourceKey: draft.columnType,
 					pubkey: draft.followTarget.pubkey,
 					relays: draft.presetTimelineRelays ?? getFollowRelaySelection(draft.followTarget),
+					width: 'standard'
+				}
+			: null;
+	}
+
+	if (draft.columnType === 'timeline_user_posts') {
+		return draft.userPostsSettings
+			? {
+					...draft.userPostsSettings,
+					id: draft.id,
+					type: 'timeline',
+					timelineKind: 'preset',
+					sourceKey: draft.columnType,
 					width: 'standard'
 				}
 			: null;

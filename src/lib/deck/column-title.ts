@@ -27,6 +27,7 @@ export function getColumnTitle(
 	switch (column.sourceKey) {
 		case 'timeline_follow':
 		case 'nav_notifications':
+		case 'timeline_user_posts':
 			return `${label}: ${getProfileDisplayName(getProfile(column.pubkey), column.pubkey)}`;
 		case 'timeline_search':
 			return `${label}: ${column.query.trim()}`;

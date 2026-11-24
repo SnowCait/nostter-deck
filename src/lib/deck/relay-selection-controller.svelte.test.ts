@@ -54,11 +54,36 @@ describe('relay selection controller', () => {
 			...defaultRelays
 		]);
 
-		controller.refreshNip65ReadRelays(pubkeyA);
+		controller.refreshNip65RelayList(pubkeyA);
 		await Promise.resolve();
 
 		expect(controller.resolveRelaySelection({ type: 'nip65', pubkey: pubkeyA })).toEqual([
 			'wss://fresh.example/'
+		]);
+	});
+
+	test('uses write and unmarked relays for User Posts and falls back when there are none', async () => {
+		const controller = createRelaySelectionController({
+			getAccounts: () => [],
+			getColumnConfigs: () => [],
+			getCachedRelayTags: () => [['r', 'wss://read.example/', 'read']],
+			refreshRelayTags: async () => [
+				['r', 'wss://read.example/', 'read'],
+				['r', 'wss://write.example/', 'write'],
+				['r', 'wss://both.example/']
+			]
+		});
+		const selection = { type: 'nip65', pubkey: pubkeyA } as const;
+		expect(controller.resolveRelaySelection(selection, 'write')).toEqual([...defaultRelays]);
+		controller.refreshNip65RelayList(pubkeyA);
+		await Promise.resolve();
+		expect(controller.resolveRelaySelection(selection, 'write')).toEqual([
+			'wss://write.example/',
+			'wss://both.example/'
+		]);
+		expect(controller.resolveRelaySelection({ type: 'nip65', pubkey: pubkeyA })).toEqual([
+			'wss://read.example/',
+			'wss://both.example/'
 		]);
 	});
 

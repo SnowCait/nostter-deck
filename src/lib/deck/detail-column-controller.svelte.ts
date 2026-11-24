@@ -42,7 +42,7 @@ type DetailColumnControllerOptions = {
 	focusColumn: (columnId: string, preferPost?: boolean) => void;
 	startThread?: typeof startThreadSubscription;
 	startProfileTimeline?: typeof startCustomTimelineSubscription;
-	resolveRelaySelection?: (selection: RelaySelection) => string[];
+	resolveRelaySelection?: (selection: RelaySelection, direction?: 'write') => string[];
 	afterStateChange?: () => Promise<void>;
 };
 
@@ -54,7 +54,7 @@ export function createDetailColumnController({
 	focusColumn,
 	startThread = startThreadSubscription,
 	startProfileTimeline = startCustomTimelineSubscription,
-	resolveRelaySelection = resolveSelectionRelays,
+	resolveRelaySelection = (selection) => resolveSelectionRelays(selection),
 	afterStateChange = tick
 }: DetailColumnControllerOptions) {
 	const defaultProfileRelays = [...profileRelays];
@@ -98,7 +98,7 @@ export function createDetailColumnController({
 	function getSourceRelays(sourceColumnId: string) {
 		const sourceColumn = getColumnConfigs().find((column) => column.id === sourceColumnId);
 		const request = sourceColumn ? getTimelineRequest(sourceColumn) : null;
-		return request ? resolveRelaySelection(request.relays) : [];
+		return request ? resolveRelaySelection(request.relays, request.relayDirection) : [];
 	}
 
 	function stopThread() {

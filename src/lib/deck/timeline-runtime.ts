@@ -31,6 +31,7 @@ export type TimelineRuntime = {
 export type TimelineRequest = {
 	filters: NostrFilter[];
 	relays: RelaySelection;
+	relayDirection?: 'write';
 };
 
 export const timelinePageSize = 100;
@@ -81,6 +82,20 @@ export function getTimelineRequest(column: ColumnConfig): TimelineRequest | null
 				}
 			],
 			relays: column.relays
+		};
+	}
+
+	if (column.sourceKey === 'timeline_user_posts') {
+		return {
+			filters: [
+				{
+					kinds: [ShortTextNote, Repost],
+					authors: [column.pubkey],
+					limit: presetTimelineInitialLimit
+				}
+			],
+			relays: column.relays,
+			relayDirection: 'write'
 		};
 	}
 

@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { Repost, ShortTextNote } from 'nostr-tools/kinds';
 import type * as Nostr from 'nostr-typedef';
 import { createDetailColumnController } from './detail-column-controller.svelte';
+import { createRelaySelectionController } from './relay-selection-controller.svelte';
 import type { ColumnConfig } from './types';
 import { eventToPost } from '$lib/features/posts/post-model';
 import type { startThreadSubscription } from '$lib/nostr/thread';
@@ -36,9 +37,12 @@ function event(
 	} satisfies Nostr.Event;
 }
 
-function createHarness() {
+function createHarness(
+	source?: ColumnConfig,
+	resolveRelaySelection?: ReturnType<typeof createRelaySelectionController>['resolveRelaySelection']
+) {
 	let columns: ColumnConfig[] = [
-		{
+		source ?? {
 			id: 'source',
 			type: 'timeline',
 			timelineKind: 'custom',
@@ -59,6 +63,7 @@ function createHarness() {
 	const requestProfiles = vi.fn();
 	const controller = createDetailColumnController({
 		getColumnConfigs: () => columns,
+		resolveRelaySelection,
 		getProfile: () => undefined,
 		isMutedUser: () => false,
 		requestProfiles,
@@ -110,6 +115,45 @@ describe('detail column controller', () => {
 		expect(harness.threadSubscriptions[0].stop).toHaveBeenCalledOnce();
 		expect(harness.controller.detailColumn).toBeNull();
 		expect(harness.focusColumn).toHaveBeenLastCalledWith('source', true);
+	});
+
+	test('uses the source User Posts write relays for both detail types', async () => {
+		const pubkey = 'a'.repeat(64);
+		const writeRelay = 'wss://write.example/';
+		const readRelay = 'wss://read.example/';
+		const relayController = createRelaySelectionController({
+			getAccounts: () => [],
+			getColumnConfigs: () => [],
+			getCachedRelayTags: () => [
+				['r', readRelay, 'read'],
+				['r', writeRelay, 'write']
+			]
+		});
+		const harness = createHarness(
+			{
+				id: 'source',
+				type: 'timeline',
+				timelineKind: 'preset',
+				sourceKey: 'timeline_user_posts',
+				pubkey,
+				relays: { type: 'nip65', pubkey },
+				includeReplies: true,
+				includeReposts: true,
+				width: 'standard'
+			},
+			relayController.resolveRelaySelection
+		);
+
+		await harness.controller.openThread('source', eventToPost(event('1'.repeat(64), 100)));
+		expect(harness.threadSubscriptions[0].options.relays).toEqual([writeRelay]);
+
+		await harness.controller.openProfile('source', { pubkey, relays: [] });
+		expect(harness.profileSubscriptions[0].options.relays).toEqual({
+			type: 'custom',
+			urls: expect.arrayContaining([writeRelay])
+		});
+		const profileRelays = harness.profileSubscriptions[0].options.relays;
+		expect(profileRelays.type === 'custom' && profileRelays.urls).not.toContain(readRelay);
 	});
 
 	test('switches detail types and ignores callbacks from stopped subscriptions', async () => {

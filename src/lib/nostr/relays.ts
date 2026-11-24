@@ -104,7 +104,7 @@ export function normalizeRelaySelection(value: unknown): RelaySelection | null {
 
 export function resolveRelaySelection(
 	selection: RelaySelection,
-	getNip65ReadRelays?: (pubkey: string) => string[]
+	getNip65Relays?: (pubkey: string) => string[]
 ) {
 	if (selection.type === 'default') {
 		return [...defaultRelays];
@@ -114,7 +114,7 @@ export function resolveRelaySelection(
 		return selection.urls;
 	}
 
-	const nip65Relays = getNip65ReadRelays?.(selection.pubkey) ?? [];
+	const nip65Relays = getNip65Relays?.(selection.pubkey) ?? [];
 	return nip65Relays.length > 0 ? nip65Relays : [...defaultRelays];
 }
 

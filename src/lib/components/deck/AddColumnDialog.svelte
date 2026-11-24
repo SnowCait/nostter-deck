@@ -8,6 +8,8 @@
 	import { normalizeWebsiteUrl } from '$lib/deck/website-url';
 	import type { FontSizeTextClasses } from '$lib/font-size';
 	import { parseNostrFilters } from '$lib/nostr/filters';
+	import UserPostsFields from '$lib/features/user-posts/presentation/UserPostsFields.svelte';
+	import type { UserPostsSettings } from '$lib/features/user-posts/domain/user-posts-actions';
 	import { parseNotificationTarget } from '$lib/features/notifications/domain/notification-actions';
 	import { decodeChannelPointer, decodeProfilePointer } from '$lib/nostr/nip19';
 	import type { Profile } from '$lib/nostr/profiles';
@@ -45,6 +47,7 @@
 		timeline_search: 'search',
 		timeline_channel: 'messages',
 		nav_notifications: 'messages',
+		timeline_user_posts: 'users',
 		custom_timeline: 'radio',
 		website: 'globe'
 	} satisfies Record<AddColumnType, ColumnIconKey>;
@@ -53,6 +56,7 @@
 	let websiteUrl = $state('');
 	let followTarget = $state('');
 	let includeOwnEvents = $state(false);
+	let userPostsSettings = $state<UserPostsSettings | null>(null);
 	let searchQuery = $state('');
 	let channelTarget = $state('');
 	let customTimelineFilters = $state('[{"kinds":[1],"limit":20}]');
@@ -104,6 +108,9 @@
 	$effect(() => {
 		if (presetRelayColumnType !== selectedColumnType) {
 			presetRelayColumnType = selectedColumnType;
+			if (selectedColumnType !== 'timeline_user_posts') {
+				userPostsSettings = null;
+			}
 			presetTimelineRelayDraft = { type: 'default' };
 			followRelayTargetPubkey = '';
 		}
@@ -141,6 +148,7 @@
 			followTarget: parsedFollowTarget,
 			notificationsTarget,
 			includeOwnEvents,
+			userPostsSettings,
 			searchQuery,
 			channelTarget: parsedChannelTarget,
 			presetTimelineRelays: parsedPresetTimelineRelays,
@@ -154,6 +162,7 @@
 		websiteUrl = '';
 		followTarget = '';
 		includeOwnEvents = false;
+		userPostsSettings = null;
 		searchQuery = '';
 		channelTarget = '';
 		customTimelineFilters = '[{"kinds":[1],"limit":20}]';
@@ -272,6 +281,16 @@
 					{getProfile}
 					{requestProfiles}
 					{profileRelays}
+				/>
+			</div>
+		{/if}
+
+		{#if selectedColumnType === 'timeline_user_posts'}
+			<div class="mt-4">
+				<UserPostsFields
+					id="add-user-posts"
+					{textClass}
+					onChange={(settings) => (userPostsSettings = settings)}
 				/>
 			</div>
 		{/if}

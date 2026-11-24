@@ -4,5 +4,6 @@ export const columnSourceKeys: ColumnSourceKey[] = [
 	'timeline_follow',
 	'timeline_search',
 	'timeline_channel',
+	'timeline_user_posts',
 	'nav_notifications'
 ];

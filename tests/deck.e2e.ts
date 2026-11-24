@@ -513,6 +513,7 @@ test.describe('nostter deck', () => {
 			'Follow',
 			'Search',
 			'Channel',
+			'User Posts',
 			'Notifications',
 			'Custom timeline',
 			'Website'

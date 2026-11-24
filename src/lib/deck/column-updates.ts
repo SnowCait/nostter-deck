@@ -1,3 +1,4 @@
+import type { UserPostsSettings } from '$lib/features/user-posts/domain/user-posts-actions';
 import { getDefaultColumnIconKey } from './column-icons';
 import type { ColumnConfig, ColumnIconKey, ColumnWidth } from './types';
 import type { NostrFilter } from '$lib/nostr/filters';
@@ -87,6 +88,21 @@ export function saveFollowSettings(
 					pubkey: profile.pubkey,
 					relays: relays ?? getFollowRelaySelection(profile)
 				}
+			: column
+	);
+}
+
+export function saveUserPostsSettings(
+	columns: ColumnConfig[],
+	columnId: string,
+	settings: UserPostsSettings
+): ColumnConfig[] {
+	return columns.map((column) =>
+		column.id === columnId &&
+		column.type === 'timeline' &&
+		column.timelineKind === 'preset' &&
+		column.sourceKey === 'timeline_user_posts'
+			? { ...column, ...settings }
 			: column
 	);
 }
