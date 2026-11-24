@@ -15,19 +15,19 @@ export function providePostTimestampFormatter(
 	getMode: () => PostTimestampMode,
 	getLocale: () => string
 ) {
-	let now = $state(Date.now());
+	let absoluteNow = $state(Date.now());
 	const formatAbsolute = $derived(createAbsoluteTimestampFormatter(getLocale()));
 
 	$effect(() => {
-		const mode = getMode();
+		if (getMode() !== 'absolute') {
+			return;
+		}
 		let timer: ReturnType<typeof setTimeout>;
 		function update() {
 			clearTimeout(timer);
 			const current = Date.now();
-			now = current;
-			const delay =
-				mode === 'relative' ? 1000 - (current % 1000) : millisecondsUntilMidnight(current);
-			timer = setTimeout(update, delay);
+			absoluteNow = current;
+			timer = setTimeout(update, millisecondsUntilMidnight(current));
 		}
 
 		update();
@@ -40,7 +40,7 @@ export function providePostTimestampFormatter(
 
 	setPostTimestampFormatter((createdAt) =>
 		getMode() === 'relative'
-			? formatRelativeTimestamp(createdAt, now)
-			: formatAbsolute(createdAt, now)
+			? formatRelativeTimestamp(createdAt, Date.now())
+			: formatAbsolute(createdAt, absoluteNow)
 	);
 }

@@ -145,6 +145,11 @@ test('updates post and quote timestamps at midnight and on appearance changes', 
 	await expect(mainTime).toHaveText(/^\d+m$/);
 	await expect(quoteTime).toHaveText(/^\d+d$/);
 
+	const relativeTime = await mainTime.innerText();
+	await page.clock.fastForward(3 * 60 * 1000);
+	await expect(mainTime).toHaveText(relativeTime);
+
 	await page.reload();
 	await expect(mainTime).toHaveText(/^\d+m$/);
+	await expect(mainTime).not.toHaveText(relativeTime);
 });

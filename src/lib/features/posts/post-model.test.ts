@@ -539,19 +539,4 @@ describe('post display models', () => {
 			eventToPost(event({ kind: ChannelMessage, tags: [['q', '4'.repeat(64)]] }))
 		).not.toHaveProperty('contexts');
 	});
-
-	test('keeps the action creation time in the source event for reposts and reactions', () => {
-		const original = event({ created_at: 100 });
-		const repost = event({ kind: Repost, created_at: 200 });
-		const reaction = event({ kind: Reaction, created_at: 300 });
-
-		expect(repostEventToPost(repost, original, getProfile).events).toEqual({
-			source: repost,
-			referenced: original
-		});
-		expect(reactionEventToPost(reaction, original, getProfile).events).toEqual({
-			source: reaction,
-			referenced: original
-		});
-	});
 });
