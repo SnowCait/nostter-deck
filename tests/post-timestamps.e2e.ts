@@ -13,7 +13,7 @@ import {
 
 test.use({ timezoneId: 'Asia/Tokyo' });
 
-test('updates post and quote timestamps at midnight and on appearance changes', async ({
+test('updates timestamps at midnight, on appearance changes, and as posts age', async ({
 	page
 }) => {
 	await page.clock.install({ time: new Date('2026-12-31T23:58:00+09:00') });
@@ -60,6 +60,7 @@ test('updates post and quote timestamps at midnight and on appearance changes', 
 		JSON.stringify({ display_name: author })
 	);
 
+	let sendLivePost: ((post: ReturnType<typeof event>) => void) | undefined;
 	await page.routeWebSocket(/.*/, (socket) => {
 		socket.onMessage((message) => {
 			const [type, id, ...filters] = JSON.parse(String(message)) as [string, string, ...Filter[]];
@@ -67,6 +68,9 @@ test('updates post and quote timestamps at midnight and on appearance changes', 
 				return;
 			}
 			for (const filter of filters) {
+				if (filter.since !== undefined && filter.kinds?.includes(ShortTextNote)) {
+					sendLivePost = (source) => socket.send(JSON.stringify(['EVENT', id, source]));
+				}
 				const candidates = filter.ids
 					? [quoted]
 					: filter.kinds?.includes(Metadata)
@@ -144,6 +148,20 @@ test('updates post and quote timestamps at midnight and on appearance changes', 
 	await selectDropdownOption(page, mode, 'Relative');
 	await expect(mainTime).toHaveText(/^\d+m$/);
 	await expect(quoteTime).toHaveText(/^\d+d$/);
+
+	const liveTimestamp = '2027-01-01T00:01:58+09:00';
+	await page.clock.setFixedTime(new Date(liveTimestamp));
+	const livePost = event('6', liveTimestamp, ShortTextNote, 'Just arrived');
+	await expect.poll(() => Boolean(sendLivePost)).toBe(true);
+	sendLivePost?.(livePost);
+	const liveTime = row(livePost.id).locator('time');
+	await expect(liveTime).toHaveText('0s');
+	await expect(mainTime).toHaveText('6m');
+
+	await page.clock.setFixedTime(new Date('2027-01-01T00:02:00+09:00'));
+	await page.clock.fastForward(2_000);
+	await expect(liveTime).toHaveText('2s');
+	await expect(mainTime).toHaveText('7m');
 
 	await page.reload();
 	await expect(mainTime).toHaveText(/^\d+m$/);
