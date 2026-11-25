@@ -116,9 +116,7 @@ jobs:
           [[ "$count" -le 1 ]] || { echo 'Multiple version update pull requests exist.' >&2; exit 1; }
           title="Update application version to $RELEASE_VERSION"
           if [[ "$count" == 1 ]]; then
-            pr=$(jq -c '.[0]' <<< "$pulls")
-            jq -e --arg author "$APP_SLUG[bot]" --arg title "$title" '.user.login == $author and .title == $title and .base.ref == "main"' <<< "$pr" >/dev/null || { echo 'Existing pull request does not match this app or version.' >&2; exit 1; }
-            number=$(jq -r '.number' <<< "$pr")
+            number=$(jq -r '.[0].number' <<< "$pulls")
           else
             main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
             [[ "$main_sha" == "$COMMIT_SHA" ]] || { echo 'The planned commit is no longer main HEAD.' >&2; exit 1; }
@@ -139,12 +137,11 @@ jobs:
             npm version "$RELEASE_VERSION" --no-git-tag-version
             git add -- package.json package-lock.json
             git commit -m "$title"
-            git push origin HEAD:refs/heads/release/version
             main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
             [[ "$main_sha" == "$COMMIT_SHA" ]] || { echo 'The planned commit is no longer main HEAD.' >&2; exit 1; }
-            gh pr create --repo "$GITHUB_REPOSITORY" --base main --head release/version --title "$title" --body "Update the application version to $RELEASE_VERSION for the next release." --label release:none
-            pr=$(gh api --paginate --slurp -X GET "repos/$GITHUB_REPOSITORY/pulls" -f state=open -f head="$owner:release/version" -f base=main -F per_page=100 | jq -ce 'if (add | length) == 1 then add[0] else error("Expected one pull request") end')
-            number=$(jq -r '.number' <<< "$pr")
+            git push origin HEAD:refs/heads/release/version
+            pr_url=$(gh pr create --repo "$GITHUB_REPOSITORY" --base main --head release/version --title "$title" --body "Update the application version to $RELEASE_VERSION for the next release." --label release:none)
+            number=${pr_url##*/}
           fi
           pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$number")
           jq -e --arg author "$APP_SLUG[bot]" --arg title "$title" '.state == "open" and .user.login == $author and .title == $title and .base.ref == "main" and .head.ref == "release/version"' <<< "$pr" >/dev/null || { echo 'Pull request does not match this app or version.' >&2; exit 1; }
