@@ -88,10 +88,10 @@ describe('persistent cache seed targets', () => {
 				]),
 				deck('inactive', [
 					{
-						id: 'follow',
+						id: 'following',
 						type: 'timeline',
 						timelineKind: 'preset',
-						sourceKey: 'timeline_follow',
+						sourceKey: 'timeline_following',
 						pubkey: pubkeyB.toUpperCase(),
 						relays: { type: 'nip65', pubkey: pubkeyD.toUpperCase() },
 						width: 'standard'

@@ -64,10 +64,10 @@ test('updates shared titles from metadata and stops watching channels that leave
 
 	await openDeck(page);
 	const columns = deckColumns(page);
-	await addPresetColumn(page, 'timeline_follow', { followTarget: npubEncode(pubkey) });
-	const follow = columns.first();
-	const profileFallback = `Follow: ${npubEncode(pubkey).slice(0, 12)}`;
-	await expect(follow.getByRole('heading')).toHaveText(profileFallback);
+	await addPresetColumn(page, 'timeline_following', { followingTarget: npubEncode(pubkey) });
+	const following = columns.first();
+	const profileFallback = `Following: ${npubEncode(pubkey).slice(0, 12)}`;
+	await expect(following.getByRole('heading')).toHaveText(profileFallback);
 	await expect(sidebarButton(page, profileFallback)).toBeVisible();
 	await expect.poll(() => profiles.length).toBeGreaterThan(0);
 	function sendEvent(
@@ -97,14 +97,14 @@ test('updates shared titles from metadata and stops watching channels that leave
 	for (const { socket, id } of profiles) {
 		sendEvent(socket, id, Metadata, 'd'.repeat(64), 'Alice', 1);
 	}
-	await expect(follow.getByRole('heading')).toHaveText('Follow: Alice');
+	await expect(following.getByRole('heading')).toHaveText('Following: Alice');
 	latestProfileAvailable = true;
 	for (const { socket, id } of profiles) {
 		sendEvent(socket, id, Metadata, 'e'.repeat(64), 'Alicia', 2);
 		socket.send(JSON.stringify(['EOSE', id]));
 	}
-	await expect(follow.getByRole('heading')).toHaveText('Follow: Alicia');
-	await expect(sidebarButton(page, 'Follow: Alicia')).toBeVisible();
+	await expect(following.getByRole('heading')).toHaveText('Following: Alicia');
+	await expect(sidebarButton(page, 'Following: Alicia')).toBeVisible();
 
 	await addPresetColumn(page, 'timeline_channel', { channelTarget: channelId });
 	const channel = columns.nth(1);

@@ -72,7 +72,7 @@ export function getTimelineRequest(column: ColumnConfig): TimelineRequest | null
 		};
 	}
 
-	if (column.sourceKey === 'timeline_follow') {
+	if (column.sourceKey === 'timeline_following') {
 		return {
 			filters: [
 				{

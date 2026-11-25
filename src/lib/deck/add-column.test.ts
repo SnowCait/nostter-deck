@@ -5,7 +5,7 @@ const baseDraft: AddColumnDraft = {
 	id: 'column-1',
 	columnType: 'website',
 	websiteUrl: null,
-	followTarget: null,
+	followingTarget: null,
 	searchQuery: '',
 	channelTarget: null,
 	presetTimelineRelays: null,
@@ -29,18 +29,18 @@ describe('column config drafts', () => {
 		});
 	});
 
-	test('creates a follow column config', () => {
+	test('creates a Following Timeline column config', () => {
 		expect(
 			createColumnConfigFromDraft({
 				...baseDraft,
-				columnType: 'timeline_follow',
-				followTarget: { pubkey: 'a'.repeat(64), relays: ['wss://relay.example/'] }
+				columnType: 'timeline_following',
+				followingTarget: { pubkey: 'a'.repeat(64), relays: ['wss://relay.example/'] }
 			})
 		).toEqual({
 			id: 'column-1',
 			type: 'timeline',
 			timelineKind: 'preset',
-			sourceKey: 'timeline_follow',
+			sourceKey: 'timeline_following',
 			pubkey: 'a'.repeat(64),
 			relays: { type: 'nip65', pubkey: 'a'.repeat(64) },
 			width: 'standard'
@@ -89,12 +89,12 @@ describe('column config drafts', () => {
 		expect(
 			createColumnConfigFromDraft({
 				...baseDraft,
-				columnType: 'timeline_follow',
-				followTarget: { pubkey: 'a'.repeat(64), relays: ['wss://relay.example/'] },
+				columnType: 'timeline_following',
+				followingTarget: { pubkey: 'a'.repeat(64), relays: ['wss://relay.example/'] },
 				presetTimelineRelays: { type: 'default' }
 			})
 		).toMatchObject({
-			sourceKey: 'timeline_follow',
+			sourceKey: 'timeline_following',
 			relays: { type: 'default' }
 		});
 	});
@@ -119,7 +119,7 @@ describe('column config drafts', () => {
 
 	test.each([
 		{ columnType: 'website' as const },
-		{ columnType: 'timeline_follow' as const },
+		{ columnType: 'timeline_following' as const },
 		{ columnType: 'timeline_search' as const, searchQuery: '   ' },
 		{ columnType: 'timeline_channel' as const },
 		{ columnType: 'custom_timeline' as const }

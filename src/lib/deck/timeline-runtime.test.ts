@@ -276,13 +276,13 @@ describe('timeline runtime', () => {
 		});
 	});
 
-	test('creates a follow timeline request with an initial limit', () => {
+	test('creates a Following Timeline request with an initial limit', () => {
 		expect(
 			getTimelineRequest({
-				id: 'follow',
+				id: 'following',
 				type: 'timeline',
 				timelineKind: 'preset',
-				sourceKey: 'timeline_follow',
+				sourceKey: 'timeline_following',
 				pubkey: '5'.repeat(64),
 				relays: { type: 'custom', urls: ['wss://relay.example/'] },
 				width: 'standard'
