@@ -7,6 +7,10 @@ permissions:
   contents: read
   pull-requests: read
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   plan:
     if: github.ref == 'refs/heads/main'
@@ -54,3 +58,102 @@ jobs:
             printf -- '- Release tag: `%s`\n' "$RELEASE_TAG"
             printf -- '- Change level: `%s`\n' "$CHANGE_LEVEL"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  update-version:
+    needs: plan
+    if: needs.plan.outputs.first-release == 'true' || needs.plan.outputs.change-level != 'none'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.commit-sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24.x'
+          package-manager-cache: false
+      - name: Check committed version
+        id: version
+        env:
+          RELEASE_VERSION: ${{ needs.plan.outputs.release-version }}
+        run: |
+          current=$(node -p "require('./package.json').version")
+          if [[ "$current" == "$RELEASE_VERSION" ]]; then
+            echo 'update=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'update=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Create GitHub App token
+        if: steps.version.outputs.update == 'true'
+        id: app-token
+        uses: actions/create-github-app-token@v3.4.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - name: Create or reuse version update pull request
+        if: steps.version.outputs.update == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          COMMIT_SHA: ${{ needs.plan.outputs.commit-sha }}
+          RELEASE_VERSION: ${{ needs.plan.outputs.release-version }}
+        run: |
+          set -euo pipefail
+          releases=$(gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -c 'add // []')
+          if jq -e 'any(.[]; .draft)' <<< "$releases" >/dev/null; then
+            echo 'An unfinished draft release exists.' >&2
+            exit 1
+          fi
+
+          owner=${GITHUB_REPOSITORY%%/*}
+          pulls=$(gh api --paginate --slurp -X GET "repos/$GITHUB_REPOSITORY/pulls" -f state=open -f head="$owner:release/version" -F per_page=100 | jq -c 'add // []')
+          count=$(jq 'length' <<< "$pulls")
+          [[ "$count" -le 1 ]] || { echo 'Multiple version update pull requests exist.' >&2; exit 1; }
+          title="Update application version to $RELEASE_VERSION"
+          if [[ "$count" == 1 ]]; then
+            pr=$(jq -c '.[0]' <<< "$pulls")
+            jq -e --arg author "$APP_SLUG[bot]" --arg title "$title" '.user.login == $author and .title == $title and .base.ref == "main"' <<< "$pr" >/dev/null || { echo 'Existing pull request does not match this app or version.' >&2; exit 1; }
+            number=$(jq -r '.number' <<< "$pr")
+          else
+            main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+            [[ "$main_sha" == "$COMMIT_SHA" ]] || { echo 'The planned commit is no longer main HEAD.' >&2; exit 1; }
+            gh auth setup-git
+            branch_status=0
+            git ls-remote --exit-code --heads origin refs/heads/release/version > /dev/null || branch_status=$?
+            if [[ "$branch_status" == 0 ]]; then
+              echo 'The version update branch already exists without an open pull request.' >&2
+              exit 1
+            elif [[ "$branch_status" != 2 ]]; then
+              echo 'Could not check the version update branch.' >&2
+              exit "$branch_status"
+            fi
+            bot_id=$(gh api "/users/$APP_SLUG%5Bbot%5D" --jq '.id')
+            git config user.name "$APP_SLUG[bot]"
+            git config user.email "$bot_id+$APP_SLUG[bot]@users.noreply.github.com"
+            git switch -c release/version
+            npm version "$RELEASE_VERSION" --no-git-tag-version
+            git add -- package.json package-lock.json
+            git commit -m "$title"
+            git push origin HEAD:refs/heads/release/version
+            main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+            [[ "$main_sha" == "$COMMIT_SHA" ]] || { echo 'The planned commit is no longer main HEAD.' >&2; exit 1; }
+            gh pr create --repo "$GITHUB_REPOSITORY" --base main --head release/version --title "$title" --body "Update the application version to $RELEASE_VERSION for the next release." --label release:none
+            pr=$(gh api --paginate --slurp -X GET "repos/$GITHUB_REPOSITORY/pulls" -f state=open -f head="$owner:release/version" -f base=main -F per_page=100 | jq -ce 'if (add | length) == 1 then add[0] else error("Expected one pull request") end')
+            number=$(jq -r '.number' <<< "$pr")
+          fi
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$number")
+          jq -e --arg author "$APP_SLUG[bot]" --arg title "$title" '.state == "open" and .user.login == $author and .title == $title and .base.ref == "main" and .head.ref == "release/version"' <<< "$pr" >/dev/null || { echo 'Pull request does not match this app or version.' >&2; exit 1; }
+          head_sha=$(jq -r '.head.sha' <<< "$pr")
+          version=$(gh api -H 'Accept: application/vnd.github.raw+json' "repos/$GITHUB_REPOSITORY/contents/package.json?ref=$head_sha" | jq -r '.version')
+          [[ "$version" == "$RELEASE_VERSION" ]] || { echo 'Pull request has a different version.' >&2; exit 1; }
+          files=$(gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/pulls/$number/files?per_page=100" | jq -c '[add[].filename] | sort')
+          [[ "$files" == '["package-lock.json","package.json"]' ]] || { echo 'Pull request changes unexpected files.' >&2; exit 1; }
+          labels=$(jq -c '[.labels[].name | select(. == "release:major" or . == "release:minor" or . == "release:patch" or . == "release:none")]' <<< "$pr")
+          jq -e 'length == 0 or . == ["release:none"]' <<< "$labels" >/dev/null || { echo 'Pull request has conflicting release labels.' >&2; exit 1; }
+          if [[ "$labels" == '[]' ]]; then gh pr edit "$number" --repo "$GITHUB_REPOSITORY" --add-label release:none; fi
+          gh pr merge "$number" --repo "$GITHUB_REPOSITORY" --auto --merge --match-head-commit "$head_sha"
