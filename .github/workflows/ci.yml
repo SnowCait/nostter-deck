@@ -77,4 +77,8 @@ jobs:
       # High Integrity WebView2 hosts ignore WEBVIEW2_* environment overrides.
       # Run E2E at Medium Integrity to honor them without machine-wide registry policies.
       # https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/security
-      - run: '& "$env:ProgramFiles\gsudo\Current\gsudo.exe" --direct --integrity Medium npm run test:desktop'
+      # Workaround for Edge WebDriver extraction failures in @wdio/tauri-service.
+      # TODO: Remove this shell override after upgrading to a version containing
+      # https://github.com/webdriverio/desktop-mobile/pull/1130
+      - shell: powershell
+        run: '& "$env:ProgramFiles\gsudo\Current\gsudo.exe" --direct --integrity Medium npm run test:desktop'
