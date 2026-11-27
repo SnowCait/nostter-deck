@@ -23,7 +23,6 @@ type State = {
 	publishError: PublishError | null;
 	cacheError: unknown;
 	lastCreatedAt: number | undefined;
-	revision: number;
 	loading?: Promise<void>;
 };
 
@@ -49,8 +48,7 @@ export function createFollowListController({ pubkey, signer }: Account) {
 		loadError: null,
 		publishError: null,
 		cacheError: null,
-		lastCreatedAt: undefined,
-		revision: 0
+		lastCreatedAt: undefined
 	});
 	let disposed = false;
 	let pending: Promise<void> | undefined;
@@ -103,18 +101,11 @@ export function createFollowListController({ pubkey, signer }: Account) {
 		state.publishError = { type: 'conflict', ...(error === undefined ? {} : { error }) };
 	}
 
-	function startPublishing(manualRetry = false): boolean {
+	function startPublishing(): boolean {
 		if (disposed || state.status !== 'ready' || !state.desired || state.isPublishing) {
 			return false;
 		}
 		const error = state.publishError;
-		if (
-			!manualRetry &&
-			error &&
-			(error.type !== 'publish' || error.result.stage !== 'publishing')
-		) {
-			return false;
-		}
 		if (!error && sameList(state.desired, state.event)) {
 			return false;
 		}
@@ -127,7 +118,6 @@ export function createFollowListController({ pubkey, signer }: Account) {
 			try {
 				while (!disposed && state.desired) {
 					const update = $state.snapshot(state.desired);
-					const revision = state.revision;
 					const previousCreatedAt =
 						state.lastCreatedAt === undefined
 							? undefined
@@ -163,10 +153,7 @@ export function createFollowListController({ pubkey, signer }: Account) {
 						}
 					} else {
 						state.publishError = { type: 'publish', result: result.publishResult };
-						// Even a reverted desire must supersede a possibly delivered failed attempt.
-						if (result.publishResult.stage !== 'publishing' || state.revision === revision) {
-							return;
-						}
+						return;
 					}
 				}
 			} catch (error) {
@@ -193,8 +180,9 @@ export function createFollowListController({ pubkey, signer }: Account) {
 			return false;
 		}
 		state.desired = update;
-		state.revision += 1;
-		startPublishing();
+		if (!state.publishError) {
+			startPublishing();
+		}
 		return true;
 	}
 
@@ -207,7 +195,7 @@ export function createFollowListController({ pubkey, signer }: Account) {
 		) {
 			return false;
 		}
-		return startPublishing(true);
+		return startPublishing();
 	}
 
 	state.loading = load();

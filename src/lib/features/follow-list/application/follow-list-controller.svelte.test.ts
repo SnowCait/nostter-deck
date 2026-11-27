@@ -158,87 +158,43 @@ describe('follow list controller', () => {
 		expect(controller.desired).toEqual(attempts[0].update);
 	});
 
-	test.each([false, true])(
-		'publishes subsequent changes after relay failure, including a reversion: %s',
-		async (revert) => {
+	test.each(['signing', 'publishing'] as const)(
+		'stops after %s failure and retries the latest desired state on request',
+		async (stage) => {
 			const { controller, attempts, fail, succeed } = harness();
 			await controller.reload();
 			controller.follow(alice);
-			if (revert) {
-				controller.unfollow(alice);
-			} else {
-				controller.follow(bob);
-			}
-			await fail(0, 'publishing', 200);
-			expect(attempts).toHaveLength(2);
+			controller.follow(bob);
+			await fail(0, stage, 200);
+			expect(controller.isPublishing).toBe(false);
+			expect(controller.publishError).toMatchObject({ type: 'publish', result: { stage } });
+			expect(attempts).toHaveLength(1);
+			controller.unfollow(alice);
+			controller.follow(carol);
+			expect(attempts).toHaveLength(1);
+			expect(controller.isFollowing(alice)).toBe(false);
+			expect(controller.isFollowing(bob)).toBe(true);
+			expect(controller.isFollowing(carol)).toBe(true);
+			expect(controller.retry()).toBe(true);
+			expect(controller.retry()).toBe(false);
+			expect(attempts[1].update.tags).toEqual([...event().tags, ['p', bob, ''], ['p', carol, '']]);
 			expect(attempts[1].previous).toBe(200);
-			expect(attempts[1].update).toEqual(controller.desired);
-			if (revert) {
-				expect(attempts[1].update.tags).toEqual(event().tags);
-			}
 			await succeed(1);
 			expect(controller.publishError).toBeNull();
 		}
 	);
 
-	test('stops after relay failure without further changes and resumes on a later operation', async () => {
-		const { controller, attempts, fail, succeed } = harness();
-		await controller.reload();
-		controller.follow(alice);
-		await fail(0, 'publishing');
-		expect(attempts).toHaveLength(1);
-		expect(controller.isPublishing).toBe(false);
-		expect(controller.publishError).toMatchObject({
-			type: 'publish',
-			result: { stage: 'publishing' }
-		});
-		expect(controller.isFollowing(alice)).toBe(true);
-		controller.follow(bob);
-		expect(attempts).toHaveLength(2);
-		expect(attempts[1].previous).toBe(100);
-		await succeed(1);
-	});
-
-	test('publishes a reversion made after a relay failure has stopped publishing', async () => {
+	test('retries a reverted desire after a relay failure', async () => {
 		const { controller, attempts, fail, succeed } = harness();
 		await controller.reload();
 		controller.follow(alice);
 		await fail(0, 'publishing', 200);
-		expect(controller.isPublishing).toBe(false);
 		expect(controller.unfollow(alice)).toBe(true);
-		expect(attempts).toHaveLength(2);
+		expect(attempts).toHaveLength(1);
+		expect(controller.desired?.tags).toEqual(event().tags);
+		expect(controller.retry()).toBe(true);
 		expect(attempts[1].update.tags).toEqual(event().tags);
 		expect(attempts[1].previous).toBe(200);
-		await succeed(1);
-		expect(controller.publishError).toBeNull();
-	});
-
-	test('does not loop when an automatic follow-up also fails', async () => {
-		const { controller, attempts, fail } = harness();
-		await controller.reload();
-		controller.follow(alice);
-		controller.follow(bob);
-		await fail(0, 'publishing');
-		await fail(1, 'publishing');
-		expect(attempts).toHaveLength(2);
-		expect(controller.isPublishing).toBe(false);
-		expect(controller.isFollowing(bob)).toBe(true);
-	});
-
-	test('pauses after signing failure and retries the retained latest desire only on request', async () => {
-		const { controller, attempts, fail, succeed } = harness();
-		await controller.reload();
-		controller.follow(alice);
-		controller.follow(bob);
-		await fail(0, 'signing');
-		controller.unfollow(alice);
-		expect(attempts).toHaveLength(1);
-		expect(controller.isFollowing(bob)).toBe(true);
-		expect(controller.isPublishing).toBe(false);
-		expect(controller.retry()).toBe(true);
-		expect(controller.retry()).toBe(false);
-		expect(attempts[1].update.tags).toEqual([...event().tags, ['p', bob, '']]);
-		expect(attempts[1].previous).toBe(100);
 		await succeed(1);
 		expect(controller.publishError).toBeNull();
 	});
@@ -386,7 +342,12 @@ describe('follow list controller', () => {
 			expect(controller.publishError).toEqual({ type: 'exception', error });
 			expect(controller.lastCreatedAt).toBeUndefined();
 			expect(controller.isFollowing(alice)).toBe(true);
+			const previousAttempts = attempts.length;
+			controller.follow(carol);
+			expect(controller.isFollowing(carol)).toBe(true);
+			expect(attempts).toHaveLength(previousAttempts);
 			expect(controller.retry()).toBe(true);
+			expect(attempts.at(-1)?.update).toEqual(controller.desired);
 			await succeed(attempts.length - 1);
 			expect(controller.isPublishing).toBe(false);
 		}
