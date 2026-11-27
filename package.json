@@ -28,6 +28,7 @@
 	},
 	"dependencies": {
 		"@nostter/nostr-protocol": "0.1.0",
+		"@primer/octicons": "^19.42.0",
 		"@rx-nostr/crypto": "^3.1.6",
 		"@scure/base": "^2.4.0",
 		"@tauri-apps/api": "^2",
