@@ -12,6 +12,7 @@ const primaryLicense = /^(?:licen[cs]e|copying)/i;
 // The shadcn-svelte package license also covers the UI components copied into src/lib.
 const stylesheetPackages = ['tailwindcss', 'tw-animate-css', 'shadcn-svelte'];
 
+/** @type {Record<string, [heading: string, file: string][] | undefined>} */
 const embeddedLicenses = {
 	'dexie@4.4.7': [['safari-14-idb-fix 3.0.0', 'safari-14-idb-fix-3.0.0.txt']],
 	'emoji-picker-element@1.29.1': [['blob-util 2.0.2', 'blob-util-2.0.2.txt']],
@@ -23,6 +24,12 @@ const embeddedLicenses = {
 	]
 };
 
+/**
+ * @typedef {{ name: string, version: string, identifier?: string, text?: string }} ViteLicenseEntry
+ * @typedef {Omit<ViteLicenseEntry, 'text'> & { documents: Map<string, string> }} LicenseEntry
+ */
+
+/** @param {string} id @param {string} root */
 function packageDirectory(id, root) {
 	if (id.startsWith('\0')) {
 		return undefined;
@@ -31,6 +38,7 @@ function packageDirectory(id, root) {
 	return /^(.*\/node_modules\/(?:@[^/]+\/)?[^/]+)\//.exec(path)?.[1];
 }
 
+/** @param {Map<string, string>} documents @param {string} heading @param {string} content */
 function addDocument(documents, heading, content) {
 	const text = content.replace(/\r\n/g, '\n').trim();
 	if (!text || [...documents.keys()].some((existing) => existing.includes(text))) {
@@ -45,6 +53,7 @@ function addDocument(documents, heading, content) {
 	documents.set(text, heading);
 }
 
+/** @returns {import('vite').Plugin} */
 export function frontendLicenses() {
 	return {
 		name: 'frontend-licenses',
@@ -54,11 +63,14 @@ export function frontendLicenses() {
 			order: 'post',
 			handler(_, bundle) {
 				const report = bundle[viteLicenseReport];
-				if (report?.type !== 'asset') {
+				if (report?.type !== 'asset' || typeof report.source !== 'string') {
 					this.error('Vite did not generate the client license report');
 				}
+				/** @type {Map<string, LicenseEntry>} */
 				const entries = new Map();
-				for (const { name, version, identifier, text } of JSON.parse(report.source)) {
+				/** @type {ViteLicenseEntry[]} */
+				const viteEntries = JSON.parse(report.source);
+				for (const { name, version, identifier, text } of viteEntries) {
 					const documents = new Map();
 					if (text) {
 						addDocument(documents, '', text);
@@ -98,9 +110,9 @@ export function frontendLicenses() {
 				}
 
 				for (const dir of [...packageDirs].sort()) {
-					const { name, version, license } = JSON.parse(
-						readFileSync(join(dir, 'package.json'), 'utf8')
-					);
+					/** @type {{ name: string, version: string, license?: string }} */
+					const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+					const { name, version, license } = manifest;
 					const key = `${name}@${version}`;
 					const entry = entries.get(key) ?? {
 						name,
@@ -141,14 +153,15 @@ export function frontendLicenses() {
 					}
 				}
 
-				const sections = [...entries.keys()].sort().map((key) => {
-					const { name, version, identifier, documents } = entries.get(key);
-					const title = `${name} ${version}${identifier ? ` (${identifier})` : ''}`;
-					return [
-						title,
-						...[...documents].map(([text, heading]) => (heading ? `${heading}\n\n${text}` : text))
-					].join('\n\n');
-				});
+				const sections = [...entries]
+					.sort(([left], [right]) => (left < right ? -1 : Number(left > right)))
+					.map(([, { name, version, identifier, documents }]) => {
+						const title = `${name} ${version}${identifier ? ` (${identifier})` : ''}`;
+						return [
+							title,
+							...[...documents].map(([text, heading]) => (heading ? `${heading}\n\n${text}` : text))
+						].join('\n\n');
+					});
 				this.emitFile({
 					type: 'asset',
 					fileName: licenseFilename,
