@@ -105,10 +105,6 @@ export function createFollowListController({ pubkey, signer }: Account) {
 		if (disposed || state.status !== 'ready' || !state.desired || state.isPublishing) {
 			return false;
 		}
-		const error = state.publishError;
-		if (!error && sameList(state.desired, state.event)) {
-			return false;
-		}
 		const finished = Promise.withResolvers<void>();
 		pending = finished.promise;
 		state.isPublishing = true;
@@ -125,7 +121,6 @@ export function createFollowListController({ pubkey, signer }: Account) {
 					const result = await publishAndCacheFollowList(update, pubkey, signer, previousCreatedAt);
 					state.lastCreatedAt = result.createdAt;
 					if (result.publishResult.ok) {
-						state.publishError = null;
 						state.cacheError =
 							result.cacheResult.status === 'failed' ? result.cacheResult.error : null;
 						const published = result.publishResult.event as Nostr.Event<typeof Contacts>;

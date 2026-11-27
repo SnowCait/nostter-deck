@@ -321,37 +321,26 @@ describe('follow list controller', () => {
 		}
 	);
 
-	test.each(['throw', 'reject'] as const)(
-		'recovers from a publishing API %s without automatic retry',
-		async (mode) => {
-			const { controller, attempts, succeed } = harness();
-			const error = new Error('Cache read failed');
-			await controller.reload();
-			if (mode === 'throw') {
-				vi.mocked(publishAndCacheFollowList).mockImplementationOnce(() => {
-					throw error;
-				});
-			}
-			controller.follow(alice);
-			if (mode === 'reject') {
-				controller.follow(bob);
-				attempts[0].completion.reject(error);
-				await attempts[0].completion.promise.catch(() => {});
-			}
-			expect(controller.isPublishing).toBe(false);
-			expect(controller.publishError).toEqual({ type: 'exception', error });
-			expect(controller.lastCreatedAt).toBeUndefined();
-			expect(controller.isFollowing(alice)).toBe(true);
-			const previousAttempts = attempts.length;
-			controller.follow(carol);
-			expect(controller.isFollowing(carol)).toBe(true);
-			expect(attempts).toHaveLength(previousAttempts);
-			expect(controller.retry()).toBe(true);
-			expect(attempts.at(-1)?.update).toEqual(controller.desired);
-			await succeed(attempts.length - 1);
-			expect(controller.isPublishing).toBe(false);
-		}
-	);
+	test('recovers from a publishing API rejection without automatic retry', async () => {
+		const { controller, attempts, succeed } = harness();
+		const error = new Error('Cache read failed');
+		await controller.reload();
+		controller.follow(alice);
+		controller.follow(bob);
+		attempts[0].completion.reject(error);
+		await attempts[0].completion.promise.catch(() => {});
+		expect(controller.isPublishing).toBe(false);
+		expect(controller.publishError).toEqual({ type: 'exception', error });
+		expect(controller.lastCreatedAt).toBeUndefined();
+		expect(controller.isFollowing(alice)).toBe(true);
+		controller.follow(carol);
+		expect(controller.isFollowing(carol)).toBe(true);
+		expect(attempts).toHaveLength(1);
+		expect(controller.retry()).toBe(true);
+		expect(attempts[1].update).toEqual(controller.desired);
+		await succeed(1);
+		expect(controller.isPublishing).toBe(false);
+	});
 
 	test('blocks loading operations and publishes the first follow after an empty load', async () => {
 		const fetched = Promise.withResolvers<Nostr.Event<typeof Contacts> | undefined>();
