@@ -24,8 +24,6 @@ type State = {
 	cacheError: unknown;
 	lastCreatedAt: number | undefined;
 	revision: number;
-	needsPublish: boolean;
-	paused: boolean;
 	loading?: Promise<void>;
 };
 
@@ -52,9 +50,7 @@ export function createFollowListController({ pubkey, signer }: Account) {
 		publishError: null,
 		cacheError: null,
 		lastCreatedAt: undefined,
-		revision: 0,
-		needsPublish: false,
-		paused: false
+		revision: 0
 	});
 	let disposed = false;
 	let pending: Promise<void> | undefined;
@@ -76,8 +72,6 @@ export function createFollowListController({ pubkey, signer }: Account) {
 			state.status = 'ready';
 			if (recoveringConflict && event) {
 				state.publishError = null;
-				state.needsPublish = false;
-				state.paused = false;
 			}
 		} catch (error) {
 			if (disposed) {
@@ -107,15 +101,24 @@ export function createFollowListController({ pubkey, signer }: Account) {
 
 	function pauseForConflict(error?: unknown) {
 		state.publishError = { type: 'conflict', ...(error === undefined ? {} : { error }) };
-		state.needsPublish = true;
-		state.paused = true;
 	}
 
-	function startPublishing() {
+	function startPublishing(manualRetry = false): boolean {
 		if (disposed || state.status !== 'ready' || !state.desired || state.isPublishing) {
 			return false;
 		}
-		if (state.paused || (!state.needsPublish && sameList(state.desired, state.event))) {
+		const error = state.publishError;
+		if (error?.type === 'conflict') {
+			return false;
+		}
+		if (
+			!manualRetry &&
+			error &&
+			(error.type !== 'publish' || error.result.stage !== 'publishing')
+		) {
+			return false;
+		}
+		if (!error && sameList(state.desired, state.event)) {
 			return false;
 		}
 		const finished = Promise.withResolvers<void>();
@@ -158,16 +161,13 @@ export function createFollowListController({ pubkey, signer }: Account) {
 							}
 						}
 						state.event = published;
-						state.needsPublish = false;
 						if (sameList(state.desired, state.event)) {
 							return;
 						}
 					} else {
 						state.publishError = { type: 'publish', result: result.publishResult };
-						state.needsPublish = true;
-						state.paused = result.publishResult.stage !== 'publishing';
 						// Even a reverted desire must supersede a possibly delivered failed attempt.
-						if (state.paused || state.revision === revision) {
+						if (result.publishResult.stage !== 'publishing' || state.revision === revision) {
 							return;
 						}
 					}
@@ -175,8 +175,6 @@ export function createFollowListController({ pubkey, signer }: Account) {
 			} catch (error) {
 				if (!disposed) {
 					state.publishError = { type: 'exception', error };
-					state.needsPublish = true;
-					state.paused = true;
 				}
 			} finally {
 				state.isPublishing = false;
@@ -212,8 +210,7 @@ export function createFollowListController({ pubkey, signer }: Account) {
 		) {
 			return false;
 		}
-		state.paused = false;
-		return startPublishing();
+		return startPublishing(true);
 	}
 
 	state.loading = load();

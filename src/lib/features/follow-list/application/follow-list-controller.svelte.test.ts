@@ -199,6 +199,20 @@ describe('follow list controller', () => {
 		await succeed(1);
 	});
 
+	test('publishes a reversion made after a relay failure has stopped publishing', async () => {
+		const { controller, attempts, fail, succeed } = harness();
+		await controller.reload();
+		controller.follow(alice);
+		await fail(0, 'publishing', 200);
+		expect(controller.isPublishing).toBe(false);
+		expect(controller.unfollow(alice)).toBe(true);
+		expect(attempts).toHaveLength(2);
+		expect(attempts[1].update.tags).toEqual(event().tags);
+		expect(attempts[1].previous).toBe(200);
+		await succeed(1);
+		expect(controller.publishError).toBeNull();
+	});
+
 	test('does not loop when an automatic follow-up also fails', async () => {
 		const { controller, attempts, fail } = harness();
 		await controller.reload();
