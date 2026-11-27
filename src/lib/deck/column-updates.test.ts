@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
 	saveChannelSettings,
 	saveCustomTimelineSettings,
-	saveFollowSettings,
+	saveFollowingSettings,
 	saveSearchSettings,
 	updateColumnIcon,
 	updateColumnTitle,
@@ -40,19 +40,19 @@ describe('column updates', () => {
 
 	test('saves preset timeline settings', () => {
 		expect(
-			saveFollowSettings(
+			saveFollowingSettings(
 				[
 					{
-						id: 'follow',
+						id: 'following',
 						type: 'timeline',
 						timelineKind: 'preset',
-						sourceKey: 'timeline_follow',
+						sourceKey: 'timeline_following',
 						pubkey: 'a'.repeat(64),
 						relays: { type: 'default' },
 						width: 'standard'
 					}
 				],
-				'follow',
+				'following',
 				{ pubkey: 'b'.repeat(64), relays: ['wss://relay.example/'] }
 			)
 		).toMatchObject([

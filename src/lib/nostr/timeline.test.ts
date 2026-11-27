@@ -21,7 +21,7 @@ const second = 'c'.repeat(64);
 const third = 'd'.repeat(64);
 const relay = 'wss://timeline.example/';
 const listKey = [owner, Followsets, 'favorites'] as const;
-const followFilter = { authors: `${Contacts}:${owner}:`, kinds: [ShortTextNote], limit: 20 };
+const followListFilter = { authors: `${Contacts}:${owner}:`, kinds: [ShortTextNote], limit: 20 };
 const listFilter = {
 	authors: `${Followsets}:${owner}:favorites`,
 	kinds: [ShortTextNote],
@@ -130,9 +130,9 @@ afterEach(async () => {
 });
 
 describe('timeline author sources', () => {
-	test('opens a cached follow timeline before the relay responds and updates both post phases', async () => {
+	test('opens a timeline from a cached follow list before the relay responds and updates both post phases', async () => {
 		await cache.putCachedLatestEvent(followList('1', [first]));
-		const { onEvent, onLoadingChange } = start([followFilter]);
+		const { onEvent, onLoadingChange } = start([followListFilter]);
 		const source = requests[0];
 		expect(source.filters).toEqual([{ kinds: [Contacts], authors: [owner], limit: 1 }]);
 		expect(source.relays).toEqual([relay, ...profileRelays]);
@@ -206,7 +206,7 @@ describe('timeline author sources', () => {
 			const cached = followList('1', [first, second]);
 			await cache.putCachedLatestEvent(cached);
 			const read = vi.spyOn(cache, 'getCachedLatestEvent');
-			start([followFilter]);
+			start([followListFilter]);
 			await vi.waitFor(() => expect(postRequests()).toHaveLength(2));
 			const [, live] = postRequests();
 
@@ -220,7 +220,7 @@ describe('timeline author sources', () => {
 
 	test('uses the event saved by a concurrent writer when it supersedes the relay result', async () => {
 		await cache.putCachedLatestEvent(followList('1', [first]));
-		start([followFilter]);
+		start([followListFilter]);
 		await vi.waitFor(() => expect(postRequests()).toHaveLength(2));
 
 		await cache.putCachedLatestEvent(followList('3', [third], 102));
@@ -256,7 +256,7 @@ describe('timeline author sources', () => {
 		await cache.putCachedLatestEvent(addressableList('2', [second]));
 		start([
 			{ kinds: [ShortTextNote], authors: [third] },
-			followFilter,
+			followListFilter,
 			listFilter,
 			{ ...listFilter, '#t': ['favorites'] }
 		]);
@@ -294,7 +294,7 @@ describe('timeline author sources', () => {
 	test('ignores pending cache and relay results after stopping', async () => {
 		const pendingRead = Promise.withResolvers<Nostr.Event<typeof Contacts>>();
 		vi.spyOn(cache, 'getCachedLatestEvent').mockReturnValueOnce(pendingRead.promise);
-		const { stop, onEvent, onLoadingChange } = start([followFilter]);
+		const { stop, onEvent, onLoadingChange } = start([followListFilter]);
 		answer(requests[0], followList('2', [second], 101));
 		stop();
 		pendingRead.resolve(followList('1', [first]) as Nostr.Event<typeof Contacts>);

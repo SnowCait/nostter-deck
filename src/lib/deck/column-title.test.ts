@@ -33,7 +33,7 @@ function title(
 
 describe('column titles', () => {
 	test.each([
-		['timeline_follow', 'Follow'],
+		['timeline_following', 'Following'],
 		['nav_notifications', 'Notifications']
 	] as const)(
 		'uses profile metadata for %s and shows a shortened npub when unavailable',

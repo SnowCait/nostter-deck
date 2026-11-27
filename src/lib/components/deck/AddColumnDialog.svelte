@@ -43,7 +43,7 @@
 	const availableColumnSourceKeys = columnSourceKeys;
 	const defaultColumnType = availableColumnSourceKeys[0] ?? 'timeline_search';
 	const columnTypeIconKeys = {
-		timeline_follow: 'users',
+		timeline_following: 'users',
 		timeline_search: 'search',
 		timeline_channel: 'messages',
 		nav_notifications: 'messages',
@@ -54,7 +54,7 @@
 
 	let selectedColumnType = $state<AddColumnType>(defaultColumnType);
 	let websiteUrl = $state('');
-	let followTarget = $state('');
+	let profileTargetInput = $state('');
 	let userPostsSettings = $state<UserPostsSettings | null>(null);
 	let searchQuery = $state('');
 	let channelTarget = $state('');
@@ -62,7 +62,7 @@
 	let presetTimelineRelayDraft = $state<RelaySelection | null>({ type: 'default' });
 	let customTimelineRelayDraft = $state<RelaySelection | null>({ type: 'default' });
 	let presetRelayColumnType = $state<AddColumnType>(defaultColumnType);
-	let followRelayTargetPubkey = $state('');
+	let previousPresetTargetPubkey = $state('');
 	let wasOpen = $state(false);
 
 	const normalizedWebsiteUrl = $derived(normalizeWebsiteUrl(websiteUrl));
@@ -83,13 +83,13 @@
 			iconKey: columnTypeIconKeys.website
 		}
 	]);
-	const parsedFollowTarget = $derived(decodeProfilePointer(followTarget));
-	const notificationsTarget = $derived(parseNotificationTarget(followTarget));
+	const followingTarget = $derived(decodeProfilePointer(profileTargetInput));
+	const notificationsTarget = $derived(parseNotificationTarget(profileTargetInput));
 	const presetTargetPubkey = $derived(
 		selectedColumnType === 'nav_notifications'
 			? notificationsTarget
-			: selectedColumnType === 'timeline_follow'
-				? parsedFollowTarget?.pubkey
+			: selectedColumnType === 'timeline_following'
+				? followingTarget?.pubkey
 				: null
 	);
 	const parsedChannelTarget = $derived(decodeChannelPointer(channelTarget));
@@ -111,32 +111,32 @@
 				userPostsSettings = null;
 			}
 			presetTimelineRelayDraft = { type: 'default' };
-			followRelayTargetPubkey = '';
+			previousPresetTargetPubkey = '';
 		}
 	});
 
 	$effect(() => {
 		if (!presetTargetPubkey) {
 			if (selectedColumnType !== 'nav_notifications') {
-				followRelayTargetPubkey = '';
+				previousPresetTargetPubkey = '';
 			}
 			return;
 		}
 
 		const nextPubkey = presetTargetPubkey;
-		const shouldTrackFollowTarget =
+		const shouldTrackPresetTarget =
 			(selectedColumnType === 'nav_notifications'
-				? !followRelayTargetPubkey && presetTimelineRelayDraft?.type === 'default'
+				? !previousPresetTargetPubkey && presetTimelineRelayDraft?.type === 'default'
 				: !presetTimelineRelayDraft || presetTimelineRelayDraft.type === 'default') ||
 			(presetTimelineRelayDraft?.type === 'nip65' &&
-				presetTimelineRelayDraft.pubkey === followRelayTargetPubkey);
+				presetTimelineRelayDraft.pubkey === previousPresetTargetPubkey);
 		if (
-			shouldTrackFollowTarget &&
+			shouldTrackPresetTarget &&
 			(presetTimelineRelayDraft?.type !== 'nip65' || presetTimelineRelayDraft.pubkey !== nextPubkey)
 		) {
 			presetTimelineRelayDraft = { type: 'nip65', pubkey: nextPubkey };
 		}
-		followRelayTargetPubkey = nextPubkey;
+		previousPresetTargetPubkey = nextPubkey;
 	});
 
 	function getColumnDraft(id: string) {
@@ -144,7 +144,7 @@
 			id,
 			columnType: selectedColumnType,
 			websiteUrl: normalizedWebsiteUrl,
-			followTarget: parsedFollowTarget,
+			followingTarget,
 			notificationsTarget,
 			userPostsSettings,
 			searchQuery,
@@ -158,7 +158,7 @@
 	function resetDraft() {
 		selectedColumnType = defaultColumnType;
 		websiteUrl = '';
-		followTarget = '';
+		profileTargetInput = '';
 		userPostsSettings = null;
 		searchQuery = '';
 		channelTarget = '';
@@ -166,7 +166,7 @@
 		presetTimelineRelayDraft = { type: 'default' };
 		customTimelineRelayDraft = { type: 'default' };
 		presetRelayColumnType = defaultColumnType;
-		followRelayTargetPubkey = '';
+		previousPresetTargetPubkey = '';
 	}
 
 	function resolvePresetTimelineRelays() {
@@ -174,7 +174,7 @@
 			return presetTimelineRelayDraft;
 		}
 
-		if (selectedColumnType === 'timeline_follow' && presetTargetPubkey) {
+		if (selectedColumnType === 'timeline_following' && presetTargetPubkey) {
 			return { type: 'nip65' as const, pubkey: presetTargetPubkey };
 		}
 
@@ -245,27 +245,29 @@
 			{/each}
 		</div>
 
-		{#if selectedColumnType === 'timeline_follow' || selectedColumnType === 'nav_notifications'}
+		{#if selectedColumnType === 'timeline_following' || selectedColumnType === 'nav_notifications'}
 			<label
 				class={[
 					'mt-4 mb-2 block font-semibold text-slate-700 dark:text-slate-300',
 					textClass.control
 				]}
-				for="follow-target"
+				for="preset-profile-target"
 			>
-				{selectedColumnType === 'nav_notifications' ? m.notifications_target() : m.follow_target()}
+				{selectedColumnType === 'nav_notifications'
+					? m.notifications_target()
+					: m.following_target()}
 			</label>
 			<input
-				id="follow-target"
+				id="preset-profile-target"
 				class={[
 					'h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-slate-950 transition outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-sky-400 dark:focus:ring-sky-950',
 					textClass.control
 				]}
-				bind:value={followTarget}
+				bind:value={profileTargetInput}
 			/>
 			<div class="mt-4">
 				<RelaySelectionEditor
-					id="preset-follow"
+					id="preset-profile-relays"
 					bind:value={presetTimelineRelayDraft}
 					{textClass}
 					{accountRelayOptions}

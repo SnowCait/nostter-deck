@@ -50,7 +50,7 @@ function normalizePresetRelaySelection(value: unknown) {
 		: null;
 }
 
-function normalizeFollowRelaySelection(value: unknown, pubkey: string) {
+function normalizeFollowingRelaySelection(value: unknown, pubkey: string) {
 	const relaySelection = normalizeRelaySelection(value);
 	if (relaySelection) {
 		return relaySelection.type === 'default' ? { type: 'nip65' as const, pubkey } : relaySelection;
@@ -86,19 +86,22 @@ export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 
 		if (candidate.type === 'timeline') {
 			if (candidate.timelineKind === 'preset') {
-				if (!isColumnSourceKey(candidate.sourceKey)) {
+				const savedSourceKey = (item as { sourceKey?: unknown }).sourceKey;
+				const sourceKey =
+					savedSourceKey === 'timeline_follow' ? 'timeline_following' : savedSourceKey;
+				if (!isColumnSourceKey(sourceKey)) {
 					return [];
 				}
 				const pubkey = (candidate as { pubkey?: unknown }).pubkey;
 				const relays = (candidate as { relays?: unknown }).relays;
 				const query = (candidate as { query?: unknown }).query;
 				const channelId = (candidate as { channelId?: unknown }).channelId;
-				if (candidate.sourceKey === 'timeline_follow') {
+				if (sourceKey === 'timeline_following') {
 					const normalizedPubkey = normalizePubkey(pubkey);
 					if (!normalizedPubkey) {
 						return [];
 					}
-					const normalizedRelays = normalizeFollowRelaySelection(relays, normalizedPubkey);
+					const normalizedRelays = normalizeFollowingRelaySelection(relays, normalizedPubkey);
 					if (!normalizedRelays) {
 						return [];
 					}
@@ -107,7 +110,7 @@ export function normalizeColumnConfigs(value: unknown): ColumnConfig[] {
 						id: candidate.id,
 						type: 'timeline',
 						timelineKind: 'preset',
-						sourceKey: candidate.sourceKey,
+						sourceKey,
 						pubkey: normalizedPubkey,
 						relays: normalizedRelays,
 						width: candidate.width

@@ -38,7 +38,7 @@
 	import UserPostsFields from '$lib/features/user-posts/presentation/UserPostsFields.svelte';
 	import type { UserPostsSettings } from '$lib/features/user-posts/domain/user-posts-actions';
 	import NotificationsColumnSettings from '$lib/features/notifications/presentation/NotificationsColumnSettings.svelte';
-	import FollowColumnSettings from './FollowColumnSettings.svelte';
+	import FollowingColumnSettings from './FollowingColumnSettings.svelte';
 	import SearchColumnSettings from './SearchColumnSettings.svelte';
 	import TimelineColumnBody from './TimelineColumnBody.svelte';
 
@@ -96,7 +96,7 @@
 			relays: RelaySelection,
 			includeOwnEvents: boolean
 		) => void;
-		onFollowSave: (profile: ProfilePointer, relays: RelaySelection) => void;
+		onFollowingSave: (profile: ProfilePointer, relays: RelaySelection) => void;
 		onSearchSave: (query: string) => void;
 		onChannelSave: (channel: ChannelPointer, relays: RelaySelection) => void;
 		onPublishChannelMessage: (
@@ -163,7 +163,7 @@
 		onWidthChange,
 		onUserPostsSave,
 		onNotificationsSave,
-		onFollowSave,
+		onFollowingSave,
 		onSearchSave,
 		onChannelSave,
 		onPublishChannelMessage,
@@ -332,15 +332,15 @@
 			class="max-h-[calc(100dvh-3.5rem)] shrink-0 overflow-y-auto overscroll-contain border-b border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/70"
 			data-testid="column-settings-scroll"
 		>
-			{#if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_follow'}
-				<FollowColumnSettings
+			{#if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_following'}
+				<FollowingColumnSettings
 					{column}
 					{textClass}
 					{accountRelayOptions}
 					{getProfile}
 					{requestProfiles}
 					{profileRelays}
-					onSave={onFollowSave}
+					onSave={onFollowingSave}
 				/>
 			{:else if column.type === 'timeline' && column.timelineKind === 'preset' && column.sourceKey === 'timeline_user_posts'}
 				<UserPostsFields

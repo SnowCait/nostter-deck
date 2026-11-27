@@ -41,7 +41,7 @@ export function createColumnTitleController({
 				continue;
 			}
 			if (
-				column.sourceKey === 'timeline_follow' ||
+				column.sourceKey === 'timeline_following' ||
 				column.sourceKey === 'nav_notifications' ||
 				column.sourceKey === 'timeline_user_posts'
 			) {

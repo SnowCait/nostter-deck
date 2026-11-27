@@ -66,23 +66,23 @@ describe('column config normalization', () => {
 		]);
 	});
 
-	test('normalizes follow columns to target NIP-65 relays', () => {
+	test('normalizes Following Timeline columns to target NIP-65 relays', () => {
 		expect(
 			normalizeColumnConfigs([
 				{
-					id: 'follow-empty',
+					id: 'following-empty',
 					type: 'timeline',
 					timelineKind: 'preset',
-					sourceKey: 'timeline_follow',
+					sourceKey: 'timeline_following',
 					pubkey: 'A'.repeat(64),
 					relays: [],
 					width: 'standard'
 				},
 				{
-					id: 'follow-default',
+					id: 'following-default',
 					type: 'timeline',
 					timelineKind: 'preset',
-					sourceKey: 'timeline_follow',
+					sourceKey: 'timeline_following',
 					pubkey: 'B'.repeat(64),
 					relays: { type: 'default' },
 					width: 'standard'
@@ -90,23 +90,56 @@ describe('column config normalization', () => {
 			])
 		).toEqual([
 			{
-				id: 'follow-empty',
+				id: 'following-empty',
 				type: 'timeline',
 				timelineKind: 'preset',
-				sourceKey: 'timeline_follow',
+				sourceKey: 'timeline_following',
 				pubkey: 'a'.repeat(64),
 				relays: { type: 'nip65', pubkey: 'a'.repeat(64) },
 				width: 'standard'
 			},
 			{
-				id: 'follow-default',
+				id: 'following-default',
 				type: 'timeline',
 				timelineKind: 'preset',
-				sourceKey: 'timeline_follow',
+				sourceKey: 'timeline_following',
 				pubkey: 'b'.repeat(64),
 				relays: { type: 'nip65', pubkey: 'b'.repeat(64) },
 				width: 'standard'
 			}
+		]);
+	});
+
+	test('restores the legacy Following Timeline identifier with its saved settings and position', () => {
+		const savedColumn = {
+			id: 'existing-following-column',
+			type: 'timeline',
+			timelineKind: 'preset',
+			sourceKey: 'timeline_follow',
+			pubkey: 'a'.repeat(64),
+			relays: { type: 'custom', urls: ['wss://relay.example/'] },
+			width: 'wide',
+			icon: 'radio',
+			title: 'Follow: My feed'
+		};
+		const firstColumn = {
+			id: 'first',
+			type: 'website',
+			url: 'https://example.com/',
+			width: 'narrow'
+		};
+		const lastColumn = {
+			id: 'last',
+			type: 'timeline',
+			timelineKind: 'preset',
+			sourceKey: 'timeline_search',
+			query: 'nostr',
+			width: 'standard'
+		};
+		expect(normalizeColumnConfigs([firstColumn, savedColumn, lastColumn])).toEqual([
+			firstColumn,
+			{ ...savedColumn, sourceKey: 'timeline_following' },
+			lastColumn
 		]);
 	});
 

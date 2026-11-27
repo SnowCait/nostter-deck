@@ -19,7 +19,7 @@ export const mutedUsersStorageKey = 'nostter:muted-users';
 export const defaultRelaySelection = { type: 'default' };
 
 const columnTypeLabels = {
-	timeline_follow: 'Follow',
+	timeline_following: 'Following',
 	timeline_search: 'Search',
 	timeline_channel: 'Channel',
 	custom_timeline: 'Custom timeline',
@@ -73,9 +73,9 @@ export async function openDeck(page: Page, options: { isLoggedIn?: boolean } = {
 
 export async function addPresetColumn(
 	page: Page,
-	sourceKey: 'timeline_follow' | 'timeline_search' | 'timeline_channel',
+	sourceKey: 'timeline_following' | 'timeline_search' | 'timeline_channel',
 	options: {
-		followTarget?: string;
+		followingTarget?: string;
 		query?: string;
 		channelTarget?: string;
 		customRelays?: string;
@@ -84,8 +84,8 @@ export async function addPresetColumn(
 	await page.getByRole('button', { name: 'Add column' }).first().click();
 	const dialog = page.getByRole('dialog', { name: 'Add column' });
 	await selectColumnType(page, sourceKey);
-	if (sourceKey === 'timeline_follow') {
-		await page.getByLabel('npub or nprofile').fill(options.followTarget ?? '');
+	if (sourceKey === 'timeline_following') {
+		await page.getByLabel('npub or nprofile').fill(options.followingTarget ?? '');
 	}
 	if (sourceKey === 'timeline_search') {
 		await page.getByLabel('Search query').fill(options.query ?? 'nostter');
@@ -451,7 +451,7 @@ export async function expectStoredChannelColumn(
 		});
 }
 
-export async function expectStoredFollowColumn(
+export async function expectStoredFollowingColumn(
 	page: Page,
 	pubkey: string,
 	relays: unknown = defaultRelaySelection
@@ -460,7 +460,7 @@ export async function expectStoredFollowColumn(
 		.poll(async () => {
 			const column = (await readStoredColumns(page))?.find(
 				(item: { timelineKind?: string; sourceKey?: string }) =>
-					item.timelineKind === 'preset' && item.sourceKey === 'timeline_follow'
+					item.timelineKind === 'preset' && item.sourceKey === 'timeline_following'
 			);
 			return column
 				? {
@@ -476,7 +476,7 @@ export async function expectStoredFollowColumn(
 		.toEqual({
 			type: 'timeline',
 			timelineKind: 'preset',
-			sourceKey: 'timeline_follow',
+			sourceKey: 'timeline_following',
 			pubkey,
 			relays,
 			width: 'standard'

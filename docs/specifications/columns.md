@@ -38,13 +38,13 @@ Regular columns provide the following display settings in addition to type-speci
 
 When no custom title is set, a preset column displays its title in the format `<localized column type>: <target>`.
 
-| Preset column    | Target                     |
-| ---------------- | -------------------------- |
-| Follow Timeline  | Target user's display name |
-| Search Timeline  | Search query               |
-| Channel Timeline | Channel name               |
-| User Posts       | Target user's display name |
-| Notifications    | Target user's display name |
+| Preset column      | Target                     |
+| ------------------ | -------------------------- |
+| Following Timeline | Target user's display name |
+| Search Timeline    | Search query               |
+| Channel Timeline   | Channel name               |
+| User Posts         | Target user's display name |
+| Notifications      | Target user's display name |
 
 The column type label follows the application's current display language.
 
@@ -88,7 +88,7 @@ The existing default title behavior for Custom Timeline and Website columns rema
 
 ## 3. Regular Column Types
 
-### 3.1 Follow Timeline (Preset)
+### 3.1 Following Timeline (Preset)
 
 - Display posts from accounts followed by a specified user.
 - Identify the target user by public key. Each column can have its own target user.
@@ -172,7 +172,7 @@ The existing default title behavior for Custom Timeline and Website columns rema
 
 ### 3.8 Timeline Author Sources
 
-Follow Timeline columns and custom timelines with an event address in an author filter share these rules.
+Following Timeline columns and custom timelines with an event address in an author filter share these rules.
 
 - Use a cached author-source event when available so post retrieval can start while the relay request is in progress.
 - Request the latest author-source event from relays once when the timeline subscription starts. If the cache is unavailable, use the relay result to resolve the authors.

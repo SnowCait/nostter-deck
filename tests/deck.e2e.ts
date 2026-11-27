@@ -27,7 +27,7 @@ import {
 	expectStoredColumnIdsAreOpaque,
 	expectStoredFirstColumnDisplay,
 	expectStoredCustomTimelineColumn,
-	expectStoredFollowColumn,
+	expectStoredFollowingColumn,
 	expectStoredFontSize,
 	expectStoredSearchColumn,
 	expectStoredSidebarCollapsed,
@@ -65,11 +65,11 @@ const contactListAuthorPubkey = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 const textEventPubkey = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const accountNpub = npubEncode(textEventPubkey);
 const staleContactPubkey = 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc';
-const followRelayHint = 'wss://follow.example/';
+const followingRelayHint = 'wss://following.example/';
 const contactListNpub = npubEncode(contactListAuthorPubkey);
 const contactListNprofile = nprofileEncode({
 	pubkey: contactListAuthorPubkey,
-	relays: [followRelayHint]
+	relays: [followingRelayHint]
 });
 const nostrNpub = 'nostr:npub1424242424242424242424242424242424242424242424242424qamrcaj';
 const nostrNprofile =
@@ -527,7 +527,7 @@ test.describe('nostter deck', () => {
 			.getByRole('radiogroup', { name: 'Column type' })
 			.getByRole('radio');
 		const columnTypes = [
-			'Follow',
+			'Following',
 			'Search',
 			'Channel',
 			'User Posts',
@@ -613,14 +613,14 @@ test.describe('nostter deck', () => {
 		await expect(columns.first().locator('iframe')).toHaveAttribute('src', 'https://example.com/');
 	});
 
-	test('adds, edits, and persists a follow preset column', async ({ page }) => {
+	test('adds, edits, and restores a Following Timeline column', async ({ page }) => {
 		await installFakeNostrRelay(page);
 		await openDeck(page);
 		const columns = deckColumns(page);
 
 		await page.getByRole('button', { name: 'Add column' }).first().click();
 		const addDialog = page.getByRole('dialog', { name: 'Add column' });
-		await expect(addDialog.getByRole('radio', { name: 'Follow' })).toBeChecked();
+		await expect(addDialog.getByRole('radio', { name: 'Following', exact: true })).toBeChecked();
 		const targetInput = addDialog.getByLabel('npub or nprofile');
 		const saveButton = addDialog.getByRole('button', { name: 'Save' });
 		await expect(targetInput).toBeVisible();
@@ -633,10 +633,11 @@ test.describe('nostter deck', () => {
 		await expect(saveButton).toBeEnabled();
 		await saveButton.click();
 
-		const followColumn = columns.first();
-		await expectColumnOrder(columns, [...columnNames, `Follow: ${contactListNpub.slice(0, 12)}`]);
-		await expect(followColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
-		await expectStoredFollowColumn(page, contactListAuthorPubkey, {
+		const followingColumn = columns.first();
+		const defaultTitle = `Following: ${contactListNpub.slice(0, 12)}`;
+		await expectColumnOrder(columns, [...columnNames, defaultTitle]);
+		await expect(followingColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
+		await expectStoredFollowingColumn(page, contactListAuthorPubkey, {
 			type: 'nip65',
 			pubkey: contactListAuthorPubkey
 		});
@@ -664,21 +665,21 @@ test.describe('nostter deck', () => {
 			)
 			.toBeGreaterThan(0);
 
-		await columnOptionsButton(followColumn).click();
-		const editInput = followColumn.getByLabel('npub or nprofile');
+		await columnOptionsButton(followingColumn).click();
+		const editInput = followingColumn.getByLabel('npub or nprofile');
 		await expect(editInput).toHaveValue(contactListNpub);
 		await editInput.fill(contactListNpub);
-		await followColumn.getByRole('button', { name: 'Save' }).click();
-		await expect(followColumn.getByLabel('npub or nprofile')).toHaveCount(0);
-		await expectStoredFollowColumn(page, contactListAuthorPubkey, {
+		await followingColumn.getByRole('button', { name: 'Save' }).click();
+		await expect(followingColumn.getByLabel('npub or nprofile')).toHaveCount(0);
+		await expectStoredFollowingColumn(page, contactListAuthorPubkey, {
 			type: 'nip65',
 			pubkey: contactListAuthorPubkey
 		});
 
 		await page.reload();
-		await expectColumnOrder(columns, [...columnNames, `Follow: ${contactListNpub.slice(0, 12)}`]);
-		await expect(followColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
-		await expectStoredFollowColumn(page, contactListAuthorPubkey, {
+		await expectColumnOrder(columns, [...columnNames, defaultTitle]);
+		await expect(followingColumn.getByText('Hello from a custom Nostr timeline')).toBeVisible();
+		await expectStoredFollowingColumn(page, contactListAuthorPubkey, {
 			type: 'nip65',
 			pubkey: contactListAuthorPubkey
 		});

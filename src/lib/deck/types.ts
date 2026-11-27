@@ -47,7 +47,7 @@ export type MessageKey =
 	| 'collapse_sidebar'
 	| 'collapse_sidebar_short'
 	| 'expand_sidebar'
-	| 'timeline_follow'
+	| 'timeline_following'
 	| 'timeline_search'
 	| 'timeline_channel'
 	| 'column_type_website'
@@ -68,7 +68,7 @@ export type MessageKey =
 	| 'column_width_standard'
 	| 'column_width_wide'
 	| 'website_url'
-	| 'follow_target'
+	| 'following_target'
 	| 'search_query'
 	| 'channel_target'
 	| 'custom_timeline_filters'
@@ -151,7 +151,7 @@ export type MessageKey =
 
 export type ColumnTitleKey = Extract<
 	MessageKey,
-	| 'timeline_follow'
+	| 'timeline_following'
 	| 'timeline_search'
 	| 'timeline_channel'
 	| 'nav_notifications'
@@ -174,11 +174,11 @@ export type SearchTimelineColumnConfig = {
 	width: ColumnWidth;
 } & ColumnDisplayConfig;
 
-export type FollowTimelineColumnConfig = {
+export type FollowingTimelineColumnConfig = {
 	id: string;
 	type: 'timeline';
 	timelineKind: 'preset';
-	sourceKey: 'timeline_follow';
+	sourceKey: 'timeline_following';
 	pubkey: string;
 	relays: RelaySelection;
 	width: ColumnWidth;
@@ -194,19 +194,19 @@ export type ChannelTimelineColumnConfig = {
 	width: ColumnWidth;
 } & ColumnDisplayConfig;
 
-export type NotificationsColumnConfig = Omit<FollowTimelineColumnConfig, 'sourceKey'> & {
+export type NotificationsColumnConfig = Omit<FollowingTimelineColumnConfig, 'sourceKey'> & {
 	sourceKey: 'nav_notifications';
 	includeOwnEvents: boolean;
 };
 
 export type UserPostsColumnConfig = Omit<
-	FollowTimelineColumnConfig,
+	FollowingTimelineColumnConfig,
 	'sourceKey' | 'pubkey' | 'relays'
 > &
 	UserPostsSettings & { sourceKey: 'timeline_user_posts' };
 
 export type PresetTimelineColumnConfig =
-	| FollowTimelineColumnConfig
+	| FollowingTimelineColumnConfig
 	| SearchTimelineColumnConfig
 	| ChannelTimelineColumnConfig
 	| NotificationsColumnConfig

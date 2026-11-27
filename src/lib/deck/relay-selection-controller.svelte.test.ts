@@ -91,10 +91,10 @@ describe('relay selection controller', () => {
 		expect(
 			getNip65RelaySelectionPubkeys([
 				{
-					id: 'follow',
+					id: 'following',
 					type: 'timeline',
 					timelineKind: 'preset',
-					sourceKey: 'timeline_follow',
+					sourceKey: 'timeline_following',
 					pubkey: pubkeyB,
 					relays: { type: 'nip65', pubkey: pubkeyA },
 					width: 'standard'

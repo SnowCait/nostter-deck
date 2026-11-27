@@ -146,8 +146,8 @@
 		onUserPostsSave={(settings) => columnDeckController.saveUserPostsSettings(column.id, settings)}
 		onNotificationsSave={(pubkey, relays, includeOwnEvents) =>
 			columnDeckController.saveNotificationsSettings(column.id, pubkey, relays, includeOwnEvents)}
-		onFollowSave={(profile, relays) =>
-			columnDeckController.saveFollowRelaySettings(column.id, profile, relays)}
+		onFollowingSave={(profile, relays) =>
+			columnDeckController.saveFollowingRelaySettings(column.id, profile, relays)}
 		onSearchSave={(query) => columnDeckController.saveSearchSettings(column.id, query)}
 		onChannelSave={(channel, relays) =>
 			columnDeckController.saveChannelRelaySettings(column.id, channel, relays)}

@@ -13,7 +13,7 @@ export type AddColumnDraft = {
 	websiteUrl: string | null;
 	notificationsTarget?: string | null;
 	userPostsSettings?: UserPostsSettings | null;
-	followTarget: ProfilePointer | null;
+	followingTarget: ProfilePointer | null;
 	searchQuery: string;
 	channelTarget: ChannelPointer | null;
 	presetTimelineRelays: RelaySelection | null;
@@ -27,7 +27,7 @@ function getPointerRelaySelection(relays: string[]): RelaySelection {
 		: { type: 'default' };
 }
 
-function getFollowRelaySelection(profile: ProfilePointer): RelaySelection {
+function getFollowingRelaySelection(profile: ProfilePointer): RelaySelection {
 	return { type: 'nip65', pubkey: profile.pubkey };
 }
 
@@ -56,15 +56,15 @@ export function createColumnConfigFromDraft(draft: AddColumnDraft): ColumnConfig
 			: null;
 	}
 
-	if (draft.columnType === 'timeline_follow') {
-		return draft.followTarget
+	if (draft.columnType === 'timeline_following') {
+		return draft.followingTarget
 			? {
 					id: draft.id,
 					type: 'timeline',
 					timelineKind: 'preset',
 					sourceKey: draft.columnType,
-					pubkey: draft.followTarget.pubkey,
-					relays: draft.presetTimelineRelays ?? getFollowRelaySelection(draft.followTarget),
+					pubkey: draft.followingTarget.pubkey,
+					relays: draft.presetTimelineRelays ?? getFollowingRelaySelection(draft.followingTarget),
 					width: 'standard'
 				}
 			: null;

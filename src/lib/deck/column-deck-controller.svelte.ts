@@ -18,7 +18,7 @@ import {
 	saveCustomTimelineSettings as saveCustomTimelineSettingsConfig,
 	saveUserPostsSettings as saveUserPostsSettingsConfig,
 	saveNotificationsSettings as saveNotificationsSettingsConfig,
-	saveFollowSettings as saveFollowSettingsConfig,
+	saveFollowingSettings as saveFollowingSettingsConfig,
 	saveSearchSettings as saveSearchSettingsConfig,
 	updateColumnIcon as updateColumnIconConfig,
 	updateColumnTitle as updateColumnTitleConfig,
@@ -382,17 +382,17 @@ export function createColumnDeckController({
 		openSettingsColumnId = null;
 	}
 
-	function saveFollowSettings(columnId: string, profile: ProfilePointer) {
-		setColumns(saveFollowSettingsConfig(columns, columnId, profile));
+	function saveFollowingSettings(columnId: string, profile: ProfilePointer) {
+		setColumns(saveFollowingSettingsConfig(columns, columnId, profile));
 		openSettingsColumnId = null;
 	}
 
-	function saveFollowRelaySettings(
+	function saveFollowingRelaySettings(
 		columnId: string,
 		profile: ProfilePointer,
-		relays: Parameters<typeof saveFollowSettingsConfig>[3]
+		relays: Parameters<typeof saveFollowingSettingsConfig>[3]
 	) {
-		setColumns(saveFollowSettingsConfig(columns, columnId, profile, relays));
+		setColumns(saveFollowingSettingsConfig(columns, columnId, profile, relays));
 		openSettingsColumnId = null;
 	}
 
@@ -461,8 +461,8 @@ export function createColumnDeckController({
 		saveCustomTimelineSettings,
 		saveUserPostsSettings,
 		saveNotificationsSettings,
-		saveFollowSettings,
-		saveFollowRelaySettings,
+		saveFollowingSettings,
+		saveFollowingRelaySettings,
 		saveSearchSettings,
 		saveChannelSettings,
 		saveChannelRelaySettings,

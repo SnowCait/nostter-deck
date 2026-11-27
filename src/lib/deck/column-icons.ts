@@ -13,7 +13,7 @@ export function getDefaultColumnIconKey(column: ColumnConfig): ColumnIconKey {
 	if (column.timelineKind === 'custom') {
 		return 'radio';
 	}
-	if (column.sourceKey === 'timeline_follow' || column.sourceKey === 'timeline_user_posts') {
+	if (column.sourceKey === 'timeline_following' || column.sourceKey === 'timeline_user_posts') {
 		return 'users';
 	}
 	if (column.sourceKey === 'timeline_channel' || column.sourceKey === 'nav_notifications') {

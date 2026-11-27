@@ -26,7 +26,7 @@ export function getColumnTitle(
 
 	const label = m[column.sourceKey]({}, { locale });
 	switch (column.sourceKey) {
-		case 'timeline_follow':
+		case 'timeline_following':
 		case 'nav_notifications':
 		case 'timeline_user_posts':
 			return `${label}: ${getProfileDisplayName(getProfile(column.pubkey), column.pubkey)}`;

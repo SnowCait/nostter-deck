@@ -6,7 +6,7 @@ import type { RelaySelection } from '$lib/nostr/relays';
 import type { ChannelPointer, ProfilePointer } from '$lib/nostr/nip19';
 import { combineRelays, defaultRelays } from '$lib/nostr/relays';
 
-function getFollowRelaySelection(profile: ProfilePointer): RelaySelection {
+function getFollowingRelaySelection(profile: ProfilePointer): RelaySelection {
 	return { type: 'nip65', pubkey: profile.pubkey };
 }
 
@@ -72,7 +72,7 @@ export function saveCustomTimelineSettings(
 	);
 }
 
-export function saveFollowSettings(
+export function saveFollowingSettings(
 	columns: ColumnConfig[],
 	columnId: string,
 	profile: ProfilePointer,
@@ -82,11 +82,11 @@ export function saveFollowSettings(
 		column.id === columnId &&
 		column.type === 'timeline' &&
 		column.timelineKind === 'preset' &&
-		column.sourceKey === 'timeline_follow'
+		column.sourceKey === 'timeline_following'
 			? {
 					...column,
 					pubkey: profile.pubkey,
-					relays: relays ?? getFollowRelaySelection(profile)
+					relays: relays ?? getFollowingRelaySelection(profile)
 				}
 			: column
 	);

@@ -4,7 +4,7 @@ import { npubEncode } from 'nostr-tools/nip19';
 import type * as Nostr from 'nostr-typedef';
 import { addPresetColumn, deckColumns, openDeck } from './helpers/deck-page';
 
-test('a follow timeline displays cached authors before refresh and keeps their posts afterward', async ({
+test('a Following Timeline displays cached authors before refresh and keeps their posts afterward', async ({
 	page
 }) => {
 	const owner = 'a'.repeat(64);
@@ -100,8 +100,8 @@ test('a follow timeline displays cached authors before refresh and keeps their p
 	});
 
 	await openDeck(page);
-	await addPresetColumn(page, 'timeline_follow', {
-		followTarget: npubEncode(owner),
+	await addPresetColumn(page, 'timeline_following', {
+		followingTarget: npubEncode(owner),
 		customRelays: postRelay
 	});
 	const column = deckColumns(page).first();
