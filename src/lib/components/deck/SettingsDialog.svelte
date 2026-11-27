@@ -11,6 +11,7 @@
 		VolumeX
 	} from '@lucide/svelte';
 	import { npubEncode } from 'nostr-tools/nip19';
+	import githubIcon from '@primer/octicons/build/svg/mark-github-16.svg';
 	import { getProfileDisplayName, type Profile } from '$lib/nostr/profiles';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import * as Select from '$lib/components/ui/select';
@@ -660,5 +661,22 @@
 				</div>
 			{/if}
 		</section>
+		<footer class="mt-5 text-center">
+			<p class={['text-slate-500 dark:text-slate-400', textClass.body]}>
+				nostter deck v{__APP_VERSION__}
+			</p>
+			<a
+				href="https://github.com/SnowCait/nostter-deck"
+				target="_blank"
+				rel="external noopener noreferrer"
+				class={[
+					'mt-2 inline-flex items-center gap-1 rounded text-sky-600 hover:underline focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:outline-none dark:text-sky-300',
+					textClass.body
+				]}
+			>
+				<img src={githubIcon} alt="" class="size-4 shrink-0 dark:invert" />
+				GitHub
+			</a>
+		</footer>
 	</Dialog.Content>
 </Dialog.Root>
