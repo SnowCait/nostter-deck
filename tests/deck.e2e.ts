@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { ChannelCreation, ClientAuth, Reaction, Repost, ShortTextNote } from 'nostr-tools/kinds';
 import { decode, neventEncode, nprofileEncode, npubEncode } from 'nostr-tools/nip19';
 import { defaultRelays, profileRelays, searchRelays } from '$lib/nostr/relays';
@@ -54,6 +55,7 @@ import {
 	wideColumnWidth
 } from './helpers/deck-page';
 
+const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const expectedProfileRelayUrls = [...new Set([...defaultRelays, ...profileRelays])];
 const expectedProfileRelayConnections = Object.fromEntries(
 	expectedProfileRelayUrls.map((relay) => [relay, 1])
@@ -148,6 +150,21 @@ async function expectSidebarAndColumnGroupCentered(page: Page, column: Locator) 
 }
 
 test.describe('nostter deck', () => {
+	for (const isLoggedIn of [false, true]) {
+		test(`shows application information when ${isLoggedIn ? 'signed in' : 'signed out'}`, async ({
+			page
+		}) => {
+			await openDeck(page, { isLoggedIn });
+			await page.getByRole('button', { name: 'Settings' }).click();
+			const dialog = page.getByRole('dialog', { name: 'Settings' });
+			await expect(dialog.getByText(`nostter deck v${version}`, { exact: true })).toBeVisible();
+			const link = dialog.getByRole('link', { name: 'GitHub' });
+			await expect(link).toHaveAttribute('href', 'https://github.com/SnowCait/nostter-deck');
+			await expect(link).toHaveAttribute('target', '_blank');
+			await expect(link).toHaveAttribute('rel', 'external noopener noreferrer');
+		});
+	}
+
 	test('syncs decks and user interface settings across tabs', async ({ page }) => {
 		await openDeck(page);
 		const otherPage = await page.context().newPage();
