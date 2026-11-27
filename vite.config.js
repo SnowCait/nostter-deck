@@ -4,16 +4,21 @@ import { defineConfig } from 'vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { createRequire } from 'node:module';
+import { frontendLicenses, viteLicenseReport } from './scripts/frontend-licenses.js';
 
 const host = process.env.TAURI_DEV_HOST;
 const { version } = createRequire(import.meta.url)('./package.json');
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
+	build: {
+		license: { fileName: viteLicenseReport }
+	},
 	define: {
 		__APP_VERSION__: JSON.stringify(version)
 	},
 	plugins: [
+		frontendLicenses(),
 		tailwindcss(),
 		sveltekit(),
 		paraglideVitePlugin({

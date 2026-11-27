@@ -59,6 +59,10 @@ Ensure that the release tag and distributed applications match the application v
 
 Deploy the web application to GitHub Pages and distribute native application packages through GitHub Releases.
 
+The web distribution provides `THIRD_PARTY_LICENSES.txt` at the site root. Build native packages with `npm run tauri:build` to include the same file as a readable application resource.
+
+The file is in `Contents/Resources` inside the macOS app bundle, next to the installed executable on Windows, and in `/usr/lib/nostter-deck` on Linux.
+
 Generate release notes automatically from the included pull requests.
 
 ## Release Validation and Recovery
