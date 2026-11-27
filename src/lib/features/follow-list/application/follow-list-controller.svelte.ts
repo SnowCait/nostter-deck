@@ -108,9 +108,6 @@ export function createFollowListController({ pubkey, signer }: Account) {
 			return false;
 		}
 		const error = state.publishError;
-		if (error?.type === 'conflict') {
-			return false;
-		}
 		if (
 			!manualRetry &&
 			error &&
