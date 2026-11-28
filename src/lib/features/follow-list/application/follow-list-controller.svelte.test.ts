@@ -1,19 +1,22 @@
 import type * as Nostr from 'nostr-typedef';
 import { Contacts } from 'nostr-tools/kinds';
 import type { EventSigner } from 'rx-nostr';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { FollowListUpdate } from '../domain/follow-actions';
 import { createFollowListController } from './follow-list-controller.svelte';
 import { getLatestFollowList } from './follow-list';
+import { publishFollowList } from './publish-follow-list';
+import { putCachedLatestEvent } from '$lib/nostr/latest-event-cache';
 import {
-	publishAndCacheFollowList,
-	type PublishAndCacheFollowListResult
-} from './publish-and-cache-follow-list';
-import { getCachedLatestEvent } from '$lib/nostr/latest-event-cache';
+	publishEvent,
+	type PublishEventTemplate,
+	type PublishPostResult
+} from '$lib/nostr/relay/publish-event';
 
 vi.mock('./follow-list', () => ({ getLatestFollowList: vi.fn() }));
-vi.mock('./publish-and-cache-follow-list', () => ({ publishAndCacheFollowList: vi.fn() }));
-vi.mock('$lib/nostr/latest-event-cache', () => ({ getCachedLatestEvent: vi.fn() }));
+vi.mock('./publish-follow-list', { spy: true });
+vi.mock('$lib/nostr/relay/publish-event', () => ({ publishEvent: vi.fn() }));
+vi.mock('$lib/nostr/latest-event-cache', () => ({ putCachedLatestEvent: vi.fn() }));
 
 const owner = '1'.repeat(64);
 const otherOwner = '2'.repeat(64);
@@ -43,71 +46,53 @@ function event(
 
 function harness() {
 	const attempts: {
-		update: FollowListUpdate;
+		update: PublishEventTemplate;
 		pubkey: string;
 		signer: EventSigner;
-		previous: number | undefined;
-		completion: ReturnType<typeof Promise.withResolvers<PublishAndCacheFollowListResult>>;
+		completion: ReturnType<typeof Promise.withResolvers<PublishPostResult>>;
 	}[] = [];
-	vi.mocked(publishAndCacheFollowList).mockImplementation((update, pubkey, signer, previous) => {
-		const completion = Promise.withResolvers<PublishAndCacheFollowListResult>();
-		attempts.push({ update, pubkey, signer, previous, completion });
+	vi.mocked(publishEvent).mockImplementation((update, pubkey, signer) => {
+		const completion = Promise.withResolvers<PublishPostResult>();
+		attempts.push({ update, pubkey, signer, completion });
 		return completion.promise;
 	});
 	const controller = createFollowListController(account);
 
-	async function succeed(
-		index: number,
-		cacheResult: Exclude<
-			PublishAndCacheFollowListResult['cacheResult'],
-			{ status: 'not-attempted' }
-		> = { status: 'updated' },
-		createdAt = (attempts[index].previous ?? 99) + 1
-	) {
-		const attempt = attempts[index];
-		const published = event(attempt.pubkey, attempt.update, createdAt);
-		const result: PublishAndCacheFollowListResult = {
-			publishResult: { ok: true, event: published },
-			createdAt,
-			cacheResult
-		};
-		attempt.completion.resolve(result);
-		await attempt.completion.promise;
+	async function succeed(index: number) {
+		const { update, pubkey, completion } = attempts[index];
+		const published = event(pubkey, { ...update, kind: Contacts }, update.created_at);
+		completion.resolve({ ok: true, event: published });
+		await vi.mocked(publishFollowList).mock.results[index].value;
 		return published;
 	}
 
 	async function fail(stage: 'signing' | 'publishing') {
 		attempts[0].completion.resolve({
-			publishResult: {
-				ok: false,
-				stage,
-				reason: stage === 'signing' ? 'signing-failed' : 'relay-timeout',
-				targetRelayCount: 2
-			},
-			createdAt: 200,
-			cacheResult: { status: 'not-attempted' }
+			ok: false,
+			stage,
+			reason: stage === 'signing' ? 'signing-failed' : 'relay-timeout',
+			targetRelayCount: 2
 		});
-		await attempts[0].completion.promise;
+		await vi.mocked(publishFollowList).mock.results[0].value;
 	}
 
 	return { controller, attempts, succeed, fail };
 }
 
-async function settleCacheRead() {
-	await vi
-		.mocked(getCachedLatestEvent)
-		.mock.results.at(-1)!
-		.value.catch(() => {});
-}
-
 beforeEach(() => {
 	vi.resetAllMocks();
+	vi.setSystemTime(100_000);
 	vi.mocked(getLatestFollowList).mockImplementation(async (pubkey) => event(pubkey));
-	vi.mocked(getCachedLatestEvent).mockResolvedValue(undefined);
+	vi.mocked(putCachedLatestEvent).mockResolvedValue('updated');
+});
+
+afterEach(() => {
+	vi.useRealTimers();
 });
 
 describe('follow list controller', () => {
 	test('reflects the first operation synchronously and starts publishing without debounce', async () => {
+		vi.mocked(getLatestFollowList).mockResolvedValueOnce({ ...event(), created_at: 120 });
 		const { controller, attempts, succeed } = harness();
 		await controller.reload();
 		expect(controller.follow(existing)).toBe(false);
@@ -116,12 +101,13 @@ describe('follow list controller', () => {
 		expect(controller.isFollowing(alice)).toBe(true);
 		expect(controller.isPublishing).toBe(true);
 		expect(attempts).toHaveLength(1);
-		expect(attempts[0]).toMatchObject({ pubkey: owner, previous: undefined });
+		expect(attempts[0]).toMatchObject({ pubkey: owner });
 		expect(attempts[0].signer).toBe(signer);
 		expect(attempts[0].update).toEqual({
 			kind: Contacts,
 			tags: [...event().tags, ['p', alice, '']],
-			content: event().content
+			content: event().content,
+			created_at: 121
 		});
 		expect(controller.follow(alice)).toBe(false);
 		const published = await succeed(0);
@@ -130,25 +116,37 @@ describe('follow list controller', () => {
 		expect(attempts).toHaveLength(1);
 	});
 
-	test('coalesces operations into the latest desire without changing the in-flight payload', async () => {
-		const { controller, attempts, succeed } = harness();
-		await controller.reload();
-		controller.follow(alice);
-		controller.follow(bob);
-		controller.unfollow(alice);
-		expect(controller.isFollowing(alice)).toBe(false);
-		expect(controller.isFollowing(bob)).toBe(true);
-		expect(attempts).toHaveLength(1);
-		expect(attempts[0].update.tags).toEqual([...event().tags, ['p', alice, '']]);
-		await succeed(0, { status: 'updated' }, 123);
-		expect(attempts).toHaveLength(2);
-		expect(attempts[1].update.tags).toEqual([...event().tags, ['p', bob, '']]);
-		expect(attempts[1].previous).toBe(123);
-		expect(controller.isPublishing).toBe(true);
-		await succeed(1);
-		expect(controller.isPublishing).toBe(false);
-		expect(attempts).toHaveLength(2);
-	});
+	test.each(['updated', 'ignored', 'rejected'] as const)(
+		'coalesces operations and continues publishing when the cache write is %s',
+		async (cacheResult) => {
+			const { controller, attempts, succeed } = harness();
+			if (cacheResult === 'rejected') {
+				vi.mocked(putCachedLatestEvent).mockRejectedValueOnce(new Error('Cache unavailable'));
+			} else {
+				vi.mocked(putCachedLatestEvent).mockResolvedValueOnce(cacheResult);
+			}
+			await controller.reload();
+			controller.follow(alice);
+			controller.follow(bob);
+			controller.unfollow(alice);
+			expect(controller.isFollowing(alice)).toBe(false);
+			expect(controller.isFollowing(bob)).toBe(true);
+			expect(attempts).toHaveLength(1);
+			expect(attempts[0].update.tags).toEqual([...event().tags, ['p', alice, '']]);
+			expect(putCachedLatestEvent).not.toHaveBeenCalled();
+			const published = await succeed(0);
+			expect(putCachedLatestEvent).toHaveBeenCalledExactlyOnceWith(published);
+			expect(controller.event).toEqual(published);
+			expect(controller.publishError).toBeNull();
+			expect(attempts).toHaveLength(2);
+			expect(attempts[1].update.tags).toEqual([...event().tags, ['p', bob, '']]);
+			expect(attempts[1].update.created_at).toBe(101);
+			expect(controller.isPublishing).toBe(true);
+			await succeed(1);
+			expect(controller.isPublishing).toBe(false);
+			expect(attempts).toHaveLength(2);
+		}
+	);
 
 	test('skips another publish when intervening operations return to the sent state', async () => {
 		const { controller, attempts, succeed } = harness();
@@ -158,7 +156,11 @@ describe('follow list controller', () => {
 		controller.unfollow(bob);
 		await succeed(0);
 		expect(attempts).toHaveLength(1);
-		expect(controller.desired).toEqual(attempts[0].update);
+		expect(controller.desired).toMatchObject({
+			kind: Contacts,
+			tags: attempts[0].update.tags,
+			content: attempts[0].update.content
+		});
 	});
 
 	test.each(['signing', 'publishing'] as const)(
@@ -169,6 +171,7 @@ describe('follow list controller', () => {
 			controller.follow(alice);
 			controller.follow(bob);
 			await fail(stage);
+			expect(putCachedLatestEvent).not.toHaveBeenCalled();
 			expect(controller.isPublishing).toBe(false);
 			expect(controller.publishError).toMatchObject({ type: 'publish', result: { stage } });
 			expect(attempts).toHaveLength(1);
@@ -181,7 +184,7 @@ describe('follow list controller', () => {
 			expect(controller.retry()).toBe(true);
 			expect(controller.retry()).toBe(false);
 			expect(attempts[1].update.tags).toEqual([...event().tags, ['p', bob, ''], ['p', carol, '']]);
-			expect(attempts[1].previous).toBe(200);
+			expect(attempts[1].update.created_at).toBe(101);
 			await succeed(1);
 			expect(controller.publishError).toBeNull();
 		}
@@ -197,144 +200,21 @@ describe('follow list controller', () => {
 		expect(controller.desired?.tags).toEqual(event().tags);
 		expect(controller.retry()).toBe(true);
 		expect(attempts[1].update.tags).toEqual(event().tags);
-		expect(attempts[1].previous).toBe(200);
+		expect(attempts[1].update.created_at).toBe(101);
 		await succeed(1);
 		expect(controller.publishError).toBeNull();
 	});
-
-	test('keeps a successful published basis and reports cache errors separately', async () => {
-		const { controller, attempts, succeed } = harness();
-		const error = new Error('Cache unavailable');
-		await controller.reload();
-		controller.follow(alice);
-		const published = await succeed(0, { status: 'failed', error });
-		expect(controller.event).toEqual(published);
-		expect(controller.publishError).toBeNull();
-		expect(controller.cacheError).toBe(error);
-		controller.follow(bob);
-		expect(attempts[1].update.tags).toEqual([...event().tags, ['p', alice, ''], ['p', bob, '']]);
-		expect(attempts[1].previous).toBe(100);
-		await succeed(1);
-		expect(controller.cacheError).toBeNull();
-	});
-
-	test('treats an ignored write of the same cached event as normal success', async () => {
-		const { controller, attempts, succeed } = harness();
-		await controller.reload();
-		controller.follow(alice);
-		const cached = event(owner, attempts[0].update, 100);
-		vi.mocked(getCachedLatestEvent).mockResolvedValue(cached);
-		await succeed(0, { status: 'ignored' });
-		await settleCacheRead();
-		expect(getCachedLatestEvent).toHaveBeenCalledExactlyOnceWith([owner, Contacts, '']);
-		expect(controller.event).toEqual(cached);
-		expect(controller.isPublishing).toBe(false);
-		expect(controller.publishError).toBeNull();
-		expect(attempts).toHaveLength(1);
-	});
-
-	test.each(['different', 'missing', 'rejected'] as const)(
-		'stops on an ignored write when the cached event is %s and recovers only by reloading',
-		async (mode) => {
-			const { controller, attempts, succeed } = harness();
-			await controller.reload();
-			controller.follow(alice);
-			controller.follow(bob);
-			const newer = {
-				...event(owner, { kind: Contacts, tags: [['p', carol]], content: 'remote' }, 200),
-				id: '0'.repeat(64)
-			};
-			if (mode === 'different') {
-				vi.mocked(getCachedLatestEvent).mockResolvedValue(newer);
-			} else if (mode === 'rejected') {
-				vi.mocked(getCachedLatestEvent).mockRejectedValue(new Error('Cache read failed'));
-			}
-			await succeed(0, { status: 'ignored' });
-			await settleCacheRead();
-			expect(controller.publishError).toMatchObject({ type: 'conflict' });
-			expect(controller.cacheError).toBeNull();
-			expect(controller.lastCreatedAt).toBe(100);
-			expect(controller.isPublishing).toBe(false);
-			const desired = controller.desired;
-			expect(controller.follow(carol)).toBe(false);
-			expect(controller.unfollow(existing)).toBe(false);
-			expect(controller.retry()).toBe(false);
-			expect(controller.desired).toEqual(desired);
-			expect(attempts).toHaveLength(1);
-
-			vi.mocked(getLatestFollowList).mockResolvedValueOnce(newer);
-			await controller.reload();
-			expect(getLatestFollowList).toHaveBeenCalledTimes(2);
-			expect(controller.event).toEqual(newer);
-			expect(controller.desired).toEqual(newer);
-			expect(controller.publishError).toBeNull();
-			expect(controller.isFollowing(alice)).toBe(false);
-			expect(controller.isFollowing(bob)).toBe(false);
-			expect(attempts).toHaveLength(1);
-			controller.follow(existing);
-			expect(attempts[1].update.tags).toEqual([
-				['p', carol],
-				['p', existing, '']
-			]);
-			expect(attempts[1].previous).toBe(200);
-			await succeed(1, { status: 'updated' }, 201);
-		}
-	);
-
-	test('blocks operations queued during a cache reread once a different event is found', async () => {
-		const { controller, attempts, succeed } = harness();
-		const read = Promise.withResolvers<Nostr.Event<typeof Contacts> | undefined>();
-		vi.mocked(getCachedLatestEvent).mockReturnValue(read.promise);
-		await controller.reload();
-		controller.follow(alice);
-		await succeed(0, { status: 'ignored' });
-		controller.follow(bob);
-		read.resolve({ ...event(), id: '0'.repeat(64) });
-		await settleCacheRead();
-		expect(controller.publishError).toEqual({ type: 'conflict' });
-		expect(controller.retry()).toBe(false);
-		expect(attempts).toHaveLength(1);
-	});
-
-	test.each(['missing', 'rejected'] as const)(
-		'keeps the conflict locked when reloading is %s',
-		async (mode) => {
-			const { controller, attempts, succeed } = harness();
-			await controller.reload();
-			controller.follow(alice);
-			await succeed(0, { status: 'ignored' });
-			await settleCacheRead();
-			if (mode === 'missing') {
-				vi.mocked(getLatestFollowList).mockResolvedValueOnce(undefined);
-			} else {
-				vi.mocked(getLatestFollowList).mockRejectedValueOnce(new Error('Reload failed'));
-			}
-			await controller.reload();
-			expect(controller.status).toBe(mode === 'missing' ? 'ready' : 'failed');
-			expect(controller.publishError).toMatchObject({ type: 'conflict' });
-			expect(controller.isPublishing).toBe(false);
-			expect(controller.follow(bob)).toBe(false);
-			expect(controller.unfollow(existing)).toBe(false);
-			expect(controller.retry()).toBe(false);
-			expect(attempts).toHaveLength(1);
-			await controller.reload();
-			expect(controller.status).toBe('ready');
-			expect(controller.publishError).toBeNull();
-			expect(controller.isFollowing(alice)).toBe(false);
-		}
-	);
 
 	test('recovers from a publishing API rejection without automatic retry', async () => {
 		const { controller, attempts, succeed } = harness();
-		const error = new Error('Cache read failed');
+		const error = new Error('Publishing failed');
 		await controller.reload();
 		controller.follow(alice);
 		controller.follow(bob);
 		attempts[0].completion.reject(error);
-		await attempts[0].completion.promise.catch(() => {});
+		await vi.mocked(publishFollowList).mock.results[0].value.catch(() => {});
 		expect(controller.isPublishing).toBe(false);
 		expect(controller.publishError).toEqual({ type: 'exception', error });
-		expect(controller.lastCreatedAt).toBeUndefined();
 		expect(controller.isFollowing(alice)).toBe(true);
 		controller.follow(carol);
 		expect(controller.isFollowing(carol)).toBe(true);
@@ -343,7 +223,8 @@ describe('follow list controller', () => {
 		expect(attempts[1].update).toEqual({
 			kind: Contacts,
 			content: event().content,
-			tags: [...event().tags, ['p', alice, ''], ['p', bob, ''], ['p', carol, '']]
+			tags: [...event().tags, ['p', alice, ''], ['p', bob, ''], ['p', carol, '']],
+			created_at: 101
 		});
 		await succeed(1);
 		expect(controller.isPublishing).toBe(false);
@@ -368,7 +249,12 @@ describe('follow list controller', () => {
 		expect(controller.follow(alice)).toBe(true);
 		expect(controller.isPublishing).toBe(true);
 		expect(attempts).toHaveLength(1);
-		expect(attempts[0].update).toEqual({ kind: Contacts, tags: [['p', alice, '']], content: '' });
+		expect(attempts[0].update).toEqual({
+			kind: Contacts,
+			tags: [['p', alice, '']],
+			content: '',
+			created_at: 100
+		});
 		await succeed(0);
 	});
 

@@ -1,17 +1,15 @@
 import type * as Nostr from 'nostr-typedef';
 import { Contacts } from 'nostr-tools/kinds';
-import type { EventSigner } from 'rx-nostr';
+import { now, type EventSigner } from 'rx-nostr';
 import { addFollow, removeFollow, type FollowListUpdate } from '../domain/follow-actions';
 import { getLatestFollowList } from './follow-list';
-import { publishAndCacheFollowList } from './publish-and-cache-follow-list';
-import { getCachedLatestEvent } from '$lib/nostr/latest-event-cache';
+import { publishFollowList } from './publish-follow-list';
 import type { PublishPostResult } from '$lib/nostr/relay/publish-event';
 
 type Account = { pubkey: string; signer: EventSigner };
 type LoadStatus = 'loading' | 'ready' | 'failed';
 type PublishError =
 	| { type: 'publish'; result: Extract<PublishPostResult, { ok: false }> }
-	| { type: 'conflict'; error?: unknown }
 	| { type: 'exception'; error: unknown };
 
 type State = {
@@ -20,8 +18,6 @@ type State = {
 	desired: FollowListUpdate | undefined;
 	loadError: unknown;
 	publishError: PublishError | null;
-	cacheError: unknown;
-	lastCreatedAt: number | undefined;
 	loading?: Promise<void>;
 };
 
@@ -43,11 +39,10 @@ export function createFollowListController({ pubkey, signer }: Account) {
 		event: undefined,
 		desired: undefined,
 		loadError: null,
-		publishError: null,
-		cacheError: null,
-		lastCreatedAt: undefined
+		publishError: null
 	});
 	let disposed = false;
+	let lastAttemptCreatedAt: number | undefined;
 	let pending = $state<Promise<void> | undefined>();
 
 	async function load() {
@@ -59,9 +54,6 @@ export function createFollowListController({ pubkey, signer }: Account) {
 			state.event = event;
 			state.desired = event;
 			state.status = 'ready';
-			if (state.publishError?.type === 'conflict' && event) {
-				state.publishError = null;
-			}
 		} catch (error) {
 			if (disposed) {
 				return;
@@ -74,7 +66,7 @@ export function createFollowListController({ pubkey, signer }: Account) {
 	}
 
 	function reload(): Promise<void> {
-		if (disposed || (state.status === 'ready' && state.publishError?.type !== 'conflict')) {
+		if (disposed || state.status === 'ready') {
 			return Promise.resolve();
 		}
 		if (state.loading) {
@@ -84,10 +76,6 @@ export function createFollowListController({ pubkey, signer }: Account) {
 		state.loadError = null;
 		state.loading = load();
 		return state.loading;
-	}
-
-	function pauseForConflict(error?: unknown) {
-		state.publishError = { type: 'conflict', ...(error === undefined ? {} : { error }) };
 	}
 
 	function startPublishing(): boolean {
@@ -102,40 +90,21 @@ export function createFollowListController({ pubkey, signer }: Account) {
 			try {
 				while (!disposed && state.desired) {
 					const update = $state.snapshot(state.desired);
-					const previousCreatedAt =
-						state.lastCreatedAt === undefined
-							? undefined
-							: Math.max(state.lastCreatedAt, state.event?.created_at ?? 0);
-					const result = await publishAndCacheFollowList(update, pubkey, signer, previousCreatedAt);
-					state.lastCreatedAt = result.createdAt;
-					if (result.publishResult.ok) {
-						state.cacheError =
-							result.cacheResult.status === 'failed' ? result.cacheResult.error : null;
-						const published = result.publishResult.event as Nostr.Event<typeof Contacts>;
-						if (result.cacheResult.status === 'ignored') {
-							let cached: Nostr.Event<typeof Contacts> | undefined;
-							try {
-								cached = await getCachedLatestEvent([pubkey, Contacts, '']);
-							} catch (error) {
-								if (!disposed) {
-									pauseForConflict(error);
-								}
-								return;
-							}
-							if (disposed) {
-								return;
-							}
-							if (!cached || cached.id !== published.id) {
-								pauseForConflict();
-								return;
-							}
-						}
-						state.event = published;
-						if (sameList(state.desired, state.event)) {
-							return;
-						}
-					} else {
-						state.publishError = { type: 'publish', result: result.publishResult };
+					let createdAt = now();
+					if (state.event) {
+						createdAt = Math.max(createdAt, state.event.created_at + 1);
+					}
+					if (lastAttemptCreatedAt !== undefined) {
+						createdAt = Math.max(createdAt, lastAttemptCreatedAt + 1);
+					}
+					lastAttemptCreatedAt = createdAt;
+					const result = await publishFollowList(update, pubkey, signer, createdAt);
+					if (!result.ok) {
+						state.publishError = { type: 'publish', result };
+						return;
+					}
+					state.event = result.event as Nostr.Event<typeof Contacts>;
+					if (sameList(state.desired, state.event)) {
 						return;
 					}
 				}
@@ -152,7 +121,7 @@ export function createFollowListController({ pubkey, signer }: Account) {
 	}
 
 	function changeFollow(pubkey: string, following: boolean) {
-		if (disposed || state.status !== 'ready' || state.publishError?.type === 'conflict') {
+		if (disposed || state.status !== 'ready') {
 			return false;
 		}
 		const update = following
@@ -169,7 +138,7 @@ export function createFollowListController({ pubkey, signer }: Account) {
 	}
 
 	function retry() {
-		if (!state.publishError || state.publishError.type === 'conflict') {
+		if (!state.publishError) {
 			return false;
 		}
 		return startPublishing();
@@ -208,12 +177,6 @@ export function createFollowListController({ pubkey, signer }: Account) {
 		},
 		get publishError() {
 			return state.publishError;
-		},
-		get cacheError() {
-			return state.cacheError ?? null;
-		},
-		get lastCreatedAt() {
-			return state.lastCreatedAt;
 		}
 	};
 }
