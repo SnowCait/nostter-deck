@@ -18,7 +18,6 @@ type State = {
 	desired: FollowListUpdate | undefined;
 	loadError: unknown;
 	publishError: PublishError | null;
-	loading?: Promise<void>;
 };
 
 function sameList(desired: FollowListUpdate, event: FollowListUpdate) {
@@ -43,6 +42,7 @@ export function createFollowListController({ pubkey, signer }: Account) {
 	});
 	let disposed = false;
 	let lastAttemptCreatedAt: number | undefined;
+	let loading: Promise<void> | undefined;
 	let pending = $state<Promise<void> | undefined>();
 
 	async function load() {
@@ -61,7 +61,7 @@ export function createFollowListController({ pubkey, signer }: Account) {
 			state.loadError = error;
 			state.status = 'failed';
 		} finally {
-			state.loading = undefined;
+			loading = undefined;
 		}
 	}
 
@@ -69,13 +69,13 @@ export function createFollowListController({ pubkey, signer }: Account) {
 		if (disposed || state.status === 'ready') {
 			return Promise.resolve();
 		}
-		if (state.loading) {
-			return state.loading;
+		if (loading) {
+			return loading;
 		}
 		state.status = 'loading';
 		state.loadError = null;
-		state.loading = load();
-		return state.loading;
+		loading = load();
+		return loading;
 	}
 
 	function startPublishing(): boolean {
@@ -144,12 +144,12 @@ export function createFollowListController({ pubkey, signer }: Account) {
 		return startPublishing();
 	}
 
-	state.loading = load();
+	loading = load();
 
 	return {
 		dispose() {
 			disposed = true;
-			return Promise.all([pending, state.loading]).then(() => {});
+			return Promise.all([pending, loading]).then(() => {});
 		},
 		reload,
 		follow: (pubkey: string) => changeFollow(pubkey, true),
