@@ -9,6 +9,10 @@ Multi-column Nostr client.
 - [Release guidelines](docs/releasing.md)
 - [Contributing](CONTRIBUTING.md)
 
+## Building native packages
+
+Running `npm run tauri:build` to create native packages requires rclone on your `PATH`. Regular development and web builds do not require rclone. See the [official rclone installation guide](https://rclone.org/install/).
+
 ## Recommended IDE Setup
 
 [VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer).
