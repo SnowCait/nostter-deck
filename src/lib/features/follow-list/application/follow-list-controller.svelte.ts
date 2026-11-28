@@ -26,10 +26,9 @@ type State = {
 	loading?: Promise<void>;
 };
 
-function sameList(desired: FollowListUpdate, event: FollowListUpdate | undefined) {
+function sameList(desired: FollowListUpdate, event: FollowListUpdate) {
 	return (
-		desired.content === (event?.content ?? '') &&
-		JSON.stringify(desired.tags) === JSON.stringify(event?.tags ?? [])
+		desired.content === event.content && JSON.stringify(desired.tags) === JSON.stringify(event.tags)
 	);
 }
 
@@ -60,7 +59,6 @@ export function createFollowListController({ pubkey, signer }: Account) {
 			if (disposed) {
 				return;
 			}
-			state.isPublishing = false;
 			const event = await getLatestFollowList(pubkey);
 			if (disposed) {
 				return;
@@ -182,12 +180,7 @@ export function createFollowListController({ pubkey, signer }: Account) {
 	}
 
 	function retry() {
-		if (
-			disposed ||
-			state.isPublishing ||
-			!state.publishError ||
-			state.publishError.type === 'conflict'
-		) {
+		if (!state.publishError || state.publishError.type === 'conflict') {
 			return false;
 		}
 		return startPublishing();
