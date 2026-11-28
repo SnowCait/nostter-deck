@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "build": {
-    "beforeBuildCommand": "npm run build && cd src-tauri && cargo vendor --locked --versioned-dirs target/license-vendor && rclone sync target/license-vendor target/THIRD_PARTY_RUST_LICENSES --ignore-case --include \"{LICENSE,LICENCE,UNLICENSE,COPYING,COPYRIGHT,NOTICE,AUTHORS,ATTRIBUTION,THIRD-PARTY,THIRDPARTY}*\" --delete-excluded"
+    "beforeBuildCommand": "npm run build && cd src-tauri && cargo vendor --locked --versioned-dirs target/license-vendor && rclone sync target/license-vendor target/THIRD_PARTY_RUST_LICENSES --ignore-case --filter \"- *.rs\" --filter \"+ {LICENSE,LICENCE,UNLICENSE,COPYING,COPYRIGHT,NOTICE,AUTHORS,ATTRIBUTION,THIRD-PARTY,THIRDPARTY}*\" --filter \"- **\" --delete-excluded"
   },
   "bundle": {
     "resources": {
