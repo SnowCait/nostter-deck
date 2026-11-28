@@ -52,6 +52,19 @@ jobs:
       - name: Install Rust toolchain
         working-directory: src-tauri
         run: rustup toolchain install
+      - name: Install rclone
+        shell: pwsh
+        run: |
+          $version = 'v1.76.0'
+          $platform = @{ Windows = 'windows'; macOS = 'osx'; Linux = 'linux' }[$env:RUNNER_OS]
+          $arch = if ($env:RUNNER_ARCH -eq 'ARM64') { 'arm64' } else { 'amd64' }
+          $dist = "rclone-$version-$platform-$arch"
+          $archive = Join-Path $env:RUNNER_TEMP "$dist.zip"
+          $directory = Join-Path $env:RUNNER_TEMP $dist
+          Invoke-WebRequest "https://downloads.rclone.org/$version/$dist.zip" -OutFile $archive
+          Expand-Archive $archive -DestinationPath $env:RUNNER_TEMP
+          if (-not $IsWindows) { chmod +x "$directory/rclone" }
+          Add-Content -Path $env:GITHUB_PATH -Value $directory
       - run: npm ci
       - name: Build application package
         env:

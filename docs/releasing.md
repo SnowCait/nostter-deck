@@ -65,7 +65,7 @@ Generate release notes automatically from the included pull requests.
 
 Include the required license texts, copyright notices, and attribution notices for distributed third-party software and assets in web and native distributions.
 
-Automatically collect and maintain license information using existing tools. Additional entries for components that are not distributed are acceptable.
+Automatically collect and maintain license information using existing tools, including combinations of standard package manager and general-purpose file operation tools. Additional entries for components that are not distributed are acceptable.
 
 Do not implement custom license collection, supplementation, or filtering logic. Do not manually maintain license documents or package lists.
 
