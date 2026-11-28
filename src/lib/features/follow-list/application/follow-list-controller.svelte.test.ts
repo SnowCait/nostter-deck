@@ -58,18 +58,22 @@ function harness() {
 
 	async function succeed(
 		index: number,
-		cacheResult: PublishAndCacheFollowListResult['cacheResult'] = { status: 'updated' },
-		createdAt = 100 + index
+		cacheResult: Exclude<
+			PublishAndCacheFollowListResult['cacheResult'],
+			{ status: 'not-attempted' }
+		> = { status: 'updated' },
+		createdAt = (attempts[index].previous ?? 99) + 1
 	) {
 		const attempt = attempts[index];
+		const published = event(attempt.pubkey, attempt.update, createdAt);
 		const result: PublishAndCacheFollowListResult = {
-			publishResult: { ok: true, event: event(attempt.pubkey, attempt.update, createdAt) },
+			publishResult: { ok: true, event: published },
 			createdAt,
 			cacheResult
 		};
 		attempt.completion.resolve(result);
 		await attempt.completion.promise;
-		return result;
+		return published;
 	}
 
 	async function fail(stage: 'signing' | 'publishing') {
@@ -121,9 +125,9 @@ describe('follow list controller', () => {
 			content: event().content
 		});
 		expect(controller.follow(alice)).toBe(false);
-		const result = await succeed(0);
+		const published = await succeed(0);
 		expect(controller.isPublishing).toBe(false);
-		expect(controller.event).toEqual(result.publishResult.ok && result.publishResult.event);
+		expect(controller.event).toEqual(published);
 		expect(attempts).toHaveLength(1);
 	});
 
@@ -204,8 +208,8 @@ describe('follow list controller', () => {
 		const error = new Error('Cache unavailable');
 		await controller.reload();
 		controller.follow(alice);
-		const result = await succeed(0, { status: 'failed', error });
-		expect(controller.event).toEqual(result.publishResult.ok && result.publishResult.event);
+		const published = await succeed(0, { status: 'failed', error });
+		expect(controller.event).toEqual(published);
 		expect(controller.publishError).toBeNull();
 		expect(controller.cacheError).toBe(error);
 		controller.follow(bob);
@@ -337,7 +341,11 @@ describe('follow list controller', () => {
 		expect(controller.isFollowing(carol)).toBe(true);
 		expect(attempts).toHaveLength(1);
 		expect(controller.retry()).toBe(true);
-		expect(attempts[1].update).toEqual(controller.desired);
+		expect(attempts[1].update).toEqual({
+			kind: Contacts,
+			content: event().content,
+			tags: [...event().tags, ['p', alice, ''], ['p', bob, ''], ['p', carol, '']]
+		});
 		await succeed(1);
 		expect(controller.isPublishing).toBe(false);
 	});

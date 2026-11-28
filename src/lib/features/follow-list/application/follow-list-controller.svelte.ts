@@ -69,9 +69,7 @@ export function createFollowListController({ pubkey, signer }: Account) {
 			state.loadError = error;
 			state.status = 'failed';
 		} finally {
-			if (!disposed) {
-				state.loading = undefined;
-			}
+			state.loading = undefined;
 		}
 	}
 
