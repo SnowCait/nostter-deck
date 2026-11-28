@@ -72,18 +72,18 @@ function harness() {
 		return result;
 	}
 
-	async function fail(index: number, stage: 'signing' | 'publishing', createdAt = 100 + index) {
-		attempts[index].completion.resolve({
+	async function fail(stage: 'signing' | 'publishing') {
+		attempts[0].completion.resolve({
 			publishResult: {
 				ok: false,
 				stage,
 				reason: stage === 'signing' ? 'signing-failed' : 'relay-timeout',
 				targetRelayCount: 2
 			},
-			createdAt,
+			createdAt: 200,
 			cacheResult: { status: 'not-attempted' }
 		});
-		await attempts[index].completion.promise;
+		await attempts[0].completion.promise;
 	}
 
 	return { controller, attempts, succeed, fail };
@@ -165,7 +165,7 @@ describe('follow list controller', () => {
 			await controller.reload();
 			controller.follow(alice);
 			controller.follow(bob);
-			await fail(0, stage, 200);
+			await fail(stage);
 			expect(controller.isPublishing).toBe(false);
 			expect(controller.publishError).toMatchObject({ type: 'publish', result: { stage } });
 			expect(attempts).toHaveLength(1);
@@ -188,7 +188,7 @@ describe('follow list controller', () => {
 		const { controller, attempts, fail, succeed } = harness();
 		await controller.reload();
 		controller.follow(alice);
-		await fail(0, 'publishing', 200);
+		await fail('publishing');
 		expect(controller.unfollow(alice)).toBe(true);
 		expect(attempts).toHaveLength(1);
 		expect(controller.desired?.tags).toEqual(event().tags);
@@ -411,13 +411,19 @@ describe('follow list controller', () => {
 		const fetched = Promise.withResolvers<Nostr.Event<typeof Contacts> | undefined>();
 		vi.mocked(getLatestFollowList).mockReturnValue(fetched.promise);
 		const { controller } = harness();
-		const loading = controller.reload();
-		await Promise.resolve();
+		expect(getLatestFollowList).toHaveBeenCalledTimes(1);
+		let disposed = false;
 		const draining = controller.dispose();
+		void draining.then(() => (disposed = true));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(disposed).toBe(false);
 		fetched.resolve(event());
-		await loading;
 		await draining;
+		expect(disposed).toBe(true);
 		expect(controller.event).toBeUndefined();
+		expect(controller.desired).toBeUndefined();
+		expect(controller.follow(alice)).toBe(false);
+		expect(controller.retry()).toBe(false);
 		await controller.reload();
 		expect(getLatestFollowList).toHaveBeenCalledTimes(1);
 	});

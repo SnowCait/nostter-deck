@@ -18,7 +18,6 @@ type State = {
 	status: LoadStatus;
 	event: Nostr.Event<typeof Contacts> | undefined;
 	desired: FollowListUpdate | undefined;
-	isPublishing: boolean;
 	loadError: unknown;
 	publishError: PublishError | null;
 	cacheError: unknown;
@@ -43,22 +42,16 @@ export function createFollowListController({ pubkey, signer }: Account) {
 		status: 'loading',
 		event: undefined,
 		desired: undefined,
-		isPublishing: false,
 		loadError: null,
 		publishError: null,
 		cacheError: null,
 		lastCreatedAt: undefined
 	});
 	let disposed = false;
-	let pending: Promise<void> | undefined;
+	let pending = $state<Promise<void> | undefined>();
 
 	async function load() {
-		const recoveringConflict = state.publishError?.type === 'conflict';
 		try {
-			await pending;
-			if (disposed) {
-				return;
-			}
 			const event = await getLatestFollowList(pubkey);
 			if (disposed) {
 				return;
@@ -66,7 +59,7 @@ export function createFollowListController({ pubkey, signer }: Account) {
 			state.event = event;
 			state.desired = event;
 			state.status = 'ready';
-			if (recoveringConflict && event) {
+			if (state.publishError?.type === 'conflict' && event) {
 				state.publishError = null;
 			}
 		} catch (error) {
@@ -100,12 +93,11 @@ export function createFollowListController({ pubkey, signer }: Account) {
 	}
 
 	function startPublishing(): boolean {
-		if (disposed || state.status !== 'ready' || !state.desired || state.isPublishing) {
+		if (disposed || pending !== undefined) {
 			return false;
 		}
 		const finished = Promise.withResolvers<void>();
 		pending = finished.promise;
-		state.isPublishing = true;
 		state.publishError = null;
 
 		void (async () => {
@@ -154,7 +146,6 @@ export function createFollowListController({ pubkey, signer }: Account) {
 					state.publishError = { type: 'exception', error };
 				}
 			} finally {
-				state.isPublishing = false;
 				pending = undefined;
 				finished.resolve();
 			}
@@ -212,7 +203,7 @@ export function createFollowListController({ pubkey, signer }: Account) {
 			return $state.snapshot(state.desired);
 		},
 		get isPublishing() {
-			return state.isPublishing;
+			return pending !== undefined;
 		},
 		get loadError() {
 			return state.loadError ?? null;
