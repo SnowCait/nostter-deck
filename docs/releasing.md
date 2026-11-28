@@ -61,6 +61,14 @@ Deploy the web application to GitHub Pages and distribute native application pac
 
 Generate release notes automatically from the included pull requests.
 
+### Third-Party Licenses
+
+Include the required license texts, copyright notices, and attribution notices for distributed third-party software and assets in web and native distributions.
+
+Automatically collect and maintain license information using existing tools. Additional entries for components that are not distributed are acceptable.
+
+Do not implement custom license collection, supplementation, or filtering logic. Do not manually maintain license documents or package lists.
+
 ## Release Validation and Recovery
 
 Verify that the calculated release version matches the committed application version at the selected release commit.
