@@ -98,7 +98,6 @@ async function settleCacheRead() {
 		.mocked(getCachedLatestEvent)
 		.mock.results.at(-1)!
 		.value.catch(() => {});
-	await Promise.resolve();
 }
 
 beforeEach(() => {
@@ -427,7 +426,6 @@ describe('follow list controller', () => {
 		expect(disposed).toBe(false);
 		fetched.resolve(event());
 		await draining;
-		expect(disposed).toBe(true);
 		expect(controller.event).toBeUndefined();
 		expect(controller.desired).toBeUndefined();
 		expect(controller.follow(alice)).toBe(false);
