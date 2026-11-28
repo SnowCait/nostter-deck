@@ -11,6 +11,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
+		"postbuild": "license-sentinel --source node_modules --include-dev --fail-on none --notices build/THIRD_PARTY_LICENSES.txt && node scripts/append-license-notices.js",
 		"preview": "vite preview",
 		"paraglide:compile": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide --strategy localStorage preferredLanguage baseLocale",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -73,6 +74,7 @@
 		"eslint-plugin-svelte": "^3.23.1",
 		"fake-indexeddb": "^6.2.7",
 		"globals": "^17.13.0",
+		"license-sentinel": "^1.1.0",
 		"nostr-typedef": "^0.13.0",
 		"prettier": "^3.9.10",
 		"prettier-plugin-svelte": "^4.1.1",
