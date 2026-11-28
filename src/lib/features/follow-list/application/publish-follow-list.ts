@@ -5,8 +5,9 @@ import {
 	type PublishEventTemplate,
 	type PublishPostResult
 } from '$lib/nostr/relay/publish-event';
+import { putCachedLatestEvent } from '$lib/nostr/latest-event-cache';
 
-export function publishFollowList(
+export async function publishFollowList(
 	update: FollowListUpdate,
 	pubkey: string,
 	signer: EventSigner,
@@ -19,5 +20,13 @@ export function publishFollowList(
 		created_at: createdAt
 	};
 
-	return publishEvent(eventTemplate, pubkey, signer);
+	const result = await publishEvent(eventTemplate, pubkey, signer);
+	if (result.ok) {
+		try {
+			await putCachedLatestEvent(result.event);
+		} catch {
+			// A cache write failure does not undo a successful publication.
+		}
+	}
+	return result;
 }
