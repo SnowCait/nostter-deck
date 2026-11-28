@@ -52,6 +52,9 @@ jobs:
       - name: Install Rust toolchain
         working-directory: src-tauri
         run: rustup toolchain install
+      - uses: taiki-e/install-action@v2.90.11
+        with:
+          tool: rclone@1.76.0
       - run: npm ci
       - name: Build application package
         env:
